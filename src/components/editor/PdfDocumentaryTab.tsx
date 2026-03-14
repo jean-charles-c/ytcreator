@@ -296,6 +296,15 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
             </Button>
           </div>
         )}
+      </div>
+
+      {/* Analysis loading */}
+      {analyzing && (
+        <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Analyse narrative en cours…</p>
+        </div>
+      )}
 
       {/* Analysis results — collapsible */}
       {analysis && (
