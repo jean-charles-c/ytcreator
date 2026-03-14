@@ -473,8 +473,8 @@ export default function Editor() {
           </div>
         )}
 
-        {/* PDF Documentary tab */}
-        {!showSetup && activeTab === "pdf-documentary" && (
+        {/* ScriptCreator tab */}
+        {!showSetup && activeTab === "script-creator" && (
           <PdfDocumentaryTab projectId={projectId} />
         )}
 
