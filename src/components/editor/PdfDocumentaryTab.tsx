@@ -280,19 +280,22 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
           </Button>
         )}
         {analysis && !script && script === null && (
-          <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
-            {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Langue :</label>
+              <select
+                value={scriptLanguage}
+                onChange={(e) => onLanguageChange?.(e.target.value)}
+                className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+            </div>
+            <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
+              {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
+            </Button>
+          </div>
         )}
-      </div>
-
-      {/* Analysis loading */}
-      {analyzing && (
-        <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Analyse narrative en cours…</p>
-        </div>
-      )}
 
       {/* Analysis results — collapsible */}
       {analysis && (

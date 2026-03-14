@@ -499,6 +499,8 @@ export default function Editor() {
           <div className={activeTab === "script-creator" ? "" : "hidden"}>
             <PdfDocumentaryTab
               projectId={projectId}
+              scriptLanguage={scriptLanguage}
+              onLanguageChange={(lang) => setScriptLanguage(lang)}
               onSendToScriptInput={(text) => {
                 setNarration(text);
                 setActiveTab("script");
@@ -514,13 +516,16 @@ export default function Editor() {
           </div>
         )}
 
-        {/* SEO tab */}
-        {!showSetup && activeTab === "seo" && (
-          <SeoTab
-            projectId={projectId}
-            analysis={pdfAnalysis}
-            extractedText={pdfExtractedText}
-          />
+        {/* SEO tab — kept mounted to preserve state */}
+        {!showSetup && (
+          <div className={activeTab === "seo" ? "" : "hidden"}>
+            <SeoTab
+              projectId={projectId}
+              analysis={pdfAnalysis}
+              extractedText={pdfExtractedText}
+              scriptLanguage={scriptLanguage}
+            />
+          </div>
         )}
 
         {/* Segmentation View */}
