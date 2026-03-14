@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { analysis, structure, text } = await req.json();
+    const { analysis, structure, text, language } = await req.json();
     if (!analysis || !structure) {
       return new Response(JSON.stringify({ error: "Analyse et structure requises." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
