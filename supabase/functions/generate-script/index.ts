@@ -51,7 +51,7 @@ FORMAT DE SORTIE :
 
 [etc. pour chaque section]
 
-IMPORTANT : Le script doit faire entre 18 000 et 22 000 caractères au total. C'est un documentaire de 15-20 minutes.`;
+IMPORTANT : Le script fait au MAXIMUM 22 000 caractères. Adapte la longueur au sujet — un sujet simple peut faire 10 000 caractères, un sujet riche peut aller jusqu'à 22 000. Ne rallonge JAMAIS artificiellement.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
