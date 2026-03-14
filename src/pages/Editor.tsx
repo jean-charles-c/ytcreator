@@ -441,11 +441,11 @@ export default function Editor() {
                     />
                   ))}
                 </div>
-                <div className="mt-6 flex gap-3">
-                  <Button variant="outline" onClick={runSegmentation} disabled={segmenting}>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <Button variant="outline" onClick={runSegmentation} disabled={segmenting} className="min-h-[44px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
-                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
+                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     {generatingStoryboard ? "Génération..." : "Générer le storyboard"}
                   </Button>
