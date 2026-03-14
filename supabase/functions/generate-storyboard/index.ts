@@ -91,12 +91,15 @@ serve(async (req) => {
       .single();
     if (projErr || !project) throw new Error("Project not found");
 
-    const { data: scenes, error: scenesErr } = await supabase
+    let scenesQuery = supabase
       .from("scenes")
       .select("*")
       .eq("project_id", project_id)
       .order("scene_order", { ascending: true });
-    if (scenesErr || !scenes?.length) throw new Error("No scenes found. Run segmentation first.");
+    if (singleScene) scenesQuery = scenesQuery.eq("id", scene_id);
+
+    const { data: scenes, error: scenesErr } = await scenesQuery;
+    if (scenesErr || !scenes?.length) throw new Error(singleScene ? "Scene not found." : "No scenes found. Run segmentation first.");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
