@@ -147,7 +147,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             model: "google/gemini-3-flash-preview",
-            max_tokens: strictMode ? 12288 : 8192,
+            max_tokens: strictMode ? 16384 : 12288,
             temperature: strictMode ? 0.1 : 0.3,
             messages: [
               {
