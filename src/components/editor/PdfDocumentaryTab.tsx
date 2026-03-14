@@ -14,12 +14,6 @@ interface NarrativeAnalysis {
   narrative_tensions: { title: string; description: string }[];
 }
 
-interface YoutubeTitle {
-  rank: number;
-  title: string;
-  hook_type: string;
-}
-
 interface DocSection {
   section_key: string;
   section_label: string;
@@ -30,6 +24,7 @@ interface DocSection {
 interface PdfDocumentaryTabProps {
   projectId: string | null;
   onSendToScriptInput?: (text: string) => void;
+  onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
 }
 
 export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: PdfDocumentaryTabProps) {
