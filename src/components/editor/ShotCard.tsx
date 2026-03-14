@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Clapperboard, Shield, Pencil, Check, X, Loader2 } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -48,6 +48,12 @@ export default function ShotCard({ shot, onUpdate }: ShotCardProps) {
     toast.success("Shot mis à jour");
   };
 
+  const copyPrompt = () => {
+    const text = shot.prompt_export || shot.description;
+    navigator.clipboard.writeText(text);
+    toast.success("Prompt copié");
+  };
+
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 
   if (editing) {
@@ -58,7 +64,7 @@ export default function ShotCard({ shot, onUpdate }: ShotCardProps) {
           {!SHOT_TYPES.includes(editType) && <option value={editType}>{editType}</option>}
         </select>
         <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className={`${inputClass} min-h-[60px] resize-y`} placeholder="Description" />
-        <textarea value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} className={`${inputClass} min-h-[60px] resize-y font-mono`} placeholder="Prompt export" />
+        <textarea value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} className={`${inputClass} min-h-[80px] resize-y font-mono`} placeholder="Prompt export" />
         <div className="flex gap-2">
           <Button size="sm" onClick={saveEdit} disabled={saving}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} OK
@@ -72,36 +78,24 @@ export default function ShotCard({ shot, onUpdate }: ShotCardProps) {
   }
 
   return (
-    <div className="group rounded border border-border bg-card overflow-hidden transition-colors hover:border-primary/30 relative">
-      <button onClick={startEdit} className="absolute top-2 right-2 p-2 rounded bg-card/80 text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10 min-h-[36px] min-w-[36px] flex items-center justify-center" title="Éditer">
-        <Pencil className="h-3 w-3" />
-      </button>
-      <div className="aspect-video bg-secondary flex items-center justify-center">
-        <Clapperboard className="h-8 w-8 text-muted-foreground/30" />
-      </div>
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-display font-medium text-primary">{shot.shot_type}</span>
-          {shot.guardrails && (
-            <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium" title="Historical Realism verified">
-              <Shield className="h-2.5 w-2.5" /> HR
-            </span>
-          )}
+    <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-display font-medium text-primary">{shot.shot_type}</span>
+        <div className="flex gap-1">
+          <button onClick={copyPrompt} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copier le prompt">
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
         </div>
-        <p className="text-xs text-muted-foreground leading-relaxed mb-3">{shot.description}</p>
-        {shot.guardrails && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {shot.guardrails.split(",").map((g, gi) => (
-              <span key={gi} className="rounded bg-secondary border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">{g.trim()}</span>
-            ))}
-          </div>
-        )}
-        {shot.prompt_export && (
-          <div className="rounded bg-background border border-border p-2">
-            <code className="text-[10px] text-muted-foreground leading-tight block font-mono">{shot.prompt_export.slice(0, 120)}...</code>
-          </div>
-        )}
       </div>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-2">{shot.description}</p>
+      {shot.prompt_export && (
+        <pre className="rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text">
+          {shot.prompt_export}
+        </pre>
+      )}
     </div>
   );
 }
