@@ -164,9 +164,7 @@ serve(async (req) => {
     // Short narration block = 1 shot. Scale up only for multi-sentence scenes.
     const calcShotCount = (text: string): number => {
       const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0).length;
-      if (sentences <= 2) return 1;
-      if (sentences <= 4) return 2;
-      return 3;
+      return Math.max(1, sentences);
     };
 
     const sceneDescriptions = scenes.map((s: any) => {
