@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut } from "lucide-react";
+import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Project = Tables<"projects">;
@@ -42,6 +43,18 @@ export default function Dashboard() {
     };
     fetchProjects();
   }, []);
+
+  const deleteProject = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    if (!confirm("Supprimer ce projet et toutes ses scènes/shots ?")) return;
+    // Delete shots, scenes, then project
+    await supabase.from("shots").delete().eq("project_id", projectId);
+    await supabase.from("scenes").delete().eq("project_id", projectId);
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
+    if (error) { toast.error("Erreur de suppression"); return; }
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    toast.success("Projet supprimé");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,7 +99,16 @@ export default function Dashboard() {
                     <h3 className="font-display text-sm sm:text-base font-semibold text-foreground leading-snug pr-4">
                       {project.title}
                     </h3>
-                    <s.icon className={`h-4 w-4 shrink-0 mt-0.5 ${s.color}`} />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <s.icon className={`h-4 w-4 mt-0.5 ${s.color}`} />
+                      <button
+                        onClick={(e) => deleteProject(e, project.id)}
+                        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Supprimer le projet"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
                     <span className={s.color}>{s.label}</span>
