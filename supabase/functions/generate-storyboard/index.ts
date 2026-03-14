@@ -180,7 +180,8 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "google/gemini-2.5-flash",
+          max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
             { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULE: Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence). Each shot must correspond to one sentence from the narration. Do NOT merge sentences. Do NOT skip sentences. Prompts must stay strictly faithful to the scene text. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
