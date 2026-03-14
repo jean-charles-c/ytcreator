@@ -78,7 +78,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       toast.success("Analyse narrative terminée");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setAnalyzing(false);
-  }, [extractedText]);
+  }, [extractedText, onAnalysisReady]);
 
   const runYoutubePackaging = useCallback(async () => {
     if (!analysis || !extractedText) return;
