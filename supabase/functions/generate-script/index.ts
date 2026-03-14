@@ -19,6 +19,9 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const scriptLang = language || "en";
+    const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
+    const langLabel = langLabels[scriptLang] || "English";
     const sourceText = text ? text.slice(0, 25000) : "";
 
     const sectionList = structure.map((s: any) => `- ${s.section_label}: ${s.video_title}`).join("\n");
