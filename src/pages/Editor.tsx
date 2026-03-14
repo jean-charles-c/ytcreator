@@ -486,7 +486,7 @@ export default function Editor() {
                     const isRegenerating = regeneratingSceneId === scene.id;
                     return (
                       <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
-                        <div className="flex items-center gap-2 mb-4">
+                        <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
                           <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
                           <span className="text-xs text-muted-foreground">—</span>
                           <span className="text-sm font-display text-foreground">{scene.title}</span>
