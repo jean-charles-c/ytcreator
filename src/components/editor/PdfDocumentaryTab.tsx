@@ -415,6 +415,7 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
         </div>
       )}
 
+      {!extractedText && !analysis && (
         <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/30" />
