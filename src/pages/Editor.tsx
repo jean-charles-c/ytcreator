@@ -610,12 +610,12 @@ export default function Editor() {
                           <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
                         </div>
 
-                        {isRegenerating ? (
+                        {isRegenerating || isPendingGeneration ? (
                           <div className="flex items-center justify-center py-8 gap-2">
                             <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            <p className="text-xs text-muted-foreground">Régénération des shots...</p>
+                            <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
                           </div>
-                        ) : sceneShots.length === 0 ? (
+                        ) : sceneShots.length === 0 && !generatingStoryboard ? (
                           <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
                         ) : (
                           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
