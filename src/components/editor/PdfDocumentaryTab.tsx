@@ -40,7 +40,7 @@ interface PdfDocumentaryTabProps {
   onScriptReady?: (script: string) => void;
 }
 
-export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAnalysisReady, onScriptReady }: PdfDocumentaryTabProps) {
+export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
