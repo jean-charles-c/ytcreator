@@ -241,9 +241,9 @@ export default function Editor() {
     let md = `# Visual Prompts — ${title}\n\n`;
     let shotIndex = 1;
     scenes.forEach((scene) => {
-      md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
       getShotsForScene(scene.id).forEach((shot) => {
-        md += `**Shot ${shotIndex}** (${shot.shot_type}):\n\n${shot.prompt_export || shot.description}\n\n`;
+        const prompt = shot.prompt_export || shot.description;
+        md += `SHOT Shot ${shotIndex}: ${prompt}\n\n---\n\n`;
         shotIndex++;
       });
     });
