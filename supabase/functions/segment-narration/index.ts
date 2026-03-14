@@ -45,111 +45,172 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Call AI to segment
-    const aiResponse = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content: `You are a documentary narration segmentation engine. Given a voice-over script, split it into distinct visual scenes (SceneBlocks). Each scene should represent a coherent visual moment that could be illustrated.
+    const narrationText = project.narration.trim();
+    const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
+    const targetSceneCount = Math.min(140, Math.max(8, Math.ceil(wordCount / 55)));
+
+    const normalizeForCoverage = (value: string) =>
+      value
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const isCompleteSegmentation = (
+      originalNarration: string,
+      segmentedScenes: { source_text: string }[]
+    ) => {
+      const original = normalizeForCoverage(originalNarration);
+      const segmented = normalizeForCoverage(
+        segmentedScenes.map((scene) => scene.source_text).join(" ")
+      );
+
+      if (!original || !segmented) return false;
+
+      const originalWords = original.split(" ");
+      const segmentedWords = segmented.split(" ");
+      const headSample = originalWords.slice(0, 20).join(" ");
+      const tailSample = originalWords.slice(-20).join(" ");
+      const coverageRatio = segmentedWords.length / originalWords.length;
+
+      return (
+        coverageRatio >= 0.9 &&
+        segmented.includes(headSample) &&
+        segmented.includes(tailSample)
+      );
+    };
+
+    const parseScenesFromAi = (aiData: any) => {
+      const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
+
+      if (toolCall?.function?.arguments) {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed?.scenes)) return parsed.scenes;
+      }
+
+      const content = aiData?.choices?.[0]?.message?.content || "";
+      const parsedContent = JSON.parse(content);
+      if (Array.isArray(parsedContent)) return parsedContent;
+      if (Array.isArray(parsedContent?.scenes)) return parsedContent.scenes;
+
+      throw new Error("AI returned no scenes");
+    };
+
+    const requestSegmentation = async (strictMode: boolean) => {
+      const aiResponse = await fetch(
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            max_tokens: strictMode ? 12288 : 8192,
+            temperature: strictMode ? 0.1 : 0.3,
+            messages: [
+              {
+                role: "system",
+                content: `You are a documentary narration segmentation engine.
 
 Rules:
-- Keep every word from the original narration; do not add or remove text.
+- Segment the FULL narration from first word to last word, without skipping any part.
+- Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
+- Preserve exact narrative order.
 - Each scene should map to 1-3 sentences from the source.
 - Generate a short descriptive title for each scene (max 10 words).
-- Generate a visual_intention: a short sentence describing what this scene should look like visually in a documentary context.
-- Preserve the narrative order.
-- Output between 3 and 15 scenes depending on text length.
+- Generate visual_intention: one short sentence describing the documentary visual.
+- Create as many scenes as needed to cover 100% of the narration (target around ${targetSceneCount} scenes for this input).
+${strictMode ? "- This is a retry: verify that the final scene includes the ending of the narration." : ""}
 
-Return ONLY a JSON array using this exact structure, no markdown, no explanation:
-[{"title":"...","source_text":"...","visual_intention":"..."}]`,
-            },
-            {
-              role: "user",
-              content: project.narration,
-            },
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "segment_narration",
-                description:
-                  "Segments a documentary narration into visual scenes.",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    scenes: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string" },
-                          source_text: { type: "string" },
-                          visual_intention: { type: "string" },
+Return data via the segment_narration tool call only.`,
+              },
+              {
+                role: "user",
+                content: narrationText,
+              },
+            ],
+            tools: [
+              {
+                type: "function",
+                function: {
+                  name: "segment_narration",
+                  description:
+                    "Segments a documentary narration into visual scenes.",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      scenes: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            title: { type: "string" },
+                            source_text: { type: "string" },
+                            visual_intention: { type: "string" },
+                          },
+                          required: [
+                            "title",
+                            "source_text",
+                            "visual_intention",
+                          ],
+                          additionalProperties: false,
                         },
-                        required: [
-                          "title",
-                          "source_text",
-                          "visual_intention",
-                        ],
-                        additionalProperties: false,
                       },
                     },
+                    required: ["scenes"],
+                    additionalProperties: false,
                   },
-                  required: ["scenes"],
-                  additionalProperties: false,
                 },
               },
+            ],
+            tool_choice: {
+              type: "function",
+              function: { name: "segment_narration" },
             },
-          ],
-          tool_choice: {
-            type: "function",
-            function: { name: "segment_narration" },
-          },
-        }),
-      }
-    );
+          }),
+        }
+      );
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (!aiResponse.ok) {
+        const errText = await aiResponse.text();
+        console.error("AI error:", aiResponse.status, errText);
+        if (aiResponse.status === 429) {
+          throw new Error("RATE_LIMIT_EXCEEDED");
+        }
+        if (aiResponse.status === 402) {
+          throw new Error("PAYMENT_REQUIRED");
+        }
+        throw new Error("AI gateway error");
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+
+      const aiData = await aiResponse.json();
+      const parsedScenes = parseScenesFromAi(aiData);
+
+      if (!Array.isArray(parsedScenes) || parsedScenes.length === 0) {
+        throw new Error("AI returned no scenes");
       }
-      throw new Error("AI gateway error");
+
+      return parsedScenes as {
+        title: string;
+        source_text: string;
+        visual_intention: string;
+      }[];
+    };
+
+    let scenes = await requestSegmentation(false);
+
+    if (!isCompleteSegmentation(narrationText, scenes)) {
+      console.warn("Incomplete segmentation detected. Retrying with stricter instructions.");
+      scenes = await requestSegmentation(true);
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    let scenes: { title: string; source_text: string; visual_intention: string }[];
-
-    if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      scenes = parsed.scenes;
-    } else {
-      // Fallback: try parsing content directly
-      const content = aiData.choices?.[0]?.message?.content || "";
-      scenes = JSON.parse(content);
-    }
-
-    if (!Array.isArray(scenes) || scenes.length === 0) {
-      throw new Error("AI returned no scenes");
+    if (!isCompleteSegmentation(narrationText, scenes)) {
+      throw new Error(
+        "La segmentation est incomplète. Réessaie avec un texte plus court ou relance la segmentation."
+      );
     }
 
     // Delete existing scenes for this project
