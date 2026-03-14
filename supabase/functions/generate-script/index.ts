@@ -75,11 +75,14 @@ OUTPUT FORMAT:
 [etc. for each section — each section well developed with many scenes]
 
 CRITICAL LENGTH & QUALITY CHECK:
-- The final script MUST be between 10,000 and 12,000 characters
+- The final script MUST be between 10,000 and 12,000 characters. This is NON-NEGOTIABLE.
+- Count your characters as you write. If you are below 10,000 characters, you MUST add more scenes.
+- Each major section needs AT LEAST 8-10 scenes of 3 sentences each.
 - Each scene = exactly 3 short sentences (under 100 chars each)
 - Draw extensively from the research material for facts and details
 - Never summarize — always develop and illustrate with specifics
 - ZERO redundancy: if you've already stated a fact, do NOT restate it
+- BEFORE finishing, verify your character count. If under 10,000, ADD MORE SCENES to underdeveloped sections.
 
 Remember: ALL text including section markers must be in ${langLabel}.`;
 
