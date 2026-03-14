@@ -69,13 +69,21 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
-  const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
-  const [pdfPageCount, setPdfPageCount] = useState(0);
-  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
-  const [pdfDocStructure, setPdfDocStructure] = useState<any[] | null>(null);
-  const [generatedScript, setGeneratedScript] = useState<string | null>(null);
-  const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>({ titles: null, description: null, tags: null });
+  const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
+    try { const v = sessionStorage.getItem(`sc_analysis_${id}`); return v ? JSON.parse(v) : null; } catch { return null; }
+  });
+  const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(() => sessionStorage.getItem(`sc_text_${id}`) || null);
+  const [pdfPageCount, setPdfPageCount] = useState(() => {
+    try { return Number(sessionStorage.getItem(`sc_pages_${id}`)) || 0; } catch { return 0; }
+  });
+  const [pdfFileName, setPdfFileName] = useState<string | null>(() => sessionStorage.getItem(`sc_fname_${id}`) || null);
+  const [pdfDocStructure, setPdfDocStructure] = useState<any[] | null>(() => {
+    try { const v = sessionStorage.getItem(`sc_struct_${id}`); return v ? JSON.parse(v) : null; } catch { return null; }
+  });
+  const [generatedScript, setGeneratedScript] = useState<string | null>(() => sessionStorage.getItem(`sc_script_${id}`) || null);
+  const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>(() => {
+    try { const v = sessionStorage.getItem(`sc_seo_${id}`); return v ? JSON.parse(v) : null; } catch { return { titles: null, description: null, tags: null }; }
+  });
 
   // Load existing project + scenes + shots
   useEffect(() => {
@@ -97,6 +105,57 @@ export default function Editor() {
     };
     load();
   }, [id, isNew, navigate]);
+
+  // Persist ScriptCreator state to sessionStorage
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (pdfAnalysis) sessionStorage.setItem(`sc_analysis_${id}`, JSON.stringify(pdfAnalysis));
+      else sessionStorage.removeItem(`sc_analysis_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, pdfAnalysis]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (pdfExtractedText) sessionStorage.setItem(`sc_text_${id}`, pdfExtractedText);
+      else sessionStorage.removeItem(`sc_text_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, pdfExtractedText]);
+
+  useEffect(() => {
+    if (!id) return;
+    sessionStorage.setItem(`sc_pages_${id}`, String(pdfPageCount));
+  }, [id, pdfPageCount]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (pdfFileName) sessionStorage.setItem(`sc_fname_${id}`, pdfFileName);
+    else sessionStorage.removeItem(`sc_fname_${id}`);
+  }, [id, pdfFileName]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (pdfDocStructure) sessionStorage.setItem(`sc_struct_${id}`, JSON.stringify(pdfDocStructure));
+      else sessionStorage.removeItem(`sc_struct_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, pdfDocStructure]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (generatedScript) sessionStorage.setItem(`sc_script_${id}`, generatedScript);
+      else sessionStorage.removeItem(`sc_script_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, generatedScript]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      sessionStorage.setItem(`sc_seo_${id}`, JSON.stringify(seoResults));
+    } catch { /* quota exceeded */ }
+  }, [id, seoResults]);
 
   // Save / create project
   const saveProject = useCallback(async () => {
@@ -579,7 +638,10 @@ export default function Editor() {
             <textarea value={narration} onChange={(e) => setNarration(e.target.value)}
               placeholder="Collez votre voix-off ici..."
               className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-card p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <div className="mt-1.5 text-xs text-muted-foreground text-right">
+              {narration.length.toLocaleString()} caractères
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row gap-3">
               <Button variant="hero" onClick={saveProject} disabled={saving} className="min-h-[44px]">
                 <Save className="h-4 w-4" />
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
