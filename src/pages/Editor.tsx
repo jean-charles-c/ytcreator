@@ -385,11 +385,37 @@ export default function Editor() {
       .join("\n");
   };
 
+  const splitIntoVoiceOverBlocks = (raw: string): string[] => {
+    const clean = cleanScriptForExport(raw);
+    const sentences = clean.split(/(?<=\.)\s+/);
+    const blocks: string[] = [];
+    let currentBlock = "";
+    for (const sentence of sentences) {
+      const candidate = currentBlock ? currentBlock + " " + sentence : sentence;
+      if (candidate.length > 8300 && currentBlock.length > 0) {
+        blocks.push(currentBlock.trim());
+        currentBlock = sentence;
+      } else {
+        currentBlock = candidate;
+      }
+    }
+    if (currentBlock.trim()) blocks.push(currentBlock.trim());
+    return blocks;
+  };
+
   const generateScriptNarratif = useCallback(() => {
     if (!generatedScript) return;
     const clean = cleanScriptForExport(generatedScript);
     downloadFile(clean, `${title.replace(/\s+/g, "_")}_script_narratif.md`);
     toast.success("Script Narratif exporté");
+  }, [title, generatedScript]);
+
+  const generateVoiceOverBlocks = useCallback(() => {
+    if (!generatedScript) return;
+    const blocks = splitIntoVoiceOverBlocks(generatedScript);
+    const output = blocks.map((block, i) => `Voice Over Block ${i + 1} (${block.length} chars)\n\n${block}`).join("\n\n---\n\n");
+    downloadFile(output, `${title.replace(/\s+/g, "_")}_voice_over_blocks.md`);
+    toast.success(`${blocks.length} bloc(s) Voice Over exporté(s)`);
   }, [title, generatedScript]);
 
   const downloadAll = useCallback(async () => {
@@ -398,6 +424,9 @@ export default function Editor() {
 
     if (generatedScript) {
       zip.file(`${prefix}_script_narratif.md`, cleanScriptForExport(generatedScript));
+      const blocks = splitIntoVoiceOverBlocks(generatedScript);
+      const voOutput = blocks.map((block, i) => `Voice Over Block ${i + 1} (${block.length} chars)\n\n${block}`).join("\n\n---\n\n");
+      zip.file(`${prefix}_voice_over_blocks.md`, voOutput);
     }
 
     if (scenes.length > 0) {
@@ -801,6 +830,7 @@ export default function Editor() {
             <div className="space-y-4">
               {[
                 { label: "Script Narratif", desc: "Script voice-over généré par ScriptCreator", generate: generateScriptNarratif, disabled: !generatedScript },
+                { label: "VO Blocks", desc: "Script découpé en blocs Voice Over (≤ 8 300 car.)", generate: generateVoiceOverBlocks, disabled: !generatedScript },
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts, disabled: scenes.length === 0 },
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping, disabled: scenes.length === 0 },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation, disabled: scenes.length === 0 },
