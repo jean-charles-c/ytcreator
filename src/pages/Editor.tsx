@@ -424,6 +424,9 @@ export default function Editor() {
 
     if (generatedScript) {
       zip.file(`${prefix}_script_narratif.md`, cleanScriptForExport(generatedScript));
+      const blocks = splitIntoVoiceOverBlocks(generatedScript);
+      const voOutput = blocks.map((block, i) => `Voice Over Block ${i + 1} (${block.length} chars)\n\n${block}`).join("\n\n---\n\n");
+      zip.file(`${prefix}_voice_over_blocks.md`, voOutput);
     }
 
     if (scenes.length > 0) {
