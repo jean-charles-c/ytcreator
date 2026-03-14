@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Menu,
   X,
+  Youtube,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,8 +24,9 @@ import type { Tables } from "@/integrations/supabase/types";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
+import SeoTab from "@/components/editor/SeoTab";
 
-type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "export";
+type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
@@ -33,6 +35,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script", label: "ScriptInput", icon: Film },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "Storyboard", icon: Clapperboard },
+  { key: "seo", label: "SEO", icon: Youtube },
   { key: "export", label: "Export", icon: Download },
 ];
 
@@ -65,6 +68,8 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
+  const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
 
   // Load existing project + scenes + shots
   useEffect(() => {
@@ -481,6 +486,19 @@ export default function Editor() {
               setNarration(text);
               setActiveTab("script");
             }}
+            onAnalysisReady={(analysis, text) => {
+              setPdfAnalysis(analysis);
+              setPdfExtractedText(text);
+            }}
+          />
+        )}
+
+        {/* SEO tab */}
+        {!showSetup && activeTab === "seo" && (
+          <SeoTab
+            projectId={projectId}
+            analysis={pdfAnalysis}
+            extractedText={pdfExtractedText}
           />
         )}
 
