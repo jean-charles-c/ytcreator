@@ -354,12 +354,17 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: Pd
           </div>
           <div className="space-y-2">
             {youtubeTitles.map((t, i) => (
-              <div key={i} className="flex items-center gap-3 rounded border border-border bg-background p-3 transition-colors hover:bg-secondary/30">
-                <div className={`flex items-center justify-center h-7 w-7 rounded-full shrink-0 text-xs font-bold ${i === 0 ? "bg-primary text-primary-foreground" : i < 3 ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"}`}>
+              <div key={i} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded border border-border bg-background p-3 transition-colors hover:bg-secondary/30">
+                <div className={`flex items-center justify-center h-7 w-7 rounded-full shrink-0 text-xs font-bold mt-0.5 sm:mt-0 ${i === 0 ? "bg-primary text-primary-foreground" : i < 3 ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"}`}>
                   {i === 0 ? <Trophy className="h-3.5 w-3.5" /> : t.rank}
                 </div>
-                <p className="text-sm text-foreground flex-1">{t.title}</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${hookBadgeColor(t.hook_type)}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground">{t.title}</p>
+                  <span className={`inline-block mt-1 sm:hidden text-[10px] px-2 py-0.5 rounded-full border ${hookBadgeColor(t.hook_type)}`}>
+                    {t.hook_type}
+                  </span>
+                </div>
+                <span className={`hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${hookBadgeColor(t.hook_type)}`}>
                   {t.hook_type}
                 </span>
               </div>
