@@ -131,7 +131,7 @@ export default function SceneBlock({
 
       {editing ? (
         <div className="space-y-3">
-          <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={inputClass} placeholder="Titre de la scène" />
+          <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Titre de la scène" />
           <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className={`${inputClass} min-h-[100px] resize-y`} placeholder="Texte source" />
           <input type="text" value={editVisual} onChange={(e) => setEditVisual(e.target.value)} className={inputClass} placeholder="Intention visuelle (optionnel)" />
           <div className="flex gap-2">
