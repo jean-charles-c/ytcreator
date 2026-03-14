@@ -334,9 +334,23 @@ export default function Editor() {
                                 <div className="p-4">
                                   <div className="flex items-center gap-2 mb-2">
                                     <span className="text-xs font-display font-medium text-primary">{shot.shot_type}</span>
-                                    <Shield className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Historical Realism verified" />
+                                    {shot.guardrails && (
+                                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium" title="Historical Realism verified">
+                                        <Shield className="h-2.5 w-2.5" />
+                                        HR
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-xs text-muted-foreground leading-relaxed mb-3">{shot.description}</p>
+                                  {shot.guardrails && (
+                                    <div className="flex flex-wrap gap-1 mb-3">
+                                      {shot.guardrails.split(",").map((g, gi) => (
+                                        <span key={gi} className="rounded bg-secondary border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                          {g.trim()}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                   {shot.prompt_export && (
                                     <div className="rounded bg-background border border-border p-2">
                                       <code className="text-[10px] text-muted-foreground leading-tight block font-mono">
