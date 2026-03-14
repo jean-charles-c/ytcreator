@@ -377,11 +377,11 @@ export default function Editor() {
               placeholder="Collez votre voix-off ici..."
               className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-card p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <Button variant="hero" onClick={saveProject} disabled={saving}>
+              <Button variant="hero" onClick={saveProject} disabled={saving} className="min-h-[44px]">
                 <Save className="h-4 w-4" />
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </Button>
-              <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting}>
+              <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
                 {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {segmenting ? "Segmentation..." : "Lancer la segmentation"}
               </Button>
