@@ -9,6 +9,8 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Project = Tables<"projects">;
 
+type ProjectWithShotCount = Project & { shot_count: number };
+
 const statusConfig = {
   draft: { label: "Brouillon", icon: FileText, color: "text-muted-foreground" },
   segmented: { label: "Segmenté", icon: Clock, color: "text-primary" },
@@ -29,7 +31,7 @@ function timeAgo(dateStr: string) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithShotCount[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,7 +40,16 @@ export default function Dashboard() {
         .from("projects")
         .select("*")
         .order("updated_at", { ascending: false });
-      setProjects(data ?? []);
+      if (!data) { setLoading(false); return; }
+      // Fetch shot counts per project
+      const projectIds = data.map((p) => p.id);
+      const { data: shots } = await supabase
+        .from("shots")
+        .select("project_id")
+        .in("project_id", projectIds);
+      const shotCounts: Record<string, number> = {};
+      (shots ?? []).forEach((s) => { shotCounts[s.project_id] = (shotCounts[s.project_id] || 0) + 1; });
+      setProjects(data.map((p) => ({ ...p, shot_count: shotCounts[p.id] || 0 })));
       setLoading(false);
     };
     fetchProjects();
@@ -113,7 +124,9 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
                     <span className={s.color}>{s.label}</span>
                     <span>·</span>
-                    <span>{project.scene_count} scènes</span>
+                    <span>{project.scene_count} scène{project.scene_count > 1 ? "s" : ""}</span>
+                    <span>·</span>
+                    <span>{project.shot_count} shot{project.shot_count > 1 ? "s" : ""}</span>
                     <span>·</span>
                     <span>{timeAgo(project.updated_at)}</span>
                   </div>
