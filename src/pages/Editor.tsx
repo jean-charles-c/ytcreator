@@ -67,6 +67,8 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
+  const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
 
   // Load existing project + scenes + shots
   useEffect(() => {
