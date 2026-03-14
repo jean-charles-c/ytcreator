@@ -294,24 +294,43 @@ export default function Editor() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border shrink-0">
-        <div className="flex h-14 items-center px-4 gap-4">
-          <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors">
+        <div className="flex h-14 items-center px-4 gap-2 sm:gap-4">
+          <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <Film className="h-5 w-5 text-primary" />
-          <span className="font-display font-semibold text-foreground truncate">{title || "Nouveau projet"}</span>
+          <Film className="h-5 w-5 text-primary shrink-0" />
+          <span className="font-display font-semibold text-foreground truncate text-sm sm:text-base">{title || "Nouveau projet"}</span>
           {!showSetup && (
-            <div className="ml-auto flex items-center gap-1">
-              {tabItems.map((t) => (
-                <button key={t.key} onClick={() => setActiveTab(t.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                  <t.icon className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">{t.label}</span>
-                </button>
-              ))}
-            </div>
+            <>
+              {/* Desktop tabs */}
+              <div className="ml-auto hidden sm:flex items-center gap-1">
+                {tabItems.map((t) => (
+                  <button key={t.key} onClick={() => setActiveTab(t.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                    <t.icon className="h-3.5 w-3.5" />
+                    <span className="hidden md:inline">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Mobile hamburger */}
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="ml-auto sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-muted-foreground hover:text-foreground">
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </>
           )}
         </div>
+        {/* Mobile tab menu */}
+        {!showSetup && mobileMenuOpen && (
+          <div className="sm:hidden border-t border-border bg-background px-4 py-2 space-y-1 animate-fade-in">
+            {tabItems.map((t) => (
+              <button key={t.key} onClick={() => { setActiveTab(t.key); setMobileMenuOpen(false); }}
+                className={`flex items-center gap-2 w-full px-3 py-2.5 rounded text-sm transition-colors min-h-[44px] ${activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <t.icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-auto">
