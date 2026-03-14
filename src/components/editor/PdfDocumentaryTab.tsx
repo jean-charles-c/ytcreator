@@ -388,7 +388,33 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
         </div>
       )}
 
-      {!extractedText && !analysis && (
+      {/* Script generation */}
+      {(script !== null) && (
+        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Script documentaire</h3>
+              {!generatingScript && script && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  {script.length.toLocaleString()} caractères
+                </span>
+              )}
+            </div>
+            {generatingScript && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-muted-foreground">Écriture en cours…</span>
+              </div>
+            )}
+          </div>
+          <div className="max-h-[500px] overflow-y-auto rounded border border-border bg-background p-4">
+            <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
+            <div ref={scriptEndRef} />
+          </div>
+        </div>
+      )}
+
         <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/30" />
