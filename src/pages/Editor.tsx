@@ -336,7 +336,7 @@ export default function Editor() {
       <main className="flex-1 overflow-auto">
         {/* New project setup */}
         {showSetup && (
-          <div className="container max-w-lg py-10 animate-fade-in">
+          <div className="container max-w-lg py-6 sm:py-10 px-4 animate-fade-in">
             <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Nouveau projet</h2>
             <p className="text-sm text-muted-foreground mb-8">Décrivez votre projet documentaire pour commencer.</p>
             <div className="space-y-5">
