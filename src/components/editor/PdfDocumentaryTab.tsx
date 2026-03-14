@@ -171,7 +171,7 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, extractedText]);
+  }, [analysis, extractedText, scriptLanguage]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
