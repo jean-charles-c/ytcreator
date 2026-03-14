@@ -46,7 +46,6 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
     setParsing(true);
     setExtractedText(null);
     setAnalysis(null);
-    setYoutubeTitles(null);
     setDocStructure(null);
     setScript(null);
     try {
