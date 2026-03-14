@@ -22,8 +22,19 @@ interface DocSection {
   narrative_description: string;
 }
 
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "fr", label: "Français" },
+  { value: "es", label: "Español" },
+  { value: "de", label: "Deutsch" },
+  { value: "pt", label: "Português" },
+  { value: "it", label: "Italiano" },
+];
+
 interface PdfDocumentaryTabProps {
   projectId: string | null;
+  scriptLanguage: string;
+  onLanguageChange?: (lang: string) => void;
   onSendToScriptInput?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
