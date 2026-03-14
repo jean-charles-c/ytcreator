@@ -87,6 +87,14 @@ export default function Editor() {
         .order("scene_order", { ascending: true });
       if (sceneData) setScenes(sceneData);
 
+      // Load shots
+      const { data: shotData } = await supabase
+        .from("shots")
+        .select("*")
+        .eq("project_id", id)
+        .order("shot_order", { ascending: true });
+      if (shotData) setShots(shotData);
+
       setLoadingProject(false);
     };
     load();
