@@ -616,7 +616,8 @@ export default function Editor() {
                   <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">VisualPrompts</h2>
                   {scenes.length > 0 && (
                     <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                      {shots.length} shots / {scenes.length} scènes
+                      {shots.length} shot{shots.length > 1 ? "s" : ""} / {scenes.length} scène{scenes.length > 1 ? "s" : ""}
+                      {generatingStoryboard && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                     </span>
                   )}
                 </div>
