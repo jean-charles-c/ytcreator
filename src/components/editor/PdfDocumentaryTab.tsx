@@ -414,6 +414,28 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: Pd
             <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
             <div ref={scriptEndRef} />
           </div>
+          {!generatingScript && script && (
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <Button variant="outline" onClick={() => {
+                const clean = cleanScriptForExport(script);
+                const blob = new Blob([clean], { type: "text/markdown;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "script_documentaire.md"; a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Script exporté en Markdown");
+              }} className="min-h-[44px]">
+                <Download className="h-4 w-4" /> Exporter en .md
+              </Button>
+              <Button variant="hero" onClick={() => {
+                const clean = cleanScriptForExport(script);
+                onSendToScriptInput?.(clean);
+                toast.success("Script envoyé dans ScriptInput");
+              }} className="min-h-[44px]">
+                <ArrowRight className="h-4 w-4" /> Envoyer dans ScriptInput
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
