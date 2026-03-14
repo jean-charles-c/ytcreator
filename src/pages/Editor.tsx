@@ -343,17 +343,18 @@ export default function Editor() {
 
   const generateSceneMapping = useCallback(() => {
     let md = `# Scene Mapping — ${title}\n\n`;
+    let globalShotIndex = 1;
     scenes.forEach((scene) => {
       md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
-      md += `### Narration\n\n> ${scene.source_text}\n\n`;
-      if (scene.visual_intention) md += `### Intention visuelle\n\n_${scene.visual_intention}_\n\n`;
+      md += `### Narration (extrait du script)\n\n> **${scene.source_text}**\n\n`;
       const sceneShots = getShotsForScene(scene.id);
       if (sceneShots.length > 0) {
         md += `### Shots associés\n\n`;
         sceneShots.forEach((shot) => {
-          md += `- **${shot.shot_type}**: ${shot.description}`;
+          md += `- **Shot ${globalShotIndex} — ${shot.shot_type}**: ${shot.description}`;
           if (shot.guardrails) md += ` [${shot.guardrails}]`;
           md += `\n`;
+          globalShotIndex++;
         });
         md += `\n`;
       }
