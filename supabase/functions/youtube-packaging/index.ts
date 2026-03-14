@@ -69,7 +69,7 @@ EVERYTHING must be written in ${langLabel}. Respond ONLY with a call to generate
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `${analysis ? `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\n` : ""}Document excerpt:\n${context}` },
