@@ -140,6 +140,70 @@ export default function Editor() {
   // Helper: get shots for a specific scene
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
+  // Helper: download text as file
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export: Visual Prompts
+  const generateVisualPrompts = useCallback(() => {
+    let md = `# Visual Prompts — ${title}\n\n`;
+    let shotIndex = 1;
+    scenes.forEach((scene) => {
+      md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
+      const sceneShots = getShotsForScene(scene.id);
+      sceneShots.forEach((shot) => {
+        md += `**Shot ${shotIndex}** (${shot.shot_type}):\n\n`;
+        md += `${shot.prompt_export || shot.description}\n\n`;
+        shotIndex++;
+      });
+    });
+    downloadFile(md, `${title.replace(/\s+/g, "_")}_visual_prompts.md`);
+    toast.success("Visual Prompts exportés");
+  }, [title, scenes, shots]);
+
+  // Export: Scene Mapping
+  const generateSceneMapping = useCallback(() => {
+    let md = `# Scene Mapping — ${title}\n\n`;
+    scenes.forEach((scene) => {
+      md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
+      md += `### Narration\n\n> ${scene.source_text}\n\n`;
+      if (scene.visual_intention) {
+        md += `### Intention visuelle\n\n_${scene.visual_intention}_\n\n`;
+      }
+      const sceneShots = getShotsForScene(scene.id);
+      if (sceneShots.length > 0) {
+        md += `### Shots associés\n\n`;
+        sceneShots.forEach((shot) => {
+          md += `- **${shot.shot_type}**: ${shot.description}`;
+          if (shot.guardrails) md += ` [${shot.guardrails}]`;
+          md += `\n`;
+        });
+        md += `\n`;
+      }
+    });
+    downloadFile(md, `${title.replace(/\s+/g, "_")}_scene_mapping.md`);
+    toast.success("Scene Mapping exporté");
+  }, [title, scenes, shots]);
+
+  // Export: Narration Segmentation
+  const generateNarrationSegmentation = useCallback(() => {
+    let md = `# Narration Segmentation — ${title}\n\n`;
+    scenes.forEach((scene) => {
+      md += `---\n\n`;
+      md += `### Scène ${scene.scene_order} — ${scene.title}\n\n`;
+      md += `${scene.source_text}\n\n`;
+    });
+    downloadFile(md, `${title.replace(/\s+/g, "_")}_narration_segmentation.md`);
+    toast.success("Narration Segmentation exportée");
+  }, [title, scenes]);
+
   if (loadingProject) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
