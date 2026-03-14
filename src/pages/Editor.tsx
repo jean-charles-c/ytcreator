@@ -138,7 +138,7 @@ export default function Editor() {
     const callStoryboard = async (body: Record<string, string>) => {
       const session = (await supabase.auth.getSession()).data.session;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 170000);
+      const timeoutId = setTimeout(() => controller.abort(), 145000);
 
       try {
         const response = await fetch(
@@ -149,6 +149,7 @@ export default function Editor() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${session?.access_token}`,
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              "x-supabase-client-platform": "web",
             },
             body: JSON.stringify(body),
             signal: controller.signal,
@@ -185,20 +186,36 @@ export default function Editor() {
 
         await supabase.from("shots").delete().eq("project_id", projectId);
 
+        const BATCH_SIZE = 2;
         let totalShots = 0;
-        for (const id of sceneIds) {
-          const data = await callStoryboard({ project_id: projectId, scene_id: id });
-          totalShots += data?.shots_count ?? 0;
+        const failedSceneIds: string[] = [];
+
+        for (let i = 0; i < sceneIds.length; i += BATCH_SIZE) {
+          const batch = sceneIds.slice(i, i + BATCH_SIZE);
+          for (const id of batch) {
+            try {
+              const data = await callStoryboard({ project_id: projectId, scene_id: id });
+              totalShots += data?.shots_count ?? 0;
+            } catch (sceneError) {
+              console.error(`Storyboard scene failed: ${id}`, sceneError);
+              failedSceneIds.push(id);
+            }
+          }
         }
 
         const { data: shotData } = await supabase
           .from("shots")
           .select("*")
           .eq("project_id", projectId)
+          .order("scene_id", { ascending: true })
           .order("shot_order", { ascending: true });
         if (shotData) setShots(shotData);
 
-        toast.success(`${totalShots} shots générés sur ${sceneIds.length} scènes`);
+        if (failedSceneIds.length > 0) {
+          toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
+        } else {
+          toast.success(`${totalShots} shots générés sur ${sceneIds.length} scènes`);
+        }
       }
     } catch (e: any) {
       if (e?.name === "AbortError") {
