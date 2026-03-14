@@ -170,7 +170,7 @@ serve(async (req) => {
       throw new Error("AI returned no scenes");
     };
 
-    const requestSegmentation = async (strictMode: boolean) => {
+    const requestSegmentation = async (text: string, targetCount: number, strictMode: boolean) => {
       const aiResponse = await fetch(
         "https://ai.gateway.lovable.dev/v1/chat/completions",
         {
@@ -180,7 +180,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: "google/gemini-2.5-flash",
             max_tokens: strictMode ? 16384 : 12288,
             temperature: strictMode ? 0.1 : 0.3,
             messages: [
@@ -195,14 +195,14 @@ Rules:
 - Each scene should map to 1-3 sentences from the source.
 - Generate a short descriptive title for each scene (max 10 words).
 - Generate visual_intention: one short sentence describing the documentary visual.
-- Create as many scenes as needed to cover 100% of the narration (target around ${targetSceneCount} scenes for this input).
-${strictMode ? "- This is a retry: verify that the final scene includes the ending of the narration." : ""}
+- Create approximately ${targetCount} scenes to cover 100% of the narration.
+${strictMode ? "- CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
 
 Return data via the segment_narration tool call only.`,
               },
               {
                 role: "user",
-                content: narrationText,
+                content: text,
               },
             ],
             tools: [
@@ -250,12 +250,8 @@ Return data via the segment_narration tool call only.`,
       if (!aiResponse.ok) {
         const errText = await aiResponse.text();
         console.error("AI error:", aiResponse.status, errText);
-        if (aiResponse.status === 429) {
-          throw new Error("RATE_LIMIT_EXCEEDED");
-        }
-        if (aiResponse.status === 402) {
-          throw new Error("PAYMENT_REQUIRED");
-        }
+        if (aiResponse.status === 429) throw new Error("RATE_LIMIT_EXCEEDED");
+        if (aiResponse.status === 402) throw new Error("PAYMENT_REQUIRED");
         throw new Error("AI gateway error");
       }
 
@@ -273,11 +269,51 @@ Return data via the segment_narration tool call only.`,
       }[];
     };
 
-    let scenes = await requestSegmentation(false);
+    // For very long texts (>1500 words), split into chunks and process separately
+    const splitIntoParagraphs = (text: string): string[] => {
+      return text.split(/\n\n+/).filter(p => p.trim().length > 0);
+    };
 
-    if (!isCompleteSegmentation(narrationText, scenes)) {
-      console.warn("Incomplete segmentation detected. Retrying with stricter instructions.");
-      scenes = await requestSegmentation(true);
+    let allScenes: { title: string; source_text: string; visual_intention: string }[] = [];
+
+    if (wordCount > 1500) {
+      console.log(`Long narration detected (${wordCount} words). Processing in chunks.`);
+      const paragraphs = splitIntoParagraphs(narrationText);
+      
+      // Group paragraphs into chunks of ~700 words each
+      const chunks: string[] = [];
+      let currentChunk = "";
+      let currentWords = 0;
+      for (const p of paragraphs) {
+        const pWords = p.split(/\s+/).filter(Boolean).length;
+        if (currentWords + pWords > 700 && currentChunk) {
+          chunks.push(currentChunk.trim());
+          currentChunk = p;
+          currentWords = pWords;
+        } else {
+          currentChunk += "\n\n" + p;
+          currentWords += pWords;
+        }
+      }
+      if (currentChunk.trim()) chunks.push(currentChunk.trim());
+
+      console.log(`Split into ${chunks.length} chunks`);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkWords = chunks[i].split(/\s+/).filter(Boolean).length;
+        const chunkTarget = Math.max(4, Math.ceil(chunkWords / 55));
+        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words, target ${chunkTarget} scenes)`);
+        
+        let chunkScenes = await requestSegmentation(chunks[i], chunkTarget, false);
+        allScenes.push(...chunkScenes);
+      }
+    } else {
+      allScenes = await requestSegmentation(narrationText, targetSceneCount, false);
+
+      if (!isCompleteSegmentation(narrationText, allScenes)) {
+        console.warn("Incomplete segmentation detected. Retrying with stricter instructions.");
+        allScenes = await requestSegmentation(narrationText, targetSceneCount, true);
+      }
     }
 
     if (!isCompleteSegmentation(narrationText, scenes)) {
