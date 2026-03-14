@@ -486,6 +486,19 @@ export default function Editor() {
               setNarration(text);
               setActiveTab("script");
             }}
+            onAnalysisReady={(analysis, text) => {
+              setPdfAnalysis(analysis);
+              setPdfExtractedText(text);
+            }}
+          />
+        )}
+
+        {/* SEO tab */}
+        {!showSetup && activeTab === "seo" && (
+          <SeoTab
+            projectId={projectId}
+            analysis={pdfAnalysis}
+            extractedText={pdfExtractedText}
           />
         )}
 
