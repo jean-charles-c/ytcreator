@@ -9,6 +9,8 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Project = Tables<"projects">;
 
+type ProjectWithShotCount = Project & { shot_count: number };
+
 const statusConfig = {
   draft: { label: "Brouillon", icon: FileText, color: "text-muted-foreground" },
   segmented: { label: "Segmenté", icon: Clock, color: "text-primary" },
