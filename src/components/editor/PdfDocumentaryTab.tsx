@@ -442,14 +442,6 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
         </div>
       )}
 
-      {!extractedText && !analysis && !parsing && !analyzing && (
-        <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
-          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-            <FileText className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Uploadez un PDF puis lancez l'analyse pour extraire le contenu.</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

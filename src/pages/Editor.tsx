@@ -34,7 +34,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script-creator", label: "ScriptCreator", icon: FileText },
   { key: "script", label: "ScriptInput", icon: Film },
   { key: "segmentation", label: "Segmentation", icon: Layers },
-  { key: "storyboard", label: "Storyboard", icon: Clapperboard },
+  { key: "storyboard", label: "VisualPrompts", icon: Clapperboard },
   { key: "seo", label: "SEO", icon: Youtube },
   { key: "export", label: "Export", icon: Download },
 ];
