@@ -457,9 +457,9 @@ export default function Editor() {
 
         {/* Storyboard View */}
         {!showSetup && activeTab === "storyboard" && (
-          <div className="container max-w-5xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
-            <p className="text-sm text-muted-foreground mb-8">SceneBlocks et ShotCards correspondantes. Cliquez sur un shot pour l'éditer.</p>
+          <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
+            <p className="text-sm text-muted-foreground mb-6 sm:mb-8">SceneBlocks et ShotCards correspondantes. Cliquez sur un shot pour l'éditer.</p>
 
             {generatingStoryboard && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
