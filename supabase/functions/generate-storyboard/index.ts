@@ -184,7 +184,7 @@ serve(async (req) => {
           model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. Respect requested_shots exactly. Shot minimum rule: minimum 1 shot per scene; add extra shots only when a scene contains clear multiple visual beats. CRITICAL: prompts must stay strictly faithful to the scene text and must not introduce unrelated visual events. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULE: Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence). Each shot must correspond to one sentence from the narration. Do NOT merge sentences. Do NOT skip sentences. Prompts must stay strictly faithful to the scene text. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
