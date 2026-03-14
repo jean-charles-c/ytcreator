@@ -39,11 +39,11 @@ Guideline:
 - narration lasting ~11–15 seconds → 3 visual shots
 Shots must represent different cinematic views of the same narrative moment.
 
-## SHOT MINIMUM RULE
-Each scene must generate at least 1 visual shot.
-Longer scenes may generate 2 to 3 visual shots only when clearly needed for cinematic rhythm.
-Prefer concise coverage when one strong shot is sufficient.
-CRITICAL: Every shot prompt must describe ONLY what the scene text says. Never invent visual content that is not present in the narration text.
+## SHOT MINIMUM RULE — ONE SHOT PER SENTENCE
+Each sentence in the narration MUST produce exactly one visual shot. No exceptions.
+Count the sentences in the scene text and generate exactly that many shots.
+A sentence is any text ending with a period, exclamation mark, or question mark.
+CRITICAL: Every shot prompt must describe ONLY what the corresponding sentence says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
 To maintain visual consistency across scenes, key recurring elements must use stable visual anchors.
