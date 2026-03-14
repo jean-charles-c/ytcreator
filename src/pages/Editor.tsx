@@ -189,7 +189,7 @@ export default function Editor() {
       } else {
         const sceneIds = scenes.map((s) => s.id);
         if (sceneIds.length === 0) {
-          toast.error("Aucune scène à storyboarder");
+          toast.error("Aucune scène à traiter");
           return;
         }
 
@@ -229,7 +229,7 @@ export default function Editor() {
       }
     } catch (e: any) {
       if (e?.name === "AbortError") {
-        toast.error("Timeout — relancez le storyboard (les scènes restantes seront générées)");
+        toast.error("Timeout — relancez la génération (les scènes restantes seront générées)");
       } else {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
@@ -548,7 +548,7 @@ export default function Editor() {
                   </Button>
                   <Button variant="hero" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                    Storyboard
+                    VisualPrompts
                   </Button>
                 </div>
               )}
@@ -597,7 +597,7 @@ export default function Editor() {
                   </Button>
                   <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                    {generatingStoryboard ? "Génération..." : "Générer le storyboard"}
+                    {generatingStoryboard ? "Génération..." : "Générer les VisualPrompts"}
                   </Button>
                 </div>
               </>
@@ -610,7 +610,7 @@ export default function Editor() {
           <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-2">
               <div>
-                <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">Storyboard View</h2>
+                <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">VisualPrompts</h2>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
               </div>
               {!generatingStoryboard && scenes.length > 0 && (

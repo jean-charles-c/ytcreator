@@ -11,7 +11,7 @@ const features = [
   },
   {
     icon: Clapperboard,
-    title: "Storyboard Generator",
+    title: "VisualPrompts Generator",
     description: "Générez 2 à 3 plans documentaires par scène : establishing, activity, detail.",
   },
   {
@@ -70,10 +70,10 @@ export default function Landing() {
           <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold leading-tight tracking-tight text-foreground">
             Transformez votre narration
             <br />
-            <span className="text-primary">en storyboard visuel</span>
+            <span className="text-primary">en VisualPrompts</span>
           </h1>
           <p className="mx-auto mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-            De la voix-off au prompt image en quelques secondes. DocuStoryboard AI segmente votre script, génère des plans documentaires et exporte des prompts prêts pour Grok Image.
+            De la voix-off au prompt image en quelques secondes. Segmentez votre script, générez des plans documentaires et exportez des prompts prêts pour Grok Image.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Button variant="hero" size="lg" onClick={() => navigate("/signup")} className="w-full sm:w-auto min-h-[48px]">
@@ -97,7 +97,7 @@ export default function Landing() {
             Un pipeline complet
           </h2>
           <p className="text-center text-muted-foreground mb-10 sm:mb-16 max-w-xl mx-auto text-sm sm:text-base">
-            Du texte brut au storyboard professionnel, chaque étape est automatisée et vérifiable.
+            Du texte brut aux VisualPrompts, chaque étape est automatisée et vérifiable.
           </p>
           <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
             {features.map((f, i) => (
@@ -121,13 +121,13 @@ export default function Landing() {
       <section className="border-t border-border py-16 sm:py-24">
         <div className="container max-w-2xl text-center px-4">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold text-foreground mb-3 sm:mb-4">
-            Prêt à storyboarder ?
+            Prêt à commencer ?
           </h2>
           <p className="text-muted-foreground mb-6 sm:mb-8 text-sm sm:text-base">
             Créez votre premier projet en moins de 30 secondes. Gratuit, sans carte bancaire.
           </p>
           <Button variant="hero" size="lg" onClick={() => navigate("/signup")} className="w-full sm:w-auto min-h-[48px]">
-            Lancer DocuStoryboard AI
+            Commencer maintenant
             <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
