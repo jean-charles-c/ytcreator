@@ -420,7 +420,7 @@ export default function Editor() {
         {/* Segmentation View */}
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
               <div>
                 <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">Segmentation View</h2>
                 <p className="text-sm text-muted-foreground">
@@ -430,6 +430,17 @@ export default function Editor() {
                   )}
                 </p>
               </div>
+              {!segmenting && scenes.length > 0 && (
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="outline" size="sm" onClick={runSegmentation} disabled={segmenting} className="min-h-[40px]">
+                    <Play className="h-4 w-4" /> Re-segmenter
+                  </Button>
+                  <Button variant="hero" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                    {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
+                    Storyboard
+                  </Button>
+                </div>
+              )}
             </div>
 
             {segmenting && (
