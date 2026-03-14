@@ -73,7 +73,7 @@ export default function Landing() {
             <span className="text-primary">en VisualPrompts</span>
           </h1>
           <p className="mx-auto mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-            De la voix-off au prompt image en quelques secondes. DocuStoryboard AI segmente votre script, génère des plans documentaires et exporte des prompts prêts pour Grok Image.
+            De la voix-off au prompt image en quelques secondes. Segmentez votre script, générez des plans documentaires et exportez des prompts prêts pour Grok Image.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Button variant="hero" size="lg" onClick={() => navigate("/signup")} className="w-full sm:w-auto min-h-[48px]">
