@@ -94,6 +94,57 @@ export type Database = {
           },
         ]
       }
+      shots: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          project_id: string
+          prompt_export: string | null
+          scene_id: string
+          shot_order: number
+          shot_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          project_id: string
+          prompt_export?: string | null
+          scene_id: string
+          shot_order: number
+          shot_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          project_id?: string
+          prompt_export?: string | null
+          scene_id?: string
+          shot_order?: number
+          shot_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shots_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
