@@ -370,13 +370,13 @@ export default function Editor() {
 
         {/* ScriptInput tab */}
         {!showSetup && activeTab === "script" && (
-          <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">ScriptInput</h2>
-            <p className="text-sm text-muted-foreground mb-6">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
+          <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">ScriptInput</h2>
+            <p className="text-sm text-muted-foreground mb-4 sm:mb-6">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
             <textarea value={narration} onChange={(e) => setNarration(e.target.value)}
               placeholder="Collez votre voix-off ici..."
-              className="w-full min-h-[300px] rounded border border-border bg-card p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
-            <div className="mt-4 flex gap-3">
+              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-card p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <Button variant="hero" onClick={saveProject} disabled={saving}>
                 <Save className="h-4 w-4" />
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
