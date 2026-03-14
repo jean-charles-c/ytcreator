@@ -71,6 +71,7 @@ export default function Editor() {
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
   const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
   const [generatedScript, setGeneratedScript] = useState<string | null>(null);
+  const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>({ titles: null, description: null, tags: null });
 
   // Load existing project + scenes + shots
   useEffect(() => {
