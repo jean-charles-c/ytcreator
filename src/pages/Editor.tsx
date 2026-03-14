@@ -189,7 +189,7 @@ export default function Editor() {
       } else {
         const sceneIds = scenes.map((s) => s.id);
         if (sceneIds.length === 0) {
-          toast.error("Aucune scène à storyboarder");
+          toast.error("Aucune scène à traiter");
           return;
         }
 
