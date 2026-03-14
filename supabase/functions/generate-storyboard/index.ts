@@ -161,10 +161,10 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // Calculate number of shots per scene based on text length
-    // SHOT MINIMUM RULE: at least 2 shots per scene
+    // Short scenes (<=80 chars) get 1 shot minimum, longer scenes get 2+
     const calcShotCount = (text: string): number => {
       const len = text.length;
-      if (len < 100) return 2;
+      if (len <= 80) return 1;
       if (len < 200) return 2;
       if (len < 350) return 3;
       return Math.min(Math.ceil(len / 120), 5);
