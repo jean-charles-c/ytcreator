@@ -44,6 +44,18 @@ export default function Dashboard() {
     fetchProjects();
   }, []);
 
+  const deleteProject = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    if (!confirm("Supprimer ce projet et toutes ses scènes/shots ?")) return;
+    // Delete shots, scenes, then project
+    await supabase.from("shots").delete().eq("project_id", projectId);
+    await supabase.from("scenes").delete().eq("project_id", projectId);
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
+    if (error) { toast.error("Erreur de suppression"); return; }
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    toast.success("Projet supprimé");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
