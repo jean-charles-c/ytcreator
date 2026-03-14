@@ -242,8 +242,24 @@ Return data via the segment_narration tool call only.`,
     });
   } catch (e) {
     console.error("segment-narration error:", e);
+    const message = e instanceof Error ? e.message : "Unknown error";
+
+    if (message === "RATE_LIMIT_EXCEEDED") {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded, please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (message === "PAYMENT_REQUIRED") {
+      return new Response(
+        JSON.stringify({ error: "Payment required. Please add credits." }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
