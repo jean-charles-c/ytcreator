@@ -31,7 +31,7 @@ function timeAgo(dateStr: string) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithShotCount[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +40,16 @@ export default function Dashboard() {
         .from("projects")
         .select("*")
         .order("updated_at", { ascending: false });
-      setProjects(data ?? []);
+      if (!data) { setLoading(false); return; }
+      // Fetch shot counts per project
+      const projectIds = data.map((p) => p.id);
+      const { data: shots } = await supabase
+        .from("shots")
+        .select("project_id")
+        .in("project_id", projectIds);
+      const shotCounts: Record<string, number> = {};
+      (shots ?? []).forEach((s) => { shotCounts[s.project_id] = (shotCounts[s.project_id] || 0) + 1; });
+      setProjects(data.map((p) => ({ ...p, shot_count: shotCounts[p.id] || 0 })));
       setLoading(false);
     };
     fetchProjects();
