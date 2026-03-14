@@ -185,6 +185,7 @@ export default function Editor() {
         }
 
         await supabase.from("shots").delete().eq("project_id", projectId);
+        setShots([]);
 
         const BATCH_SIZE = 4;
         let totalShots = 0;
@@ -192,24 +193,24 @@ export default function Editor() {
 
         for (let i = 0; i < sceneIds.length; i += BATCH_SIZE) {
           const batch = sceneIds.slice(i, i + BATCH_SIZE);
-          for (const id of batch) {
+          for (const sid of batch) {
             try {
-              const data = await callStoryboard({ project_id: projectId, scene_id: id });
+              const data = await callStoryboard({ project_id: projectId, scene_id: sid });
               totalShots += data?.shots_count ?? 0;
+              // Fetch shots progressively after each scene
+              const { data: shotData } = await supabase
+                .from("shots")
+                .select("*")
+                .eq("project_id", projectId)
+                .order("scene_id", { ascending: true })
+                .order("shot_order", { ascending: true });
+              if (shotData) setShots(shotData);
             } catch (sceneError) {
-              console.error(`Storyboard scene failed: ${id}`, sceneError);
-              failedSceneIds.push(id);
+              console.error(`Storyboard scene failed: ${sid}`, sceneError);
+              failedSceneIds.push(sid);
             }
           }
         }
-
-        const { data: shotData } = await supabase
-          .from("shots")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("scene_id", { ascending: true })
-          .order("shot_order", { ascending: true });
-        if (shotData) setShots(shotData);
 
         if (failedSceneIds.length > 0) {
           toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
@@ -561,13 +562,6 @@ export default function Editor() {
               )}
             </div>
 
-            {generatingStoryboard && (
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Génération des prompts visuels...</p>
-              </div>
-            )}
-
             {!generatingStoryboard && scenes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Clapperboard className="h-10 w-10 text-muted-foreground/30" />
@@ -578,12 +572,19 @@ export default function Editor() {
               </div>
             )}
 
-            {!generatingStoryboard && scenes.length > 0 && (
+            {scenes.length > 0 && (
               <>
+                {generatingStoryboard && (
+                  <div className="flex items-center gap-2 mb-6 p-3 rounded border border-primary/20 bg-primary/5">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Génération des prompts visuels en cours...</p>
+                  </div>
+                )}
                 <div className="space-y-8">
                   {scenes.map((scene, i) => {
                     const sceneShots = getShotsForScene(scene.id);
                     const isRegenerating = regeneratingSceneId === scene.id;
+                    const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
                     return (
                       <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
                         <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
@@ -609,12 +610,12 @@ export default function Editor() {
                           <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
                         </div>
 
-                        {isRegenerating ? (
+                        {isRegenerating || isPendingGeneration ? (
                           <div className="flex items-center justify-center py-8 gap-2">
                             <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            <p className="text-xs text-muted-foreground">Régénération des shots...</p>
+                            <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
                           </div>
-                        ) : sceneShots.length === 0 ? (
+                        ) : sceneShots.length === 0 && !generatingStoryboard ? (
                           <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
                         ) : (
                           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

@@ -160,14 +160,13 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Calculate number of shots per scene based on narrative density
-    // No 80-character special rule: always allow concise single-shot scenes.
+    // Calculate number of shots per scene based on sentence count
+    // Short narration block = 1 shot. Scale up only for multi-sentence scenes.
     const calcShotCount = (text: string): number => {
-      const len = text.length;
-      if (len < 200) return 1;
-      if (len < 350) return 2;
-      if (len < 550) return 3;
-      return 4;
+      const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0).length;
+      if (sentences <= 2) return 1;
+      if (sentences <= 4) return 2;
+      return 3;
     };
 
     const sceneDescriptions = scenes.map((s: any) => {
