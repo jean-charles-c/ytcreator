@@ -98,6 +98,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          guardrails: string | null
           id: string
           project_id: string
           prompt_export: string | null
@@ -109,6 +110,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          guardrails?: string | null
           id?: string
           project_id: string
           prompt_export?: string | null
@@ -120,6 +122,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          guardrails?: string | null
           id?: string
           project_id?: string
           prompt_export?: string | null
