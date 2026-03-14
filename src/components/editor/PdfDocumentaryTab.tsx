@@ -26,9 +26,10 @@ interface PdfDocumentaryTabProps {
   projectId: string | null;
   onSendToScriptInput?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
+  onScriptReady?: (script: string) => void;
 }
 
-export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAnalysisReady }: PdfDocumentaryTabProps) {
+export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAnalysisReady, onScriptReady }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -155,6 +156,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       }
 
       setScript(full);
+      onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
@@ -255,13 +257,15 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
         )}
       </div>
 
-      {/* Extracted text — stats only */}
+      {/* Extracted text — compact stats */}
       {extractedText && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-            <p className="text-sm font-medium text-foreground">Texte extrait — {pageCount} page(s) — {extractedText.length.toLocaleString()} caractères</p>
-          </div>
+        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="truncate max-w-[180px] font-medium text-foreground">{file?.name}</span>
+          <span>·</span>
+          <span>{pageCount} p.</span>
+          <span>·</span>
+          <span>{extractedText.length.toLocaleString()} car.</span>
         </div>
       )}
 
@@ -323,55 +327,57 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
         </div>
       )}
 
-      {/* Script generation */}
+      {/* Script result */}
       {(script !== null && script !== "") && (
         <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <ScrollText className="h-4 w-4 text-primary" />
-              <h3 className="font-display text-sm font-semibold text-foreground">Script documentaire</h3>
+              <h3 className="font-display text-sm font-semibold text-foreground">Script narratif</h3>
               {!generatingScript && script && (
-                <span className="text-xs text-muted-foreground ml-2">
-                  {script.length.toLocaleString()} caractères
+                <span className="text-xs text-muted-foreground">
+                  {script.length.toLocaleString()} car.
                 </span>
               )}
             </div>
-            {generatingScript && (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">Écriture en cours…</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {generatingScript && (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground">Écriture en cours…</span>
+                </>
+              )}
+              {!generatingScript && script && (
+                <>
+                  <Button variant="outline" size="sm" onClick={copyScriptToClipboard} className="h-8 text-xs">
+                    <Copy className="h-3 w-3" /> Copier
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const clean = cleanScriptForExport(script);
+                    const blob = new Blob([clean], { type: "text/markdown;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url; a.download = "script_narratif.md"; a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("Script exporté en Markdown");
+                  }} className="h-8 text-xs">
+                    <Download className="h-3 w-3" /> .md
+                  </Button>
+                  <Button variant="hero" size="sm" onClick={() => {
+                    const clean = cleanScriptForExport(script);
+                    onSendToScriptInput?.(clean);
+                    toast.success("Script envoyé dans ScriptInput");
+                  }} className="h-8 text-xs">
+                    <ArrowRight className="h-3 w-3" /> ScriptInput
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
           <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
             <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
             <div ref={scriptEndRef} />
           </div>
-          {!generatingScript && script && (
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <Button variant="outline" onClick={copyScriptToClipboard} className="min-h-[44px]">
-                <Copy className="h-4 w-4" /> Copier le script
-              </Button>
-              <Button variant="outline" onClick={() => {
-                const clean = cleanScriptForExport(script);
-                const blob = new Blob([clean], { type: "text/markdown;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = "script_documentaire.md"; a.click();
-                URL.revokeObjectURL(url);
-                toast.success("Script exporté en Markdown");
-              }} className="min-h-[44px]">
-                <Download className="h-4 w-4" /> Exporter en .md
-              </Button>
-              <Button variant="hero" onClick={() => {
-                const clean = cleanScriptForExport(script);
-                onSendToScriptInput?.(clean);
-                toast.success("Script envoyé dans ScriptInput");
-              }} className="min-h-[44px]">
-                <ArrowRight className="h-4 w-4" /> Envoyer dans ScriptInput
-              </Button>
-            </div>
-          )}
         </div>
       )}
 

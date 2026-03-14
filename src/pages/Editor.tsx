@@ -70,6 +70,7 @@ export default function Editor() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
   const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
+  const [generatedScript, setGeneratedScript] = useState<string | null>(null);
 
   // Load existing project + scenes + shots
   useEffect(() => {
@@ -370,6 +371,21 @@ export default function Editor() {
     toast.success("Narration Segmentation exportée");
   }, [title, scenes]);
 
+  const cleanScriptForExport = (raw: string): string => {
+    return raw
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+      .map((line) => line.trim())
+      .join("\n");
+  };
+
+  const generateScriptNarratif = useCallback(() => {
+    if (!generatedScript) return;
+    const clean = cleanScriptForExport(generatedScript);
+    downloadFile(clean, `${title.replace(/\s+/g, "_")}_script_narratif.md`);
+    toast.success("Script Narratif exporté");
+  }, [title, generatedScript]);
+
   if (loadingProject) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -490,6 +506,9 @@ export default function Editor() {
               onAnalysisReady={(analysis, text) => {
                 setPdfAnalysis(analysis);
                 setPdfExtractedText(text);
+              }}
+              onScriptReady={(script) => {
+                setGeneratedScript(script);
               }}
             />
           </div>
@@ -679,16 +698,17 @@ export default function Editor() {
             <p className="text-sm text-muted-foreground mb-6 sm:mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
             <div className="space-y-4">
               {[
-                { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts },
-                { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping },
-                { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation },
+                { label: "Script Narratif", desc: "Script voice-over généré par ScriptCreator", generate: generateScriptNarratif, disabled: !generatedScript },
+                { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts, disabled: scenes.length === 0 },
+                { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping, disabled: scenes.length === 0 },
+                { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation, disabled: scenes.length === 0 },
               ].map((exp, i) => (
                 <div key={exp.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
                     <h3 className="font-display text-sm font-semibold text-foreground">{exp.label}</h3>
                     <p className="text-xs text-muted-foreground">{exp.desc}</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={scenes.length === 0} className="min-h-[40px] w-full sm:w-auto shrink-0">
+                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={exp.disabled} className="min-h-[40px] w-full sm:w-auto shrink-0">
                     <Download className="h-3.5 w-3.5" /> Exporter
                   </Button>
                 </div>
