@@ -1,0 +1,1 @@
+ALTER TABLE public.shots ADD COLUMN guardrails TEXT;
