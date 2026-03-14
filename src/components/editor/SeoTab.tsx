@@ -17,12 +17,20 @@ interface YoutubeTitle {
   hook_type: string;
 }
 
+interface SeoResults {
+  titles: YoutubeTitle[] | null;
+  description: string | null;
+  tags: string | null;
+}
+
 interface SeoTabProps {
   projectId: string | null;
   analysis: NarrativeAnalysis | null;
   extractedText: string | null;
   narration?: string;
   scriptLanguage: string;
+  seoResults: SeoResults;
+  onSeoResultsChange: (results: SeoResults) => void;
 }
 
 const hookBadgeColor = (type: string) => {
@@ -40,11 +48,12 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
-export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage }: SeoTabProps) {
+export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
-  const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
-  const [youtubeDescription, setYoutubeDescription] = useState<string | null>(null);
-  const [youtubeTags, setYoutubeTags] = useState<string | null>(null);
+
+  const youtubeTitles = seoResults.titles;
+  const youtubeDescription = seoResults.description;
+  const youtubeTags = seoResults.tags;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -64,9 +73,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
       if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
       if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
       const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
-      setYoutubeTitles(sorted);
-      setYoutubeDescription(data.description || null);
-      setYoutubeTags(data.tags || null);
+      onSeoResultsChange({ titles: sorted, description: data.description || null, tags: data.tags || null });
       toast.success("SEO YouTube généré");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingTitles(false);
@@ -173,7 +180,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
               )}
 
               {/* Regenerate */}
-              <Button variant="outline" onClick={() => { setYoutubeTitles(null); setYoutubeDescription(null); setYoutubeTags(null); }} className="min-h-[44px]">
+              <Button variant="outline" onClick={() => onSeoResultsChange({ titles: null, description: null, tags: null })} className="min-h-[44px]">
                 <Youtube className="h-4 w-4" /> Régénérer le packaging
               </Button>
             </div>
