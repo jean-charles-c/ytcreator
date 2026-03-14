@@ -20,6 +20,13 @@ interface YoutubeTitle {
   hook_type: string;
 }
 
+interface DocSection {
+  section_key: string;
+  section_label: string;
+  video_title: string;
+  narrative_description: string;
+}
+
 interface PdfDocumentaryTabProps {
   projectId: string | null;
 }
