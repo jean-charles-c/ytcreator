@@ -10,13 +10,15 @@ import {
   Play,
   Shield,
   Save,
-  Check,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
 
 type Tab = "script" | "segmentation" | "storyboard" | "export";
+type Scene = Tables<"scenes">;
 
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script", label: "ScriptInput", icon: Film },
@@ -32,27 +34,11 @@ const LANGUAGES = [
   { value: "de", label: "Deutsch" },
 ];
 
-// Mock scene data (will be replaced in step 4)
-const mockScenes = [
-  {
-    id: 1,
-    title: "Scène 1 — Les caravanes de Samarkand",
-    narration: "Au cœur de l'Asie centrale, les caravanes chargées de soie traversaient les déserts arides...",
-    shots: [
-      { type: "Establishing Shot", description: "Vue aérienne de caravanes traversant un désert au coucher du soleil, lumière dorée rasante." },
-      { type: "Activity Shot", description: "Marchands chargeant des ballots de soie sur des chameaux dans un caravansérail." },
-      { type: "Detail Shot", description: "Gros plan sur des fils de soie colorés, texture visible, lumière naturelle diffuse." },
-    ],
-  },
-  {
-    id: 2,
-    title: "Scène 2 — Le marché de Chang'an",
-    narration: "À l'autre bout de la route, Chang'an vibrait d'une activité commerciale sans précédent...",
-    shots: [
-      { type: "Establishing Shot", description: "Panorama d'une ville fortifiée avec portes monumentales, foule dense, architecture Tang." },
-      { type: "Activity Shot", description: "Échanges animés entre marchands persans et chinois sur un étal de céramiques." },
-    ],
-  },
+// Mock shots (will be replaced in step 5)
+const mockShots = [
+  { type: "Establishing Shot", description: "Vue large contextuelle de la scène." },
+  { type: "Activity Shot", description: "Action principale en cours dans la scène." },
+  { type: "Detail Shot", description: "Gros plan sur un élément clé de la scène." },
 ];
 
 export default function Editor() {
@@ -61,18 +47,21 @@ export default function Editor() {
   const { user } = useAuth();
   const isNew = id === "new";
 
-  // Project fields
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [scriptLanguage, setScriptLanguage] = useState("en");
   const [narration, setNarration] = useState("");
   const [projectId, setProjectId] = useState<string | null>(isNew ? null : id ?? null);
-  const [activeTab, setActiveTab] = useState<Tab>(isNew ? "script" : "script");
+  const [activeTab, setActiveTab] = useState<Tab>("script");
   const [saving, setSaving] = useState(false);
   const [loadingProject, setLoadingProject] = useState(!isNew);
   const [showSetup, setShowSetup] = useState(isNew);
 
-  // Load existing project
+  // Scenes
+  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [segmenting, setSegmenting] = useState(false);
+
+  // Load existing project + scenes
   useEffect(() => {
     if (isNew || !id) return;
     const load = async () => {
@@ -92,6 +81,15 @@ export default function Editor() {
       setNarration(data.narration ?? "");
       setProjectId(data.id);
       setShowSetup(false);
+
+      // Load scenes
+      const { data: sceneData } = await supabase
+        .from("scenes")
+        .select("*")
+        .eq("project_id", id)
+        .order("scene_order", { ascending: true });
+      if (sceneData) setScenes(sceneData);
+
       setLoadingProject(false);
     };
     load();
@@ -107,7 +105,6 @@ export default function Editor() {
     setSaving(true);
 
     if (projectId) {
-      // Update
       const { error } = await supabase
         .from("projects")
         .update({ title: title.trim(), subject: subject.trim() || null, script_language: scriptLanguage, narration: narration.trim() || null })
@@ -116,7 +113,6 @@ export default function Editor() {
       if (error) { toast.error("Erreur de sauvegarde"); return; }
       toast.success("Projet sauvegardé");
     } else {
-      // Create
       const { data, error } = await supabase
         .from("projects")
         .insert({ user_id: user.id, title: title.trim(), subject: subject.trim() || null, script_language: scriptLanguage, narration: narration.trim() || null })
@@ -131,6 +127,55 @@ export default function Editor() {
     }
   }, [user, projectId, title, subject, scriptLanguage, narration, navigate]);
 
+  // Segment narration
+  const runSegmentation = useCallback(async () => {
+    if (!projectId) return;
+
+    // Save narration first
+    if (narration.trim()) {
+      await supabase
+        .from("projects")
+        .update({ narration: narration.trim() })
+        .eq("id", projectId);
+    }
+
+    setSegmenting(true);
+    setActiveTab("segmentation");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("segment-narration", {
+        body: { project_id: projectId },
+      });
+
+      if (error) {
+        toast.error("Erreur de segmentation");
+        console.error(error);
+        setSegmenting(false);
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
+        setSegmenting(false);
+        return;
+      }
+
+      // Reload scenes from DB
+      const { data: sceneData } = await supabase
+        .from("scenes")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("scene_order", { ascending: true });
+      if (sceneData) setScenes(sceneData);
+
+      toast.success(`${sceneData?.length ?? 0} scènes générées`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur inattendue");
+    }
+    setSegmenting(false);
+  }, [projectId, narration]);
+
   if (loadingProject) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -144,10 +189,7 @@ export default function Editor() {
       {/* Header */}
       <header className="border-b border-border shrink-0">
         <div className="flex h-14 items-center px-4 gap-4">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" />
           </button>
           <Film className="h-5 w-5 text-primary" />
@@ -162,9 +204,7 @@ export default function Editor() {
                   key={t.key}
                   onClick={() => setActiveTab(t.key)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${
-                    activeTab === t.key
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                    activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <t.icon className="h-3.5 w-3.5" />
@@ -176,53 +216,33 @@ export default function Editor() {
         </div>
       </header>
 
-      {/* Content */}
       <main className="flex-1 overflow-auto">
         {/* New project setup */}
         {showSetup && (
           <div className="container max-w-lg py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-              Nouveau projet
-            </h2>
-            <p className="text-sm text-muted-foreground mb-8">
-              Décrivez votre projet documentaire pour commencer.
-            </p>
-
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Nouveau projet</h2>
+            <p className="text-sm text-muted-foreground mb-8">Décrivez votre projet documentaire pour commencer.</p>
             <div className="space-y-5">
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Titre du projet *</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                   className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="ex. La Route de la Soie — Épisode 3"
-                />
+                  placeholder="ex. La Route de la Soie — Épisode 3" />
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Sujet / description</label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
+                <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
                   className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="ex. Commerce historique entre Orient et Occident"
-                />
+                  placeholder="ex. Commerce historique entre Orient et Occident" />
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Langue du script</label>
-                <select
-                  value={scriptLanguage}
-                  onChange={(e) => setScriptLanguage(e.target.value)}
-                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.value} value={l.value}>{l.label}</option>
-                  ))}
+                <select value={scriptLanguage} onChange={(e) => setScriptLanguage(e.target.value)}
+                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </div>
             </div>
-
             <div className="mt-8">
               <Button variant="hero" onClick={saveProject} disabled={saving || !title.trim()}>
                 {saving ? "Création..." : "Créer le projet"}
@@ -234,12 +254,8 @@ export default function Editor() {
         {/* ScriptInput tab */}
         {!showSetup && activeTab === "script" && (
           <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-              ScriptInput
-            </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Collez ou saisissez votre narration ci-dessous, puis sauvegardez.
-            </p>
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">ScriptInput</h2>
+            <p className="text-sm text-muted-foreground mb-6">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
             <textarea
               value={narration}
               onChange={(e) => setNarration(e.target.value)}
@@ -251,48 +267,81 @@ export default function Editor() {
                 <Save className="h-4 w-4" />
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setActiveTab("segmentation")}
-                disabled={!narration.trim()}
-              >
-                <Play className="h-4 w-4" />
-                Lancer la segmentation
+              <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting}>
+                {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {segmenting ? "Segmentation..." : "Lancer la segmentation"}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Segmentation tab (still mock — step 4) */}
+        {/* Segmentation View */}
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-              Segmentation View
-            </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Votre narration découpée en SceneBlocks. Ajustez si nécessaire.
-            </p>
-            <div className="space-y-4">
-              {mockScenes.map((scene, i) => (
-                <div
-                  key={scene.id}
-                  className="rounded border border-border bg-card p-5 animate-fade-in"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.id}</span>
-                  </div>
-                  <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{scene.narration}</p>
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Segmentation View</h2>
+            <p className="text-sm text-muted-foreground mb-6">Votre narration découpée en SceneBlocks.</p>
+
+            {segmenting && (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Analyse de la narration en cours...</p>
+              </div>
+            )}
+
+            {!segmenting && scenes.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <Layers className="h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Aucune scène. Lancez la segmentation depuis l'onglet ScriptInput.</p>
+                <Button variant="outline" onClick={() => setActiveTab("script")}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour au script
+                </Button>
+              </div>
+            )}
+
+            {!segmenting && scenes.length > 0 && (
+              <>
+                <div className="space-y-4">
+                  {scenes.map((scene, i) => (
+                    <div
+                      key={scene.id}
+                      className="rounded border border-border bg-card p-5 animate-fade-in"
+                      style={{ animationDelay: `${i * 80}ms` }}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-display font-medium text-primary">
+                          SCÈNE {scene.scene_order}
+                        </span>
+                      </div>
+                      <h3 className="font-display text-base font-semibold text-foreground mb-2">
+                        {scene.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        {scene.source_text}
+                      </p>
+                      {scene.visual_intention && (
+                        <div className="flex items-start gap-2 rounded bg-secondary/50 border border-border p-3">
+                          <Film className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                          <p className="text-xs text-muted-foreground italic leading-relaxed">
+                            {scene.visual_intention}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-6">
-              <Button variant="hero" onClick={() => setActiveTab("storyboard")}>
-                <Clapperboard className="h-4 w-4" />
-                Générer le storyboard
-              </Button>
-            </div>
+                <div className="mt-6 flex gap-3">
+                  <Button variant="outline" onClick={runSegmentation} disabled={segmenting}>
+                    <Play className="h-4 w-4" />
+                    Re-segmenter
+                  </Button>
+                  <Button variant="hero" onClick={() => setActiveTab("storyboard")}>
+                    <Clapperboard className="h-4 w-4" />
+                    Générer le storyboard
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -301,19 +350,31 @@ export default function Editor() {
           <div className="container max-w-5xl py-10 animate-fade-in">
             <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
             <p className="text-sm text-muted-foreground mb-8">SceneBlocks et ShotCards correspondantes.</p>
+
+            {scenes.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <Clapperboard className="h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Segmentez d'abord votre narration.</p>
+                <Button variant="outline" onClick={() => setActiveTab("script")}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour au script
+                </Button>
+              </div>
+            )}
+
             <div className="space-y-8">
-              {mockScenes.map((scene, i) => (
+              {scenes.map((scene, i) => (
                 <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.id}</span>
+                    <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
                     <span className="text-xs text-muted-foreground">—</span>
-                    <span className="text-sm font-display text-foreground">{scene.title.split("—")[1]?.trim()}</span>
+                    <span className="text-sm font-display text-foreground">{scene.title}</span>
                   </div>
                   <div className="rounded border border-border bg-card p-4 mb-4">
-                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.narration}"</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-3">
-                    {scene.shots.map((shot, j) => (
+                    {mockShots.map((shot, j) => (
                       <div key={j} className="group rounded border border-border bg-card overflow-hidden transition-colors hover:border-primary/30">
                         <div className="aspect-video bg-secondary flex items-center justify-center">
                           <Clapperboard className="h-8 w-8 text-muted-foreground/30" />
@@ -324,9 +385,6 @@ export default function Editor() {
                             <Shield className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Historical Realism verified" />
                           </div>
                           <p className="text-xs text-muted-foreground leading-relaxed">{shot.description}</p>
-                          <div className="mt-3 rounded bg-background border border-border p-2">
-                            <code className="text-[10px] text-muted-foreground leading-tight block font-mono">{shot.description.slice(0, 80)}...</code>
-                          </div>
                         </div>
                       </div>
                     ))}
