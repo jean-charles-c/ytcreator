@@ -29,6 +29,7 @@ interface DocSection {
 
 interface PdfDocumentaryTabProps {
   projectId: string | null;
+  onSendToScriptInput?: (text: string) => void;
 }
 
 export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps) {
