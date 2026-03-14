@@ -124,7 +124,9 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
                     <span className={s.color}>{s.label}</span>
                     <span>·</span>
-                    <span>{project.scene_count} scènes</span>
+                    <span>{project.scene_count} scène{project.scene_count > 1 ? "s" : ""}</span>
+                    <span>·</span>
+                    <span>{project.shot_count} shot{project.shot_count > 1 ? "s" : ""}</span>
                     <span>·</span>
                     <span>{timeAgo(project.updated_at)}</span>
                   </div>

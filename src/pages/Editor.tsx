@@ -57,7 +57,7 @@ export default function Editor() {
   const [scriptLanguage, setScriptLanguage] = useState("en");
   const [narration, setNarration] = useState("");
   const [projectId, setProjectId] = useState<string | null>(isNew ? null : id ?? null);
-  const [activeTab, setActiveTab] = useState<Tab>("script");
+  const [activeTab, setActiveTab] = useState<Tab>("script-creator");
   const [saving, setSaving] = useState(false);
   const [loadingProject, setLoadingProject] = useState(!isNew);
   const [showSetup, setShowSetup] = useState(isNew);
