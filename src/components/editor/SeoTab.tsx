@@ -73,9 +73,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
       if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
       if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
       const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
-      setYoutubeTitles(sorted);
-      setYoutubeDescription(data.description || null);
-      setYoutubeTags(data.tags || null);
+      onSeoResultsChange({ titles: sorted, description: data.description || null, tags: data.tags || null });
       toast.success("SEO YouTube généré");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingTitles(false);
