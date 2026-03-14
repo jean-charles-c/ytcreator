@@ -11,6 +11,7 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +41,31 @@ export default function Signup() {
     if (error) {
       setError(error.message);
     } else {
-      navigate("/dashboard");
+      setConfirmationSent(true);
     }
   };
+
+  if (confirmationSent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="flex items-center gap-2 justify-center mb-8">
+            <Film className="h-6 w-6 text-primary" />
+            <span className="font-display text-xl font-semibold text-foreground">DocuStoryboard</span>
+          </div>
+          <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h1 className="font-display text-2xl font-semibold text-foreground mb-2">Vérifiez votre email</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Un email de confirmation a été envoyé à <span className="text-foreground font-medium">{email}</span>.
+            <br />Cliquez sur le lien dans l'email pour activer votre compte.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/login")}>
+            Aller à la page de connexion
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
