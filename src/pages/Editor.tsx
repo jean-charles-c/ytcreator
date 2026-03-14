@@ -19,6 +19,7 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Tab = "script" | "segmentation" | "storyboard" | "export";
 type Scene = Tables<"scenes">;
+type Shot = Tables<"shots">;
 
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script", label: "ScriptInput", icon: Film },
