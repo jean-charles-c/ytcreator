@@ -185,6 +185,7 @@ export default function Editor() {
         }
 
         await supabase.from("shots").delete().eq("project_id", projectId);
+        setShots([]);
 
         const BATCH_SIZE = 4;
         let totalShots = 0;
@@ -192,24 +193,24 @@ export default function Editor() {
 
         for (let i = 0; i < sceneIds.length; i += BATCH_SIZE) {
           const batch = sceneIds.slice(i, i + BATCH_SIZE);
-          for (const id of batch) {
+          for (const sid of batch) {
             try {
-              const data = await callStoryboard({ project_id: projectId, scene_id: id });
+              const data = await callStoryboard({ project_id: projectId, scene_id: sid });
               totalShots += data?.shots_count ?? 0;
+              // Fetch shots progressively after each scene
+              const { data: shotData } = await supabase
+                .from("shots")
+                .select("*")
+                .eq("project_id", projectId)
+                .order("scene_id", { ascending: true })
+                .order("shot_order", { ascending: true });
+              if (shotData) setShots(shotData);
             } catch (sceneError) {
-              console.error(`Storyboard scene failed: ${id}`, sceneError);
-              failedSceneIds.push(id);
+              console.error(`Storyboard scene failed: ${sid}`, sceneError);
+              failedSceneIds.push(sid);
             }
           }
         }
-
-        const { data: shotData } = await supabase
-          .from("shots")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("scene_id", { ascending: true })
-          .order("shot_order", { ascending: true });
-        if (shotData) setShots(shotData);
 
         if (failedSceneIds.length > 0) {
           toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
