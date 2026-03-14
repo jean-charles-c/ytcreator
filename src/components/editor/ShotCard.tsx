@@ -11,10 +11,11 @@ const SHOT_TYPES = ["Establishing Shot", "Activity Shot", "Detail Shot", "Portra
 
 interface ShotCardProps {
   shot: Shot;
+  globalIndex?: number;
   onUpdate: (shot: Shot) => void;
 }
 
-export default function ShotCard({ shot, onUpdate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, onUpdate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
