@@ -517,7 +517,7 @@ export default function Editor() {
                         ) : sceneShots.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
                         ) : (
-                          <div className="grid gap-4 md:grid-cols-3">
+                          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             {sceneShots.map((shot) => (
                               <ShotCard key={shot.id} shot={shot} onUpdate={handleShotUpdate} />
                             ))}
