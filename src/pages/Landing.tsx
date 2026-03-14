@@ -39,7 +39,7 @@ export default function Landing() {
               DocuStoryboard
             </span>
           </div>
-          <Button variant="hero" size="sm" onClick={() => navigate("/dashboard")}>
+          <Button variant="hero" size="sm" onClick={() => navigate("/signup")}>
             Démarrer
           </Button>
         </div>
