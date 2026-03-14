@@ -97,19 +97,34 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setGeneratingTitles(false);
   }, [analysis, extractedText]);
 
+  const runStructure = useCallback(async () => {
+    if (!analysis || !extractedText) return;
+    setGeneratingStructure(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("documentary-structure", {
+        body: { analysis, text: extractedText },
+      });
+      if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingStructure(false); return; }
+      if (data?.error) { toast.error(data.error); setGeneratingStructure(false); return; }
+      setDocStructure(data.sections);
+      toast.success("Structure documentaire générée");
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    setGeneratingStructure(false);
+  }, [analysis, extractedText]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); }
+    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); }
+    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
   };
 
   const removeFile = () => {
-    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setPageCount(0);
+    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
