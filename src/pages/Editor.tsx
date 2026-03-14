@@ -523,6 +523,7 @@ export default function Editor() {
               projectId={projectId}
               analysis={pdfAnalysis}
               extractedText={pdfExtractedText}
+              narration={narration}
               scriptLanguage={scriptLanguage}
             />
           </div>
