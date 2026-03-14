@@ -355,7 +355,7 @@ export default function Editor() {
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Langue du script</label>
                 <select value={scriptLanguage} onChange={(e) => setScriptLanguage(e.target.value)}
-                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  className="w-full h-11 sm:h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
                   {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </div>
