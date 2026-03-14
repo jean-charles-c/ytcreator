@@ -24,13 +24,13 @@ import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 
-type Tab = "script" | "pdf-documentary" | "segmentation" | "storyboard" | "export";
+type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
+  { key: "script-creator", label: "ScriptCreator", icon: FileText },
   { key: "script", label: "ScriptInput", icon: Film },
-  { key: "pdf-documentary", label: "PDF Documentary", icon: FileText },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "Storyboard", icon: Clapperboard },
   { key: "export", label: "Export", icon: Download },
@@ -473,8 +473,8 @@ export default function Editor() {
           </div>
         )}
 
-        {/* PDF Documentary tab */}
-        {!showSetup && activeTab === "pdf-documentary" && (
+        {/* ScriptCreator tab */}
+        {!showSetup && activeTab === "script-creator" && (
           <PdfDocumentaryTab projectId={projectId} />
         )}
 
