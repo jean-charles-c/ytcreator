@@ -81,12 +81,12 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
         Générez des titres, description et tags YouTube optimisés.
       </p>
 
-      {!analysis || !extractedText ? (
+      {!effectiveText ? (
         <div className="rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <Youtube className="h-10 w-10 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">
-              Lancez d'abord l'analyse narrative dans l'onglet ScriptCreator pour débloquer cette fonctionnalité.
+              Lancez d'abord l'analyse narrative dans l'onglet ScriptCreator ou saisissez votre narration dans ScriptInput.
             </p>
           </div>
         </div>
