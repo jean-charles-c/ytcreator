@@ -52,13 +52,15 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
     }).catch(() => toast.error("Impossible de copier"));
   };
 
+  const effectiveText = extractedText || narration || null;
+
   const runYoutubePackaging = useCallback(async () => {
-    if (!analysis || !extractedText) return;
+    if (!effectiveText) return;
     setGeneratingTitles(true);
     try {
-      const { data, error } = await supabase.functions.invoke("youtube-packaging", {
-        body: { analysis, text: extractedText, language: scriptLanguage },
-      });
+      const body: any = { text: effectiveText, language: scriptLanguage };
+      if (analysis) body.analysis = analysis;
+      const { data, error } = await supabase.functions.invoke("youtube-packaging", { body });
       if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
       if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
       const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
@@ -68,7 +70,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
       toast.success("SEO YouTube généré");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingTitles(false);
-  }, [analysis, extractedText, scriptLanguage]);
+  }, [analysis, effectiveText, scriptLanguage]);
 
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
