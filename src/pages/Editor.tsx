@@ -572,12 +572,19 @@ export default function Editor() {
               </div>
             )}
 
-            {!generatingStoryboard && scenes.length > 0 && (
+            {scenes.length > 0 && (
               <>
+                {generatingStoryboard && (
+                  <div className="flex items-center gap-2 mb-6 p-3 rounded border border-primary/20 bg-primary/5">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Génération des prompts visuels en cours...</p>
+                  </div>
+                )}
                 <div className="space-y-8">
                   {scenes.map((scene, i) => {
                     const sceneShots = getShotsForScene(scene.id);
                     const isRegenerating = regeneratingSceneId === scene.id;
+                    const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
                     return (
                       <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
                         <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
