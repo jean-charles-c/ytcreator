@@ -610,7 +610,7 @@ export default function Editor() {
           <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-2">
               <div>
-                <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">Storyboard View</h2>
+                <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">VisualPrompts</h2>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
               </div>
               {!generatingStoryboard && scenes.length > 0 && (
