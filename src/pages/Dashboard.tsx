@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft } from "lucide-react";
+import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Project {
   id: string;
@@ -25,7 +26,7 @@ const statusConfig = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
+  const { signOut } = useAuth();
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -38,10 +39,15 @@ export default function Dashboard() {
             <Film className="h-5 w-5 text-primary" />
             <span className="font-display text-lg font-semibold text-foreground">Mes projets</span>
           </div>
-          <Button variant="hero" size="sm" onClick={() => navigate("/editor/new")}>
-            <Plus className="h-4 w-4" />
-            Nouveau projet
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="hero" size="sm" onClick={() => navigate("/editor/new")}>
+              <Plus className="h-4 w-4" />
+              Nouveau projet
+            </Button>
+            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); navigate("/login"); }}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
 

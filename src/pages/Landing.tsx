@@ -39,7 +39,7 @@ export default function Landing() {
               DocuStoryboard
             </span>
           </div>
-          <Button variant="hero" size="sm" onClick={() => navigate("/dashboard")}>
+          <Button variant="hero" size="sm" onClick={() => navigate("/signup")}>
             Démarrer
           </Button>
         </div>
@@ -61,7 +61,7 @@ export default function Landing() {
             De la voix-off au prompt image en quelques secondes. DocuStoryboard AI segmente votre script, génère des plans documentaires et exporte des prompts prêts pour Grok Image.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Button variant="hero" size="lg" onClick={() => navigate("/dashboard")}>
+            <Button variant="hero" size="lg" onClick={() => navigate("/signup")}>
               Commencer gratuitement
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
@@ -113,7 +113,7 @@ export default function Landing() {
           <p className="text-muted-foreground mb-8">
             Créez votre premier projet en moins de 30 secondes. Gratuit, sans carte bancaire.
           </p>
-          <Button variant="hero" size="lg" onClick={() => navigate("/dashboard")}>
+          <Button variant="hero" size="lg" onClick={() => navigate("/signup")}>
             Lancer DocuStoryboard AI
             <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
