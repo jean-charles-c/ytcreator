@@ -61,6 +61,7 @@ export default function Editor() {
   const [segmenting, setSegmenting] = useState(false);
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Load existing project + scenes + shots
   useEffect(() => {
