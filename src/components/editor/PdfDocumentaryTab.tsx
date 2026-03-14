@@ -199,6 +199,11 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
             {generatingTitles ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération titres...</> : <><Youtube className="h-4 w-4" /> Générer les titres YouTube</>}
           </Button>
         )}
+        {youtubeTitles && !docStructure && (
+          <Button variant="hero" disabled={generatingStructure} onClick={runStructure} className="min-h-[44px]">
+            {generatingStructure ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération structure...</> : <><LayoutList className="h-4 w-4" /> Générer la structure documentaire</>}
+          </Button>
+        )}
       </div>
 
       {/* Extracted text preview */}
