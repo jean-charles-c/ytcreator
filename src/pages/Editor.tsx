@@ -229,7 +229,7 @@ export default function Editor() {
       }
     } catch (e: any) {
       if (e?.name === "AbortError") {
-        toast.error("Timeout — relancez le storyboard (les scènes restantes seront générées)");
+        toast.error("Timeout — relancez la génération (les scènes restantes seront générées)");
       } else {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
