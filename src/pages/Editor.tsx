@@ -475,7 +475,13 @@ export default function Editor() {
 
         {/* ScriptCreator tab */}
         {!showSetup && activeTab === "script-creator" && (
-          <PdfDocumentaryTab projectId={projectId} />
+          <PdfDocumentaryTab
+            projectId={projectId}
+            onSendToScriptInput={(text) => {
+              setNarration(text);
+              setActiveTab("script");
+            }}
+          />
         )}
 
         {/* Segmentation View */}

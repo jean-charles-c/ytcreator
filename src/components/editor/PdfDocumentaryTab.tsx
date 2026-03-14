@@ -193,6 +193,13 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: Pd
     setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
   };
+  const cleanScriptForExport = (raw: string): string => {
+    return raw
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+      .map((line) => line.trim())
+      .join("\n");
+  };
 
   const hookBadgeColor = (type: string) => {
     const map: Record<string, string> = {
