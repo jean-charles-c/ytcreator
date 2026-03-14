@@ -111,6 +111,42 @@ The prompt_export MUST be at least 100 words. Be extremely descriptive and speci
 
 The entire prompt must be one continuous paragraph. No bullet points, no numbered lists.`;
 
+const CAMERA_TYPES = [
+  "Establishing shot",
+  "Activity shot",
+  "Interaction shot",
+  "Environmental shot",
+  "Artifact detail shot",
+  "Scientific detail shot",
+];
+
+const splitSentences = (text: string): string[] => {
+  const matches = text.match(/[^.!?]+[.!?]?/g) ?? [];
+  const cleaned = matches.map((s) => s.trim()).filter(Boolean);
+  return cleaned.length > 0 ? cleaned : [text.trim()].filter(Boolean);
+};
+
+const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
+  `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+
+const buildFallbackShots = (scene: any) => {
+  const sentences = splitSentences(scene.source_text || "");
+  return sentences.map((sentence, index) => {
+    const shotType = CAMERA_TYPES[index % CAMERA_TYPES.length];
+    return {
+      shot_type: shotType,
+      description: sentence,
+      prompt_export: fallbackPrompt(sentence, scene.visual_intention, shotType),
+      guardrails: "historically accurate clothing, architecture, and materials",
+    };
+  });
+};
+
+const buildFallbackStoryboard = (scenes: any[]) =>
+  scenes.map((scene) => ({
+    scene_id: scene.id,
+    shots: buildFallbackShots(scene),
+  }));
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
