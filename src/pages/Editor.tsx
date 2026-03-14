@@ -106,6 +106,57 @@ export default function Editor() {
     load();
   }, [id, isNew, navigate]);
 
+  // Persist ScriptCreator state to sessionStorage
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (pdfAnalysis) sessionStorage.setItem(`sc_analysis_${id}`, JSON.stringify(pdfAnalysis));
+      else sessionStorage.removeItem(`sc_analysis_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, pdfAnalysis]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (pdfExtractedText) sessionStorage.setItem(`sc_text_${id}`, pdfExtractedText);
+      else sessionStorage.removeItem(`sc_text_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, pdfExtractedText]);
+
+  useEffect(() => {
+    if (!id) return;
+    sessionStorage.setItem(`sc_pages_${id}`, String(pdfPageCount));
+  }, [id, pdfPageCount]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (pdfFileName) sessionStorage.setItem(`sc_fname_${id}`, pdfFileName);
+    else sessionStorage.removeItem(`sc_fname_${id}`);
+  }, [id, pdfFileName]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (pdfDocStructure) sessionStorage.setItem(`sc_struct_${id}`, JSON.stringify(pdfDocStructure));
+      else sessionStorage.removeItem(`sc_struct_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, pdfDocStructure]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (generatedScript) sessionStorage.setItem(`sc_script_${id}`, generatedScript);
+      else sessionStorage.removeItem(`sc_script_${id}`);
+    } catch { /* quota exceeded */ }
+  }, [id, generatedScript]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      sessionStorage.setItem(`sc_seo_${id}`, JSON.stringify(seoResults));
+    } catch { /* quota exceeded */ }
+  }, [id, seoResults]);
+
   // Save / create project
   const saveProject = useCallback(async () => {
     if (!user) return;
