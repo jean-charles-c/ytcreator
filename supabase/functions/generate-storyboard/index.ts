@@ -53,7 +53,15 @@ Every prompt MUST enforce these rules. Violations are not acceptable.
 For each shot provide:
 - shot_type: camera perspective type
 - description: vivid visual description (2-3 sentences) grounded in the scene narrative
-- prompt_export: a self-contained image generation prompt enforcing ALL guardrails above. Must include: photorealistic documentary style, specific lighting, camera angle, period-accurate details, material textures, BBC/National Geographic cinematography quality
+- prompt_export: A HIGHLY DETAILED, self-contained image generation prompt. This must be a complete visual brief that can be used standalone. It MUST include ALL of the following elements:
+  1. Camera framing and angle (e.g. "Wide shot of...", "Close-up on...", "Low-angle view of...")
+  2. Detailed scene description with specific objects, people, materials, textures, and environmental details
+  3. Lighting description (e.g. "warm golden hour sunlight filtering through wooden lattice", "flickering oil lamp casting long shadows")
+  4. Atmospheric details (dust particles, haze, humidity, smoke, etc.)
+  5. Style line: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism."
+  6. Quality line: "Visual quality: cinematic film still, 8k detail, natural textures, real-world physics."
+  7. "Aspect ratio: 16:9"
+  The prompt_export must be at least 80 words and read as a complete, vivid visual instruction.
 - guardrails: a short comma-separated list of the specific historical constraints applied (e.g. "Tang dynasty architecture, silk road trade goods, natural sunlight, linen and wool fabrics, mud-brick walls")`;
 
 serve(async (req) => {
