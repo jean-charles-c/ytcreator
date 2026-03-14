@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, Youtube, Trophy, LayoutList, ScrollText } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, Youtube, Trophy, LayoutList, ScrollText, Download, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
@@ -29,9 +29,10 @@ interface DocSection {
 
 interface PdfDocumentaryTabProps {
   projectId: string | null;
+  onSendToScriptInput?: (text: string) => void;
 }
 
-export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps) {
+export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -191,6 +192,13 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
   const removeFile = () => {
     setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
+  };
+  const cleanScriptForExport = (raw: string): string => {
+    return raw
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+      .map((line) => line.trim())
+      .join("\n");
   };
 
   const hookBadgeColor = (type: string) => {
@@ -413,6 +421,28 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
             <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
             <div ref={scriptEndRef} />
           </div>
+          {!generatingScript && script && (
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <Button variant="outline" onClick={() => {
+                const clean = cleanScriptForExport(script);
+                const blob = new Blob([clean], { type: "text/markdown;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "script_documentaire.md"; a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Script exporté en Markdown");
+              }} className="min-h-[44px]">
+                <Download className="h-4 w-4" /> Exporter en .md
+              </Button>
+              <Button variant="hero" onClick={() => {
+                const clean = cleanScriptForExport(script);
+                onSendToScriptInput?.(clean);
+                toast.success("Script envoyé dans ScriptInput");
+              }} className="min-h-[44px]">
+                <ArrowRight className="h-4 w-4" /> Envoyer dans ScriptInput
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
