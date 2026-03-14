@@ -52,9 +52,11 @@ export default function Editor() {
   const [loadingProject, setLoadingProject] = useState(!isNew);
   const [showSetup, setShowSetup] = useState(isNew);
 
-  // Scenes
+  // Scenes & Shots
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [segmenting, setSegmenting] = useState(false);
+  const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
 
   // Load existing project + scenes
   useEffect(() => {
