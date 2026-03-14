@@ -11,7 +11,7 @@ const HISTORICAL_REALISM_SYSTEM = `You are a documentary storyboard generator wi
 The generated prompts will be used with Grok Imagine for image generation. Optimize all prompt_export fields for Grok Imagine.
 
 ## SHOT GENERATION
-For each scene, generate 2-3 documentary-style shots with varied camera perspectives.
+For each scene, generate the number of shots indicated in the "requested_shots" field. You MUST generate exactly that number of shots per scene — no more, no less.
 
 Shot types (vary across scenes):
 - Establishing Shot: wide/aerial view setting the context
