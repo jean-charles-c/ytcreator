@@ -816,6 +816,13 @@ export default function Editor() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-6 pt-6 border-t border-border">
+              <Button variant="hero" onClick={downloadAll} disabled={!generatedScript && scenes.length === 0} className="min-h-[44px] w-full sm:w-auto">
+                <Download className="h-4 w-4" /> Tout exporter (.zip)
+              </Button>
+            </div>
+
             {scenes.length === 0 && (
               <p className="text-xs text-muted-foreground mt-4 italic">Segmentez et générez le storyboard avant d'exporter.</p>
             )}
