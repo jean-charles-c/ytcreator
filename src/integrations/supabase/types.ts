@@ -53,6 +53,47 @@ export type Database = {
         }
         Relationships: []
       }
+      scenes: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          scene_order: number
+          source_text: string
+          title: string
+          updated_at: string
+          visual_intention: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          scene_order: number
+          source_text: string
+          title: string
+          updated_at?: string
+          visual_intention?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          scene_order?: number
+          source_text?: string
+          title?: string
+          updated_at?: string
+          visual_intention?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
