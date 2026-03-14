@@ -492,6 +492,9 @@ export default function Editor() {
                 setPdfAnalysis(analysis);
                 setPdfExtractedText(text);
               }}
+              onScriptReady={(script) => {
+                setGeneratedScript(script);
+              }}
             />
           </div>
         )}
