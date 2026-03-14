@@ -17,12 +17,20 @@ interface YoutubeTitle {
   hook_type: string;
 }
 
+interface SeoResults {
+  titles: YoutubeTitle[] | null;
+  description: string | null;
+  tags: string | null;
+}
+
 interface SeoTabProps {
   projectId: string | null;
   analysis: NarrativeAnalysis | null;
   extractedText: string | null;
   narration?: string;
   scriptLanguage: string;
+  seoResults: SeoResults;
+  onSeoResultsChange: (results: SeoResults) => void;
 }
 
 const hookBadgeColor = (type: string) => {
@@ -40,11 +48,12 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
-export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage }: SeoTabProps) {
+export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
-  const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
-  const [youtubeDescription, setYoutubeDescription] = useState<string | null>(null);
-  const [youtubeTags, setYoutubeTags] = useState<string | null>(null);
+
+  const youtubeTitles = seoResults.titles;
+  const youtubeDescription = seoResults.description;
+  const youtubeTags = seoResults.tags;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
