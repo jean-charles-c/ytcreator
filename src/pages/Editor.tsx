@@ -204,7 +204,7 @@ export default function Editor() {
                             <span className="text-xs font-display font-medium text-primary">
                               {shot.type}
                             </span>
-                            <Shield className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" title="Historical Realism verified" />
+                            <Shield className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Historical Realism verified" />
                           </div>
                           <p className="text-xs text-muted-foreground leading-relaxed">
                             {shot.description}
