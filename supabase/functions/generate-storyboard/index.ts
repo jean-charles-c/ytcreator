@@ -140,7 +140,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: "openai/gpt-5",
           messages: [
             { role: "system", content: HISTORICAL_REALISM_SYSTEM },
             { role: "user", content: `Generate documentary shots with strict historical realism for these scenes:\n\n${sceneDescriptions}` },

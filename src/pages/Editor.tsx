@@ -243,7 +243,7 @@ export default function Editor() {
     scenes.forEach((scene) => {
       getShotsForScene(scene.id).forEach((shot) => {
         const prompt = shot.prompt_export || shot.description;
-        md += `SHOT Shot ${shotIndex}: ${prompt}\n\n---\n\n`;
+        md += `SHOT ${shotIndex}: ${prompt}\n\n`;
         shotIndex++;
       });
     });
