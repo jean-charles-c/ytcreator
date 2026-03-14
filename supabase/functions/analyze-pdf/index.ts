@@ -41,7 +41,7 @@ Réponds UNIQUEMENT avec un appel à la fonction analyze_narrative.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: truncated },

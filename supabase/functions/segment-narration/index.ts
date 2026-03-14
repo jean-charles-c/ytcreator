@@ -180,7 +180,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-2.5-flash-lite",
             max_tokens: strictMode ? 16384 : 12288,
             temperature: strictMode ? 0.1 : 0.3,
             messages: [
