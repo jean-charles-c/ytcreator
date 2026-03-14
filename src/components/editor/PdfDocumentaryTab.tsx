@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, LayoutList, ScrollText, Download, ArrowRight } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -32,13 +33,13 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [generatingStructure, setGeneratingStructure] = useState(false);
   const [generatingScript, setGeneratingScript] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [analysis, setAnalysis] = useState<NarrativeAnalysis | null>(null);
   const [docStructure, setDocStructure] = useState<DocSection[] | null>(null);
   const [script, setScript] = useState<string | null>(null);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,25 +81,30 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
     setAnalyzing(false);
   }, [extractedText, onAnalysisReady]);
 
-  const runStructure = useCallback(async () => {
+  // Combined: generate structure then script automatically
+  const runFullScriptGeneration = useCallback(async () => {
     if (!analysis || !extractedText) return;
-    setGeneratingStructure(true);
+    setGeneratingScript(true);
+    setScript("");
+
+    // Step 1: Generate structure
+    let sections: DocSection[];
     try {
       const { data, error } = await supabase.functions.invoke("documentary-structure", {
         body: { analysis, text: extractedText },
       });
-      if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingStructure(false); return; }
-      if (data?.error) { toast.error(data.error); setGeneratingStructure(false); return; }
-      setDocStructure(data.sections);
+      if (error || data?.error) {
+        toast.error("Erreur de génération de la structure");
+        console.error(error || data?.error);
+        setGeneratingScript(false);
+        return;
+      }
+      sections = data.sections;
+      setDocStructure(sections);
       toast.success("Structure documentaire générée");
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
-    setGeneratingStructure(false);
-  }, [analysis, extractedText]);
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); setGeneratingScript(false); return; }
 
-  const runScriptGeneration = useCallback(async () => {
-    if (!analysis || !docStructure || !extractedText) return;
-    setGeneratingScript(true);
-    setScript("");
+    // Step 2: Generate script (streaming)
     try {
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
@@ -108,13 +114,12 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ analysis, structure: docStructure, text: extractedText }),
+          body: JSON.stringify({ analysis, structure: sections, text: extractedText }),
         }
       );
       if (!resp.ok || !resp.body) {
-        const err = await resp.text();
         toast.error("Erreur de génération du script");
-        console.error(err);
+        console.error(await resp.text());
         setGeneratingScript(false);
         return;
       }
@@ -153,7 +158,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, docStructure, extractedText]);
+  }, [analysis, extractedText]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -177,6 +182,16 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
       .map((line) => line.trim())
       .join("\n");
+  };
+
+  const copyScriptToClipboard = () => {
+    if (!script) return;
+    const clean = cleanScriptForExport(script);
+    navigator.clipboard.writeText(clean).then(() => {
+      toast.success("Script copié dans le presse-papiers");
+    }).catch(() => {
+      toast.error("Impossible de copier");
+    });
   };
 
   return (
@@ -233,27 +248,19 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
             {analyzing ? <><Loader2 className="h-4 w-4 animate-spin" /> Analyse en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
           </Button>
         )}
-        {analysis && !docStructure && (
-          <Button variant="hero" disabled={generatingStructure} onClick={runStructure} className="min-h-[44px]">
-            {generatingStructure ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération structure...</> : <><LayoutList className="h-4 w-4" /> Créer le découpage narratif complet</>}
-          </Button>
-        )}
-        {docStructure && !script && (
-          <Button variant="hero" disabled={generatingScript} onClick={runScriptGeneration} className="min-h-[44px]">
-            {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération script...</> : <><ScrollText className="h-4 w-4" /> Générer le script complet</>}
+        {analysis && !script && script === null && (
+          <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
+            {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
           </Button>
         )}
       </div>
 
-      {/* Extracted text preview */}
+      {/* Extracted text — stats only */}
       {extractedText && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="mt-6 rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-primary" />
             <p className="text-sm font-medium text-foreground">Texte extrait — {pageCount} page(s) — {extractedText.length.toLocaleString()} caractères</p>
-          </div>
-          <div className="max-h-[200px] overflow-y-auto rounded border border-border bg-background p-3">
-            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{extractedText.slice(0, 3000)}{extractedText.length > 3000 && "…"}</p>
           </div>
         </div>
       )}
@@ -266,70 +273,58 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
         </div>
       )}
 
-      {/* Analysis results */}
+      {/* Analysis results — collapsible */}
       {analysis && (
-        <div className="mt-6 space-y-5 animate-fade-in">
-          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-3"><Sparkles className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Mystère central</h3></div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{analysis.central_mystery}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Contradiction principale</h3></div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{analysis.main_contradiction}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-3"><Lightbulb className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Découvertes intrigantes</h3></div>
-            <ul className="space-y-2">
-              {analysis.intriguing_discoveries.map((d, i) => (
-                <li key={i} className="flex gap-2 text-sm text-muted-foreground leading-relaxed"><span className="text-primary font-medium shrink-0">{i + 1}.</span>{d}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-3"><Swords className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Tensions narratives</h3></div>
-            <div className="space-y-3">
-              {analysis.narrative_tensions.map((t, i) => (
-                <div key={i} className="rounded border border-border bg-background p-3">
-                  <p className="text-sm font-medium text-foreground mb-1">{t.title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
-                </div>
-              ))}
+        <Collapsible open={analysisOpen} onOpenChange={setAnalysisOpen} className="mt-6">
+          <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Analyse narrative</h3>
             </div>
-          </div>
-        </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${analysisOpen ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-4 animate-fade-in">
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><Sparkles className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Mystère central</h3></div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{analysis.central_mystery}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Contradiction principale</h3></div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{analysis.main_contradiction}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><Lightbulb className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Découvertes intrigantes</h3></div>
+              <ul className="space-y-2">
+                {analysis.intriguing_discoveries.map((d, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-muted-foreground leading-relaxed"><span className="text-primary font-medium shrink-0">{i + 1}.</span>{d}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><Swords className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Tensions narratives</h3></div>
+              <div className="space-y-3">
+                {analysis.narrative_tensions.map((t, i) => (
+                  <div key={i} className="rounded border border-border bg-background p-3">
+                    <p className="text-sm font-medium text-foreground mb-1">{t.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
-      {/* Structure loading */}
-      {generatingStructure && (
+      {/* Generation loading */}
+      {generatingScript && !script && (
         <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Génération de la structure documentaire…</p>
-        </div>
-      )}
-
-      {/* Documentary structure */}
-      {docStructure && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
-          <div className="flex items-center gap-2 mb-4">
-            <LayoutList className="h-4 w-4 text-primary" />
-            <h3 className="font-display text-sm font-semibold text-foreground">Structure documentaire</h3>
-          </div>
-          <div className="space-y-3">
-            {docStructure.map((section, i) => (
-              <div key={i} className="rounded border border-border bg-background p-4 transition-colors hover:bg-secondary/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-display font-medium text-primary">{section.section_label.toUpperCase()}</span>
-                </div>
-                <p className="text-sm font-medium text-foreground mb-1">{section.video_title}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{section.narrative_description}</p>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-muted-foreground">Génération de la structure et du script…</p>
         </div>
       )}
 
       {/* Script generation */}
-      {(script !== null) && (
+      {(script !== null && script !== "") && (
         <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -354,6 +349,9 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
           </div>
           {!generatingScript && script && (
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <Button variant="outline" onClick={copyScriptToClipboard} className="min-h-[44px]">
+                <Copy className="h-4 w-4" /> Copier le script
+              </Button>
               <Button variant="outline" onClick={() => {
                 const clean = cleanScriptForExport(script);
                 const blob = new Blob([clean], { type: "text/markdown;charset=utf-8" });
