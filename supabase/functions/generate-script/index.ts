@@ -30,32 +30,42 @@ MISSION : Génère un script documentaire COMPLET et ÉTOFFÉ d'au moins 10 000 
 STRUCTURE OBLIGATOIRE (respecte cet ordre exact) :
 ${sectionList}
 
-RÈGLES D'ÉCRITURE STRICTES :
-1. Chaque phrase fait MOINS de 100 caractères
-2. UNE seule idée par ligne
-3. Chaque scène contient 3 à 6 phrases — développe chaque idée
-4. Sépare chaque section par un marqueur : --- [NOM DE LA SECTION] ---
-5. Le ton est immersif, captivant, mystérieux
-6. Utilise des phrases courtes et percutantes
-7. Alterne questions rhétoriques et affirmations
-8. Crée du suspense entre les sections
-9. Le Hook doit captiver en moins de 5 phrases percutantes
-10. "Welcome to Mysteria Mundi" doit être une transition naturelle
-11. Chaque section doit contenir AU MINIMUM 800 caractères
-12. Ajoute des détails historiques, scientifiques ou narratifs pour enrichir le propos
-13. Utilise des descriptions sensorielles et des images mentales fortes
-14. Intègre des transitions fluides entre les paragraphes
+RÈGLES D'ÉCRITURE ABSOLUES — NE DÉROGE JAMAIS :
+1. Chaque phrase fait STRICTEMENT MOINS de 100 caractères (compte les caractères !)
+2. UNE seule idée par phrase — jamais deux informations dans une même phrase
+3. Chaque scène contient EXACTEMENT 3 phrases, pas plus
+4. Sépare chaque scène par une ligne vide
+5. Sépare chaque section par un marqueur : --- [NOM DE LA SECTION] ---
+6. Le ton est immersif, captivant, mystérieux
+7. Utilise des phrases courtes et percutantes — JAMAIS de phrase longue
+8. Alterne questions rhétoriques et affirmations
+9. Crée du suspense entre les sections
+10. Le Hook doit captiver en 5 phrases percutantes maximum
+11. "Welcome to Mysteria Mundi" doit être une transition naturelle
+12. Chaque section doit contenir AU MINIMUM 800 caractères (beaucoup de scènes de 3 phrases)
+13. Ajoute des détails historiques, scientifiques ou narratifs pour enrichir chaque scène
+14. Utilise des descriptions sensorielles et des images mentales fortes
+15. Intègre des transitions fluides entre les scènes
+16. Si une phrase dépasse 90 caractères, COUPE-LA en deux phrases plus courtes
+17. Privilégie les mots simples et les structures sujet-verbe-complément
+
+STRUCTURE D'UNE SCÈNE (3 phrases séparées par des retours à la ligne) :
+Phrase 1 : pose le contexte ou l'image.
+Phrase 2 : développe ou ajoute un détail.
+Phrase 3 : conclut ou crée une tension.
+
+[ligne vide entre chaque scène]
 
 FORMAT DE SORTIE :
 --- HOOK ---
-[phrases du hook — minimum 5 phrases percutantes]
+[scènes de 3 phrases — minimum 5 scènes]
 
 --- WELCOME TO MYSTERIA MUNDI ---
-[phrases — minimum 3 phrases]
+[scènes de 3 phrases — minimum 2 scènes]
 
-[etc. pour chaque section — chaque section bien développée]
+[etc. pour chaque section — chaque section bien développée avec de nombreuses scènes]
 
-IMPORTANT : Le script doit faire MINIMUM 10 000 caractères. Développe chaque section en profondeur. Ne fais PAS de résumé superficiel. Chaque section doit apporter de la valeur narrative avec des détails concrets tirés du dossier de recherche.`;
+IMPORTANT : Le script doit faire MINIMUM 10 000 caractères. Pour y arriver, multiplie les scènes (chacune de 3 phrases courtes). Ne fais PAS de résumé superficiel. Chaque section doit apporter de la valeur narrative avec des détails concrets tirés du dossier de recherche. VÉRIFIE que chaque phrase fait moins de 100 caractères.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
