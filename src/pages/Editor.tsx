@@ -343,17 +343,18 @@ export default function Editor() {
 
   const generateSceneMapping = useCallback(() => {
     let md = `# Scene Mapping — ${title}\n\n`;
+    let globalShotIndex = 1;
     scenes.forEach((scene) => {
       md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
-      md += `### Narration\n\n> ${scene.source_text}\n\n`;
-      if (scene.visual_intention) md += `### Intention visuelle\n\n_${scene.visual_intention}_\n\n`;
+      md += `### Narration (extrait du script)\n\n> **${scene.source_text}**\n\n`;
       const sceneShots = getShotsForScene(scene.id);
       if (sceneShots.length > 0) {
         md += `### Shots associés\n\n`;
         sceneShots.forEach((shot) => {
-          md += `- **${shot.shot_type}**: ${shot.description}`;
+          md += `- **Shot ${globalShotIndex} — ${shot.shot_type}**: ${shot.description}`;
           if (shot.guardrails) md += ` [${shot.guardrails}]`;
           md += `\n`;
+          globalShotIndex++;
         });
         md += `\n`;
       }
@@ -615,7 +616,8 @@ export default function Editor() {
                   <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">VisualPrompts</h2>
                   {scenes.length > 0 && (
                     <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                      {shots.length} shots / {scenes.length} scènes
+                      {shots.length} shot{shots.length > 1 ? "s" : ""} / {scenes.length} scène{scenes.length > 1 ? "s" : ""}
+                      {generatingStoryboard && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
                     </span>
                   )}
                 </div>
@@ -647,52 +649,57 @@ export default function Editor() {
                   </div>
                 )}
                 <div className="space-y-8">
-                  {scenes.map((scene, i) => {
-                    const sceneShots = getShotsForScene(scene.id);
-                    const isRegenerating = regeneratingSceneId === scene.id;
-                    const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
-                    return (
-                      <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
-                        <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
-                          <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
-                          <span className="text-xs text-muted-foreground">—</span>
-                          <span className="text-sm font-display text-foreground">{scene.title}</span>
-                          {scene.validated && (
-                            <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
-                              <CheckCircle2 className="h-2.5 w-2.5" /> Validée
-                            </span>
-                          )}
-                          <button
-                            onClick={() => runStoryboard(scene.id)}
-                            disabled={isRegenerating}
-                            className="sm:ml-auto flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                            title="Régénérer les shots de cette scène"
-                          >
-                            {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                            <span>Régénérer</span>
-                          </button>
-                        </div>
-                        <div className="rounded border border-border bg-card p-4 mb-4">
-                          <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
-                        </div>
+                  {(() => {
+                    let globalShotIndex = 1;
+                    return scenes.map((scene, i) => {
+                      const sceneShots = getShotsForScene(scene.id);
+                      const isRegenerating = regeneratingSceneId === scene.id;
+                      const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
+                      const startIndex = globalShotIndex;
+                      globalShotIndex += sceneShots.length;
+                      return (
+                        <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
+                          <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
+                            <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
+                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-sm font-display text-foreground">{scene.title}</span>
+                            {scene.validated && (
+                              <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                                <CheckCircle2 className="h-2.5 w-2.5" /> Validée
+                              </span>
+                            )}
+                            <button
+                              onClick={() => runStoryboard(scene.id)}
+                              disabled={isRegenerating}
+                              className="sm:ml-auto flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                              title="Régénérer les shots de cette scène"
+                            >
+                              {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                              <span>Régénérer</span>
+                            </button>
+                          </div>
+                          <div className="rounded border border-border bg-card p-4 mb-4">
+                            <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                          </div>
 
-                        {isRegenerating || isPendingGeneration ? (
-                          <div className="flex items-center justify-center py-8 gap-2">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
-                          </div>
-                        ) : sceneShots.length === 0 && !generatingStoryboard ? (
-                          <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
-                        ) : (
-                          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                            {sceneShots.map((shot) => (
-                              <ShotCard key={shot.id} shot={shot} onUpdate={handleShotUpdate} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {isRegenerating || isPendingGeneration ? (
+                            <div className="flex items-center justify-center py-8 gap-2">
+                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                              <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
+                            </div>
+                          ) : sceneShots.length === 0 && !generatingStoryboard ? (
+                            <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
+                          ) : (
+                            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                              {sceneShots.map((shot, shotIdx) => (
+                                <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} onUpdate={handleShotUpdate} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
                 <div className="mt-8 flex gap-3">
                   <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
