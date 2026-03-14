@@ -267,6 +267,11 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
             {generatingStructure ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération structure...</> : <><LayoutList className="h-4 w-4" /> Générer la structure documentaire</>}
           </Button>
         )}
+        {docStructure && !script && (
+          <Button variant="hero" disabled={generatingScript} onClick={runScriptGeneration} className="min-h-[44px]">
+            {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération script...</> : <><ScrollText className="h-4 w-4" /> Générer le script complet</>}
+          </Button>
+        )}
       </div>
 
       {/* Extracted text preview */}
