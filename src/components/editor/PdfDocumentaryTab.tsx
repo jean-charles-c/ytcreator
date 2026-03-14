@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, Youtube, Trophy } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, Youtube, Trophy, LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
@@ -20,6 +20,13 @@ interface YoutubeTitle {
   hook_type: string;
 }
 
+interface DocSection {
+  section_key: string;
+  section_label: string;
+  video_title: string;
+  narrative_description: string;
+}
+
 interface PdfDocumentaryTabProps {
   projectId: string | null;
 }
@@ -30,10 +37,12 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingTitles, setGeneratingTitles] = useState(false);
+  const [generatingStructure, setGeneratingStructure] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [analysis, setAnalysis] = useState<NarrativeAnalysis | null>(null);
   const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
+  const [docStructure, setDocStructure] = useState<DocSection[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const parsePdf = useCallback(async (pdfFile: File) => {
@@ -41,6 +50,7 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setExtractedText(null);
     setAnalysis(null);
     setYoutubeTitles(null);
+    setDocStructure(null);
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -88,19 +98,34 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setGeneratingTitles(false);
   }, [analysis, extractedText]);
 
+  const runStructure = useCallback(async () => {
+    if (!analysis || !extractedText) return;
+    setGeneratingStructure(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("documentary-structure", {
+        body: { analysis, text: extractedText },
+      });
+      if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingStructure(false); return; }
+      if (data?.error) { toast.error(data.error); setGeneratingStructure(false); return; }
+      setDocStructure(data.sections);
+      toast.success("Structure documentaire générée");
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    setGeneratingStructure(false);
+  }, [analysis, extractedText]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); }
+    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); }
+    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
   };
 
   const removeFile = () => {
-    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setPageCount(0);
+    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -172,6 +197,11 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
         {analysis && !youtubeTitles && (
           <Button variant="hero" disabled={generatingTitles} onClick={runYoutubePackaging} className="min-h-[44px]">
             {generatingTitles ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération titres...</> : <><Youtube className="h-4 w-4" /> Générer les titres YouTube</>}
+          </Button>
+        )}
+        {youtubeTitles && !docStructure && (
+          <Button variant="hero" disabled={generatingStructure} onClick={runStructure} className="min-h-[44px]">
+            {generatingStructure ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération structure...</> : <><LayoutList className="h-4 w-4" /> Générer la structure documentaire</>}
           </Button>
         )}
       </div>
@@ -261,7 +291,35 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Structure loading */}
+      {generatingStructure && (
+        <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Génération de la structure documentaire…</p>
+        </div>
+      )}
+
+      {/* Documentary structure */}
+      {docStructure && (
+        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
+          <div className="flex items-center gap-2 mb-4">
+            <LayoutList className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-semibold text-foreground">Structure documentaire</h3>
+          </div>
+          <div className="space-y-3">
+            {docStructure.map((section, i) => (
+              <div key={i} className="rounded border border-border bg-background p-4 transition-colors hover:bg-secondary/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-display font-medium text-primary">{section.section_label.toUpperCase()}</span>
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">{section.video_title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{section.narrative_description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!extractedText && !analysis && (
         <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">

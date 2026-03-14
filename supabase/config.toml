@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.youtube-packaging]
 verify_jwt = false
+
+[functions.documentary-structure]
+verify_jwt = false
