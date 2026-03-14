@@ -186,7 +186,7 @@ export default function Editor() {
 
         await supabase.from("shots").delete().eq("project_id", projectId);
 
-        const BATCH_SIZE = 2;
+        const BATCH_SIZE = 4;
         let totalShots = 0;
         const failedSceneIds: string[] = [];
 
