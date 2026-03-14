@@ -32,18 +32,17 @@ Very short sentences must still generate visual shots.
 Short sentences often represent strong documentary beats and must not be merged.
 
 ## VISUAL SHOT DENSITY RULE
-Documentary editing typically changes shots every 4–6 seconds.
-Guideline:
-- narration lasting ~4–6 seconds → 1 visual shot
-- narration lasting ~7–10 seconds → 2 visual shots
-- narration lasting ~11–15 seconds → 3 visual shots
-Shots must represent different cinematic views of the same narrative moment.
+Every sentence in the narration must produce exactly one visual shot.
+Count the sentences (delimited by . ! or ?) and generate that exact number of shots.
+Do NOT merge multiple sentences into a single shot.
+Do NOT skip any sentence.
+Shots must represent different cinematic views corresponding to each sentence.
 
-## SHOT MINIMUM RULE
-Each scene must generate at least 1 visual shot.
-Longer scenes may generate 2 to 3 visual shots only when clearly needed for cinematic rhythm.
-Prefer concise coverage when one strong shot is sufficient.
-CRITICAL: Every shot prompt must describe ONLY what the scene text says. Never invent visual content that is not present in the narration text.
+## SHOT MINIMUM RULE — ONE SHOT PER SENTENCE
+Each sentence in the narration MUST produce exactly one visual shot. No exceptions.
+Count the sentences in the scene text and generate exactly that many shots.
+A sentence is any text ending with a period, exclamation mark, or question mark.
+CRITICAL: Every shot prompt must describe ONLY what the corresponding sentence says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
 To maintain visual consistency across scenes, key recurring elements must use stable visual anchors.
@@ -164,9 +163,7 @@ serve(async (req) => {
     // Short narration block = 1 shot. Scale up only for multi-sentence scenes.
     const calcShotCount = (text: string): number => {
       const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0).length;
-      if (sentences <= 2) return 1;
-      if (sentences <= 4) return 2;
-      return 3;
+      return Math.max(1, sentences);
     };
 
     const sceneDescriptions = scenes.map((s: any) => {
@@ -186,7 +183,7 @@ serve(async (req) => {
           model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. Respect requested_shots exactly. Shot minimum rule: minimum 1 shot per scene; add extra shots only when a scene contains clear multiple visual beats. CRITICAL: prompts must stay strictly faithful to the scene text and must not introduce unrelated visual events. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULE: Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence). Each shot must correspond to one sentence from the narration. Do NOT merge sentences. Do NOT skip sentences. Prompts must stay strictly faithful to the scene text. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
