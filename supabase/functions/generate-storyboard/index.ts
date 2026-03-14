@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const CINEMATIC_PROMPT_SYSTEM = `You are a cinematic visual prompt generator specialized in documentary filmmaking visuals.
@@ -40,9 +40,10 @@ Guideline:
 Shots must represent different cinematic views of the same narrative moment.
 
 ## SHOT MINIMUM RULE
-Each scene must generate at least 2 visual shots.
+Short scenes (under 80 characters) must generate at least 1 visual shot.
+Longer scenes must generate at least 2 visual shots.
 If the environment is visually rich or historically significant, generate 3 shots.
-Documentary editing rarely holds a single image longer than 5 seconds.
+CRITICAL: Every shot prompt must describe ONLY what the scene text says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
 To maintain visual consistency across scenes, key recurring elements must use stable visual anchors.
@@ -160,10 +161,10 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // Calculate number of shots per scene based on text length
-    // SHOT MINIMUM RULE: at least 2 shots per scene
+    // Short scenes (<=80 chars) get 1 shot minimum, longer scenes get 2+
     const calcShotCount = (text: string): number => {
       const len = text.length;
-      if (len < 100) return 2;
+      if (len <= 80) return 1;
       if (len < 200) return 2;
       if (len < 350) return 3;
       return Math.min(Math.ceil(len / 120), 5);

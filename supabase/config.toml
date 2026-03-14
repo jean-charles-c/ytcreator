@@ -1,1 +1,7 @@
 project_id = "kfajkyfcipdlgdacfpxu"
+
+[functions.generate-storyboard]
+verify_jwt = false
+
+[functions.segment-narration]
+verify_jwt = false
