@@ -478,19 +478,21 @@ export default function Editor() {
           </div>
         )}
 
-        {/* ScriptCreator tab */}
-        {!showSetup && activeTab === "script-creator" && (
-          <PdfDocumentaryTab
-            projectId={projectId}
-            onSendToScriptInput={(text) => {
-              setNarration(text);
-              setActiveTab("script");
-            }}
-            onAnalysisReady={(analysis, text) => {
-              setPdfAnalysis(analysis);
-              setPdfExtractedText(text);
-            }}
-          />
+        {/* ScriptCreator tab — kept mounted to preserve state */}
+        {!showSetup && (
+          <div className={activeTab === "script-creator" ? "" : "hidden"}>
+            <PdfDocumentaryTab
+              projectId={projectId}
+              onSendToScriptInput={(text) => {
+                setNarration(text);
+                setActiveTab("script");
+              }}
+              onAnalysisReady={(analysis, text) => {
+                setPdfAnalysis(analysis);
+                setPdfExtractedText(text);
+              }}
+            />
+          </div>
         )}
 
         {/* SEO tab */}
