@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft } from "lucide-react";
+import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Project {
   id: string;
