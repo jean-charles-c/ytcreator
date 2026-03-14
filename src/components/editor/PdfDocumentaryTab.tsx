@@ -116,6 +116,66 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setGeneratingStructure(false);
   }, [analysis, extractedText]);
 
+  const runScriptGeneration = useCallback(async () => {
+    if (!analysis || !docStructure || !extractedText) return;
+    setGeneratingScript(true);
+    setScript("");
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ analysis, structure: docStructure, text: extractedText }),
+        }
+      );
+      if (!resp.ok || !resp.body) {
+        const err = await resp.text();
+        toast.error("Erreur de génération du script");
+        console.error(err);
+        setGeneratingScript(false);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let full = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let nlIdx: number;
+        while ((nlIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, nlIdx);
+          buffer = buffer.slice(nlIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (json === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setScript(full);
+            }
+          } catch { /* partial */ }
+        }
+      }
+
+      setScript(full);
+      toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    setGeneratingScript(false);
+  }, [analysis, docStructure, extractedText]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
