@@ -316,10 +316,10 @@ Return data via the segment_narration tool call only.`,
       }
     }
 
-    if (!isCompleteSegmentation(narrationText, scenes)) {
-      throw new Error(
-        "La segmentation est incomplète. Réessaie avec un texte plus court ou relance la segmentation."
-      );
+    const scenes = allScenes;
+
+    if (scenes.length === 0) {
+      throw new Error("Aucune scène générée. Veuillez réessayer.");
     }
 
     // Delete existing scenes for this project
