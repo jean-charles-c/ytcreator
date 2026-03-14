@@ -361,7 +361,7 @@ export default function Editor() {
               </div>
             </div>
             <div className="mt-8">
-              <Button variant="hero" onClick={saveProject} disabled={saving || !title.trim()}>
+              <Button variant="hero" onClick={saveProject} disabled={saving || !title.trim()} className="w-full sm:w-auto min-h-[44px]">
                 {saving ? "Création..." : "Créer le projet"}
               </Button>
             </div>
