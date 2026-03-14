@@ -11,7 +11,7 @@ const HISTORICAL_REALISM_SYSTEM = `You are a documentary storyboard generator wi
 The generated prompts will be used with Grok Imagine for image generation. Optimize all prompt_export fields for Grok Imagine.
 
 ## SHOT GENERATION
-For each scene, generate 2-3 documentary-style shots with varied camera perspectives.
+For each scene, generate the number of shots indicated in the "requested_shots" field. You MUST generate exactly that number of shots per scene — no more, no less.
 
 Shot types (vary across scenes):
 - Establishing Shot: wide/aerial view setting the context
@@ -117,9 +117,19 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const sceneDescriptions = scenes.map((s: any) =>
-      `Scene ${s.scene_order} (id: ${s.id}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`
-    ).join("\n\n");
+    // Calculate number of shots per scene based on text length
+    const calcShotCount = (text: string): number => {
+      const len = text.length;
+      if (len < 70) return 1;
+      if (len < 140) return 2;
+      if (len < 280) return 3;
+      return Math.min(Math.ceil(len / 100), 5);
+    };
+
+    const sceneDescriptions = scenes.map((s: any) => {
+      const shotCount = calcShotCount(s.source_text);
+      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+    }).join("\n\n");
 
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -130,7 +140,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: "openai/gpt-5",
           messages: [
             { role: "system", content: HISTORICAL_REALISM_SYSTEM },
             { role: "user", content: `Generate documentary shots with strict historical realism for these scenes:\n\n${sceneDescriptions}` },
