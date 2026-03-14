@@ -75,11 +75,14 @@ OUTPUT FORMAT:
 [etc. for each section — each section well developed with many scenes]
 
 CRITICAL LENGTH & QUALITY CHECK:
-- The final script MUST be between 10,000 and 12,000 characters
+- The final script MUST be between 10,000 and 12,000 characters. This is NON-NEGOTIABLE.
+- Count your characters as you write. If you are below 10,000 characters, you MUST add more scenes.
+- Each major section needs AT LEAST 8-10 scenes of 3 sentences each.
 - Each scene = exactly 3 short sentences (under 100 chars each)
 - Draw extensively from the research material for facts and details
 - Never summarize — always develop and illustrate with specifics
 - ZERO redundancy: if you've already stated a fact, do NOT restate it
+- BEFORE finishing, verify your character count. If under 10,000, ADD MORE SCENES to underdeveloped sections.
 
 Remember: ALL text including section markers must be in ${langLabel}.`;
 
@@ -90,12 +93,13 @@ Remember: ALL text including section markers must be in ${langLabel}.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
+        max_tokens: 8000,
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\nDocumentary structure:\n${JSON.stringify(structure, null, 2)}\n\nSource text (research material):\n${sourceText}`,
+            content: `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\nDocumentary structure:\n${JSON.stringify(structure, null, 2)}\n\nSource text (research material):\n${sourceText}\n\nREMINDER: The script MUST be between 10,000 and 12,000 characters total. Write extensively — do not stop early.`,
           },
         ],
         stream: true,
