@@ -179,16 +179,16 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
+    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
+    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); }
   };
 
   const removeFile = () => {
-    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setPageCount(0);
+    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
