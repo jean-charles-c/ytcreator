@@ -40,9 +40,9 @@ Guideline:
 Shots must represent different cinematic views of the same narrative moment.
 
 ## SHOT MINIMUM RULE
-Short scenes (under 80 characters) must generate at least 1 visual shot.
-Longer scenes must generate at least 2 visual shots.
-If the environment is visually rich or historically significant, generate 3 shots.
+Each scene must generate at least 1 visual shot.
+Longer scenes may generate 2 to 3 visual shots only when clearly needed for cinematic rhythm.
+Prefer concise coverage when one strong shot is sufficient.
 CRITICAL: Every shot prompt must describe ONLY what the scene text says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
