@@ -19,8 +19,8 @@ serve(async (req) => {
 
   try {
     const { analysis, text, language } = await req.json();
-    if (!analysis) {
-      return new Response(JSON.stringify({ error: "Analyse narrative requise." }), {
+    if (!analysis && !text) {
+      return new Response(JSON.stringify({ error: "Texte ou analyse narrative requis." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
