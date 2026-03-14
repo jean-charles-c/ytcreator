@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, Youtube, Trophy, LayoutList } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, Youtube, Trophy, LayoutList, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
@@ -38,12 +38,15 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [generatingStructure, setGeneratingStructure] = useState(false);
+  const [generatingScript, setGeneratingScript] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [analysis, setAnalysis] = useState<NarrativeAnalysis | null>(null);
   const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
   const [docStructure, setDocStructure] = useState<DocSection[] | null>(null);
+  const [script, setScript] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scriptEndRef = useRef<HTMLDivElement>(null);
 
   const parsePdf = useCallback(async (pdfFile: File) => {
     setParsing(true);
@@ -51,6 +54,7 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setAnalysis(null);
     setYoutubeTitles(null);
     setDocStructure(null);
+    setScript(null);
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -113,19 +117,79 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setGeneratingStructure(false);
   }, [analysis, extractedText]);
 
+  const runScriptGeneration = useCallback(async () => {
+    if (!analysis || !docStructure || !extractedText) return;
+    setGeneratingScript(true);
+    setScript("");
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ analysis, structure: docStructure, text: extractedText }),
+        }
+      );
+      if (!resp.ok || !resp.body) {
+        const err = await resp.text();
+        toast.error("Erreur de génération du script");
+        console.error(err);
+        setGeneratingScript(false);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let full = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let nlIdx: number;
+        while ((nlIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, nlIdx);
+          buffer = buffer.slice(nlIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (json === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setScript(full);
+            }
+          } catch { /* partial */ }
+        }
+      }
+
+      setScript(full);
+      toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    setGeneratingScript(false);
+  }, [analysis, docStructure, extractedText]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
+    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); }
+    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); }
   };
 
   const removeFile = () => {
-    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setPageCount(0);
+    setFile(null); setExtractedText(null); setAnalysis(null); setYoutubeTitles(null); setDocStructure(null); setScript(null); setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -202,6 +266,11 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
         {youtubeTitles && !docStructure && (
           <Button variant="hero" disabled={generatingStructure} onClick={runStructure} className="min-h-[44px]">
             {generatingStructure ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération structure...</> : <><LayoutList className="h-4 w-4" /> Générer la structure documentaire</>}
+          </Button>
+        )}
+        {docStructure && !script && (
+          <Button variant="hero" disabled={generatingScript} onClick={runScriptGeneration} className="min-h-[44px]">
+            {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération script...</> : <><ScrollText className="h-4 w-4" /> Générer le script complet</>}
           </Button>
         )}
       </div>
@@ -316,6 +385,33 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
                 <p className="text-xs text-muted-foreground leading-relaxed">{section.narrative_description}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Script generation */}
+      {(script !== null) && (
+        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Script documentaire</h3>
+              {!generatingScript && script && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  {script.length.toLocaleString()} caractères
+                </span>
+              )}
+            </div>
+            {generatingScript && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-muted-foreground">Écriture en cours…</span>
+              </div>
+            )}
+          </div>
+          <div className="max-h-[500px] overflow-y-auto rounded border border-border bg-background p-4">
+            <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
+            <div ref={scriptEndRef} />
           </div>
         </div>
       )}
