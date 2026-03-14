@@ -1,10 +1,18 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2 } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+interface NarrativeAnalysis {
+  central_mystery: string;
+  main_contradiction: string;
+  intriguing_discoveries: string[];
+  narrative_tensions: { title: string; description: string }[];
+}
 
 interface PdfDocumentaryTabProps {
   projectId: string | null;
@@ -14,13 +22,16 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
+  const [analysis, setAnalysis] = useState<NarrativeAnalysis | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const parsePdf = useCallback(async (pdfFile: File) => {
     setParsing(true);
     setExtractedText(null);
+    setAnalysis(null);
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -41,7 +52,6 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
       const fullText = pages.join("\n\n");
       if (!fullText.trim()) {
         toast.error("Aucun texte détecté dans ce PDF.");
-        setExtractedText(null);
       } else {
         setExtractedText(fullText);
         toast.success(`${pdf.numPages} page(s) extraite(s)`);
@@ -53,6 +63,24 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setParsing(false);
   }, []);
 
+  const runAnalysis = useCallback(async () => {
+    if (!extractedText) return;
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-pdf", {
+        body: { text: extractedText },
+      });
+      if (error) { toast.error("Erreur d'analyse"); console.error(error); setAnalyzing(false); return; }
+      if (data?.error) { toast.error(data.error); setAnalyzing(false); return; }
+      setAnalysis(data.analysis);
+      toast.success("Analyse narrative terminée");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur inattendue");
+    }
+    setAnalyzing(false);
+  }, [extractedText]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -60,6 +88,7 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     if (dropped?.type === "application/pdf") {
       setFile(dropped);
       setExtractedText(null);
+      setAnalysis(null);
     }
   };
 
@@ -68,12 +97,14 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     if (selected?.type === "application/pdf") {
       setFile(selected);
       setExtractedText(null);
+      setAnalysis(null);
     }
   };
 
   const removeFile = () => {
     setFile(null);
     setExtractedText(null);
+    setAnalysis(null);
     setPageCount(0);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -101,13 +132,7 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
               : "border-border hover:border-primary/50 hover:bg-secondary/30"
         }`}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,application/pdf"
-          onChange={handleFileChange}
-          className="hidden"
-        />
+        <input ref={inputRef} type="file" accept=".pdf,application/pdf" onChange={handleFileChange} className="hidden" />
 
         {file ? (
           <div className="flex items-center gap-3 w-full">
@@ -116,14 +141,9 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(file.size / 1024 / 1024).toFixed(2)} Mo
-              </p>
+              <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} Mo</p>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); removeFile(); }}
-              className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-            >
+            <button onClick={(e) => { e.stopPropagation(); removeFile(); }} className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -133,64 +153,114 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
               <Upload className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground">
-                Glissez votre PDF ici ou cliquez pour parcourir
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PDF uniquement — 20 Mo max
-              </p>
+              <p className="text-sm font-medium text-foreground">Glissez votre PDF ici ou cliquez pour parcourir</p>
+              <p className="text-xs text-muted-foreground mt-1">PDF uniquement — 20 Mo max</p>
             </div>
           </>
         )}
       </div>
 
-      {/* Action button */}
-      <div className="mt-6">
-        <Button
-          variant="hero"
-          disabled={!file || !projectId || parsing}
-          onClick={() => file && parsePdf(file)}
-          className="w-full sm:w-auto min-h-[44px]"
-        >
-          {parsing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Extraction en cours...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Analyser le document
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Results zone */}
-      <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
-        {extractedText ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              <p className="text-sm font-medium text-foreground">
-                Texte extrait — {pageCount} page(s) — {extractedText.length.toLocaleString()} caractères
-              </p>
-            </div>
-            <div className="max-h-[300px] overflow-y-auto rounded border border-border bg-background p-4">
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {extractedText}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-            <FileText className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">
-              Uploadez un PDF puis lancez l'analyse pour extraire le contenu.
-            </p>
-          </div>
+      {/* Action buttons */}
+      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+        {!extractedText && (
+          <Button variant="hero" disabled={!file || !projectId || parsing} onClick={() => file && parsePdf(file)} className="min-h-[44px]">
+            {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Extraire le texte</>}
+          </Button>
+        )}
+        {extractedText && !analysis && (
+          <Button variant="hero" disabled={analyzing} onClick={runAnalysis} className="min-h-[44px]">
+            {analyzing ? <><Loader2 className="h-4 w-4 animate-spin" /> Analyse en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
+          </Button>
         )}
       </div>
+
+      {/* Extracted text preview */}
+      {extractedText && (
+        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium text-foreground">
+              Texte extrait — {pageCount} page(s) — {extractedText.length.toLocaleString()} caractères
+            </p>
+          </div>
+          <div className="max-h-[200px] overflow-y-auto rounded border border-border bg-background p-3">
+            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{extractedText.slice(0, 3000)}{extractedText.length > 3000 && "…"}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Analysis loading */}
+      {analyzing && (
+        <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Analyse narrative en cours…</p>
+        </div>
+      )}
+
+      {/* Analysis results */}
+      {analysis && (
+        <div className="mt-6 space-y-5 animate-fade-in">
+          {/* Central mystery */}
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Mystère central</h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">{analysis.central_mystery}</p>
+          </div>
+
+          {/* Main contradiction */}
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Contradiction principale</h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">{analysis.main_contradiction}</p>
+          </div>
+
+          {/* Intriguing discoveries */}
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Découvertes intrigantes</h3>
+            </div>
+            <ul className="space-y-2">
+              {analysis.intriguing_discoveries.map((d, i) => (
+                <li key={i} className="flex gap-2 text-sm text-muted-foreground leading-relaxed">
+                  <span className="text-primary font-medium shrink-0">{i + 1}.</span>
+                  {d}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Narrative tensions */}
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Swords className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Tensions narratives</h3>
+            </div>
+            <div className="space-y-3">
+              {analysis.narrative_tensions.map((t, i) => (
+                <div key={i} className="rounded border border-border bg-background p-3">
+                  <p className="text-sm font-medium text-foreground mb-1">{t.title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!extractedText && !analysis && (
+        <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
+          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <FileText className="h-10 w-10 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">Uploadez un PDF puis lancez l'analyse pour extraire le contenu.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

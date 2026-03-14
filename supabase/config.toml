@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.segment-narration]
 verify_jwt = false
+
+[functions.analyze-pdf]
+verify_jwt = false
