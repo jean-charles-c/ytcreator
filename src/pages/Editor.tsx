@@ -343,7 +343,7 @@ export default function Editor() {
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Titre du projet *</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full h-11 sm:h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="ex. La Route de la Soie — Épisode 3" />
               </div>
               <div>
