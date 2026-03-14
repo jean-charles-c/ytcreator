@@ -99,7 +99,16 @@ export default function Dashboard() {
                     <h3 className="font-display text-sm sm:text-base font-semibold text-foreground leading-snug pr-4">
                       {project.title}
                     </h3>
-                    <s.icon className={`h-4 w-4 shrink-0 mt-0.5 ${s.color}`} />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <s.icon className={`h-4 w-4 mt-0.5 ${s.color}`} />
+                      <button
+                        onClick={(e) => deleteProject(e, project.id)}
+                        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Supprimer le projet"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
                     <span className={s.color}>{s.label}</span>
