@@ -539,9 +539,9 @@ export default function Editor() {
 
         {/* Export tab */}
         {!showSetup && activeTab === "export" && (
-          <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Export Center</h2>
-            <p className="text-sm text-muted-foreground mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
+          <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">Export Center</h2>
+            <p className="text-sm text-muted-foreground mb-6 sm:mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
             <div className="space-y-4">
               {[
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts },
