@@ -113,24 +113,58 @@ serve(async (req) => {
     };
 
     const parseScenesFromAi = (aiData: any) => {
-      const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
-      const rawArgs = toolCall?.function?.arguments;
+      // Debug: log response structure
+      const message = aiData?.choices?.[0]?.message;
+      console.log("AI finish_reason:", aiData?.choices?.[0]?.finish_reason);
+      console.log("AI message keys:", message ? Object.keys(message) : "no message");
+      console.log("AI tool_calls count:", message?.tool_calls?.length ?? 0);
+      console.log("AI content length:", message?.content?.length ?? 0);
+      console.log("AI content preview:", (message?.content || "").slice(0, 200));
 
-      if (rawArgs) {
-        try {
-          const parsed = repairAndParseJson(rawArgs);
-          if (Array.isArray(parsed)) return parsed;
-          if (Array.isArray(parsed?.scenes)) return parsed.scenes;
-        } catch (e) {
-          console.warn("Failed to parse tool_call arguments, trying content fallback:", e);
+      // Try tool_calls first
+      const toolCalls = message?.tool_calls;
+      if (toolCalls && toolCalls.length > 0) {
+        // Some models split across multiple tool calls - concatenate all arguments
+        let allArgs = "";
+        for (const tc of toolCalls) {
+          const args = tc?.function?.arguments || "";
+          allArgs += args;
+        }
+        if (allArgs) {
+          console.log("Tool call args length:", allArgs.length);
+          console.log("Tool call args preview:", allArgs.slice(0, 200));
+          try {
+            const parsed = repairAndParseJson(allArgs);
+            if (Array.isArray(parsed)) return parsed;
+            if (Array.isArray(parsed?.scenes)) return parsed.scenes;
+          } catch (e) {
+            console.warn("Failed to parse tool_call arguments:", e);
+          }
         }
       }
 
-      const content = aiData?.choices?.[0]?.message?.content || "";
+      // Try content fallback
+      const content = message?.content || "";
       if (content) {
-        const parsedContent = repairAndParseJson(content);
-        if (Array.isArray(parsedContent)) return parsedContent;
-        if (Array.isArray(parsedContent?.scenes)) return parsedContent.scenes;
+        try {
+          const parsedContent = repairAndParseJson(content);
+          if (Array.isArray(parsedContent)) return parsedContent;
+          if (Array.isArray(parsedContent?.scenes)) return parsedContent.scenes;
+        } catch (e) {
+          console.warn("Failed to parse content:", e);
+        }
+      }
+
+      // Try function_call (some models use this instead of tool_calls)
+      const functionCall = message?.function_call;
+      if (functionCall?.arguments) {
+        try {
+          const parsed = repairAndParseJson(functionCall.arguments);
+          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed?.scenes)) return parsed.scenes;
+        } catch (e) {
+          console.warn("Failed to parse function_call:", e);
+        }
       }
 
       throw new Error("AI returned no scenes");
