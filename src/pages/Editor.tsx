@@ -12,6 +12,8 @@ import {
   Loader2,
   RotateCcw,
   CheckCircle2,
+  Menu,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,6 +61,7 @@ export default function Editor() {
   const [segmenting, setSegmenting] = useState(false);
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Load existing project + scenes + shots
   useEffect(() => {
@@ -291,55 +294,74 @@ export default function Editor() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border shrink-0">
-        <div className="flex h-14 items-center px-4 gap-4">
-          <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors">
+        <div className="flex h-14 items-center px-4 gap-2 sm:gap-4">
+          <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <Film className="h-5 w-5 text-primary" />
-          <span className="font-display font-semibold text-foreground truncate">{title || "Nouveau projet"}</span>
+          <Film className="h-5 w-5 text-primary shrink-0" />
+          <span className="font-display font-semibold text-foreground truncate text-sm sm:text-base">{title || "Nouveau projet"}</span>
           {!showSetup && (
-            <div className="ml-auto flex items-center gap-1">
-              {tabItems.map((t) => (
-                <button key={t.key} onClick={() => setActiveTab(t.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                  <t.icon className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">{t.label}</span>
-                </button>
-              ))}
-            </div>
+            <>
+              {/* Desktop tabs */}
+              <div className="ml-auto hidden sm:flex items-center gap-1">
+                {tabItems.map((t) => (
+                  <button key={t.key} onClick={() => setActiveTab(t.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                    <t.icon className="h-3.5 w-3.5" />
+                    <span className="hidden md:inline">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Mobile hamburger */}
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="ml-auto sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-muted-foreground hover:text-foreground">
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </>
           )}
         </div>
+        {/* Mobile tab menu */}
+        {!showSetup && mobileMenuOpen && (
+          <div className="sm:hidden border-t border-border bg-background px-4 py-2 space-y-1 animate-fade-in">
+            {tabItems.map((t) => (
+              <button key={t.key} onClick={() => { setActiveTab(t.key); setMobileMenuOpen(false); }}
+                className={`flex items-center gap-2 w-full px-3 py-2.5 rounded text-sm transition-colors min-h-[44px] ${activeTab === t.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <t.icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-auto">
         {/* New project setup */}
         {showSetup && (
-          <div className="container max-w-lg py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Nouveau projet</h2>
+          <div className="container max-w-lg py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">Nouveau projet</h2>
             <p className="text-sm text-muted-foreground mb-8">Décrivez votre projet documentaire pour commencer.</p>
             <div className="space-y-5">
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Titre du projet *</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full h-11 sm:h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="ex. La Route de la Soie — Épisode 3" />
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Sujet / description</label>
                 <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full h-11 sm:h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="ex. Commerce historique entre Orient et Occident" />
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1.5">Langue du script</label>
                 <select value={scriptLanguage} onChange={(e) => setScriptLanguage(e.target.value)}
-                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  className="w-full h-11 sm:h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
                   {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </div>
             </div>
             <div className="mt-8">
-              <Button variant="hero" onClick={saveProject} disabled={saving || !title.trim()}>
+              <Button variant="hero" onClick={saveProject} disabled={saving || !title.trim()} className="w-full sm:w-auto min-h-[44px]">
                 {saving ? "Création..." : "Créer le projet"}
               </Button>
             </div>
@@ -348,18 +370,18 @@ export default function Editor() {
 
         {/* ScriptInput tab */}
         {!showSetup && activeTab === "script" && (
-          <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">ScriptInput</h2>
-            <p className="text-sm text-muted-foreground mb-6">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
+          <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">ScriptInput</h2>
+            <p className="text-sm text-muted-foreground mb-4 sm:mb-6">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
             <textarea value={narration} onChange={(e) => setNarration(e.target.value)}
               placeholder="Collez votre voix-off ici..."
-              className="w-full min-h-[300px] rounded border border-border bg-card p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
-            <div className="mt-4 flex gap-3">
-              <Button variant="hero" onClick={saveProject} disabled={saving}>
+              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-card p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <Button variant="hero" onClick={saveProject} disabled={saving} className="min-h-[44px]">
                 <Save className="h-4 w-4" />
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </Button>
-              <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting}>
+              <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
                 {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {segmenting ? "Segmentation..." : "Lancer la segmentation"}
               </Button>
@@ -369,10 +391,10 @@ export default function Editor() {
 
         {/* Segmentation View */}
         {!showSetup && activeTab === "segmentation" && (
-          <div className="container max-w-3xl py-10 animate-fade-in">
-            <div className="flex items-center justify-between mb-6">
+          <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-1">
               <div>
-                <h2 className="font-display text-2xl font-semibold text-foreground mb-1">Segmentation View</h2>
+                <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">Segmentation View</h2>
                 <p className="text-sm text-muted-foreground">
                   Votre narration découpée en SceneBlocks.
                   {scenes.length > 0 && (
@@ -419,11 +441,11 @@ export default function Editor() {
                     />
                   ))}
                 </div>
-                <div className="mt-6 flex gap-3">
-                  <Button variant="outline" onClick={runSegmentation} disabled={segmenting}>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <Button variant="outline" onClick={runSegmentation} disabled={segmenting} className="min-h-[44px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
-                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
+                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     {generatingStoryboard ? "Génération..." : "Générer le storyboard"}
                   </Button>
@@ -435,9 +457,9 @@ export default function Editor() {
 
         {/* Storyboard View */}
         {!showSetup && activeTab === "storyboard" && (
-          <div className="container max-w-5xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
-            <p className="text-sm text-muted-foreground mb-8">SceneBlocks et ShotCards correspondantes. Cliquez sur un shot pour l'éditer.</p>
+          <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
+            <p className="text-sm text-muted-foreground mb-6 sm:mb-8">SceneBlocks et ShotCards correspondantes. Cliquez sur un shot pour l'éditer.</p>
 
             {generatingStoryboard && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -464,7 +486,7 @@ export default function Editor() {
                     const isRegenerating = regeneratingSceneId === scene.id;
                     return (
                       <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
-                        <div className="flex items-center gap-2 mb-4">
+                        <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
                           <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
                           <span className="text-xs text-muted-foreground">—</span>
                           <span className="text-sm font-display text-foreground">{scene.title}</span>
@@ -476,11 +498,11 @@ export default function Editor() {
                           <button
                             onClick={() => runStoryboard(scene.id)}
                             disabled={isRegenerating}
-                            className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                            className="sm:ml-auto flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
                             title="Régénérer les shots de cette scène"
                           >
                             {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                            <span className="hidden sm:inline">Régénérer</span>
+                            <span>Régénérer</span>
                           </button>
                         </div>
                         <div className="rounded border border-border bg-card p-4 mb-4">
@@ -495,7 +517,7 @@ export default function Editor() {
                         ) : sceneShots.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
                         ) : (
-                          <div className="grid gap-4 md:grid-cols-3">
+                          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             {sceneShots.map((shot) => (
                               <ShotCard key={shot.id} shot={shot} onUpdate={handleShotUpdate} />
                             ))}
@@ -517,21 +539,21 @@ export default function Editor() {
 
         {/* Export tab */}
         {!showSetup && activeTab === "export" && (
-          <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Export Center</h2>
-            <p className="text-sm text-muted-foreground mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
+          <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">Export Center</h2>
+            <p className="text-sm text-muted-foreground mb-6 sm:mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
             <div className="space-y-4">
               {[
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts },
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation },
               ].map((exp, i) => (
-                <div key={exp.label} className="flex items-center justify-between rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
+                <div key={exp.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
                     <h3 className="font-display text-sm font-semibold text-foreground">{exp.label}</h3>
                     <p className="text-xs text-muted-foreground">{exp.desc}</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={scenes.length === 0}>
+                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={scenes.length === 0} className="min-h-[40px] w-full sm:w-auto shrink-0">
                     <Download className="h-3.5 w-3.5" /> Exporter
                   </Button>
                 </div>
