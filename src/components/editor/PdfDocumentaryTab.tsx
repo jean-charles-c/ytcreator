@@ -205,41 +205,59 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
         Importez un dossier de recherche PDF pour générer un script documentaire complet.
       </p>
 
-      {/* Upload zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => !file && inputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center gap-3 sm:gap-4 rounded-lg border-2 border-dashed p-6 sm:p-12 transition-colors cursor-pointer ${
-          dragOver ? "border-primary bg-primary/5" : file ? "border-border bg-card cursor-default" : "border-border hover:border-primary/50 hover:bg-secondary/30"
-        }`}
-      >
-        <input ref={inputRef} type="file" accept=".pdf,application/pdf" onChange={handleFileChange} className="hidden" />
-        {file ? (
-          <div className="flex items-center gap-3 w-full">
-            <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-primary/10 shrink-0"><FileText className="h-6 w-6 text-primary" /></div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-              <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} Mo</p>
+      <input ref={inputRef} type="file" accept=".pdf,application/pdf" onChange={handleFileChange} className="hidden" />
+
+      {/* Upload zone — hidden once text is extracted */}
+      {!extractedText && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => !file && inputRef.current?.click()}
+          className={`relative flex flex-col items-center justify-center gap-3 sm:gap-4 rounded-lg border-2 border-dashed p-6 sm:p-12 transition-colors cursor-pointer ${
+            dragOver ? "border-primary bg-primary/5" : file ? "border-border bg-card cursor-default" : "border-border hover:border-primary/50 hover:bg-secondary/30"
+          }`}
+        >
+          {file ? (
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 shrink-0"><FileText className="h-5 w-5 text-primary" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} Mo</p>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); removeFile(); }} className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); removeFile(); }} className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-center h-14 w-14 rounded-full bg-secondary"><Upload className="h-6 w-6 text-muted-foreground" /></div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Glissez votre PDF ici ou cliquez pour parcourir</p>
-              <p className="text-xs text-muted-foreground mt-1">PDF uniquement — 20 Mo max</p>
-            </div>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-center h-14 w-14 rounded-full bg-secondary"><Upload className="h-6 w-6 text-muted-foreground" /></div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">Glissez votre PDF ici ou cliquez pour parcourir</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF uniquement — 20 Mo max</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Compact file info + stats — shown after extraction */}
+      {extractedText && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="truncate max-w-[150px] font-medium text-foreground text-[11px]">{file?.name}</span>
+          <span>·</span>
+          <span>{pageCount} p.</span>
+          <span>·</span>
+          <span>{extractedText.length.toLocaleString()} car.</span>
+          <button onClick={removeFile} className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-1">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Action buttons */}
-      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+      <div className="mt-4 flex flex-col sm:flex-row gap-3">
         {!extractedText && (
           <Button variant="hero" disabled={!file || !projectId || parsing} onClick={() => file && parsePdf(file)} className="min-h-[44px]">
             {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Extraire le texte</>}
@@ -256,18 +274,6 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
           </Button>
         )}
       </div>
-
-      {/* Extracted text — compact stats */}
-      {extractedText && (
-        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="truncate max-w-[180px] font-medium text-foreground">{file?.name}</span>
-          <span>·</span>
-          <span>{pageCount} p.</span>
-          <span>·</span>
-          <span>{extractedText.length.toLocaleString()} car.</span>
-        </div>
-      )}
 
       {/* Analysis loading */}
       {analyzing && (
