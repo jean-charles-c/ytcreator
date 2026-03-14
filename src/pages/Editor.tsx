@@ -498,11 +498,11 @@ export default function Editor() {
                           <button
                             onClick={() => runStoryboard(scene.id)}
                             disabled={isRegenerating}
-                            className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                            className="sm:ml-auto flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
                             title="Régénérer les shots de cette scène"
                           >
                             {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                            <span className="hidden sm:inline">Régénérer</span>
+                            <span>Régénérer</span>
                           </button>
                         </div>
                         <div className="rounded border border-border bg-card p-4 mb-4">
