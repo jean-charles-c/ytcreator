@@ -638,7 +638,10 @@ export default function Editor() {
             <textarea value={narration} onChange={(e) => setNarration(e.target.value)}
               placeholder="Collez votre voix-off ici..."
               className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-card p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <div className="mt-1.5 text-xs text-muted-foreground text-right">
+              {narration.length.toLocaleString()} caractères
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row gap-3">
               <Button variant="hero" onClick={saveProject} disabled={saving} className="min-h-[44px]">
                 <Save className="h-4 w-4" />
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
