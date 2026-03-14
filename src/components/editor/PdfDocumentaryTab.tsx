@@ -80,22 +80,6 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
     setAnalyzing(false);
   }, [extractedText, onAnalysisReady]);
 
-  const runYoutubePackaging = useCallback(async () => {
-    if (!analysis || !extractedText) return;
-    setGeneratingTitles(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("youtube-packaging", {
-        body: { analysis, text: extractedText },
-      });
-      if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
-      if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
-      const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
-      setYoutubeTitles(sorted);
-      toast.success("10 titres YouTube générés");
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
-    setGeneratingTitles(false);
-  }, [analysis, extractedText]);
-
   const runStructure = useCallback(async () => {
     if (!analysis || !extractedText) return;
     setGeneratingStructure(true);
