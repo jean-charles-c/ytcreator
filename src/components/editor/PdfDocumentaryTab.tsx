@@ -255,13 +255,15 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
         )}
       </div>
 
-      {/* Extracted text — stats only */}
+      {/* Extracted text — compact stats */}
       {extractedText && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-            <p className="text-sm font-medium text-foreground">Texte extrait — {pageCount} page(s) — {extractedText.length.toLocaleString()} caractères</p>
-          </div>
+        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="truncate max-w-[180px] font-medium text-foreground">{file?.name}</span>
+          <span>·</span>
+          <span>{pageCount} p.</span>
+          <span>·</span>
+          <span>{extractedText.length.toLocaleString()} car.</span>
         </div>
       )}
 
