@@ -422,7 +422,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: Pd
               </div>
             )}
           </div>
-          <div className="max-h-[500px] overflow-y-auto rounded border border-border bg-background p-4">
+          <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
             <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
             <div ref={scriptEndRef} />
           </div>
