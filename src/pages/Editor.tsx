@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -391,6 +392,69 @@ export default function Editor() {
     toast.success("Script Narratif exporté");
   }, [title, generatedScript]);
 
+  const downloadAll = useCallback(async () => {
+    const zip = new JSZip();
+    const prefix = title.replace(/\s+/g, "_");
+
+    if (generatedScript) {
+      zip.file(`${prefix}_script_narratif.md`, cleanScriptForExport(generatedScript));
+    }
+
+    if (scenes.length > 0) {
+      // Visual Prompts
+      let vp = "";
+      let shotIdx = 1;
+      scenes.forEach((scene) => {
+        getShotsForScene(scene.id).forEach((shot) => {
+          vp += `SHOT ${shotIdx}: ${shot.prompt_export || shot.description}\n\n`;
+          shotIdx++;
+        });
+      });
+      zip.file(`${prefix}_visual_prompts.md`, vp);
+
+      // Scene Mapping
+      let sm = `# Scene Mapping — ${title}\n\n`;
+      let gsi = 1;
+      scenes.forEach((scene) => {
+        sm += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
+        sm += `### Narration (extrait du script)\n\n> **${scene.source_text}**\n\n`;
+        const sceneShots = getShotsForScene(scene.id);
+        if (sceneShots.length > 0) {
+          sm += `### Shots associés\n\n`;
+          sceneShots.forEach((shot) => {
+            sm += `- **Shot ${gsi} — ${shot.shot_type}**: ${shot.description}`;
+            if (shot.guardrails) sm += ` [${shot.guardrails}]`;
+            sm += `\n`;
+            gsi++;
+          });
+          sm += `\n`;
+        }
+      });
+      zip.file(`${prefix}_scene_mapping.md`, sm);
+
+      // Narration Segmentation
+      let ns = `# Narration Segmentation — ${title}\n\n`;
+      scenes.forEach((scene) => {
+        ns += `---\n\n### Scène ${scene.scene_order} — ${scene.title}\n\n${scene.source_text}\n\n`;
+      });
+      zip.file(`${prefix}_narration_segmentation.md`, ns);
+    }
+
+    if (Object.keys(zip.files).length === 0) {
+      toast.error("Aucun fichier à exporter");
+      return;
+    }
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${prefix}_export.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Tous les fichiers exportés");
+  }, [title, generatedScript, scenes, shots]);
+
   if (loadingProject) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -752,6 +816,13 @@ export default function Editor() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-6 pt-6 border-t border-border">
+              <Button variant="hero" onClick={downloadAll} disabled={!generatedScript && scenes.length === 0} className="min-h-[44px] w-full sm:w-auto">
+                <Download className="h-4 w-4" /> Tout exporter (.zip)
+              </Button>
+            </div>
+
             {scenes.length === 0 && (
               <p className="text-xs text-muted-foreground mt-4 italic">Segmentez et générez le storyboard avant d'exporter.</p>
             )}
