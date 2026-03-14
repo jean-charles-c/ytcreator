@@ -385,11 +385,37 @@ export default function Editor() {
       .join("\n");
   };
 
+  const splitIntoVoiceOverBlocks = (raw: string): string[] => {
+    const clean = cleanScriptForExport(raw);
+    const sentences = clean.split(/(?<=\.)\s+/);
+    const blocks: string[] = [];
+    let currentBlock = "";
+    for (const sentence of sentences) {
+      const candidate = currentBlock ? currentBlock + " " + sentence : sentence;
+      if (candidate.length > 8300 && currentBlock.length > 0) {
+        blocks.push(currentBlock.trim());
+        currentBlock = sentence;
+      } else {
+        currentBlock = candidate;
+      }
+    }
+    if (currentBlock.trim()) blocks.push(currentBlock.trim());
+    return blocks;
+  };
+
   const generateScriptNarratif = useCallback(() => {
     if (!generatedScript) return;
     const clean = cleanScriptForExport(generatedScript);
     downloadFile(clean, `${title.replace(/\s+/g, "_")}_script_narratif.md`);
     toast.success("Script Narratif exporté");
+  }, [title, generatedScript]);
+
+  const generateVoiceOverBlocks = useCallback(() => {
+    if (!generatedScript) return;
+    const blocks = splitIntoVoiceOverBlocks(generatedScript);
+    const output = blocks.map((block, i) => `Voice Over Block ${i + 1} (${block.length} chars)\n\n${block}`).join("\n\n---\n\n");
+    downloadFile(output, `${title.replace(/\s+/g, "_")}_voice_over_blocks.md`);
+    toast.success(`${blocks.length} bloc(s) Voice Over exporté(s)`);
   }, [title, generatedScript]);
 
   const downloadAll = useCallback(async () => {
