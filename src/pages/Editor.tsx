@@ -82,7 +82,28 @@ export default function Editor() {
   });
   const [generatedScript, setGeneratedScript] = useState<string | null>(() => sessionStorage.getItem(`sc_script_${id}`) || null);
   const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>(() => {
-    try { const v = sessionStorage.getItem(`sc_seo_${id}`); return v ? JSON.parse(v) : { titles: null, description: null, tags: null }; } catch { return { titles: null, description: null, tags: null }; }
+    const fallback = { titles: null, description: null, tags: null };
+
+    try {
+      const v = sessionStorage.getItem(`sc_seo_${id}`);
+      if (!v) return fallback;
+
+      const parsed = JSON.parse(v) as {
+        titles?: unknown;
+        description?: unknown;
+        tags?: unknown;
+      } | null;
+
+      if (!parsed || typeof parsed !== "object") return fallback;
+
+      return {
+        titles: Array.isArray(parsed.titles) ? parsed.titles : null,
+        description: typeof parsed.description === "string" ? parsed.description : null,
+        tags: typeof parsed.tags === "string" ? parsed.tags : null,
+      };
+    } catch {
+      return fallback;
+    }
   });
 
   // Load existing project + scenes + shots

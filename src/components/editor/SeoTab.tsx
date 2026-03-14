@@ -51,9 +51,9 @@ const hookBadgeColor = (type: string) => {
 export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
 
-  const youtubeTitles = seoResults.titles;
-  const youtubeDescription = seoResults.description;
-  const youtubeTags = seoResults.tags;
+  const youtubeTitles = seoResults?.titles ?? null;
+  const youtubeDescription = seoResults?.description ?? null;
+  const youtubeTags = seoResults?.tags ?? null;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
