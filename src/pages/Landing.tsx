@@ -113,7 +113,7 @@ export default function Landing() {
           <p className="text-muted-foreground mb-8">
             Créez votre premier projet en moins de 30 secondes. Gratuit, sans carte bancaire.
           </p>
-          <Button variant="hero" size="lg" onClick={() => navigate("/dashboard")}>
+          <Button variant="hero" size="lg" onClick={() => navigate("/signup")}>
             Lancer DocuStoryboard AI
             <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
