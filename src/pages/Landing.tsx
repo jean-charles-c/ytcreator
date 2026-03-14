@@ -70,7 +70,7 @@ export default function Landing() {
           <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold leading-tight tracking-tight text-foreground">
             Transformez votre narration
             <br />
-            <span className="text-primary">en storyboard visuel</span>
+            <span className="text-primary">en VisualPrompts</span>
           </h1>
           <p className="mx-auto mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed">
             De la voix-off au prompt image en quelques secondes. DocuStoryboard AI segmente votre script, génère des plans documentaires et exporte des prompts prêts pour Grok Image.
