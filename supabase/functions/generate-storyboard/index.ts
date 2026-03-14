@@ -286,18 +286,26 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; prompt_export: string; guardrails: string }[] }[];
 
-    if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      storyboard = parsed.scenes;
-    } else {
-      const content = aiData.choices?.[0]?.message?.content || "";
-      storyboard = JSON.parse(content).scenes;
+    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; prompt_export: string; guardrails: string }[] }[] = [];
+
+    try {
+      if (toolCall?.function?.arguments) {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        storyboard = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+      } else {
+        const content = aiData.choices?.[0]?.message?.content || "";
+        const parsedContent = JSON.parse(content);
+        storyboard = Array.isArray(parsedContent?.scenes) ? parsedContent.scenes : [];
+      }
+    } catch (parseError) {
+      console.warn("Failed to parse storyboard tool output, using fallback.", parseError);
+      storyboard = [];
     }
 
     if (!Array.isArray(storyboard) || storyboard.length === 0) {
-      throw new Error("AI returned no storyboard data");
+      console.warn("AI returned empty storyboard data, using deterministic fallback generation.");
+      storyboard = buildFallbackStoryboard(scenes);
     }
 
     if (singleScene) {
@@ -306,20 +314,30 @@ serve(async (req) => {
       await supabase.from("shots").delete().eq("project_id", project_id);
     }
 
-    const shotRows: any[] = [];
+    const storyboardBySceneId = new Map<string, any>();
     for (const sceneData of storyboard) {
-      const matchedScene = scenes.find((s: any) => s.id === sceneData.scene_id);
-      if (!matchedScene) continue;
-      for (let j = 0; j < sceneData.shots.length; j++) {
-        const shot = sceneData.shots[j];
+      if (sceneData?.scene_id) storyboardBySceneId.set(sceneData.scene_id, sceneData);
+    }
+
+    const shotRows: any[] = [];
+    for (const scene of scenes) {
+      const sceneData = storyboardBySceneId.get(scene.id);
+      const sceneShots = Array.isArray(sceneData?.shots) && sceneData.shots.length > 0
+        ? sceneData.shots
+        : buildFallbackShots(scene);
+
+      for (let j = 0; j < sceneShots.length; j++) {
+        const shot = sceneShots[j];
+        const fallbackType = CAMERA_TYPES[j % CAMERA_TYPES.length];
+        const fallbackDescription = splitSentences(scene.source_text || "")[j] || scene.source_text;
         shotRows.push({
-          scene_id: sceneData.scene_id,
+          scene_id: scene.id,
           project_id,
           shot_order: j + 1,
-          shot_type: shot.shot_type,
-          description: shot.description,
-          prompt_export: shot.prompt_export,
-          guardrails: shot.guardrails || null,
+          shot_type: shot?.shot_type || fallbackType,
+          description: shot?.description || fallbackDescription,
+          prompt_export: shot?.prompt_export || fallbackPrompt(fallbackDescription, scene.visual_intention, fallbackType),
+          guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });
       }
     }
