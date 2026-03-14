@@ -473,6 +473,11 @@ export default function Editor() {
           </div>
         )}
 
+        {/* PDF Documentary tab */}
+        {!showSetup && activeTab === "pdf-documentary" && (
+          <PdfDocumentaryTab projectId={projectId} />
+        )}
+
         {/* Segmentation View */}
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
