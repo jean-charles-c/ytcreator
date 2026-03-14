@@ -70,15 +70,15 @@ export default function PdfDocumentaryTab({
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
     setParsing(true);
-    setExtractedText(null);
-    setAnalysis(null);
-    setDocStructure(null);
-    setScript(null);
+    onExtractedTextChange(null);
+    onAnalysisChange(null);
+    onDocStructureChange(null);
+    onScriptChange(null);
     let fullText = "";
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      setPageCount(pdf.numPages);
+      onPageCountChange(pdf.numPages);
       const pages: string[] = [];
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -88,7 +88,7 @@ export default function PdfDocumentaryTab({
       }
       fullText = pages.join("\n\n");
       if (!fullText.trim()) { toast.error("Aucun texte détecté dans ce PDF."); setParsing(false); return; }
-      setExtractedText(fullText);
+      onExtractedTextChange(fullText);
       toast.success(`${pdf.numPages} page(s) extraite(s)`);
     } catch (err) { console.error("PDF parse error:", err); toast.error("Erreur lors de la lecture du PDF"); setParsing(false); return; }
     setParsing(false);
@@ -99,18 +99,18 @@ export default function PdfDocumentaryTab({
       const { data, error } = await supabase.functions.invoke("analyze-pdf", { body: { text: fullText } });
       if (error) { toast.error("Erreur d'analyse"); console.error(error); setAnalyzing(false); return; }
       if (data?.error) { toast.error(data.error); setAnalyzing(false); return; }
-      setAnalysis(data.analysis);
+      onAnalysisChange(data.analysis);
       onAnalysisReady?.(data.analysis, fullText);
       toast.success("Analyse narrative terminée");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setAnalyzing(false);
-  }, [onAnalysisReady]);
+  }, [onAnalysisReady, onExtractedTextChange, onAnalysisChange, onDocStructureChange, onScriptChange, onPageCountChange]);
 
   // Combined: generate structure then script automatically
   const runFullScriptGeneration = useCallback(async () => {
     if (!analysis || !extractedText) return;
     setGeneratingScript(true);
-    setScript("");
+    onScriptChange("");
 
     // Step 1: Generate structure
     let sections: DocSection[];
@@ -125,7 +125,7 @@ export default function PdfDocumentaryTab({
         return;
       }
       sections = data.sections;
-      setDocStructure(sections);
+      onDocStructureChange(sections);
       toast.success("Structure documentaire générée");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); setGeneratingScript(false); return; }
 
@@ -173,32 +173,32 @@ export default function PdfDocumentaryTab({
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               full += content;
-              setScript(full);
+              onScriptChange(full);
             }
           } catch { /* partial */ }
         }
       }
 
-      setScript(full);
+      onScriptChange(full);
       onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, extractedText, scriptLanguage]);
+  }, [analysis, extractedText, scriptLanguage, onDocStructureChange, onScriptChange, onScriptReady]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); setExtractedText(null); setAnalysis(null); setDocStructure(null); setScript(null); }
+    if (dropped?.type === "application/pdf") { setFile(dropped); onFileNameChange(dropped.name); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); setExtractedText(null); setAnalysis(null); setDocStructure(null); setScript(null); }
+    if (selected?.type === "application/pdf") { setFile(selected); onFileNameChange(selected.name); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); }
   };
 
   const removeFile = () => {
-    setFile(null); setExtractedText(null); setAnalysis(null); setDocStructure(null); setScript(null); setPageCount(0);
+    setFile(null); onFileNameChange(null); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); onPageCountChange(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
