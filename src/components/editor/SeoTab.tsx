@@ -40,7 +40,7 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
-export default function SeoTab({ projectId, analysis, extractedText, scriptLanguage }: SeoTabProps) {
+export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
   const [youtubeDescription, setYoutubeDescription] = useState<string | null>(null);
