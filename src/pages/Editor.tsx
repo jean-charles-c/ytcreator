@@ -69,13 +69,21 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
-  const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
-  const [pdfPageCount, setPdfPageCount] = useState(0);
-  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
-  const [pdfDocStructure, setPdfDocStructure] = useState<any[] | null>(null);
-  const [generatedScript, setGeneratedScript] = useState<string | null>(null);
-  const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>({ titles: null, description: null, tags: null });
+  const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
+    try { const v = sessionStorage.getItem(`sc_analysis_${id}`); return v ? JSON.parse(v) : null; } catch { return null; }
+  });
+  const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(() => sessionStorage.getItem(`sc_text_${id}`) || null);
+  const [pdfPageCount, setPdfPageCount] = useState(() => {
+    try { return Number(sessionStorage.getItem(`sc_pages_${id}`)) || 0; } catch { return 0; }
+  });
+  const [pdfFileName, setPdfFileName] = useState<string | null>(() => sessionStorage.getItem(`sc_fname_${id}`) || null);
+  const [pdfDocStructure, setPdfDocStructure] = useState<any[] | null>(() => {
+    try { const v = sessionStorage.getItem(`sc_struct_${id}`); return v ? JSON.parse(v) : null; } catch { return null; }
+  });
+  const [generatedScript, setGeneratedScript] = useState<string | null>(() => sessionStorage.getItem(`sc_script_${id}`) || null);
+  const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>(() => {
+    try { const v = sessionStorage.getItem(`sc_seo_${id}`); return v ? JSON.parse(v) : null; } catch { return { titles: null, description: null, tags: null }; }
+  });
 
   // Load existing project + scenes + shots
   useEffect(() => {
