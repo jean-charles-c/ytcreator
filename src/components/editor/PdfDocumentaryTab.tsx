@@ -37,10 +37,12 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingTitles, setGeneratingTitles] = useState(false);
+  const [generatingStructure, setGeneratingStructure] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [analysis, setAnalysis] = useState<NarrativeAnalysis | null>(null);
   const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
+  const [docStructure, setDocStructure] = useState<DocSection[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const parsePdf = useCallback(async (pdfFile: File) => {
