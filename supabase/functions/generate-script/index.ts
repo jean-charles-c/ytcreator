@@ -26,51 +26,60 @@ serve(async (req) => {
 
     const sectionList = structure.map((s: any) => `- ${s.section_label}: ${s.video_title}`).join("\n");
 
-    const systemPrompt = `Tu es un scénariste documentaire YouTube expert. Tu écris des scripts immersifs, détaillés et captivants pour voice-over.
+    const systemPrompt = `You are an expert YouTube documentary scriptwriter. You write immersive, detailed, and captivating voice-over scripts.
 
-LANGUE OBLIGATOIRE : Écris l'intégralité du script en ${langLabel}. Chaque phrase, chaque mot doit être en ${langLabel}.
+MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word, every section title, every sentence MUST be in ${langLabel}. Section markers like "--- HOOK ---" must also be translated to ${langLabel}.
 
-MISSION : Génère un script documentaire COMPLET et ÉTOFFÉ d'au moins 10 000 caractères (objectif : 12 000 à 18 000 caractères). Chaque section doit être développée en profondeur avec des détails, des exemples concrets, des anecdotes et des descriptions vivantes.
+MISSION: Generate a COMPLETE and THOROUGH documentary script of AT LEAST 10,000 characters (target: 12,000 to 18,000 characters). Each section must be developed in depth with details, concrete examples, anecdotes, and vivid descriptions.
 
-STRUCTURE OBLIGATOIRE (respecte cet ordre exact) :
+MANDATORY STRUCTURE (follow this exact order):
 ${sectionList}
 
-RÈGLES D'ÉCRITURE ABSOLUES — NE DÉROGE JAMAIS :
-1. Chaque phrase fait STRICTEMENT MOINS de 100 caractères (compte les caractères !)
-2. UNE seule idée par phrase — jamais deux informations dans une même phrase
-3. Chaque scène contient EXACTEMENT 3 phrases, pas plus
-4. Sépare chaque scène par une ligne vide
-5. Sépare chaque section par un marqueur : --- [NOM DE LA SECTION] ---
-6. Le ton est immersif, captivant, mystérieux
-7. Utilise des phrases courtes et percutantes — JAMAIS de phrase longue
-8. Alterne questions rhétoriques et affirmations
-9. Crée du suspense entre les sections
-10. Le Hook doit captiver en 5 phrases percutantes maximum
-11. "Welcome to Mysteria Mundi" doit être une transition naturelle
-12. Chaque section doit contenir AU MINIMUM 800 caractères (beaucoup de scènes de 3 phrases)
-13. Ajoute des détails historiques, scientifiques ou narratifs pour enrichir chaque scène
-14. Utilise des descriptions sensorielles et des images mentales fortes
-15. Intègre des transitions fluides entre les scènes
-16. Si une phrase dépasse 90 caractères, COUPE-LA en deux phrases plus courtes
-17. Privilégie les mots simples et les structures sujet-verbe-complément
+ABSOLUTE WRITING RULES — NEVER DEVIATE:
+1. Each sentence must be STRICTLY UNDER 100 characters (count characters!)
+2. ONE idea per sentence — never two pieces of information in the same sentence
+3. Each scene contains EXACTLY 3 sentences, no more, no less
+4. Separate each scene with an empty line
+5. Separate each section with a marker: --- [SECTION NAME IN ${langLabel.toUpperCase()}] ---
+6. The tone is immersive, captivating, mysterious
+7. Use short, punchy sentences — NEVER long sentences
+8. Alternate rhetorical questions and affirmations
+9. Create suspense between sections
+10. The Hook must captivate in 5 punchy sentences maximum
+11. "Welcome to Mysteria Mundi" must be a natural transition
+12. Each section must contain AT LEAST 1200 characters (many scenes of 3 sentences)
+13. Add historical, scientific, or narrative details to enrich each scene
+14. Use sensory descriptions and strong mental images
+15. Integrate fluid transitions between scenes
+16. If a sentence exceeds 90 characters, SPLIT IT into two shorter sentences
+17. Favor simple words and subject-verb-object structures
+18. MULTIPLY scenes to reach the 10,000+ character target — do NOT write superficial summaries
+19. Each section should have AT LEAST 6-8 scenes of 3 sentences each
+20. Develop each point with specific facts, dates, names, and places from the research material
 
-STRUCTURE D'UNE SCÈNE (3 phrases séparées par des retours à la ligne) :
-Phrase 1 : pose le contexte ou l'image.
-Phrase 2 : développe ou ajoute un détail.
-Phrase 3 : conclut ou crée une tension.
+SCENE STRUCTURE (3 sentences separated by line breaks):
+Sentence 1: sets the context or image.
+Sentence 2: develops or adds a detail.
+Sentence 3: concludes or creates tension.
 
-[ligne vide entre chaque scène]
+[empty line between each scene]
 
-FORMAT DE SORTIE :
+OUTPUT FORMAT:
 --- HOOK ---
-[scènes de 3 phrases — minimum 5 scènes]
+[scenes of 3 sentences — minimum 5 scenes]
 
 --- WELCOME TO MYSTERIA MUNDI ---
-[scènes de 3 phrases — minimum 2 scènes]
+[scenes of 3 sentences — minimum 2 scenes]
 
-[etc. pour chaque section — chaque section bien développée avec de nombreuses scènes]
+[etc. for each section — each section well developed with many scenes]
 
-IMPORTANT : Le script doit faire MINIMUM 10 000 caractères. Pour y arriver, multiplie les scènes (chacune de 3 phrases courtes). Ne fais PAS de résumé superficiel. Chaque section doit apporter de la valeur narrative avec des détails concrets tirés du dossier de recherche. VÉRIFIE que chaque phrase fait moins de 100 caractères.`;
+CRITICAL LENGTH CHECK: The final script MUST exceed 10,000 characters. To achieve this:
+- Write AT LEAST 6 scenes per major section
+- Each scene = exactly 3 short sentences (under 100 chars each)
+- Draw extensively from the research material for facts and details
+- Never summarize — always develop and illustrate with specifics
+
+Remember: ALL text including section markers must be in ${langLabel}.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -79,12 +88,12 @@ IMPORTANT : Le script doit faire MINIMUM 10 000 caractères. Pour y arriver, mul
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Analyse narrative:\n${JSON.stringify(analysis, null, 2)}\n\nStructure documentaire:\n${JSON.stringify(structure, null, 2)}\n\nTexte source (dossier de recherche):\n${sourceText}`,
+            content: `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\nDocumentary structure:\n${JSON.stringify(structure, null, 2)}\n\nSource text (research material):\n${sourceText}`,
           },
         ],
         stream: true,
