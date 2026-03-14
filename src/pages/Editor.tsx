@@ -23,12 +23,13 @@ import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 
-type Tab = "script" | "segmentation" | "storyboard" | "export";
+type Tab = "script" | "pdf-documentary" | "segmentation" | "storyboard" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script", label: "ScriptInput", icon: Film },
+  { key: "pdf-documentary", label: "PDF Documentary", icon: FileText },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "Storyboard", icon: Clapperboard },
   { key: "export", label: "Export", icon: Download },
