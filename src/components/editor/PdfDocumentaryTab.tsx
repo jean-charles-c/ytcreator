@@ -291,7 +291,35 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Structure loading */}
+      {generatingStructure && (
+        <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Génération de la structure documentaire…</p>
+        </div>
+      )}
+
+      {/* Documentary structure */}
+      {docStructure && (
+        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
+          <div className="flex items-center gap-2 mb-4">
+            <LayoutList className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-semibold text-foreground">Structure documentaire</h3>
+          </div>
+          <div className="space-y-3">
+            {docStructure.map((section, i) => (
+              <div key={i} className="rounded border border-border bg-background p-4 transition-colors hover:bg-secondary/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-display font-medium text-primary">{section.section_label.toUpperCase()}</span>
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">{section.video_title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{section.narrative_description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!extractedText && !analysis && (
         <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
