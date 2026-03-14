@@ -72,7 +72,7 @@ EVERYTHING must be written in ${langLabel}. Respond ONLY with a call to generate
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\nDocument excerpt:\n${context}` },
+          { role: "user", content: `${analysis ? `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\n` : ""}Document excerpt:\n${context}` },
         ],
         tools: [
           {
