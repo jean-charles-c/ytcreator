@@ -38,19 +38,31 @@ interface PdfDocumentaryTabProps {
   onSendToScriptInput?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
+  // Lifted state for persistence
+  extractedText: string | null;
+  onExtractedTextChange: (text: string | null) => void;
+  pageCount: number;
+  onPageCountChange: (count: number) => void;
+  fileName: string | null;
+  onFileNameChange: (name: string | null) => void;
+  analysis: NarrativeAnalysis | null;
+  onAnalysisChange: (analysis: NarrativeAnalysis | null) => void;
+  docStructure: DocSection[] | null;
+  onDocStructureChange: (structure: DocSection[] | null) => void;
+  script: string | null;
+  onScriptChange: (script: string | null) => void;
 }
 
-export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady }: PdfDocumentaryTabProps) {
+export default function PdfDocumentaryTab({
+  projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady,
+  extractedText, onExtractedTextChange, pageCount, onPageCountChange, fileName, onFileNameChange,
+  analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
+}: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingScript, setGeneratingScript] = useState(false);
-  const [extractedText, setExtractedText] = useState<string | null>(null);
-  const [pageCount, setPageCount] = useState(0);
-  const [analysis, setAnalysis] = useState<NarrativeAnalysis | null>(null);
-  const [docStructure, setDocStructure] = useState<DocSection[] | null>(null);
-  const [script, setScript] = useState<string | null>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
