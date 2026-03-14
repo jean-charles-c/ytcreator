@@ -32,7 +32,6 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [generatingTitles, setGeneratingTitles] = useState(false);
   const [generatingStructure, setGeneratingStructure] = useState(false);
   const [generatingScript, setGeneratingScript] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
