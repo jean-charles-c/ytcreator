@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -55,12 +55,14 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
-  const parsePdf = useCallback(async (pdfFile: File) => {
+  // Combined: extract PDF text then immediately run analysis
+  const extractAndAnalyze = useCallback(async (pdfFile: File) => {
     setParsing(true);
     setExtractedText(null);
     setAnalysis(null);
     setDocStructure(null);
     setScript(null);
+    let fullText = "";
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -72,26 +74,25 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
         const text = content.items.map((item: any) => item.str).join(" ").replace(/\s+/g, " ").trim();
         if (text) pages.push(text);
       }
-      const fullText = pages.join("\n\n");
-      if (!fullText.trim()) { toast.error("Aucun texte détecté dans ce PDF."); }
-      else { setExtractedText(fullText); toast.success(`${pdf.numPages} page(s) extraite(s)`); }
-    } catch (err) { console.error("PDF parse error:", err); toast.error("Erreur lors de la lecture du PDF"); }
+      fullText = pages.join("\n\n");
+      if (!fullText.trim()) { toast.error("Aucun texte détecté dans ce PDF."); setParsing(false); return; }
+      setExtractedText(fullText);
+      toast.success(`${pdf.numPages} page(s) extraite(s)`);
+    } catch (err) { console.error("PDF parse error:", err); toast.error("Erreur lors de la lecture du PDF"); setParsing(false); return; }
     setParsing(false);
-  }, []);
 
-  const runAnalysis = useCallback(async () => {
-    if (!extractedText) return;
+    // Auto-chain: run analysis
     setAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-pdf", { body: { text: extractedText } });
+      const { data, error } = await supabase.functions.invoke("analyze-pdf", { body: { text: fullText } });
       if (error) { toast.error("Erreur d'analyse"); console.error(error); setAnalyzing(false); return; }
       if (data?.error) { toast.error(data.error); setAnalyzing(false); return; }
       setAnalysis(data.analysis);
-      onAnalysisReady?.(data.analysis, extractedText);
+      onAnalysisReady?.(data.analysis, fullText);
       toast.success("Analyse narrative terminée");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setAnalyzing(false);
-  }, [extractedText, onAnalysisReady]);
+  }, [onAnalysisReady]);
 
   // Combined: generate structure then script automatically
   const runFullScriptGeneration = useCallback(async () => {
@@ -197,6 +198,37 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
       .join("\n");
   };
 
+  const splitIntoVoiceOverBlocks = (raw: string): string[] => {
+    const clean = cleanScriptForExport(raw);
+    const sentences = clean.split(/(?<=\.)\s+/);
+    const blocks: string[] = [];
+    let currentBlock = "";
+
+    for (const sentence of sentences) {
+      const candidate = currentBlock ? currentBlock + " " + sentence : sentence;
+      if (candidate.length > 8300 && currentBlock.length > 0) {
+        blocks.push(currentBlock.trim());
+        currentBlock = sentence;
+      } else {
+        currentBlock = candidate;
+      }
+    }
+    if (currentBlock.trim()) blocks.push(currentBlock.trim());
+    return blocks;
+  };
+
+  const exportVoiceOverBlocks = () => {
+    if (!script) return;
+    const blocks = splitIntoVoiceOverBlocks(script);
+    const output = blocks.map((block, i) => `Voice Over Block ${i + 1} (${block.length} chars)\n\n${block}`).join("\n\n---\n\n");
+    const blob = new Blob([output], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "voice_over_blocks.md"; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${blocks.length} bloc(s) Voice Over exporté(s)`);
+  };
+
   const copyScriptToClipboard = () => {
     if (!script) return;
     const clean = cleanScriptForExport(script);
@@ -269,14 +301,9 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
 
       {/* Action buttons */}
       <div className="mt-4 flex flex-col sm:flex-row gap-3">
-        {!extractedText && (
-          <Button variant="hero" disabled={!file || !projectId || parsing} onClick={() => file && parsePdf(file)} className="min-h-[44px]">
-            {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Extraire le texte</>}
-          </Button>
-        )}
-        {extractedText && !analysis && (
-          <Button variant="hero" disabled={analyzing} onClick={runAnalysis} className="min-h-[44px]">
-            {analyzing ? <><Loader2 className="h-4 w-4 animate-spin" /> Analyse en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
+        {!extractedText && !analyzing && (
+          <Button variant="hero" disabled={!file || !projectId || parsing} onClick={() => file && extractAndAnalyze(file)} className="min-h-[44px]">
+            {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
           </Button>
         )}
         {analysis && !script && script === null && (
@@ -299,10 +326,12 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
       </div>
 
       {/* Analysis loading */}
-      {analyzing && (
+      {(parsing || analyzing) && (
         <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Analyse narrative en cours…</p>
+          <p className="text-sm text-muted-foreground">
+            {parsing ? "Extraction du texte en cours…" : "Analyse narrative en cours…"}
+          </p>
         </div>
       )}
 
@@ -369,7 +398,7 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {generatingScript && (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -392,6 +421,9 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
                   }} className="h-8 text-xs">
                     <Download className="h-3 w-3" /> .md
                   </Button>
+                  <Button variant="outline" size="sm" onClick={exportVoiceOverBlocks} className="h-8 text-xs">
+                    <Mic className="h-3 w-3" /> VO Blocks
+                  </Button>
                   <Button variant="hero" size="sm" onClick={() => {
                     const clean = cleanScriptForExport(script);
                     onSendToScriptInput?.(clean);
@@ -410,7 +442,7 @@ export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguag
         </div>
       )}
 
-      {!extractedText && !analysis && (
+      {!extractedText && !analysis && !parsing && !analyzing && (
         <div className="mt-8 rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/30" />
