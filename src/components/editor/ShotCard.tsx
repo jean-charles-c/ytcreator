@@ -73,7 +73,7 @@ export default function ShotCard({ shot, onUpdate }: ShotCardProps) {
 
   return (
     <div className="group rounded border border-border bg-card overflow-hidden transition-colors hover:border-primary/30 relative">
-      <button onClick={startEdit} className="absolute top-2 right-2 p-1 rounded bg-card/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10" title="Éditer">
+      <button onClick={startEdit} className="absolute top-2 right-2 p-2 rounded bg-card/80 text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10 min-h-[36px] min-w-[36px] flex items-center justify-center" title="Éditer">
         <Pencil className="h-3 w-3" />
       </button>
       <div className="aspect-video bg-secondary flex items-center justify-center">
