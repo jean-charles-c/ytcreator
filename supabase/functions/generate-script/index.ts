@@ -30,7 +30,7 @@ serve(async (req) => {
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word, every section title, every sentence MUST be in ${langLabel}. Section markers like "--- HOOK ---" must also be translated to ${langLabel}.
 
-MISSION: Generate a COMPLETE and THOROUGH documentary script of AT LEAST 10,000 characters (target: 12,000 to 18,000 characters). Each section must be developed in depth with details, concrete examples, anecdotes, and vivid descriptions.
+MISSION: Generate a COMPLETE documentary script between 10,000 and 12,000 characters. Each section must be developed with unique details, concrete examples, anecdotes, and vivid descriptions. NEVER pad with repetition or redundancy — every sentence must bring NEW information or a NEW angle.
 
 MANDATORY STRUCTURE (follow this exact order):
 ${sectionList}
@@ -53,9 +53,10 @@ ABSOLUTE WRITING RULES — NEVER DEVIATE:
 15. Integrate fluid transitions between scenes
 16. If a sentence exceeds 90 characters, SPLIT IT into two shorter sentences
 17. Favor simple words and subject-verb-object structures
-18. MULTIPLY scenes to reach the 10,000+ character target — do NOT write superficial summaries
-19. Each section should have AT LEAST 6-8 scenes of 3 sentences each
-20. Develop each point with specific facts, dates, names, and places from the research material
+18. Each section should have AT LEAST 6-8 scenes of 3 sentences each
+19. Develop each point with specific facts, dates, names, and places from the research material
+20. NEVER repeat the same idea, fact, or image twice — each sentence must be unique
+21. NEVER use filler or generic sentences — every line must carry meaningful content
 
 SCENE STRUCTURE (3 sentences separated by line breaks):
 Sentence 1: sets the context or image.
@@ -73,11 +74,12 @@ OUTPUT FORMAT:
 
 [etc. for each section — each section well developed with many scenes]
 
-CRITICAL LENGTH CHECK: The final script MUST exceed 10,000 characters. To achieve this:
-- Write AT LEAST 6 scenes per major section
+CRITICAL LENGTH & QUALITY CHECK:
+- The final script MUST be between 10,000 and 12,000 characters
 - Each scene = exactly 3 short sentences (under 100 chars each)
 - Draw extensively from the research material for facts and details
 - Never summarize — always develop and illustrate with specifics
+- ZERO redundancy: if you've already stated a fact, do NOT restate it
 
 Remember: ALL text including section markers must be in ${langLabel}.`;
 
