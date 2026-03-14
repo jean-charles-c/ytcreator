@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -9,18 +9,30 @@ import {
   Download,
   Play,
   Shield,
+  Save,
+  Check,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 type Tab = "script" | "segmentation" | "storyboard" | "export";
 
-const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
+const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script", label: "ScriptInput", icon: Film },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "Storyboard", icon: Clapperboard },
   { key: "export", label: "Export", icon: Download },
 ];
 
-// Mock scene data
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "fr", label: "Français" },
+  { value: "es", label: "Español" },
+  { value: "de", label: "Deutsch" },
+];
+
+// Mock scene data (will be replaced in step 4)
 const mockScenes = [
   {
     id: 1,
@@ -46,12 +58,86 @@ const mockScenes = [
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>("storyboard");
-  const [script, setScript] = useState(
-    id === "new"
-      ? ""
-      : "Au cœur de l'Asie centrale, les caravanes chargées de soie traversaient les déserts arides de la Route de la Soie. Ce réseau commercial légendaire reliait l'Orient à l'Occident..."
-  );
+  const { user } = useAuth();
+  const isNew = id === "new";
+
+  // Project fields
+  const [title, setTitle] = useState("");
+  const [subject, setSubject] = useState("");
+  const [scriptLanguage, setScriptLanguage] = useState("en");
+  const [narration, setNarration] = useState("");
+  const [projectId, setProjectId] = useState<string | null>(isNew ? null : id ?? null);
+  const [activeTab, setActiveTab] = useState<Tab>(isNew ? "script" : "script");
+  const [saving, setSaving] = useState(false);
+  const [loadingProject, setLoadingProject] = useState(!isNew);
+  const [showSetup, setShowSetup] = useState(isNew);
+
+  // Load existing project
+  useEffect(() => {
+    if (isNew || !id) return;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error || !data) {
+        toast.error("Projet introuvable");
+        navigate("/dashboard");
+        return;
+      }
+      setTitle(data.title);
+      setSubject(data.subject ?? "");
+      setScriptLanguage(data.script_language);
+      setNarration(data.narration ?? "");
+      setProjectId(data.id);
+      setShowSetup(false);
+      setLoadingProject(false);
+    };
+    load();
+  }, [id, isNew, navigate]);
+
+  // Save / create project
+  const saveProject = useCallback(async () => {
+    if (!user) return;
+    if (!title.trim()) {
+      toast.error("Veuillez saisir un titre.");
+      return;
+    }
+    setSaving(true);
+
+    if (projectId) {
+      // Update
+      const { error } = await supabase
+        .from("projects")
+        .update({ title: title.trim(), subject: subject.trim() || null, script_language: scriptLanguage, narration: narration.trim() || null })
+        .eq("id", projectId);
+      setSaving(false);
+      if (error) { toast.error("Erreur de sauvegarde"); return; }
+      toast.success("Projet sauvegardé");
+    } else {
+      // Create
+      const { data, error } = await supabase
+        .from("projects")
+        .insert({ user_id: user.id, title: title.trim(), subject: subject.trim() || null, script_language: scriptLanguage, narration: narration.trim() || null })
+        .select()
+        .single();
+      setSaving(false);
+      if (error || !data) { toast.error("Erreur de création"); return; }
+      setProjectId(data.id);
+      setShowSetup(false);
+      toast.success("Projet créé");
+      navigate(`/editor/${data.id}`, { replace: true });
+    }
+  }, [user, projectId, title, subject, scriptLanguage, narration, navigate]);
+
+  if (loadingProject) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -66,49 +152,109 @@ export default function Editor() {
           </button>
           <Film className="h-5 w-5 text-primary" />
           <span className="font-display font-semibold text-foreground truncate">
-            {id === "new" ? "Nouveau projet" : "La Route de la Soie — Épisode 3"}
+            {title || "Nouveau projet"}
           </span>
 
-          <div className="ml-auto flex items-center gap-1">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${
-                  activeTab === t.key
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <t.icon className="h-3.5 w-3.5" />
-                <span className="hidden md:inline">{t.label}</span>
-              </button>
-            ))}
-          </div>
+          {!showSetup && (
+            <div className="ml-auto flex items-center gap-1">
+              {tabItems.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${
+                    activeTab === t.key
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <t.icon className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
       {/* Content */}
       <main className="flex-1 overflow-auto">
-        {activeTab === "script" && (
+        {/* New project setup */}
+        {showSetup && (
+          <div className="container max-w-lg py-10 animate-fade-in">
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
+              Nouveau projet
+            </h2>
+            <p className="text-sm text-muted-foreground mb-8">
+              Décrivez votre projet documentaire pour commencer.
+            </p>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1.5">Titre du projet *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="ex. La Route de la Soie — Épisode 3"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1.5">Sujet / description</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="ex. Commerce historique entre Orient et Occident"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1.5">Langue du script</label>
+                <select
+                  value={scriptLanguage}
+                  onChange={(e) => setScriptLanguage(e.target.value)}
+                  className="w-full h-10 rounded border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l.value} value={l.value}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <Button variant="hero" onClick={saveProject} disabled={saving || !title.trim()}>
+                {saving ? "Création..." : "Créer le projet"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ScriptInput tab */}
+        {!showSetup && activeTab === "script" && (
           <div className="container max-w-3xl py-10 animate-fade-in">
             <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
               ScriptInput
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.
+              Collez ou saisissez votre narration ci-dessous, puis sauvegardez.
             </p>
             <textarea
-              value={script}
-              onChange={(e) => setScript(e.target.value)}
+              value={narration}
+              onChange={(e) => setNarration(e.target.value)}
               placeholder="Collez votre voix-off ici..."
               className="w-full min-h-[300px] rounded border border-border bg-card p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body"
             />
             <div className="mt-4 flex gap-3">
+              <Button variant="hero" onClick={saveProject} disabled={saving}>
+                <Save className="h-4 w-4" />
+                {saving ? "Sauvegarde..." : "Sauvegarder"}
+              </Button>
               <Button
-                variant="hero"
+                variant="outline"
                 onClick={() => setActiveTab("segmentation")}
-                disabled={!script.trim()}
+                disabled={!narration.trim()}
               >
                 <Play className="h-4 w-4" />
                 Lancer la segmentation
@@ -117,7 +263,8 @@ export default function Editor() {
           </div>
         )}
 
-        {activeTab === "segmentation" && (
+        {/* Segmentation tab (still mock — step 4) */}
+        {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-10 animate-fade-in">
             <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
               Segmentation View
@@ -133,16 +280,10 @@ export default function Editor() {
                   style={{ animationDelay: `${i * 100}ms` }}
                 >
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-display font-medium text-primary">
-                      SCÈNE {scene.id}
-                    </span>
+                    <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.id}</span>
                   </div>
-                  <h3 className="font-display text-base font-semibold text-foreground mb-2">
-                    {scene.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {scene.narration}
-                  </p>
+                  <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{scene.narration}</p>
                 </div>
               ))}
             </div>
@@ -155,65 +296,36 @@ export default function Editor() {
           </div>
         )}
 
-        {activeTab === "storyboard" && (
+        {/* Storyboard tab (still mock — step 5) */}
+        {!showSetup && activeTab === "storyboard" && (
           <div className="container max-w-5xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-              Storyboard View
-            </h2>
-            <p className="text-sm text-muted-foreground mb-8">
-              SceneBlocks et ShotCards correspondantes.
-            </p>
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
+            <p className="text-sm text-muted-foreground mb-8">SceneBlocks et ShotCards correspondantes.</p>
             <div className="space-y-8">
               {mockScenes.map((scene, i) => (
-                <div
-                  key={scene.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${i * 120}ms` }}
-                >
-                  {/* Scene header */}
+                <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xs font-display font-medium text-primary">
-                      SCÈNE {scene.id}
-                    </span>
+                    <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.id}</span>
                     <span className="text-xs text-muted-foreground">—</span>
-                    <span className="text-sm font-display text-foreground">
-                      {scene.title.split("—")[1]?.trim()}
-                    </span>
+                    <span className="text-sm font-display text-foreground">{scene.title.split("—")[1]?.trim()}</span>
                   </div>
-
-                  {/* Narration */}
                   <div className="rounded border border-border bg-card p-4 mb-4">
-                    <p className="text-sm text-muted-foreground leading-relaxed italic">
-                      "{scene.narration}"
-                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.narration}"</p>
                   </div>
-
-                  {/* Shot cards */}
                   <div className="grid gap-4 md:grid-cols-3">
                     {scene.shots.map((shot, j) => (
-                      <div
-                        key={j}
-                        className="group rounded border border-border bg-card overflow-hidden transition-colors hover:border-primary/30"
-                      >
-                        {/* 16:9 placeholder */}
+                      <div key={j} className="group rounded border border-border bg-card overflow-hidden transition-colors hover:border-primary/30">
                         <div className="aspect-video bg-secondary flex items-center justify-center">
                           <Clapperboard className="h-8 w-8 text-muted-foreground/30" />
                         </div>
                         <div className="p-4">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-display font-medium text-primary">
-                              {shot.type}
-                            </span>
+                            <span className="text-xs font-display font-medium text-primary">{shot.type}</span>
                             <Shield className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Historical Realism verified" />
                           </div>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {shot.description}
-                          </p>
-                          {/* PromptExport preview */}
+                          <p className="text-xs text-muted-foreground leading-relaxed">{shot.description}</p>
                           <div className="mt-3 rounded bg-background border border-border p-2">
-                            <code className="text-[10px] text-muted-foreground leading-tight block font-mono">
-                              {shot.description.slice(0, 80)}...
-                            </code>
+                            <code className="text-[10px] text-muted-foreground leading-tight block font-mono">{shot.description.slice(0, 80)}...</code>
                           </div>
                         </div>
                       </div>
@@ -225,29 +337,20 @@ export default function Editor() {
           </div>
         )}
 
-        {activeTab === "export" && (
+        {/* Export tab */}
+        {!showSetup && activeTab === "export" && (
           <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-              Export Center
-            </h2>
-            <p className="text-sm text-muted-foreground mb-8">
-              Récupérez vos fichiers prêts à l'emploi.
-            </p>
+            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Export Center</h2>
+            <p className="text-sm text-muted-foreground mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
             <div className="space-y-4">
               {[
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image" },
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots" },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut" },
               ].map((exp, i) => (
-                <div
-                  key={exp.label}
-                  className="flex items-center justify-between rounded border border-border bg-card p-4 animate-fade-in"
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
+                <div key={exp.label} className="flex items-center justify-between rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
-                    <h3 className="font-display text-sm font-semibold text-foreground">
-                      {exp.label}
-                    </h3>
+                    <h3 className="font-display text-sm font-semibold text-foreground">{exp.label}</h3>
                     <p className="text-xs text-muted-foreground">{exp.desc}</p>
                   </div>
                   <Button variant="outline" size="sm">
