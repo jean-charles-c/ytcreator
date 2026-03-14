@@ -32,12 +32,11 @@ Very short sentences must still generate visual shots.
 Short sentences often represent strong documentary beats and must not be merged.
 
 ## VISUAL SHOT DENSITY RULE
-Documentary editing typically changes shots every 4–6 seconds.
-Guideline:
-- narration lasting ~4–6 seconds → 1 visual shot
-- narration lasting ~7–10 seconds → 2 visual shots
-- narration lasting ~11–15 seconds → 3 visual shots
-Shots must represent different cinematic views of the same narrative moment.
+Every sentence in the narration must produce exactly one visual shot.
+Count the sentences (delimited by . ! or ?) and generate that exact number of shots.
+Do NOT merge multiple sentences into a single shot.
+Do NOT skip any sentence.
+Shots must represent different cinematic views corresponding to each sentence.
 
 ## SHOT MINIMUM RULE — ONE SHOT PER SENTENCE
 Each sentence in the narration MUST produce exactly one visual shot. No exceptions.
