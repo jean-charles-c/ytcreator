@@ -187,7 +187,7 @@ serve(async (req) => {
           model: "openai/gpt-5",
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. Each scene MUST have at least 2 shots (the requested_shots field indicates the target). Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. Respect requested_shots exactly. Shot minimum rule: for short scenes (<=80 chars), minimum 1 shot; for longer scenes, minimum 2 shots. CRITICAL: prompts must stay strictly faithful to the scene text and must not introduce unrelated visual events. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
           ],
           tools: [
             {

@@ -134,49 +134,84 @@ export default function Editor() {
       setGeneratingStoryboard(true);
       setActiveTab("storyboard");
     }
-    try {
-      const body: Record<string, string> = { project_id: projectId };
-      if (sceneId) body.scene_id = sceneId;
 
-      // Use fetch directly with longer timeout (5 min) to avoid default timeout
+    const callStoryboard = async (body: Record<string, string>) => {
       const session = (await supabase.auth.getSession()).data.session;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        }
-      );
-      clearTimeout(timeoutId);
-      const data = await response.json();
+      const timeoutId = setTimeout(() => controller.abort(), 170000);
 
-      if (!response.ok || data?.error) {
-        toast.error(data?.error || "Erreur de génération");
-        console.error("Storyboard error:", data);
-      } else {
-        const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          }
+        );
+
+        const data = await response.json();
+        if (!response.ok || data?.error) {
+          throw new Error(data?.error || "Erreur de génération");
+        }
+
+        return data;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    try {
+      if (sceneId) {
+        const data = await callStoryboard({ project_id: projectId, scene_id: sceneId });
+        const { data: shotData } = await supabase
+          .from("shots")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("shot_order", { ascending: true });
         if (shotData) setShots(shotData);
         toast.success(`${data?.shots_count ?? 0} shots générés`);
+      } else {
+        const sceneIds = scenes.map((s) => s.id);
+        if (sceneIds.length === 0) {
+          toast.error("Aucune scène à storyboarder");
+          return;
+        }
+
+        await supabase.from("shots").delete().eq("project_id", projectId);
+
+        let totalShots = 0;
+        for (const id of sceneIds) {
+          const data = await callStoryboard({ project_id: projectId, scene_id: id });
+          totalShots += data?.shots_count ?? 0;
+        }
+
+        const { data: shotData } = await supabase
+          .from("shots")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("shot_order", { ascending: true });
+        if (shotData) setShots(shotData);
+
+        toast.success(`${totalShots} shots générés sur ${sceneIds.length} scènes`);
       }
     } catch (e: any) {
       if (e?.name === "AbortError") {
-        toast.error("Timeout — la génération a pris trop de temps. Réessayez avec moins de scènes.");
+        toast.error("Timeout — relancez le storyboard (les scènes restantes seront générées)");
       } else {
         console.error(e);
-        toast.error("Erreur inattendue");
+        toast.error(e?.message || "Erreur inattendue");
       }
     }
+
     setGeneratingStoryboard(false);
     setRegeneratingSceneId(null);
-  }, [projectId]);
+  }, [projectId, scenes]);
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
