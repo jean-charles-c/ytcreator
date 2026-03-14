@@ -19,8 +19,8 @@ serve(async (req) => {
 
   try {
     const { analysis, text, language } = await req.json();
-    if (!analysis) {
-      return new Response(JSON.stringify({ error: "Analyse narrative requise." }), {
+    if (!analysis && !text) {
+      return new Response(JSON.stringify({ error: "Texte ou analyse narrative requis." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -72,7 +72,7 @@ EVERYTHING must be written in ${langLabel}. Respond ONLY with a call to generate
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\nDocument excerpt:\n${context}` },
+          { role: "user", content: `${analysis ? `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\n` : ""}Document excerpt:\n${context}` },
         ],
         tools: [
           {

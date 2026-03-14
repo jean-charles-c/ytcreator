@@ -523,6 +523,7 @@ export default function Editor() {
               projectId={projectId}
               analysis={pdfAnalysis}
               extractedText={pdfExtractedText}
+              narration={narration}
               scriptLanguage={scriptLanguage}
             />
           </div>
@@ -610,7 +611,14 @@ export default function Editor() {
           <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-2">
               <div>
-                <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">VisualPrompts</h2>
+                <div className="flex items-center gap-3 mb-1">
+                  <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">VisualPrompts</h2>
+                  {scenes.length > 0 && (
+                    <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                      {shots.length} shots / {scenes.length} scènes
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
               </div>
               {!generatingStoryboard && scenes.length > 0 && (

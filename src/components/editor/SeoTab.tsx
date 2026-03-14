@@ -21,6 +21,7 @@ interface SeoTabProps {
   projectId: string | null;
   analysis: NarrativeAnalysis | null;
   extractedText: string | null;
+  narration?: string;
   scriptLanguage: string;
 }
 
@@ -39,7 +40,7 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
-export default function SeoTab({ projectId, analysis, extractedText, scriptLanguage }: SeoTabProps) {
+export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [youtubeTitles, setYoutubeTitles] = useState<YoutubeTitle[] | null>(null);
   const [youtubeDescription, setYoutubeDescription] = useState<string | null>(null);
@@ -51,13 +52,15 @@ export default function SeoTab({ projectId, analysis, extractedText, scriptLangu
     }).catch(() => toast.error("Impossible de copier"));
   };
 
+  const effectiveText = extractedText || narration || null;
+
   const runYoutubePackaging = useCallback(async () => {
-    if (!analysis || !extractedText) return;
+    if (!effectiveText) return;
     setGeneratingTitles(true);
     try {
-      const { data, error } = await supabase.functions.invoke("youtube-packaging", {
-        body: { analysis, text: extractedText, language: scriptLanguage },
-      });
+      const body: any = { text: effectiveText, language: scriptLanguage };
+      if (analysis) body.analysis = analysis;
+      const { data, error } = await supabase.functions.invoke("youtube-packaging", { body });
       if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
       if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
       const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
@@ -67,7 +70,7 @@ export default function SeoTab({ projectId, analysis, extractedText, scriptLangu
       toast.success("SEO YouTube généré");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingTitles(false);
-  }, [analysis, extractedText, scriptLanguage]);
+  }, [analysis, effectiveText, scriptLanguage]);
 
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
@@ -78,12 +81,12 @@ export default function SeoTab({ projectId, analysis, extractedText, scriptLangu
         Générez des titres, description et tags YouTube optimisés.
       </p>
 
-      {!analysis || !extractedText ? (
+      {!effectiveText ? (
         <div className="rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <Youtube className="h-10 w-10 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">
-              Lancez d'abord l'analyse narrative dans l'onglet ScriptCreator pour débloquer cette fonctionnalité.
+              Lancez d'abord l'analyse narrative dans l'onglet ScriptCreator ou saisissez votre narration dans ScriptInput.
             </p>
           </div>
         </div>
