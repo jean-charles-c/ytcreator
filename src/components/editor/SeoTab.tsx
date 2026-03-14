@@ -21,6 +21,7 @@ interface SeoTabProps {
   projectId: string | null;
   analysis: NarrativeAnalysis | null;
   extractedText: string | null;
+  narration?: string;
   scriptLanguage: string;
 }
 
