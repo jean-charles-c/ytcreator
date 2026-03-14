@@ -25,7 +25,7 @@ import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 
-type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "export";
+type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
