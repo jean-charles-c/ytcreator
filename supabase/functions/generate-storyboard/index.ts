@@ -200,7 +200,11 @@ serve(async (req) => {
       throw new Error("AI returned no storyboard data");
     }
 
-    await supabase.from("shots").delete().eq("project_id", project_id);
+    if (singleScene) {
+      await supabase.from("shots").delete().eq("scene_id", scene_id);
+    } else {
+      await supabase.from("shots").delete().eq("project_id", project_id);
+    }
 
     const shotRows: any[] = [];
     for (const sceneData of storyboard) {
