@@ -54,6 +54,7 @@ export default function PdfDocumentaryTab({ projectId }: PdfDocumentaryTabProps)
     setAnalysis(null);
     setYoutubeTitles(null);
     setDocStructure(null);
+    setScript(null);
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
