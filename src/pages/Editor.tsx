@@ -8,14 +8,17 @@ import {
   Clapperboard,
   Download,
   Play,
-  Shield,
   Save,
   Loader2,
+  RotateCcw,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import SceneBlock from "@/components/editor/SceneBlock";
+import ShotCard from "@/components/editor/ShotCard";
 
 type Tab = "script" | "segmentation" | "storyboard" | "export";
 type Scene = Tables<"scenes">;
@@ -55,6 +58,7 @@ export default function Editor() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [segmenting, setSegmenting] = useState(false);
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
+  const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
 
   // Load existing project + scenes + shots
   useEffect(() => {
@@ -68,13 +72,10 @@ export default function Editor() {
       setNarration(data.narration ?? "");
       setProjectId(data.id);
       setShowSetup(false);
-
       const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", id).order("scene_order", { ascending: true });
       if (sceneData) setScenes(sceneData);
-
       const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", id).order("shot_order", { ascending: true });
       if (shotData) setShots(shotData);
-
       setLoadingProject(false);
     };
     load();
@@ -115,32 +116,114 @@ export default function Editor() {
       if (data?.error) { toast.error(data.error); setSegmenting(false); return; }
       const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
       if (sceneData) setScenes(sceneData);
-      setShots([]); // Clear old shots since scenes changed
+      setShots([]);
       toast.success(`${sceneData?.length ?? 0} scènes générées`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setSegmenting(false);
   }, [projectId, narration]);
 
-  // Generate storyboard
-  const runStoryboard = useCallback(async () => {
+  // Generate storyboard (all or single scene)
+  const runStoryboard = useCallback(async (sceneId?: string) => {
     if (!projectId) return;
-    setGeneratingStoryboard(true);
-    setActiveTab("storyboard");
+    if (sceneId) {
+      setRegeneratingSceneId(sceneId);
+    } else {
+      setGeneratingStoryboard(true);
+      setActiveTab("storyboard");
+    }
     try {
-      const { data, error } = await supabase.functions.invoke("generate-storyboard", { body: { project_id: projectId } });
-      if (error) { toast.error("Erreur de génération du storyboard"); console.error(error); setGeneratingStoryboard(false); return; }
-      if (data?.error) { toast.error(data.error); setGeneratingStoryboard(false); return; }
-      const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
-      if (shotData) setShots(shotData);
-      toast.success(`${data?.shots_count ?? 0} shots générés`);
+      const body: Record<string, string> = { project_id: projectId };
+      if (sceneId) body.scene_id = sceneId;
+      const { data, error } = await supabase.functions.invoke("generate-storyboard", { body });
+      if (error) { toast.error("Erreur de génération"); console.error(error); }
+      else if (data?.error) { toast.error(data.error); }
+      else {
+        const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+        if (shotData) setShots(shotData);
+        toast.success(`${data?.shots_count ?? 0} shots générés`);
+      }
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingStoryboard(false);
+    setRegeneratingSceneId(null);
   }, [projectId]);
 
-  // Helper: get shots for a specific scene
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
-  // Helper: download text as file
+  // --- Scene editing callbacks ---
+  const handleSceneUpdate = (updated: Scene) => {
+    setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+  };
+
+  const handleSceneDelete = async (sceneId: string) => {
+    await supabase.from("shots").delete().eq("scene_id", sceneId);
+    await supabase.from("scenes").delete().eq("id", sceneId);
+    setScenes((prev) => prev.filter((s) => s.id !== sceneId));
+    setShots((prev) => prev.filter((s) => s.scene_id !== sceneId));
+    toast.success("Scène supprimée");
+  };
+
+  const handleMergeWithNext = async (sceneId: string) => {
+    const idx = scenes.findIndex((s) => s.id === sceneId);
+    if (idx < 0 || idx >= scenes.length - 1) return;
+    const current = scenes[idx];
+    const next = scenes[idx + 1];
+    const mergedText = `${current.source_text} ${next.source_text}`;
+    const mergedTitle = current.title;
+    await supabase.from("scenes").update({ source_text: mergedText, title: mergedTitle }).eq("id", current.id);
+    await supabase.from("shots").delete().eq("scene_id", next.id);
+    await supabase.from("scenes").delete().eq("id", next.id);
+    // Reorder remaining
+    const newScenes = scenes.filter((s) => s.id !== next.id).map((s, i) => ({ ...s, scene_order: i + 1 }));
+    for (const s of newScenes) {
+      if (s.id === current.id) {
+        await supabase.from("scenes").update({ source_text: mergedText, scene_order: s.scene_order }).eq("id", s.id);
+      } else {
+        await supabase.from("scenes").update({ scene_order: s.scene_order }).eq("id", s.id);
+      }
+    }
+    setScenes(newScenes.map((s) => s.id === current.id ? { ...s, source_text: mergedText } : s));
+    setShots((prev) => prev.filter((s) => s.scene_id !== next.id));
+    toast.success("Scènes fusionnées");
+  };
+
+  const handleSplit = async (sceneId: string, text1: string, text2: string) => {
+    if (!projectId) return;
+    const idx = scenes.findIndex((s) => s.id === sceneId);
+    if (idx < 0) return;
+    const scene = scenes[idx];
+    // Update current scene with text1
+    await supabase.from("scenes").update({ source_text: text1 }).eq("id", scene.id);
+    // Insert new scene after current
+    const { data: newScene } = await supabase.from("scenes").insert({
+      project_id: projectId,
+      scene_order: scene.scene_order + 1,
+      title: `${scene.title} (suite)`,
+      source_text: text2,
+      visual_intention: null,
+    }).select().single();
+    // Reorder scenes after
+    const updated = [...scenes];
+    updated[idx] = { ...scene, source_text: text1 };
+    if (newScene) updated.splice(idx + 1, 0, newScene);
+    const reordered = updated.map((s, i) => ({ ...s, scene_order: i + 1 }));
+    for (const s of reordered) {
+      await supabase.from("scenes").update({ scene_order: s.scene_order }).eq("id", s.id);
+    }
+    setScenes(reordered);
+    toast.success("Scène scindée");
+  };
+
+  const handleToggleValidated = async (sceneId: string, validated: boolean) => {
+    await supabase.from("scenes").update({ validated }).eq("id", sceneId);
+    setScenes((prev) => prev.map((s) => (s.id === sceneId ? { ...s, validated } : s)));
+    toast.success(validated ? "Scène validée" : "Validation retirée");
+  };
+
+  const handleShotUpdate = (updated: Shot) => {
+    setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+  };
+
+  // --- Export helpers ---
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -151,16 +234,13 @@ export default function Editor() {
     URL.revokeObjectURL(url);
   };
 
-  // Export: Visual Prompts
   const generateVisualPrompts = useCallback(() => {
     let md = `# Visual Prompts — ${title}\n\n`;
     let shotIndex = 1;
     scenes.forEach((scene) => {
       md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
-      const sceneShots = getShotsForScene(scene.id);
-      sceneShots.forEach((shot) => {
-        md += `**Shot ${shotIndex}** (${shot.shot_type}):\n\n`;
-        md += `${shot.prompt_export || shot.description}\n\n`;
+      getShotsForScene(scene.id).forEach((shot) => {
+        md += `**Shot ${shotIndex}** (${shot.shot_type}):\n\n${shot.prompt_export || shot.description}\n\n`;
         shotIndex++;
       });
     });
@@ -168,15 +248,12 @@ export default function Editor() {
     toast.success("Visual Prompts exportés");
   }, [title, scenes, shots]);
 
-  // Export: Scene Mapping
   const generateSceneMapping = useCallback(() => {
     let md = `# Scene Mapping — ${title}\n\n`;
     scenes.forEach((scene) => {
       md += `## Scène ${scene.scene_order} — ${scene.title}\n\n`;
       md += `### Narration\n\n> ${scene.source_text}\n\n`;
-      if (scene.visual_intention) {
-        md += `### Intention visuelle\n\n_${scene.visual_intention}_\n\n`;
-      }
+      if (scene.visual_intention) md += `### Intention visuelle\n\n_${scene.visual_intention}_\n\n`;
       const sceneShots = getShotsForScene(scene.id);
       if (sceneShots.length > 0) {
         md += `### Shots associés\n\n`;
@@ -192,13 +269,10 @@ export default function Editor() {
     toast.success("Scene Mapping exporté");
   }, [title, scenes, shots]);
 
-  // Export: Narration Segmentation
   const generateNarrationSegmentation = useCallback(() => {
     let md = `# Narration Segmentation — ${title}\n\n`;
     scenes.forEach((scene) => {
-      md += `---\n\n`;
-      md += `### Scène ${scene.scene_order} — ${scene.title}\n\n`;
-      md += `${scene.source_text}\n\n`;
+      md += `---\n\n### Scène ${scene.scene_order} — ${scene.title}\n\n${scene.source_text}\n\n`;
     });
     downloadFile(md, `${title.replace(/\s+/g, "_")}_narration_segmentation.md`);
     toast.success("Narration Segmentation exportée");
@@ -211,6 +285,8 @@ export default function Editor() {
       </div>
     );
   }
+
+  const validatedCount = scenes.filter((s) => s.validated).length;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -294,8 +370,17 @@ export default function Editor() {
         {/* Segmentation View */}
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-10 animate-fade-in">
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Segmentation View</h2>
-            <p className="text-sm text-muted-foreground mb-6">Votre narration découpée en SceneBlocks.</p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="font-display text-2xl font-semibold text-foreground mb-1">Segmentation View</h2>
+                <p className="text-sm text-muted-foreground">
+                  Votre narration découpée en SceneBlocks.
+                  {scenes.length > 0 && (
+                    <span className="ml-2 text-primary">{validatedCount}/{scenes.length} validées</span>
+                  )}
+                </p>
+              </div>
+            </div>
 
             {segmenting && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -318,26 +403,27 @@ export default function Editor() {
               <>
                 <div className="space-y-4">
                   {scenes.map((scene, i) => (
-                    <div key={scene.id} className="rounded border border-border bg-card p-5 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
-                      </div>
-                      <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">{scene.source_text}</p>
-                      {scene.visual_intention && (
-                        <div className="flex items-start gap-2 rounded bg-secondary/50 border border-border p-3">
-                          <Film className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                          <p className="text-xs text-muted-foreground italic leading-relaxed">{scene.visual_intention}</p>
-                        </div>
-                      )}
-                    </div>
+                    <SceneBlock
+                      key={scene.id}
+                      scene={scene}
+                      index={i}
+                      isFirst={i === 0}
+                      isLast={i === scenes.length - 1}
+                      previousScene={scenes[i - 1]}
+                      nextScene={scenes[i + 1]}
+                      onUpdate={handleSceneUpdate}
+                      onDelete={handleSceneDelete}
+                      onMergeWithNext={handleMergeWithNext}
+                      onSplit={handleSplit}
+                      onToggleValidated={handleToggleValidated}
+                    />
                   ))}
                 </div>
                 <div className="mt-6 flex gap-3">
                   <Button variant="outline" onClick={runSegmentation} disabled={segmenting}>
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
-                  <Button variant="hero" onClick={runStoryboard} disabled={generatingStoryboard}>
+                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     {generatingStoryboard ? "Génération..." : "Générer le storyboard"}
                   </Button>
@@ -351,7 +437,7 @@ export default function Editor() {
         {!showSetup && activeTab === "storyboard" && (
           <div className="container max-w-5xl py-10 animate-fade-in">
             <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Storyboard View</h2>
-            <p className="text-sm text-muted-foreground mb-8">SceneBlocks et ShotCards correspondantes.</p>
+            <p className="text-sm text-muted-foreground mb-8">SceneBlocks et ShotCards correspondantes. Cliquez sur un shot pour l'éditer.</p>
 
             {generatingStoryboard && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -375,55 +461,43 @@ export default function Editor() {
                 <div className="space-y-8">
                   {scenes.map((scene, i) => {
                     const sceneShots = getShotsForScene(scene.id);
+                    const isRegenerating = regeneratingSceneId === scene.id;
                     return (
                       <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
                         <div className="flex items-center gap-2 mb-4">
                           <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
                           <span className="text-xs text-muted-foreground">—</span>
                           <span className="text-sm font-display text-foreground">{scene.title}</span>
+                          {scene.validated && (
+                            <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> Validée
+                            </span>
+                          )}
+                          <button
+                            onClick={() => runStoryboard(scene.id)}
+                            disabled={isRegenerating}
+                            className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                            title="Régénérer les shots de cette scène"
+                          >
+                            {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                            <span className="hidden sm:inline">Régénérer</span>
+                          </button>
                         </div>
                         <div className="rounded border border-border bg-card p-4 mb-4">
                           <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
                         </div>
 
-                        {sceneShots.length === 0 ? (
+                        {isRegenerating ? (
+                          <div className="flex items-center justify-center py-8 gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <p className="text-xs text-muted-foreground">Régénération des shots...</p>
+                          </div>
+                        ) : sceneShots.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
                         ) : (
                           <div className="grid gap-4 md:grid-cols-3">
                             {sceneShots.map((shot) => (
-                              <div key={shot.id} className="group rounded border border-border bg-card overflow-hidden transition-colors hover:border-primary/30">
-                                <div className="aspect-video bg-secondary flex items-center justify-center">
-                                  <Clapperboard className="h-8 w-8 text-muted-foreground/30" />
-                                </div>
-                                <div className="p-4">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-xs font-display font-medium text-primary">{shot.shot_type}</span>
-                                    {shot.guardrails && (
-                                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium" title="Historical Realism verified">
-                                        <Shield className="h-2.5 w-2.5" />
-                                        HR
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">{shot.description}</p>
-                                  {shot.guardrails && (
-                                    <div className="flex flex-wrap gap-1 mb-3">
-                                      {shot.guardrails.split(",").map((g, gi) => (
-                                        <span key={gi} className="rounded bg-secondary border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                          {g.trim()}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {shot.prompt_export && (
-                                    <div className="rounded bg-background border border-border p-2">
-                                      <code className="text-[10px] text-muted-foreground leading-tight block font-mono">
-                                        {shot.prompt_export.slice(0, 120)}...
-                                      </code>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                              <ShotCard key={shot.id} shot={shot} onUpdate={handleShotUpdate} />
                             ))}
                           </div>
                         )}
@@ -432,8 +506,8 @@ export default function Editor() {
                   })}
                 </div>
                 <div className="mt-8 flex gap-3">
-                  <Button variant="outline" onClick={runStoryboard} disabled={generatingStoryboard}>
-                    <Play className="h-4 w-4" /> Re-générer les shots
+                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
+                    <Play className="h-4 w-4" /> Re-générer tous les shots
                   </Button>
                 </div>
               </>

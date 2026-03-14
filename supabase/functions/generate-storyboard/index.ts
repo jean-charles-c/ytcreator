@@ -77,8 +77,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { project_id } = await req.json();
+    const { project_id, scene_id } = await req.json();
     if (!project_id) throw new Error("Missing project_id");
+
+    // Optional: regenerate shots for a single scene only
+    const singleScene = !!scene_id;
 
     const { data: project, error: projErr } = await supabase
       .from("projects")
@@ -88,12 +91,15 @@ serve(async (req) => {
       .single();
     if (projErr || !project) throw new Error("Project not found");
 
-    const { data: scenes, error: scenesErr } = await supabase
+    let scenesQuery = supabase
       .from("scenes")
       .select("*")
       .eq("project_id", project_id)
       .order("scene_order", { ascending: true });
-    if (scenesErr || !scenes?.length) throw new Error("No scenes found. Run segmentation first.");
+    if (singleScene) scenesQuery = scenesQuery.eq("id", scene_id);
+
+    const { data: scenes, error: scenesErr } = await scenesQuery;
+    if (scenesErr || !scenes?.length) throw new Error(singleScene ? "Scene not found." : "No scenes found. Run segmentation first.");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -194,7 +200,11 @@ serve(async (req) => {
       throw new Error("AI returned no storyboard data");
     }
 
-    await supabase.from("shots").delete().eq("project_id", project_id);
+    if (singleScene) {
+      await supabase.from("shots").delete().eq("scene_id", scene_id);
+    } else {
+      await supabase.from("shots").delete().eq("project_id", project_id);
+    }
 
     const shotRows: any[] = [];
     for (const sceneData of storyboard) {
