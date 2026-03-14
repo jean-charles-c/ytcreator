@@ -318,7 +318,7 @@ export default function Editor() {
   };
 
   const generateVisualPrompts = useCallback(() => {
-    let md = `# Visual Prompts — ${title}\n\n`;
+    let md = "";
     let shotIndex = 1;
     scenes.forEach((scene) => {
       getShotsForScene(scene.id).forEach((shot) => {
