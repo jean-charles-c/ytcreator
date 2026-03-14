@@ -103,23 +103,23 @@ export default function SceneBlock({
             <CheckCircle2 className="h-2.5 w-2.5" /> Validée
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
           {!editing && (
             <>
-              <button onClick={startEdit} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
+              <button onClick={startEdit} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Éditer">
                 <Pencil className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => setShowSplit(!showSplit)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Scinder">
+              <button onClick={() => setShowSplit(!showSplit)} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Scinder">
                 <Scissors className="h-3.5 w-3.5" />
               </button>
               {!isLast && (
-                <button onClick={() => onMergeWithNext(scene.id)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Fusionner avec la suivante">
+                <button onClick={() => onMergeWithNext(scene.id)} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Fusionner avec la suivante">
                   <Merge className="h-3.5 w-3.5" />
                 </button>
               )}
               <button
                 onClick={() => onToggleValidated(scene.id, !scene.validated)}
-                className={`p-1 rounded transition-colors ${scene.validated ? "text-primary hover:text-muted-foreground" : "text-muted-foreground hover:text-primary"} hover:bg-secondary`}
+                className={`p-2 rounded transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${scene.validated ? "text-primary hover:text-muted-foreground" : "text-muted-foreground hover:text-primary"} hover:bg-secondary`}
                 title={scene.validated ? "Invalider" : "Valider"}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
