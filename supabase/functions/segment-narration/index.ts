@@ -80,19 +80,58 @@ serve(async (req) => {
       );
     };
 
+    const repairAndParseJson = (raw: string): any => {
+      let cleaned = raw
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+
+      const jsonStart = cleaned.search(/[\{\[]/);
+      if (jsonStart === -1) throw new Error("No JSON found in response");
+      cleaned = cleaned.substring(jsonStart);
+
+      try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+      // Fix trailing commas & control chars
+      cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+      try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+      // Truncated JSON: remove last incomplete item and close brackets
+      const lastComplete = cleaned.lastIndexOf("},");
+      if (lastComplete > 0) {
+        cleaned = cleaned.substring(0, lastComplete + 1);
+      }
+      const ob = (cleaned.match(/{/g) || []).length;
+      const cb = (cleaned.match(/}/g) || []).length;
+      const oq = (cleaned.match(/\[/g) || []).length;
+      const cq = (cleaned.match(/\]/g) || []).length;
+      for (let i = 0; i < ob - cb; i++) cleaned += "}";
+      for (let i = 0; i < oq - cq; i++) cleaned += "]";
+      cleaned = cleaned.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
+
+      return JSON.parse(cleaned);
+    };
+
     const parseScenesFromAi = (aiData: any) => {
       const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
+      const rawArgs = toolCall?.function?.arguments;
 
-      if (toolCall?.function?.arguments) {
-        const parsed = JSON.parse(toolCall.function.arguments);
-        if (Array.isArray(parsed)) return parsed;
-        if (Array.isArray(parsed?.scenes)) return parsed.scenes;
+      if (rawArgs) {
+        try {
+          const parsed = repairAndParseJson(rawArgs);
+          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed?.scenes)) return parsed.scenes;
+        } catch (e) {
+          console.warn("Failed to parse tool_call arguments, trying content fallback:", e);
+        }
       }
 
       const content = aiData?.choices?.[0]?.message?.content || "";
-      const parsedContent = JSON.parse(content);
-      if (Array.isArray(parsedContent)) return parsedContent;
-      if (Array.isArray(parsedContent?.scenes)) return parsedContent.scenes;
+      if (content) {
+        const parsedContent = repairAndParseJson(content);
+        if (Array.isArray(parsedContent)) return parsedContent;
+        if (Array.isArray(parsedContent?.scenes)) return parsedContent.scenes;
+      }
 
       throw new Error("AI returned no scenes");
     };
