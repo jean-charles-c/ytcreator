@@ -384,21 +384,24 @@ export default function Editor() {
             <p className="text-sm text-muted-foreground mb-8">Récupérez vos fichiers prêts à l'emploi.</p>
             <div className="space-y-4">
               {[
-                { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image" },
-                { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots" },
-                { label: "Narration Segmentation", desc: "Découpage narratif brut" },
+                { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts },
+                { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping },
+                { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation },
               ].map((exp, i) => (
                 <div key={exp.label} className="flex items-center justify-between rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
                     <h3 className="font-display text-sm font-semibold text-foreground">{exp.label}</h3>
                     <p className="text-xs text-muted-foreground">{exp.desc}</p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={scenes.length === 0}>
                     <Download className="h-3.5 w-3.5" /> Exporter
                   </Button>
                 </div>
               ))}
             </div>
+            {scenes.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-4 italic">Segmentez et générez le storyboard avant d'exporter.</p>
+            )}
           </div>
         )}
       </main>
