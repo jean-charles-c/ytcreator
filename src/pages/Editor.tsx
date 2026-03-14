@@ -35,6 +35,44 @@ const LANGUAGES = [
   { value: "de", label: "Deutsch" },
 ];
 
+  // Generate storyboard
+  const runStoryboard = useCallback(async () => {
+    if (!projectId) return;
+    setGeneratingStoryboard(true);
+    setActiveTab("storyboard");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-storyboard", {
+        body: { project_id: projectId },
+      });
+
+      if (error) {
+        toast.error("Erreur de génération du storyboard");
+        console.error(error);
+        setGeneratingStoryboard(false);
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.error);
+        setGeneratingStoryboard(false);
+        return;
+      }
+
+      // Reload shots
+      const { data: shotData } = await supabase
+        .from("shots")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("shot_order", { ascending: true });
+      if (shotData) setShots(shotData);
+
+      toast.success(`${data?.shots_count ?? 0} shots générés`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur inattendue");
+    }
+    setGeneratingStoryboard(false);
+  }, [projectId]);
 
 export default function Editor() {
   const { id } = useParams();
