@@ -227,7 +227,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: Pd
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => !file && inputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed p-8 sm:p-12 transition-colors cursor-pointer ${
+        className={`relative flex flex-col items-center justify-center gap-3 sm:gap-4 rounded-lg border-2 border-dashed p-6 sm:p-12 transition-colors cursor-pointer ${
           dragOver ? "border-primary bg-primary/5" : file ? "border-border bg-card cursor-default" : "border-border hover:border-primary/50 hover:bg-secondary/30"
         }`}
       >
