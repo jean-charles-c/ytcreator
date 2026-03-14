@@ -180,7 +180,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
               )}
 
               {/* Regenerate */}
-              <Button variant="outline" onClick={() => { setYoutubeTitles(null); setYoutubeDescription(null); setYoutubeTags(null); }} className="min-h-[44px]">
+              <Button variant="outline" onClick={() => onSeoResultsChange({ titles: null, description: null, tags: null })} className="min-h-[44px]">
                 <Youtube className="h-4 w-4" /> Régénérer le packaging
               </Button>
             </div>

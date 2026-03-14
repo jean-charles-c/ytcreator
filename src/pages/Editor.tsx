@@ -527,6 +527,8 @@ export default function Editor() {
               extractedText={pdfExtractedText}
               narration={narration}
               scriptLanguage={scriptLanguage}
+              seoResults={seoResults}
+              onSeoResultsChange={setSeoResults}
             />
           </div>
         )}
