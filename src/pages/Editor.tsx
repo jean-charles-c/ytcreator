@@ -23,6 +23,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
+import SeoTab from "@/components/editor/SeoTab";
 
 type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "export";
 type Scene = Tables<"scenes">;
