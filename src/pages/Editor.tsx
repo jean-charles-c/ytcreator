@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
+import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 
 type Tab = "script" | "segmentation" | "storyboard" | "export";
 type Scene = Tables<"scenes">;
