@@ -1,0 +1,1 @@
+ALTER TABLE public.scenes ADD COLUMN validated BOOLEAN NOT NULL DEFAULT false;

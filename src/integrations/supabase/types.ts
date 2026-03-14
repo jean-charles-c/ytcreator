@@ -62,6 +62,7 @@ export type Database = {
           source_text: string
           title: string
           updated_at: string
+          validated: boolean
           visual_intention: string | null
         }
         Insert: {
@@ -72,6 +73,7 @@ export type Database = {
           source_text: string
           title: string
           updated_at?: string
+          validated?: boolean
           visual_intention?: string | null
         }
         Update: {
@@ -82,6 +84,7 @@ export type Database = {
           source_text?: string
           title?: string
           updated_at?: string
+          validated?: boolean
           visual_intention?: string | null
         }
         Relationships: [
