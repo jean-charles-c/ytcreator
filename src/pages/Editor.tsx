@@ -827,6 +827,7 @@ export default function Editor() {
             <div className="space-y-4">
               {[
                 { label: "Script Narratif", desc: "Script voice-over généré par ScriptCreator", generate: generateScriptNarratif, disabled: !generatedScript },
+                { label: "VO Blocks", desc: "Script découpé en blocs Voice Over (≤ 8 300 car.)", generate: generateVoiceOverBlocks, disabled: !generatedScript },
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts, disabled: scenes.length === 0 },
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping, disabled: scenes.length === 0 },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation, disabled: scenes.length === 0 },
