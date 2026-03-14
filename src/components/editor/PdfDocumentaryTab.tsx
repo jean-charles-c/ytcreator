@@ -300,7 +300,7 @@ export default function PdfDocumentaryTab({
       {extractedText && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="truncate max-w-[150px] font-medium text-foreground text-[11px]">{file?.name}</span>
+          <span className="truncate max-w-[150px] font-medium text-foreground text-[11px]">{file?.name || fileName}</span>
           <span>·</span>
           <span>{pageCount} p.</span>
           <span>·</span>
