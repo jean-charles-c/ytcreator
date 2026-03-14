@@ -553,7 +553,7 @@ export default function Editor() {
                     <h3 className="font-display text-sm font-semibold text-foreground">{exp.label}</h3>
                     <p className="text-xs text-muted-foreground">{exp.desc}</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={scenes.length === 0}>
+                  <Button variant="outline" size="sm" onClick={exp.generate} disabled={scenes.length === 0} className="min-h-[40px] w-full sm:w-auto shrink-0">
                     <Download className="h-3.5 w-3.5" /> Exporter
                   </Button>
                 </div>
