@@ -117,9 +117,19 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const sceneDescriptions = scenes.map((s: any) =>
-      `Scene ${s.scene_order} (id: ${s.id}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`
-    ).join("\n\n");
+    // Calculate number of shots per scene based on text length
+    const calcShotCount = (text: string): number => {
+      const len = text.length;
+      if (len < 70) return 1;
+      if (len < 140) return 2;
+      if (len < 280) return 3;
+      return Math.min(Math.ceil(len / 100), 5);
+    };
+
+    const sceneDescriptions = scenes.map((s: any) => {
+      const shotCount = calcShotCount(s.source_text);
+      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+    }).join("\n\n");
 
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
