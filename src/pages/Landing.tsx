@@ -11,7 +11,7 @@ const features = [
   },
   {
     icon: Clapperboard,
-    title: "Storyboard Generator",
+    title: "VisualPrompts Generator",
     description: "Générez 2 à 3 plans documentaires par scène : establishing, activity, detail.",
   },
   {
