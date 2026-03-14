@@ -74,6 +74,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       if (error) { toast.error("Erreur d'analyse"); console.error(error); setAnalyzing(false); return; }
       if (data?.error) { toast.error(data.error); setAnalyzing(false); return; }
       setAnalysis(data.analysis);
+      onAnalysisReady?.(data.analysis, extractedText);
       toast.success("Analyse narrative terminée");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setAnalyzing(false);
