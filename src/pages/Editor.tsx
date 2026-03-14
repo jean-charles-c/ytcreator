@@ -548,7 +548,7 @@ export default function Editor() {
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation },
               ].map((exp, i) => (
-                <div key={exp.label} className="flex items-center justify-between rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
+                <div key={exp.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
                     <h3 className="font-display text-sm font-semibold text-foreground">{exp.label}</h3>
                     <p className="text-xs text-muted-foreground">{exp.desc}</p>
