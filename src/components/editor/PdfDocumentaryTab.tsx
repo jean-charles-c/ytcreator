@@ -27,7 +27,7 @@ interface PdfDocumentaryTabProps {
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
 }
 
-export default function PdfDocumentaryTab({ projectId, onSendToScriptInput }: PdfDocumentaryTabProps) {
+export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAnalysisReady }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
