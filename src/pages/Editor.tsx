@@ -35,12 +35,6 @@ const LANGUAGES = [
   { value: "de", label: "Deutsch" },
 ];
 
-// Mock shots (will be replaced in step 5)
-const mockShots = [
-  { type: "Establishing Shot", description: "Vue large contextuelle de la scène." },
-  { type: "Activity Shot", description: "Action principale en cours dans la scène." },
-  { type: "Detail Shot", description: "Gros plan sur un élément clé de la scène." },
-];
 
 export default function Editor() {
   const { id } = useParams();
