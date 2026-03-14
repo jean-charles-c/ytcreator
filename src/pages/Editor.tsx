@@ -517,6 +517,18 @@ export default function Editor() {
               onScriptReady={(script) => {
                 setGeneratedScript(script);
               }}
+              extractedText={pdfExtractedText}
+              onExtractedTextChange={setPdfExtractedText}
+              pageCount={pdfPageCount}
+              onPageCountChange={setPdfPageCount}
+              fileName={pdfFileName}
+              onFileNameChange={setPdfFileName}
+              analysis={pdfAnalysis}
+              onAnalysisChange={setPdfAnalysis}
+              docStructure={pdfDocStructure}
+              onDocStructureChange={setPdfDocStructure}
+              script={generatedScript}
+              onScriptChange={setGeneratedScript}
             />
           </div>
         )}
