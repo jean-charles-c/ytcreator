@@ -30,7 +30,7 @@ Analyse le texte fourni et identifie :
 1. **Mystère central** : La question fondamentale non résolue ou le mystère qui captive l'audience.
 2. **Contradiction principale** : Le paradoxe ou la contradiction la plus frappante dans le sujet.
 3. **Découvertes intrigantes** : 3 à 5 faits ou révélations surprenantes tirées du document.
-4. **Tensions narratives** : 2 à 4 tensions dramatiques exploitables pour structurer un documentaire.
+4. **Tensions narratives** : 5 à 7 tensions dramatiques exploitables pour structurer un documentaire. Chaque tension doit couvrir un angle différent du sujet (historique, scientifique, humain, politique, philosophique, etc.). C'est CRUCIAL d'en identifier au moins 5 pour alimenter un script long et riche.
 
 Réponds UNIQUEMENT avec un appel à la fonction analyze_narrative.`;
 
