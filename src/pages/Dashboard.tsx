@@ -26,7 +26,7 @@ const statusConfig = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
+  const { signOut } = useAuth();
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
