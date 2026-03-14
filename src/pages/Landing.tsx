@@ -127,7 +127,7 @@ export default function Landing() {
             Créez votre premier projet en moins de 30 secondes. Gratuit, sans carte bancaire.
           </p>
           <Button variant="hero" size="lg" onClick={() => navigate("/signup")} className="w-full sm:w-auto min-h-[48px]">
-            Lancer DocuStoryboard AI
+            Commencer maintenant
             <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         </div>

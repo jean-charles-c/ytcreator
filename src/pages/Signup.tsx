@@ -53,7 +53,7 @@ export default function Signup() {
         </div>
 
         <h1 className="font-display text-2xl font-semibold text-foreground text-center mb-1">Créer un compte</h1>
-        <p className="text-sm text-muted-foreground text-center mb-8">Commencez à storyboarder</p>
+        <p className="text-sm text-muted-foreground text-center mb-8">Commencez à créer</p>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div>

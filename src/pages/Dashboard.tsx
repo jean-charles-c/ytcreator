@@ -12,7 +12,7 @@ type Project = Tables<"projects">;
 const statusConfig = {
   draft: { label: "Brouillon", icon: FileText, color: "text-muted-foreground" },
   segmented: { label: "Segmenté", icon: Clock, color: "text-primary" },
-  storyboarded: { label: "Storyboardé", icon: CheckCircle, color: "text-primary" },
+  storyboarded: { label: "VisualPrompts ✓", icon: CheckCircle, color: "text-primary" },
   exported: { label: "Exporté", icon: CheckCircle, color: "text-green-500" },
 };
 

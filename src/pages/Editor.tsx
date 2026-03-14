@@ -597,7 +597,7 @@ export default function Editor() {
                   </Button>
                   <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                    {generatingStoryboard ? "Génération..." : "Générer le storyboard"}
+                    {generatingStoryboard ? "Génération..." : "Générer les VisualPrompts"}
                   </Button>
                 </div>
               </>
