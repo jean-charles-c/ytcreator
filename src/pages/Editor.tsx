@@ -70,6 +70,7 @@ export default function Editor() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(null);
   const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(null);
+  const [generatedScript, setGeneratedScript] = useState<string | null>(null);
 
   // Load existing project + scenes + shots
   useEffect(() => {

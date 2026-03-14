@@ -156,6 +156,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       }
 
       setScript(full);
+      onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
