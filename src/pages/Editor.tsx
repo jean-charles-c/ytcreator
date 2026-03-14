@@ -562,13 +562,6 @@ export default function Editor() {
               )}
             </div>
 
-            {generatingStoryboard && (
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Génération des prompts visuels...</p>
-              </div>
-            )}
-
             {!generatingStoryboard && scenes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Clapperboard className="h-10 w-10 text-muted-foreground/30" />
