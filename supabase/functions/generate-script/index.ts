@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { analysis, structure, text } = await req.json();
+    const { analysis, structure, text, language } = await req.json();
     if (!analysis || !structure) {
       return new Response(JSON.stringify({ error: "Analyse et structure requises." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -19,11 +19,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const scriptLang = language || "en";
+    const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
+    const langLabel = langLabels[scriptLang] || "English";
     const sourceText = text ? text.slice(0, 25000) : "";
 
     const sectionList = structure.map((s: any) => `- ${s.section_label}: ${s.video_title}`).join("\n");
 
     const systemPrompt = `Tu es un scénariste documentaire YouTube expert. Tu écris des scripts immersifs, détaillés et captivants pour voice-over.
+
+LANGUE OBLIGATOIRE : Écris l'intégralité du script en ${langLabel}. Chaque phrase, chaque mot doit être en ${langLabel}.
 
 MISSION : Génère un script documentaire COMPLET et ÉTOFFÉ d'au moins 10 000 caractères (objectif : 12 000 à 18 000 caractères). Chaque section doit être développée en profondeur avec des détails, des exemples concrets, des anecdotes et des descriptions vivantes.
 

@@ -22,14 +22,25 @@ interface DocSection {
   narrative_description: string;
 }
 
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "fr", label: "Français" },
+  { value: "es", label: "Español" },
+  { value: "de", label: "Deutsch" },
+  { value: "pt", label: "Português" },
+  { value: "it", label: "Italiano" },
+];
+
 interface PdfDocumentaryTabProps {
   projectId: string | null;
+  scriptLanguage: string;
+  onLanguageChange?: (lang: string) => void;
   onSendToScriptInput?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
 }
 
-export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAnalysisReady, onScriptReady }: PdfDocumentaryTabProps) {
+export default function PdfDocumentaryTab({ projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -115,7 +126,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ analysis, structure: sections, text: extractedText }),
+          body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage }),
         }
       );
       if (!resp.ok || !resp.body) {
@@ -160,7 +171,7 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, extractedText]);
+  }, [analysis, extractedText, scriptLanguage]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -269,9 +280,21 @@ export default function PdfDocumentaryTab({ projectId, onSendToScriptInput, onAn
           </Button>
         )}
         {analysis && !script && script === null && (
-          <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
-            {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Langue :</label>
+              <select
+                value={scriptLanguage}
+                onChange={(e) => onLanguageChange?.(e.target.value)}
+                className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+            </div>
+            <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
+              {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
+            </Button>
+          </div>
         )}
       </div>
 
