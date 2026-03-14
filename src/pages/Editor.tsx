@@ -371,6 +371,21 @@ export default function Editor() {
     toast.success("Narration Segmentation exportée");
   }, [title, scenes]);
 
+  const cleanScriptForExport = (raw: string): string => {
+    return raw
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+      .map((line) => line.trim())
+      .join("\n");
+  };
+
+  const generateScriptNarratif = useCallback(() => {
+    if (!generatedScript) return;
+    const clean = cleanScriptForExport(generatedScript);
+    downloadFile(clean, `${title.replace(/\s+/g, "_")}_script_narratif.md`);
+    toast.success("Script Narratif exporté");
+  }, [title, generatedScript]);
+
   if (loadingProject) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
