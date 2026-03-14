@@ -97,7 +97,7 @@ export default function Landing() {
             Un pipeline complet
           </h2>
           <p className="text-center text-muted-foreground mb-10 sm:mb-16 max-w-xl mx-auto text-sm sm:text-base">
-            Du texte brut au storyboard professionnel, chaque étape est automatisée et vérifiable.
+            Du texte brut aux VisualPrompts, chaque étape est automatisée et vérifiable.
           </p>
           <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
             {features.map((f, i) => (
