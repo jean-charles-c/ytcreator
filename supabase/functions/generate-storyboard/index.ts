@@ -40,9 +40,9 @@ Guideline:
 Shots must represent different cinematic views of the same narrative moment.
 
 ## SHOT MINIMUM RULE
-Short scenes (under 80 characters) must generate at least 1 visual shot.
-Longer scenes must generate at least 2 visual shots.
-If the environment is visually rich or historically significant, generate 3 shots.
+Each scene must generate at least 1 visual shot.
+Longer scenes may generate 2 to 3 visual shots only when clearly needed for cinematic rhythm.
+Prefer concise coverage when one strong shot is sufficient.
 CRITICAL: Every shot prompt must describe ONLY what the scene text says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
@@ -160,14 +160,14 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Calculate number of shots per scene based on text length
-    // Short scenes (<=80 chars) get 1 shot minimum, longer scenes get 2+
+    // Calculate number of shots per scene based on narrative density
+    // No 80-character special rule: always allow concise single-shot scenes.
     const calcShotCount = (text: string): number => {
       const len = text.length;
-      if (len <= 80) return 1;
-      if (len < 200) return 2;
-      if (len < 350) return 3;
-      return Math.min(Math.ceil(len / 120), 5);
+      if (len < 200) return 1;
+      if (len < 350) return 2;
+      if (len < 550) return 3;
+      return 4;
     };
 
     const sceneDescriptions = scenes.map((s: any) => {
@@ -187,7 +187,7 @@ serve(async (req) => {
           model: "openai/gpt-5-mini",
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. Respect requested_shots exactly. Shot minimum rule: for short scenes (<=80 chars), minimum 1 shot; for longer scenes, minimum 2 shots. CRITICAL: prompts must stay strictly faithful to the scene text and must not introduce unrelated visual events. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. Respect requested_shots exactly. Shot minimum rule: minimum 1 shot per scene; add extra shots only when a scene contains clear multiple visual beats. CRITICAL: prompts must stay strictly faithful to the scene text and must not introduce unrelated visual events. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
