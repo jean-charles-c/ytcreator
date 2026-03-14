@@ -137,15 +137,43 @@ export default function Editor() {
     try {
       const body: Record<string, string> = { project_id: projectId };
       if (sceneId) body.scene_id = sceneId;
-      const { data, error } = await supabase.functions.invoke("generate-storyboard", { body });
-      if (error) { toast.error("Erreur de génération"); console.error(error); }
-      else if (data?.error) { toast.error(data.error); }
-      else {
+
+      // Use fetch directly with longer timeout (5 min) to avoid default timeout
+      const session = (await supabase.auth.getSession()).data.session;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+      const data = await response.json();
+
+      if (!response.ok || data?.error) {
+        toast.error(data?.error || "Erreur de génération");
+        console.error("Storyboard error:", data);
+      } else {
         const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
         if (shotData) setShots(shotData);
         toast.success(`${data?.shots_count ?? 0} shots générés`);
       }
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        toast.error("Timeout — la génération a pris trop de temps. Réessayez avec moins de scènes.");
+      } else {
+        console.error(e);
+        toast.error("Erreur inattendue");
+      }
+    }
     setGeneratingStoryboard(false);
     setRegeneratingSceneId(null);
   }, [projectId]);
