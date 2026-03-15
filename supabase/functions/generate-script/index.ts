@@ -5,6 +5,58 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const sseHeaders = {
+  ...corsHeaders,
+  "Content-Type": "text/event-stream; charset=utf-8",
+  "Cache-Control": "no-cache, no-transform",
+  "Connection": "keep-alive",
+};
+
+const sseEncoder = new TextEncoder();
+
+function encodeSseComment(message: string): Uint8Array {
+  return sseEncoder.encode(`: ${message}\n\n`);
+}
+
+function createSseRelayStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = upstream.getReader();
+      controller.enqueue(encodeSseComment("stream-open"));
+
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encodeSseComment("keep-alive"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 15000);
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) controller.enqueue(value);
+        }
+      } catch (error) {
+        console.error("generate-script relay error:", error);
+      } finally {
+        clearInterval(heartbeat);
+        try {
+          reader.releaseLock();
+        } catch {
+          // no-op
+        }
+        try {
+          controller.close();
+        } catch {
+          // stream may already be closed by the runtime
+        }
+      }
+    },
+  });
+}
+
 function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
   return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
 
