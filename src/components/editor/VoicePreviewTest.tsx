@@ -7,9 +7,10 @@ import type { VoiceSettings } from "./VoiceSettingsPanel";
 
 interface VoicePreviewTestProps {
   settings: VoiceSettings;
+  hideHeader?: boolean;
 }
 
-export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
+export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewTestProps) {
   const [testText, setTestText] = useState("");
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -40,6 +41,7 @@ export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
             text: previewText,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
+            style: settings.style,
             speakingRate: settings.speakingRate,
           }),
         }
@@ -86,10 +88,12 @@ export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <h3 className="font-display text-sm font-semibold text-foreground">
-        Test rapide
-      </h3>
+    <div className={hideHeader ? "space-y-3" : "rounded-lg border border-border bg-card p-4 space-y-3"}>
+      {!hideHeader && (
+        <h3 className="font-display text-sm font-semibold text-foreground">
+          Test rapide
+        </h3>
+      )}
       <Textarea
         value={testText}
         onChange={(e) => setTestText(e.target.value)}

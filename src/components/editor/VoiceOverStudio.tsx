@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines } from "lucide-react";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings } from "./VoiceSettingsPanel";
@@ -64,13 +65,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
   }, []);
 
   const handlePasteFromScript = () => {
-    const source = generatedScript || narration;
+    const source = narration;
     if (!source?.trim()) {
-      toast.error("Aucun script disponible à coller. Générez d'abord un script dans ScriptCreator ou saisissez une narration dans ScriptInput.");
+      toast.error("Aucun texte disponible dans ScriptInput. Saisissez d'abord votre narration dans l'onglet ScriptInput.");
       return;
     }
     setVoScript(source);
-    toast.success("Script collé depuis l'onglet source");
+    toast.success("Script collé depuis ScriptInput");
   };
 
   const handleGenerate = async () => {
@@ -104,6 +105,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             text: voScript,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
+            style: settings.style,
             speakingRate: settings.speakingRate,
             mode: "full",
             projectId,
@@ -212,8 +214,31 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
 
         {/* Right column on desktop — shown FIRST on mobile for quick config */}
         <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
-          <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} />
-          <VoicePreviewTest settings={settings} />
+          <Accordion type="multiple" defaultValue={[]}>
+            <AccordionItem value="settings" className="border rounded-lg border-border bg-card px-4">
+              <AccordionTrigger className="py-3 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                  Paramètres de voix
+                  {hasFavorite && <span className="text-[10px] text-primary ml-1">★ Favori</span>}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} hideHeader />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="preview" className="border rounded-lg border-border bg-card px-4 mt-3">
+              <AccordionTrigger className="py-3 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                  <AudioLines className="h-4 w-4 text-primary" />
+                  Test rapide
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <VoicePreviewTest settings={settings} hideHeader />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           {/* Audio player */}
           {playerState ? (

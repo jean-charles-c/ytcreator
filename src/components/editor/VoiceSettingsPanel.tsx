@@ -24,6 +24,7 @@ interface VoiceSettingsPanelProps {
   settings: VoiceSettings;
   onChange: (settings: VoiceSettings) => void;
   hasFavorite?: boolean;
+  hideHeader?: boolean;
 }
 
 const LANGUAGES = [
@@ -52,7 +53,7 @@ const STYLES = [
   { value: "serious", label: "Sérieux" },
 ];
 
-export default function VoiceSettingsPanel({ settings, onChange, hasFavorite }: VoiceSettingsPanelProps) {
+export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
 
@@ -88,17 +89,19 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite }: 
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-semibold text-foreground">
-          Paramètres de voix
-        </h3>
-        {hasFavorite && (
-          <span className="flex items-center gap-1 text-[10px] text-primary">
-            <Star className="h-2.5 w-2.5 fill-primary" /> Favori chargé
-          </span>
-        )}
-      </div>
+    <div className={hideHeader ? "space-y-4" : "rounded-lg border border-border bg-card p-4 space-y-4"}>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-sm font-semibold text-foreground">
+            Paramètres de voix
+          </h3>
+          {hasFavorite && (
+            <span className="flex items-center gap-1 text-[10px] text-primary">
+              <Star className="h-2.5 w-2.5 fill-primary" /> Favori chargé
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Language */}
       <div className="space-y-1.5">
