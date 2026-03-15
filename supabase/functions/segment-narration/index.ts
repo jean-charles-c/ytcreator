@@ -198,7 +198,8 @@ ABSOLUTE RULES — NEVER DEVIATE:
 7. Create a new scene whenever the topic, subject, location, character focus, or action changes.
 8. Generate a short descriptive title for each scene (max 10 words).
 9. Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
-${strictMode ? "10. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
+10. If the narration is NOT in French, you MUST also provide "source_text_fr": a faithful French translation of source_text. If the narration IS in French, do NOT include source_text_fr.
+${strictMode ? "11. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
 
 SELF-CHECK: Before returning, verify that NO scene contains more than 3 sentences. If any scene has 4+ sentences, split it.
 
