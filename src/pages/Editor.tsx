@@ -327,6 +327,8 @@ export default function Editor() {
       generated_script: generatedScript ?? null,
       seo_results: seoResults,
       script_versions: scriptVersions,
+      scene_versions: sceneVersions,
+      shot_versions: shotVersions,
     };
 
     const snapshot = JSON.stringify(payload);
