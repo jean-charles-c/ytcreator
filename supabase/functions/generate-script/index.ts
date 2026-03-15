@@ -184,7 +184,7 @@ Remember: ALL text including section markers must be in ${langLabel}.`;
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
-        max_tokens: 12000,
+        max_completion_tokens: 12000,
         messages: [
           { role: "system", content: systemPrompt },
           {
