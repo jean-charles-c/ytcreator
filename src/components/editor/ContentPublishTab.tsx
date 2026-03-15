@@ -209,8 +209,8 @@ function splitIntoVoiceOverBlocks(raw: string): string[] {
 }
 
 export default function ContentPublishTab({ generatedScript, seoResults }: ContentPublishTabProps) {
-  const [scriptOpen, setScriptOpen] = useState(true);
-  const [seoOpen, setSeoOpen] = useState(true);
+  const [scriptOpen, setScriptOpen] = useState(false);
+  const [seoOpen, setSeoOpen] = useState(false);
 
   const titles = seoResults?.titles ?? null;
   const description = seoResults?.description ?? null;
