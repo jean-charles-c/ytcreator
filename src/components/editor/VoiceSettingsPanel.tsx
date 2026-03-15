@@ -24,6 +24,7 @@ interface VoiceSettingsPanelProps {
   settings: VoiceSettings;
   onChange: (settings: VoiceSettings) => void;
   hasFavorite?: boolean;
+  hideHeader?: boolean;
 }
 
 const LANGUAGES = [
