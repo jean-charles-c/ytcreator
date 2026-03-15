@@ -71,10 +71,18 @@ export default function PdfDocumentaryTab({
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
-  const [previousScripts, setPreviousScripts] = useState<string[]>([]);
-  const [showPreviousScript, setShowPreviousScript] = useState<number | null>(null);
+  const [scriptVersions, setScriptVersions] = useState<ScriptVersion[]>([]);
+  const [currentVersionId, setCurrentVersionId] = useState<number | null>(null);
+  const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!generatingScript && script && script.trim() !== "" && scriptVersions.length === 0) {
+      setScriptVersions([{ id: 1, content: script }]);
+      setCurrentVersionId(1);
+    }
+  }, [script, generatingScript, scriptVersions.length]);
 
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
