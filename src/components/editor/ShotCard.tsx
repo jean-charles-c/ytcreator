@@ -127,47 +127,66 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   }
 
   return (
-    <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
-          {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
+    <>
+      <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
+            {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
+          </div>
+          <div className="flex gap-1">
+            <button onClick={handleRegenerate} disabled={regenerating} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Regénérer ce shot">
+              {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            </button>
+            <button onClick={copyPrompt} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copier le prompt">
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setDeleteDialogOpen(true)} className="p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Supprimer ce shot">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
-        <div className="flex gap-1">
-          <button onClick={handleRegenerate} disabled={regenerating} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Regénérer ce shot">
-            {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          </button>
-          <button onClick={copyPrompt} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copier le prompt">
-            <Copy className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={handleDelete} className={`p-1.5 rounded transition-colors ${confirmDelete ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"}`} title={confirmDelete ? "Cliquer pour confirmer" : "Supprimer ce shot"}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        {(shot as any).source_sentence && (
+          <div className="mb-2 rounded bg-secondary/50 border border-border px-3 py-2">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
+            <p className="text-xs text-foreground leading-relaxed mt-0.5 italic">"{(shot as any).source_sentence}"</p>
+            {(shot as any).source_sentence_fr && (
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1">🇫🇷 "{(shot as any).source_sentence_fr}"</p>
+            )}
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground leading-relaxed mb-2">{shot.description}</p>
+        {shot.prompt_export && (
+          <details className="group/details">
+            <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors">
+              Prompt visuel (EN)
+            </summary>
+            <pre className="mt-1 rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text">
+              {shot.prompt_export}
+            </pre>
+          </details>
+        )}
       </div>
-      {(shot as any).source_sentence && (
-        <div className="mb-2 rounded bg-secondary/50 border border-border px-3 py-2">
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
-          <p className="text-xs text-foreground leading-relaxed mt-0.5 italic">"{(shot as any).source_sentence}"</p>
-          {(shot as any).source_sentence_fr && (
-            <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1">🇫🇷 "{(shot as any).source_sentence_fr}"</p>
-          )}
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground leading-relaxed mb-2">{shot.description}</p>
-      {shot.prompt_export && (
-        <details className="group/details">
-          <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors">
-            Prompt visuel (EN)
-          </summary>
-          <pre className="mt-1 rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text">
-            {shot.prompt_export}
-          </pre>
-        </details>
-      )}
-    </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce shot ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est définitive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
