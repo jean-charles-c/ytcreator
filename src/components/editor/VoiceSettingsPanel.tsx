@@ -53,7 +53,7 @@ const STYLES = [
   { value: "serious", label: "Sérieux" },
 ];
 
-export default function VoiceSettingsPanel({ settings, onChange, hasFavorite }: VoiceSettingsPanelProps) {
+export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
 
