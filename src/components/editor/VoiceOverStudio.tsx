@@ -196,66 +196,28 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
   }, [playerState?.audioUrl]);
 
   return (
-    <div className="container max-w-6xl py-6 sm:py-10 px-4 animate-fade-in">
+    <div className="container max-w-6xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
       <div className="flex items-center gap-3 mb-1">
         <Mic className="h-5 w-5 text-primary" />
-        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">
+        <h2 className="font-display text-lg sm:text-xl lg:text-2xl font-semibold text-foreground">
           VO — Voice Over
         </h2>
       </div>
-      <p className="text-sm text-muted-foreground mb-6 sm:mb-8">
+      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 lg:mb-8">
         Transformez votre script en fichier audio voice-over.
       </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column — Script */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
-              Script narratif
-            </label>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePasteFromScript}
-              className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <ClipboardPaste className="h-3.5 w-3.5" />
-              Coller depuis ScriptInput
-            </Button>
-          </div>
-          <Textarea
-            id="vo-script"
-            value={voScript}
-            onChange={(e) => setVoScript(e.target.value)}
-            placeholder="Collez ou saisissez votre texte narratif ici..."
-            className="min-h-[350px] sm:min-h-[450px] text-sm leading-relaxed resize-y font-body"
-            aria-label="Script narratif pour la voix off"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {voScript.length.toLocaleString()} caractères
-            </span>
-            <Button
-              variant="hero"
-              disabled={!voScript.trim() || generating}
-              className="min-h-[44px] gap-2"
-              onClick={handleGenerate}
-            >
-              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-              {generating ? "Génération en cours..." : "Générer la voix off"}
-            </Button>
-          </div>
-        </div>
+      {/* Mobile: settings first, then script. Desktop: script left, settings right */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
-        {/* Right column */}
-        <div className="space-y-4">
+        {/* Right column on desktop — shown FIRST on mobile for quick config */}
+        <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
           <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} />
           <VoicePreviewTest settings={settings} />
 
           {/* Audio player */}
           {playerState ? (
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-sm font-semibold text-foreground">Lecteur audio</h3>
                 <span className="text-[10px] text-muted-foreground font-mono">
@@ -265,13 +227,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
               <div className="flex items-center gap-3">
                 <button
                   onClick={handlePlayPause}
-                  className="flex items-center justify-center h-10 w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                  className="flex items-center justify-center h-11 w-11 sm:h-10 sm:w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
                   aria-label={isPlaying ? "Pause" : "Lecture"}
                 >
                   {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
                 </button>
                 <div className="flex-1">
-                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-2 sm:h-1.5 rounded-full bg-secondary overflow-hidden">
                     <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
                   </div>
                 </div>
@@ -279,7 +241,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
               <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]">
+            <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 sm:p-4 flex flex-col items-center justify-center gap-2 min-h-[60px] sm:min-h-[80px]">
               <Volume2 className="h-5 w-5 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground/50 text-center">Lecteur audio</p>
             </div>
@@ -291,6 +253,47 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             refreshKey={historyRefreshKey}
             onPlay={handlePlayFromHistory}
           />
+        </div>
+
+        {/* Left column — Script (shown SECOND on mobile, FIRST on desktop) */}
+        <div className="lg:col-span-2 space-y-3 sm:space-y-4 order-2 lg:order-1">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
+              Script narratif
+            </label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePasteFromScript}
+              className="h-9 sm:h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground min-w-[44px]"
+            >
+              <ClipboardPaste className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Coller depuis ScriptInput</span>
+              <span className="sm:hidden">Coller</span>
+            </Button>
+          </div>
+          <Textarea
+            id="vo-script"
+            value={voScript}
+            onChange={(e) => setVoScript(e.target.value)}
+            placeholder="Collez ou saisissez votre texte narratif ici..."
+            className="min-h-[200px] sm:min-h-[350px] lg:min-h-[450px] text-sm leading-relaxed resize-y font-body"
+            aria-label="Script narratif pour la voix off"
+          />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">
+              {voScript.length.toLocaleString()} caractères
+            </span>
+            <Button
+              variant="hero"
+              disabled={!voScript.trim() || generating}
+              className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto"
+              onClick={handleGenerate}
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+              {generating ? "Génération en cours..." : "Générer la voix off"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
