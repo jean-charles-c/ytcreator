@@ -470,8 +470,7 @@ export default function Editor() {
 
     const callStoryboard = async (body: Record<string, string>) => {
       const session = (await supabase.auth.getSession()).data.session;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 145000);
+      const timeoutId = setTimeout(() => storyAbortRef.current?.abort(), 145000);
 
       try {
         const response = await fetch(
@@ -485,7 +484,7 @@ export default function Editor() {
               "x-supabase-client-platform": "web",
             },
             body: JSON.stringify(body),
-            signal: controller.signal,
+            signal: storyAbortRef.current?.signal,
           }
         );
 
