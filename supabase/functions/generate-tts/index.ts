@@ -271,7 +271,8 @@ serve(async (req) => {
     // Generate audio for all chunks
     const audioBuffers: Uint8Array[] = [];
     for (const chunk of chunks) {
-      const b64 = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig);
+      const chunkIsSsml = chunk.startsWith("<speak>");
+      const b64 = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
       // Decode base64 to binary
       const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       audioBuffers.push(raw);
