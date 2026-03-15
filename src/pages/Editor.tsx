@@ -1007,6 +1007,11 @@ export default function Editor() {
                   )}
                 </p>
               </div>
+              {segmenting && (
+                <Button variant="destructive" size="sm" onClick={stopSegmentation} className="min-h-[40px] shrink-0">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
               {!segmenting && scenes.length > 0 && (
                 <div className="flex gap-2 shrink-0">
                   <Button variant="outline" size="sm" onClick={runSegmentation} disabled={segmenting} className="min-h-[40px]">
