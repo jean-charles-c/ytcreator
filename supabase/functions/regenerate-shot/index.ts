@@ -102,7 +102,11 @@ Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention |
 
 Sentence to illustrate: "${sourceText}"
 
-Generate a fresh, different cinematic angle than the previous version. Vary the camera type.`,
+PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
+- Previous shot type: ${shot.shot_type}
+- Previous prompt: "${shot.prompt_export || shot.description}"
+
+CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version. The new prompt must produce a visually distinct image. Use a different camera type from the Visual Camera Grid. Change the lighting direction, time of day feel, or perspective height.`,
             },
           ],
           tools: [
