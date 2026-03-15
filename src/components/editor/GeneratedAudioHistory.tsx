@@ -152,11 +152,11 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
       )}
 
       {entries.length > 0 && (
-        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+        <div className="space-y-2 sm:space-y-2 max-h-[250px] sm:max-h-[300px] overflow-y-auto pr-1">
           {entries.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center gap-2 rounded border border-border bg-background p-2.5 group hover:border-primary/30 transition-colors"
+              className="flex items-center gap-2 sm:gap-2 rounded border border-border bg-background p-3 sm:p-2.5 group hover:border-primary/30 transition-colors"
             >
               {/* Play button */}
               <button
