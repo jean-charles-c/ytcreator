@@ -111,9 +111,14 @@ export default function PdfDocumentaryTab({
   }, [onAnalysisReady, onExtractedTextChange, onAnalysisChange, onDocStructureChange, onScriptChange, onPageCountChange]);
 
   // Combined: generate structure then script automatically
-  const runFullScriptGeneration = useCallback(async () => {
+  const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
     if (!analysis || !extractedText) return;
+    // Save current script before regenerating
+    if (isRegenerate && script) {
+      setPreviousScripts((prev) => [...prev, script]);
+    }
     setGeneratingScript(true);
+    setScriptOpen(true);
     onScriptChange("");
 
     // Step 1: Generate structure
