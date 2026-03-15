@@ -312,7 +312,7 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                     <>
                       {/* Titres sub-collapsible */}
                       {titles && titles.length > 0 && (
-                        <SubCollapsible icon={Type} title="TITRES" defaultOpen>
+                        <SubCollapsible icon={Type} title="TITRES">
                           <div className="space-y-2">
                             {titles.map((t, i) => (
                               <CopyableBlock key={i} text={t.title} label={`Titre ${i + 1}`}>
