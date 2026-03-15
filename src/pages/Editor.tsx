@@ -1003,9 +1003,8 @@ export default function Editor() {
               projectId={projectId}
               scriptLanguage={scriptLanguage}
               onLanguageChange={(lang) => setScriptLanguage(lang)}
-              onSendToScriptInput={(text) => {
+              onSendToNarration={(text) => {
                 setNarration(text);
-                setActiveTab("script");
               }}
               onAnalysisReady={(analysis, text) => {
                 setPdfAnalysis(analysis);
@@ -1030,6 +1029,11 @@ export default function Editor() {
               onScriptVersionsChange={setScriptVersions}
               currentVersionId={currentScriptVersionId}
               onCurrentVersionIdChange={setCurrentScriptVersionId}
+              narration={narration}
+              onNarrationChange={setNarration}
+              onRunSegmentation={runSegmentation}
+              segmenting={segmenting}
+              onStopSegmentation={stopSegmentation}
             />
           </div>
         )}
