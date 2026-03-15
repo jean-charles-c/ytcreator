@@ -265,14 +265,21 @@ export default function PdfDocumentaryTab({
   };
 
   const cleanScriptForExport = (raw: string): string => {
+    const sectionHeadingRegex = /^(HOOK|WELCOME(?:\s+TO\s+.+)?|BIENVENUE(?:\s+SUR\s+.+)?|INTRODUCTION(?:\s+DU\s+MYST[ÈE]RE|\s+OF\s+THE\s+MYSTERY)?|PRESENTATION\s+OF\s+THE\s+MYSTERY|MYST[ÈE]RE|MYSTERY|CONTEXTE|CONTEXT(?:\s+SETTING)?|ACT(?:E)?\s*(?:\d+|[IVXLCDM]+)|CHAP(?:ITRE|TER)\s*\d+|PART(?:IE)?\s*\d+|D[ÉE]COUVERTE|DISCOVERY|INVESTIGATION|ESCALADE|ESCALATION|CLIMAX|R[ÉE]V[ÉE]LATION|REVELATION|CONCLUSION)\b/i;
+
     return raw
       .split("\n")
       .filter((line) => {
         const t = line.trim();
-        if (t === "" || t.startsWith("---")) return false;
-        if (t.startsWith("#")) return false;
+        if (!t || t.startsWith("---") || t.startsWith("#")) return false;
         if (/^\*\*.*\*\*$/.test(t)) return false;
-        if (/^(HOOK|INTRODUCTION|ACTE?\s*\d|ACT\s*\d|CONTEXTE|CONTEXT|CLIMAX|CONCLUSION|RÉVÉLATION|REVELATION|BIENVENUE|WELCOME|MYSTÈRE|MYSTERY|DÉCOUVERTE|DISCOVERY|INVESTIGATION|ESCALADE|ESCALATION)\b/i.test(t)) return false;
+
+        const normalized = t
+          .replace(/^[\s\-–—*#\[\](){}|:]+/, "")
+          .replace(/[\s\-–—*#\[\](){}|:]+$/, "")
+          .trim();
+
+        if (sectionHeadingRegex.test(normalized)) return false;
         return true;
       })
       .map((line) => line.trim())
