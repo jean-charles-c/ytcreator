@@ -1034,6 +1034,8 @@ export default function Editor() {
           <ContentPublishTab
             generatedScript={generatedScript}
             seoResults={seoResults}
+            scenes={scenes}
+            shots={shots}
           />
         )}
 

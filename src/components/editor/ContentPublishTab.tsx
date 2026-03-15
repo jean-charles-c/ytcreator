@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft, Mic, ScrollText, ChevronDown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft, Mic, ScrollText, ChevronDown, Image } from "lucide-react";
 import { toast } from "sonner";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Scene = Tables<"scenes">;
+type Shot = Tables<"shots">;
 
 interface YoutubeTitle {
   rank: number;
@@ -22,6 +26,8 @@ interface SeoResults {
 interface ContentPublishTabProps {
   generatedScript: string | null;
   seoResults: SeoResults;
+  scenes?: Scene[];
+  shots?: Shot[];
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
