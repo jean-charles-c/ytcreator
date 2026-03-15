@@ -384,17 +384,37 @@ export default function Editor() {
     }
     setSegmenting(true);
     setActiveTab("segmentation");
+    setPreviewSceneVersionId(null);
     try {
       const { data, error } = await supabase.functions.invoke("segment-narration", { body: { project_id: projectId } });
       if (error) { toast.error("Erreur de segmentation"); console.error(error); setSegmenting(false); return; }
       if (data?.error) { toast.error(data.error); setSegmenting(false); return; }
       const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
-      if (sceneData) setScenes(sceneData);
+      if (sceneData) {
+        // Save current scenes as a version before replacing (if any exist)
+        if (scenes.length > 0) {
+          setSceneVersions((prev) => {
+            const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+            // If we haven't saved the initial version yet, save it first
+            if (prev.length === 0) {
+              const newId = nextId + 1;
+              setCurrentSceneVersionId(newId);
+              return [{ id: nextId, scenes: [...scenes] }, { id: newId, scenes: sceneData }];
+            }
+            setCurrentSceneVersionId(nextId);
+            return [...prev, { id: nextId, scenes: sceneData }];
+          });
+        } else {
+          setSceneVersions([{ id: 1, scenes: sceneData }]);
+          setCurrentSceneVersionId(1);
+        }
+        setScenes(sceneData);
+      }
       setShots([]);
       toast.success(`${sceneData?.length ?? 0} scènes générées`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setSegmenting(false);
-  }, [projectId, narration]);
+  }, [projectId, narration, scenes]);
 
   // Generate storyboard (all or single scene)
   const runStoryboard = useCallback(async (sceneId?: string) => {
