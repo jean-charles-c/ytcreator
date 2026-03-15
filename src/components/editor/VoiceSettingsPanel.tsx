@@ -52,6 +52,31 @@ export function getAvailableVoiceTypes(lang: string) {
   return types;
 }
 
+interface VoiceSettingsPanelProps {
+  settings: VoiceSettings;
+  onChange: (settings: VoiceSettings) => void;
+  hasFavorite?: boolean;
+  hideHeader?: boolean;
+}
+
+const LANGUAGES = [
+  { value: "fr-FR", label: "Français" },
+  { value: "en-US", label: "English (US)" },
+  { value: "en-GB", label: "English (UK)" },
+  { value: "es-ES", label: "Español" },
+  { value: "de-DE", label: "Deutsch" },
+  { value: "it-IT", label: "Italiano" },
+  { value: "pt-BR", label: "Português (BR)" },
+  { value: "ja-JP", label: "日本語" },
+  { value: "ar-XA", label: "العربية" },
+];
+
+const GENDERS = [
+  { value: "FEMALE", label: "Féminin" },
+  { value: "MALE", label: "Masculin" },
+  { value: "NEUTRAL", label: "Neutre" },
+];
+
 export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
