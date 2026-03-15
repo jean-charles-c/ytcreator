@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      favorite_voice_profile: {
+        Row: {
+          created_at: string | null
+          id: string
+          language_code: string
+          speaking_rate: number
+          style: string
+          updated_at: string | null
+          user_id: string
+          voice_gender: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          language_code?: string
+          speaking_rate?: number
+          style?: string
+          updated_at?: string | null
+          user_id: string
+          voice_gender?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          language_code?: string
+          speaking_rate?: number
+          style?: string
+          updated_at?: string | null
+          user_id?: string
+          voice_gender?: string
+        }
+        Relationships: []
+      }
       project_scriptcreator_state: {
         Row: {
           analysis: Json | null
