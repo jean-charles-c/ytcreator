@@ -196,7 +196,7 @@ serve(async (req) => {
         duration_estimate: durationEstimate,
         language_code: languageCode,
         voice_gender: voiceGender,
-        style: body.voiceType || (voiceName ? "Wavenet" : "Standard"),
+        style: `${body.voiceType || "Standard"}:${body.style || "neutral"}`,
         speaking_rate: speakingRate,
         text_length: text.length,
       })
