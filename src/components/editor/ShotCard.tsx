@@ -7,7 +7,17 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
 
-const SHOT_TYPES = ["Establishing Shot", "Activity Shot", "Detail Shot", "Portrait Shot", "POV Shot"];
+const SHOT_TYPES = [
+  "Plan d'ensemble",
+  "Plan d'activité",
+  "Plan de détail",
+  "Plan portrait",
+  "Plan subjectif",
+  "Plan d'interaction",
+  "Plan environnemental",
+  "Plan de détail d'artefact",
+  "Plan de détail scientifique",
+];
 
 interface ShotCardProps {
   shot: Shot;
