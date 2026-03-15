@@ -180,7 +180,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "google/gemini-2.5-flash",
             max_tokens: strictMode ? 16384 : 12288,
             temperature: strictMode ? 0.1 : 0.3,
             messages: [
@@ -188,16 +188,19 @@ serve(async (req) => {
                 role: "system",
                 content: `You are a documentary narration segmentation engine.
 
-Rules:
-- Segment the FULL narration from first word to last word, without skipping any part.
-- Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
-- Preserve exact narrative order.
-- Each scene MUST contain at most 2-3 sentences. Prefer shorter scenes (1-2 sentences) over longer ones.
-- Create a new scene whenever the topic, subject, location, character focus, or action changes.
-- Generate a short descriptive title for each scene (max 10 words).
-- Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
-- Create approximately ${targetCount} scenes to cover 100% of the narration. More scenes is better than fewer.
-${strictMode ? "- CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
+ABSOLUTE RULES — NEVER DEVIATE:
+1. Segment the FULL narration from first word to last word, without skipping any part.
+2. Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
+3. Preserve exact narrative order.
+4. **CRITICAL — SCENE LENGTH**: Each scene MUST contain EXACTLY 1 to 3 sentences. NEVER more than 3 sentences per scene. If a passage has 4+ sentences on the same topic, SPLIT them into multiple scenes.
+5. A "sentence" ends with a period (.), question mark (?), or exclamation mark (!).
+6. Target approximately ${targetCount} scenes. Create MORE scenes rather than fewer — granularity is key.
+7. Create a new scene whenever the topic, subject, location, character focus, or action changes.
+8. Generate a short descriptive title for each scene (max 10 words).
+9. Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
+${strictMode ? "10. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
+
+SELF-CHECK: Before returning, verify that NO scene contains more than 3 sentences. If any scene has 4+ sentences, split it.
 
 Return data via the segment_narration tool call only.`,
               },
