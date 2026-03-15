@@ -481,7 +481,7 @@ export default function PdfDocumentaryTab({
                   setFindingTension(false);
                 }}
                 disabled={findingTension || !extractedText}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded border border-dashed border-border p-2.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-secondary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded border border-dashed border-orange-400 p-2.5 text-xs text-orange-600 hover:text-orange-700 hover:border-orange-500 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {findingTension ? (
                   <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Recherche dans le document…</>
