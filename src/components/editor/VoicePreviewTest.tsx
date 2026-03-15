@@ -10,7 +10,7 @@ interface VoicePreviewTestProps {
   hideHeader?: boolean;
 }
 
-export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
+export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewTestProps) {
   const [testText, setTestText] = useState("");
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
