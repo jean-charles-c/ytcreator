@@ -12,6 +12,7 @@ const SHOT_TYPES = ["Establishing Shot", "Activity Shot", "Detail Shot", "Portra
 interface ShotCardProps {
   shot: Shot;
   globalIndex?: number;
+  sceneLabel?: string;
   onUpdate: (shot: Shot) => void;
 }
 
