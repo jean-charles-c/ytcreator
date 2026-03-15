@@ -447,8 +447,8 @@ serve(async (req) => {
       throw new Error("AI gateway error");
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    return new Response(createSseRelayStream(response.body), {
+      headers: sseHeaders,
     });
   } catch (e) {
     console.error("generate-script error:", e);
