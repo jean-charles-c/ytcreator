@@ -645,7 +645,7 @@ export default function PdfDocumentaryTab({
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => {
                               onScriptChange(previewVersion.content);
-                              setCurrentVersionId(previewVersion.id);
+                              onCurrentVersionIdChange(previewVersion.id);
                               setShowVersionPreviewId(null);
                               toast.success(`Version V${previewVersion.id} restaurée`);
                             }} className="h-6 text-[10px] px-2">
