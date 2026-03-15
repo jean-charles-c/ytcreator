@@ -887,6 +887,14 @@ export default function Editor() {
           </div>
         )}
 
+        {/* Content Publish tab */}
+        {!showSetup && activeTab === "cp" && (
+          <ContentPublishTab
+            generatedScript={generatedScript}
+            seoResults={seoResults}
+          />
+        )}
+
         {/* Segmentation View */}
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
