@@ -173,14 +173,12 @@ RHYTHM — CRITICAL:
 
 PARAGRAPH STRUCTURE — STRICT DISTRIBUTION:
 • Separate paragraphs with empty lines.
-• DEFAULT paragraph length is 1 or 2 sentences. These are your bread and butter.
-• 1-sentence paragraphs: ~35% of all paragraphs. Use for dramatic impact, transitions, reveals, and standalone powerful statements.
-• 2-sentence paragraphs: ~45% of all paragraphs. This is your most common format. Punchy and efficient.
-• 3-sentence paragraphs: ~15% of all paragraphs. Use sparingly when a moment needs slightly more development.
-• 4-sentence paragraphs: ~5% MAXIMUM. These are RARE exceptions — only when four sentences are truly inseparable. Most scripts should have 0-2 of these total.
-• SELF-CHECK: Before finishing, scan your paragraphs. If more than 20% have 3+ sentences, you MUST split them. If you see ANY paragraph with 5+ sentences, split it immediately.
+• Use ONLY 1, 2, or 3 sentences per paragraph. NEVER 4 or more.
+• 1-sentence paragraphs: ~30%. Dramatic impact, transitions, reveals.
+• 2-sentence paragraphs: ~40%. Your default format. Punchy and efficient.
+• 3-sentence paragraphs: ~30%. When a moment needs fuller development.
 • NEVER write more than 2 consecutive paragraphs of the same length.
-• When in doubt, SPLIT. Two short paragraphs are ALWAYS better than one long paragraph.
+• The MIX of 1/2/3 creates natural rhythm — like a film editor alternating quick cuts and longer shots.
 
 ---
 
