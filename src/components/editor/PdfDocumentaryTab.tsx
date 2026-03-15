@@ -69,6 +69,7 @@ export default function PdfDocumentaryTab({
 }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [targetChars, setTargetChars] = useState(15000);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingScript, setGeneratingScript] = useState(false);
