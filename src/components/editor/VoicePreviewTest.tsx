@@ -42,7 +42,8 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
             voiceName: getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType),
-            speakingRate: settings.speakingRate,
+            speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
+            pitch: STYLE_PRESETS[settings.style]?.pitch || 0,
           }),
         }
       );
