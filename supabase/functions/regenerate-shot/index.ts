@@ -168,6 +168,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
         shot_type: newShot.shot_type,
         description: newShot.description,
         prompt_export: newShot.prompt_export,
+        ...(newShot.source_sentence_fr ? { source_sentence_fr: newShot.source_sentence_fr } : {}),
       })
       .eq("id", shot_id);
 
