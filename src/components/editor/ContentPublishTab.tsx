@@ -109,7 +109,46 @@ function SectionHeader({
   );
 }
 
-function cleanScriptForExport(raw: string): string {
+function SubCollapsible({
+  icon: Icon,
+  title,
+  defaultOpen = false,
+  badge,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  defaultOpen?: boolean;
+  badge?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 w-full py-2 text-left group"
+      >
+        <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="text-xs font-display font-medium text-foreground uppercase tracking-wider">{title}</span>
+        {badge && <span className="text-[10px] text-muted-foreground">({badge})</span>}
+        <svg
+          className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pt-1 pb-2">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
   return raw
     .split("\n")
     .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
