@@ -17,8 +17,19 @@ export interface VoiceSettings {
   languageCode: string;
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL";
   voiceType: string; // "Standard" | "Wavenet" | "Neural2"
+  style: string; // tone preset
   speakingRate: number;
 }
+
+// Style presets → pitch + speakingRate adjustments sent to Google TTS
+export const STYLE_PRESETS: Record<string, { pitch: number; rateOffset: number; label: string }> = {
+  neutral:    { pitch: 0,    rateOffset: 0,    label: "Neutre" },
+  warm:       { pitch: -1.5, rateOffset: -0.05, label: "Chaleureux" },
+  calm:       { pitch: -2,   rateOffset: -0.1,  label: "Calme" },
+  energetic:  { pitch: 2,    rateOffset: 0.1,   label: "Énergique" },
+  serious:    { pitch: -3,   rateOffset: -0.05, label: "Sérieux" },
+  cheerful:   { pitch: 3,    rateOffset: 0.05,  label: "Joyeux" },
+};
 
 const VOICE_TYPES = [
   { value: "Standard", label: "Standard", desc: "Basique — gratuit" },
@@ -77,6 +88,8 @@ const GENDERS = [
   { value: "NEUTRAL", label: "Neutre" },
 ];
 
+const STYLES = Object.entries(STYLE_PRESETS).map(([value, { label }]) => ({ value, label }));
+
 export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
@@ -95,7 +108,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
             user_id: user.id,
             language_code: settings.languageCode,
             voice_gender: settings.voiceGender,
-            style: settings.voiceType,
+            style: `${settings.voiceType}:${settings.style}`,
             speaking_rate: settings.speakingRate,
             updated_at: new Date().toISOString(),
           },
@@ -168,6 +181,17 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         <p className="text-[10px] text-muted-foreground/60">
           Voix : {getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType)}
         </p>
+      </div>
+
+      {/* Style / Tone */}
+      <div className="space-y-1.5">
+        <Label htmlFor="vo-style" className="text-xs text-muted-foreground">Tonalité</Label>
+        <Select value={settings.style} onValueChange={(v) => update({ style: v })}>
+          <SelectTrigger id="vo-style" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {STYLES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Speaking Rate */}

@@ -5,7 +5,7 @@ import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLin
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import VoiceSettingsPanel, { type VoiceSettings, getVoiceName } from "./VoiceSettingsPanel";
+import VoiceSettingsPanel, { type VoiceSettings, getVoiceName, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 
@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   languageCode: "fr-FR",
   voiceGender: "FEMALE",
   voiceType: "Standard",
+  style: "neutral",
   speakingRate: 1.0,
 };
 
@@ -49,10 +50,16 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
           .maybeSingle();
 
         if (!error && data) {
+          // Parse compound style format "VoiceType:tonality" or legacy values
+          const rawStyle = data.style || "";
+          const parts = rawStyle.split(":");
+          const voiceType = ["Standard", "Wavenet", "Neural2"].includes(parts[0]) ? parts[0] : "Standard";
+          const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
           setSettings({
             languageCode: data.language_code,
             voiceGender: data.voice_gender,
-            voiceType: ["Standard", "Wavenet", "Neural2"].includes(data.style) ? data.style : "Standard",
+            voiceType,
+            style: tone,
             speakingRate: data.speaking_rate,
           });
           setHasFavorite(true);
@@ -107,7 +114,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             voiceGender: settings.voiceGender,
             voiceName: getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType),
             voiceType: settings.voiceType,
-            speakingRate: settings.speakingRate,
+            speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
+            pitch: STYLE_PRESETS[settings.style]?.pitch || 0,
+            style: settings.style,
             mode: "full",
             projectId,
           }),
