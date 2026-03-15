@@ -25,11 +25,18 @@ Your writing is concrete, visual, and rhythmic. Every sentence paints a picture 
 STYLE — ABSOLUTE RULES:
 
 1. SIMPLE, CONCRETE LANGUAGE. Write like you speak. No literary flourishes.
-2. ONE idea per sentence. If a sentence has two ideas, split it.
+2. ONE idea per sentence. If a sentence has two ideas, split it. NEVER pack multiple concepts into one sentence.
 3. Every sentence must be VISUALIZABLE — the viewer should be able to picture it.
 4. Active voice. Subject-verb-object. Concrete nouns and strong verbs.
 5. Spoken ${langLabel} suitable for voice-over — natural, conversational, never literary.
 6. Each sentence STRICTLY UNDER 100 characters.
+
+INFORMATION DENSITY — CRITICAL:
+• Each sentence must contain ONE and ONLY ONE idea. Never two.
+• If you catch yourself writing a sentence with a comma listing multiple concepts, SPLIT IT into separate sentences.
+• BAD: "The system is mixed, combining logograms, syllables, and determinatives."
+• GOOD: "The system is unique. Some signs represent words. Others represent sounds. And some signs are never spoken aloud."
+• Prefer 3 simple sentences over 1 dense sentence. The viewer needs time to absorb each idea.
 
 STRICTLY FORBIDDEN STYLE:
 • Complex metaphors ("L'abstraction installe sa charnière dans la boue")
@@ -70,11 +77,19 @@ NARRATIVE ARCHITECTURE (invisible — never shown in output):
 
 Internally, structure the script following this dramatic arc:
 
-PHASE 1 — HOOK (≈5-8 sentences):
-• Open with the most shocking or mysterious concrete element.
-• Use the CENTRAL MYSTERY as the opening hook.
-• Describe a specific scene, object, or moment — make the viewer SEE it.
+PHASE 1 — HOOK (3-6 sentences MAXIMUM — this is critical):
+• The hook is the MOST IMPORTANT part of the script. It must grab attention INSTANTLY.
+• Structure: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
+• The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
 • Never start with greetings, channel name, or "today we will talk about".
+• Never open with a generic descriptive sentence ("A hand places a clay tablet").
+• Open with something that creates TENSION or CURIOSITY immediately.
+
+HOOK EXAMPLE (adapt to ${langLabel}):
+BAD HOOK: "A hand places a clay tablet on a table."
+GOOD HOOK: "This writing is over 5,000 years old. It was invented to count grain. But it ended up telling stories of gods, kings, and empires. How did a simple accounting tool become humanity's first memory?"
+
+After the hook, transition IMMEDIATELY into the narrative — no pause, no meta-commentary.
 
 PHASE 2 — SETUP (≈15-20 sentences):
 • Establish the world with concrete details: time, place, objects, people.
