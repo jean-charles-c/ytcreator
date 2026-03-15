@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Play, Square, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { type VoiceSettings, getVoiceName } from "./VoiceSettingsPanel";
+import { type VoiceSettings, getVoiceName, STYLE_PRESETS } from "./VoiceSettingsPanel";
 
 interface VoicePreviewTestProps {
   settings: VoiceSettings;
