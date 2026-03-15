@@ -633,9 +633,21 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
-                    <RotateCcw className="h-3 w-3" /> Régénérer
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={5000}
+                      max={30000}
+                      step={1000}
+                      value={targetChars}
+                      onChange={(e) => setTargetChars(Number(e.target.value))}
+                      className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+                    <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
+                      <RotateCcw className="h-3 w-3" /> Régénérer
+                    </Button>
+                  </div>
                 </div>
               )}
               {/* Versions */}

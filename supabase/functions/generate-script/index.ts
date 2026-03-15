@@ -268,7 +268,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { analysis, structure, text, language } = await req.json();
+    const { analysis, structure, text, language, targetChars } = await req.json();
     if (!analysis) {
       return new Response(JSON.stringify({ error: "Analyse narrative requise." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -282,6 +282,9 @@ serve(async (req) => {
     const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
     const langLabel = langLabels[scriptLang] || "English";
     const sourceText = text ? text.slice(0, 25000) : "";
+    const charTarget = targetChars ? Number(targetChars) : 15000;
+    const charMin = Math.round(charTarget * 0.9);
+    const charMax = Math.round(charTarget * 1.1);
 
     const systemPrompt = buildSystemPrompt(langLabel);
     const userMessage = buildUserMessage(analysis, structure || [], sourceText);
