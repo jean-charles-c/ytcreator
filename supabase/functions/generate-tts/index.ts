@@ -228,24 +228,44 @@ serve(async (req) => {
       );
     }
 
+    // Convert text to SSML with pauses
+    const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+    const isSsml = ssmlText.startsWith("<speak>");
+
     // Google TTS has a 5000 byte limit per request — split if needed
     const MAX_CHARS = 4800;
     const chunks: string[] = [];
-    if (text.length <= MAX_CHARS) {
-      chunks.push(text);
+    if (ssmlText.length <= MAX_CHARS) {
+      chunks.push(ssmlText);
     } else {
-      // Split at sentence boundaries
-      const sentences = text.split(/(?<=[.!?])\s+/);
-      let current = "";
-      for (const sentence of sentences) {
-        if ((current + " " + sentence).length > MAX_CHARS && current.length > 0) {
-          chunks.push(current.trim());
-          current = sentence;
-        } else {
-          current = current ? current + " " + sentence : sentence;
+      // For SSML, split by paragraphs; for plain text, split at sentence boundaries
+      if (isSsml) {
+        // Strip <speak> wrapper, split on <break>, re-wrap each chunk
+        const inner = ssmlText.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
+        const parts = inner.split(/(<break[^/]*\/>)/);
+        let current = "<speak>";
+        for (const part of parts) {
+          if ((current + part + "</speak>").length > MAX_CHARS && current !== "<speak>") {
+            chunks.push(current + "</speak>");
+            current = "<speak>" + part;
+          } else {
+            current += part;
+          }
         }
+        if (current !== "<speak>") chunks.push(current + "</speak>");
+      } else {
+        const sentences = ssmlText.split(/(?<=[.!?])\s+/);
+        let current = "";
+        for (const sentence of sentences) {
+          if ((current + " " + sentence).length > MAX_CHARS && current.length > 0) {
+            chunks.push(current.trim());
+            current = sentence;
+          } else {
+            current = current ? current + " " + sentence : sentence;
+          }
+        }
+        if (current.trim()) chunks.push(current.trim());
       }
-      if (current.trim()) chunks.push(current.trim());
     }
 
     // Generate audio for all chunks
