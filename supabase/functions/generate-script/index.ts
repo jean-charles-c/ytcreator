@@ -167,7 +167,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between 10,000 and 12,000 characters total. Every sentence under 100 characters. Vary sentence lengths for natural rhythm.`);
+  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between 10,000 and 22,000 characters total (aim for 15,000-18,000). Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
 
   return parts.join("\n\n");
 }
