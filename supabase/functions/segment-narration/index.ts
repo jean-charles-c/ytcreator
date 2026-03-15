@@ -338,6 +338,7 @@ Return data via the segment_narration tool call only.`,
       scene_order: i + 1,
       title: s.title,
       source_text: s.source_text,
+      source_text_fr: s.source_text_fr || null,
       visual_intention: s.visual_intention,
     }));
 

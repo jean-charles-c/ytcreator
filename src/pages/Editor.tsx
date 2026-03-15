@@ -663,10 +663,19 @@ export default function Editor() {
   };
 
   const handleShotDelete = async (shotId: string) => {
-    const { error } = await supabase.from("shots").delete().eq("id", shotId);
-    if (error) { toast.error("Erreur de suppression"); return; }
-    setShots((prev) => prev.filter((s) => s.id !== shotId));
-    toast.success("Shot supprimé");
+    try {
+      const { error } = await supabase.from("shots").delete().eq("id", shotId);
+      if (error) {
+        console.error("Delete error:", error);
+        toast.error("Erreur de suppression");
+        return;
+      }
+      setShots((prev) => prev.filter((s) => s.id !== shotId));
+      toast.success("Shot supprimé");
+    } catch (e) {
+      console.error("Delete exception:", e);
+      toast.error("Erreur de suppression");
+    }
   };
 
   const handleShotRegenerate = async (shotId: string) => {

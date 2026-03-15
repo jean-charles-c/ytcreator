@@ -147,7 +147,10 @@ export default function SceneBlock({
       ) : (
         <>
           <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-3">{scene.source_text}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-1">{scene.source_text}</p>
+          {(scene as any).source_text_fr && (
+            <p className="text-sm text-muted-foreground/70 leading-relaxed mb-3 italic border-l-2 border-primary/20 pl-3">🇫🇷 {(scene as any).source_text_fr}</p>
+          )}
           {scene.visual_intention && (
             <div className="rounded bg-secondary/50 border border-border p-3 space-y-1">
               <span className="text-[10px] font-medium text-primary uppercase tracking-wide">Sujet de la scène</span>
