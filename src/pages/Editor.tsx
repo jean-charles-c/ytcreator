@@ -514,13 +514,21 @@ export default function Editor() {
           }
         }
 
-        // Save the newly generated shots as the current version
-        const finalShots = shots;
-        setShotVersions((prev) => {
-          const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
-          setCurrentShotVersionId(nextId);
-          return [...prev, { id: nextId, shots: finalShots }];
-        });
+        // Fetch final shots from DB and save as current version
+        const { data: finalShotData } = await supabase
+          .from("shots")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("scene_id", { ascending: true })
+          .order("shot_order", { ascending: true });
+        if (finalShotData) {
+          setShots(finalShotData);
+          setShotVersions((prev) => {
+            const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+            setCurrentShotVersionId(nextId);
+            return [...prev, { id: nextId, shots: finalShotData }];
+          });
+        }
 
         if (failedSceneIds.length > 0) {
           toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
