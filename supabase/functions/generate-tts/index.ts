@@ -28,14 +28,16 @@ async function callGoogleTTS(
   text: string,
   apiKey: string,
   voice: Record<string, unknown>,
-  audioConfig: Record<string, unknown>
+  audioConfig: Record<string, unknown>,
+  useSsml = false
 ): Promise<string> {
+  const input = useSsml ? { ssml: text } : { text };
   const response = await fetch(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input: { text }, voice, audioConfig }),
+      body: JSON.stringify({ input, voice, audioConfig }),
     }
   );
 
