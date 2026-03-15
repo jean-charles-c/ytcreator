@@ -1137,6 +1137,11 @@ export default function Editor() {
                 </div>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
               </div>
+              {generatingStoryboard && (
+                <Button variant="destructive" size="sm" onClick={stopStoryboard} className="min-h-[40px] shrink-0">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
               {!generatingStoryboard && scenes.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px] shrink-0">
                   <Play className="h-4 w-4" /> Re-générer tous les shots
