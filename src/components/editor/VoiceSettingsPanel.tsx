@@ -16,42 +16,41 @@ import { toast } from "sonner";
 export interface VoiceSettings {
   languageCode: string;
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL";
-  style: string;
+  voiceType: string; // "Standard" | "Wavenet" | "Neural2"
   speakingRate: number;
 }
 
-interface VoiceSettingsPanelProps {
-  settings: VoiceSettings;
-  onChange: (settings: VoiceSettings) => void;
-  hasFavorite?: boolean;
-  hideHeader?: boolean;
+const VOICE_TYPES = [
+  { value: "Standard", label: "Standard", desc: "Basique — gratuit" },
+  { value: "Wavenet", label: "WaveNet", desc: "Naturelle — haute qualité" },
+  { value: "Neural2", label: "Neural2", desc: "Très naturelle — premium" },
+];
+
+// Voice name letter mapping per language+gender (most reliable voices)
+const VOICE_LETTER_MAP: Record<string, Record<string, string>> = {
+  "fr-FR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+  "en-US": { FEMALE: "C", MALE: "D", NEUTRAL: "C" },
+  "en-GB": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+  "es-ES": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+  "de-DE": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+  "it-IT": { FEMALE: "A", MALE: "C", NEUTRAL: "A" },
+  "pt-BR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+  "ja-JP": { FEMALE: "A", MALE: "C", NEUTRAL: "A" },
+  "ar-XA": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+};
+
+// Languages that support Neural2
+const NEURAL2_LANGS = new Set(["fr-FR", "en-US", "en-GB", "de-DE", "it-IT", "pt-BR", "ja-JP", "es-US"]);
+
+export function getVoiceName(lang: string, gender: string, voiceType: string): string {
+  const letter = VOICE_LETTER_MAP[lang]?.[gender] || "A";
+  return `${lang}-${voiceType}-${letter}`;
 }
 
-const LANGUAGES = [
-  { value: "fr-FR", label: "Français" },
-  { value: "en-US", label: "English (US)" },
-  { value: "en-GB", label: "English (UK)" },
-  { value: "es-ES", label: "Español" },
-  { value: "de-DE", label: "Deutsch" },
-  { value: "it-IT", label: "Italiano" },
-  { value: "pt-BR", label: "Português (BR)" },
-  { value: "ja-JP", label: "日本語" },
-  { value: "ar-XA", label: "العربية" },
-];
-
-const GENDERS = [
-  { value: "FEMALE", label: "Féminin" },
-  { value: "MALE", label: "Masculin" },
-  { value: "NEUTRAL", label: "Neutre" },
-];
-
-const STYLES = [
-  { value: "neutral", label: "Neutre" },
-  { value: "calm", label: "Calme" },
-  { value: "energetic", label: "Énergique" },
-  { value: "warm", label: "Chaleureux" },
-  { value: "serious", label: "Sérieux" },
-];
+export function getAvailableVoiceTypes(lang: string) {
+  const types = VOICE_TYPES.filter(t => t.value !== "Neural2" || NEURAL2_LANGS.has(lang));
+  return types;
+}
 
 export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
