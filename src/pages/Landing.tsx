@@ -5,6 +5,11 @@ import { Film, Layers, Shield, FileText, ArrowRight, Clapperboard, Menu, X } fro
 
 const features = [
   {
+    icon: FileText,
+    title: "Création d'un script narratif",
+    description: "La structure narrative de votre vidéo en un clic.",
+  },
+  {
     icon: Layers,
     title: "Narration Segmentation",
     description: "Découpez automatiquement votre voix-off en scènes visuelles exploitables.",
@@ -22,7 +27,12 @@ const features = [
   {
     icon: FileText,
     title: "Prompt Exporter",
-    description: "Exportez vos prompts prêts à l'emploi pour Grok Image en un clic.",
+    description: "Exportez vos prompts prêts à l'emploi pour les IA génératives d'images ou vidéos en un clic.",
+  },
+  {
+    icon: Film,
+    title: "SEO",
+    description: "Générez 10 titres, la description de la vidéo et les tags optimisés pour le référencement.",
   },
 ];
 
