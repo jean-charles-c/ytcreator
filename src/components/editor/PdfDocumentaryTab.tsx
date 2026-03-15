@@ -126,10 +126,6 @@ export default function PdfDocumentaryTab({
   // Combined: generate structure then script automatically
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
     if (!analysis || !extractedText) return;
-    // Save current script before regenerating
-    if (isRegenerate && script) {
-      setPreviousScripts((prev) => [...prev, script]);
-    }
     setGeneratingScript(true);
     setScriptOpen(true);
     onScriptChange("");
@@ -202,6 +198,19 @@ export default function PdfDocumentaryTab({
       }
 
       onScriptChange(full);
+      if (isRegenerate) {
+        setScriptVersions((prev) => {
+          const baseVersions = prev.length > 0
+            ? prev
+            : (script && script.trim() !== "" ? [{ id: 1, content: script }] : []);
+          const nextId = baseVersions.length > 0 ? Math.max(...baseVersions.map((v) => v.id)) + 1 : 1;
+          setCurrentVersionId(nextId);
+          return [...baseVersions, { id: nextId, content: full }];
+        });
+      } else {
+        setScriptVersions([{ id: 1, content: full }]);
+        setCurrentVersionId(1);
+      }
       onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
