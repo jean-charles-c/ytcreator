@@ -557,20 +557,30 @@ export default function PdfDocumentaryTab({
                   </Button>
                 </div>
               )}
-              {/* Previous scripts */}
+              {/* Version buttons — show all versions including current */}
               {previousScripts.length > 0 && !generatingScript && (
                 <div className="mb-4">
-                  <p className="text-[11px] text-muted-foreground mb-1.5">Versions précédentes :</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {previousScripts.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setShowPreviousScript(showPreviousScript === i ? null : i)}
-                        className={`text-[11px] px-2 py-1 rounded border transition-colors ${showPreviousScript === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
-                      >
-                        V{i + 1}
-                      </button>
-                    ))}
+                    {previousScripts.map((_, i) => {
+                      const vNum = i + 1;
+                      return (
+                        <button
+                          key={`prev-${i}`}
+                          onClick={() => setShowPreviousScript(showPreviousScript === i ? null : i)}
+                          className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${showPreviousScript === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                        >
+                          V{vNum}
+                        </button>
+                      );
+                    })}
+                    {/* Current version button */}
+                    <button
+                      onClick={() => setShowPreviousScript(null)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${showPreviousScript === null ? "border-primary bg-primary text-primary-foreground" : "border-primary/40 text-primary hover:bg-primary/10"}`}
+                    >
+                      V{previousScripts.length + 1}
+                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                    </button>
                   </div>
                   {showPreviousScript !== null && previousScripts[showPreviousScript] && (
                     <div className="mt-2 rounded border border-border bg-background p-3">
@@ -579,14 +589,13 @@ export default function PdfDocumentaryTab({
                         <div className="flex gap-1.5">
                           <Button variant="outline" size="sm" onClick={() => {
                             navigator.clipboard.writeText(cleanScriptForExport(previousScripts[showPreviousScript]));
-                            toast.success("Ancienne version copiée");
+                            toast.success("Version copiée");
                           }} className="h-6 text-[10px] px-2">
                             <Copy className="h-2.5 w-2.5" /> Copier
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => {
                             const old = previousScripts[showPreviousScript];
                             const currentScript = script;
-                            // Swap: current becomes previous, old becomes current
                             if (currentScript) {
                               setPreviousScripts((prev) => prev.map((s, idx) => idx === showPreviousScript ? currentScript : s));
                             } else {
