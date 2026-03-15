@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -24,14 +24,18 @@ interface ShotCardProps {
   globalIndex?: number;
   sceneLabel?: string;
   onUpdate: (shot: Shot) => void;
+  onDelete?: (shotId: string) => void;
+  onRegenerate?: (shotId: string) => Promise<void>;
 }
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDelete, onRegenerate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const startEdit = () => {
     setEditType(shot.shot_type);
@@ -66,6 +70,26 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate }: Sh
     toast.success("Prompt copié");
   };
 
+  const handleRegenerate = async () => {
+    if (onRegenerate) {
+      setRegenerating(true);
+      try {
+        await onRegenerate(shot.id);
+      } finally {
+        setRegenerating(false);
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
+    onDelete?.(shot.id);
+  };
+
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 
   if (editing) {
@@ -97,11 +121,17 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate }: Sh
           {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
         </div>
         <div className="flex gap-1">
+          <button onClick={handleRegenerate} disabled={regenerating} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Regénérer ce shot">
+            {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          </button>
           <button onClick={copyPrompt} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copier le prompt">
             <Copy className="h-3.5 w-3.5" />
           </button>
           <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
             <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={handleDelete} className={`p-1.5 rounded transition-colors ${confirmDelete ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"}`} title={confirmDelete ? "Cliquer pour confirmer" : "Supprimer ce shot"}>
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
