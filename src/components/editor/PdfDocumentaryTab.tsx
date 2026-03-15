@@ -448,10 +448,10 @@ export default function PdfDocumentaryTab({
         </div>
       )}
 
-      {/* Script result */}
+      {/* Script result — collapsible */}
       {(script !== null && script !== "") && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4 sm:p-6 animate-fade-in">
-          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+        <Collapsible open={scriptOpen} onOpenChange={setScriptOpen} className="mt-6">
+          <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
             <div className="flex items-center gap-2">
               <ScrollText className="h-4 w-4 text-primary" />
               <h3 className="font-display text-sm font-semibold text-foreground">Script narratif</h3>
@@ -460,16 +460,18 @@ export default function PdfDocumentaryTab({
                   {script.length.toLocaleString()} car.
                 </span>
               )}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
               {generatingScript && (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                  <span className="text-xs text-muted-foreground">Écriture en cours…</span>
-                </>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" /> Écriture…
+                </span>
               )}
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${scriptOpen ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 animate-fade-in">
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
               {!generatingScript && script && (
-                <>
+                <div className="flex items-center gap-2 flex-wrap mb-4">
                   <Button variant="outline" size="sm" onClick={copyScriptToClipboard} className="h-8 text-xs">
                     <Copy className="h-3 w-3" /> Copier
                   </Button>
@@ -494,15 +496,15 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
-                </>
+                </div>
               )}
+              <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
+                <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
+                <div ref={scriptEndRef} />
+              </div>
             </div>
-          </div>
-          <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
-            <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
-            <div ref={scriptEndRef} />
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
     </div>
