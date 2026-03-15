@@ -155,6 +155,7 @@ export type Database = {
           scene_id: string
           shot_order: number
           shot_type: string
+          source_sentence: string | null
           updated_at: string
         }
         Insert: {
@@ -167,6 +168,7 @@ export type Database = {
           scene_id: string
           shot_order: number
           shot_type: string
+          source_sentence?: string | null
           updated_at?: string
         }
         Update: {
@@ -179,6 +181,7 @@ export type Database = {
           scene_id?: string
           shot_order?: number
           shot_type?: string
+          source_sentence?: string | null
           updated_at?: string
         }
         Relationships: [
