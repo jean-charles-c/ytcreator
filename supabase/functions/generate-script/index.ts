@@ -242,11 +242,14 @@ CONTENT RULES:
 ---
 
 LENGTH — NON-NEGOTIABLE:
-• MINIMUM: ${charMin.toLocaleString()} characters. MAXIMUM: ${charMax.toLocaleString()} characters.
-• Aim for ${charTarget.toLocaleString()} characters as the ideal target.
+• HARD MAXIMUM: ${charMax.toLocaleString()} characters. You MUST NOT exceed this limit under any circumstances.
+• HARD MINIMUM: ${charMin.toLocaleString()} characters.
+• Ideal target: ${charTarget.toLocaleString()} characters.
 • The Escalation phase should be the longest — at least 40% of the total script.
-• Before finishing, COUNT your characters. If under ${charMin.toLocaleString()}, expand with more concrete scenes and visual details.
-• If over ${charMax.toLocaleString()}, tighten by removing redundant sentences — never cut narrative tension.`;
+• BEFORE FINISHING: Count your total characters carefully. This is NON-NEGOTIABLE.
+• If you are OVER ${charMax.toLocaleString()} characters, you MUST cut content until you are under. Remove secondary examples, condense explanations, merge similar paragraphs. Keep cutting until you are within the limit.
+• If you are UNDER ${charMin.toLocaleString()} characters, expand with more concrete scenes and visual details.
+• A script that exceeds ${charMax.toLocaleString()} characters is a FAILED script. Verify your count.`;
 }
 
 function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string, charMin: number, charMax: number, charTarget: number): string {
@@ -299,7 +302,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
+  parts.push(`CRITICAL REMINDER: Output ONLY the narration text. No titles, no sections, no markers. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). DO NOT EXCEED ${charMax.toLocaleString()} characters — count carefully before finishing. If over, cut secondary content until within limit. Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
 
   return parts.join("\n\n");
 }
