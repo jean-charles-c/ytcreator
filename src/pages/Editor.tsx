@@ -13,6 +13,7 @@ import {
   Save,
   Loader2,
   RotateCcw,
+  Square,
   CheckCircle2,
   Menu,
   X,
@@ -104,6 +105,8 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const segAbortRef = useRef<AbortController | null>(null);
+  const storyAbortRef = useRef<AbortController | null>(null);
 
   // Versioning for segmentation
   const [sceneVersions, setSceneVersions] = useState<{ id: number; scenes: Scene[] }[]>([]);
@@ -382,13 +385,28 @@ export default function Editor() {
     if (narration.trim()) {
       await supabase.from("projects").update({ narration: narration.trim() }).eq("id", projectId);
     }
+    const abortController = new AbortController();
+    segAbortRef.current = abortController;
     setSegmenting(true);
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
     try {
-      const { data, error } = await supabase.functions.invoke("segment-narration", { body: { project_id: projectId } });
-      if (error) { toast.error("Erreur de segmentation"); console.error(error); setSegmenting(false); return; }
-      if (data?.error) { toast.error(data.error); setSegmenting(false); return; }
+      const session = (await supabase.auth.getSession()).data.session;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/segment-narration`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ project_id: projectId }),
+          signal: abortController.signal,
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data?.error) { toast.error(data?.error || "Erreur de segmentation"); setSegmenting(false); segAbortRef.current = null; return; }
       const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
       if (sceneData) {
         // Save current scenes as a version before replacing (if any exist)
@@ -412,9 +430,21 @@ export default function Editor() {
       }
       setShots([]);
       toast.success(`${sceneData?.length ?? 0} scènes générées`);
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        toast.info("Segmentation annulée");
+      } else {
+        console.error(e); toast.error("Erreur inattendue");
+      }
+    }
     setSegmenting(false);
+    segAbortRef.current = null;
   }, [projectId, narration, scenes]);
+
+  const stopSegmentation = useCallback(() => {
+    segAbortRef.current?.abort();
+    segAbortRef.current = null;
+  }, []);
 
   // Generate storyboard (all or single scene)
   const runStoryboard = useCallback(async (sceneId?: string) => {
@@ -435,12 +465,13 @@ export default function Editor() {
       setPreviewShotVersionId(null);
       setGeneratingStoryboard(true);
       setActiveTab("storyboard");
+      const abortController = new AbortController();
+      storyAbortRef.current = abortController;
     }
 
     const callStoryboard = async (body: Record<string, string>) => {
       const session = (await supabase.auth.getSession()).data.session;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 145000);
+      const timeoutId = setTimeout(() => storyAbortRef.current?.abort(), 145000);
 
       try {
         const response = await fetch(
@@ -454,7 +485,7 @@ export default function Editor() {
               "x-supabase-client-platform": "web",
             },
             body: JSON.stringify(body),
-            signal: controller.signal,
+            signal: storyAbortRef.current?.signal,
           }
         );
 
@@ -538,7 +569,7 @@ export default function Editor() {
       }
     } catch (e: any) {
       if (e?.name === "AbortError") {
-        toast.error("Timeout — relancez la génération (les scènes restantes seront générées)");
+        toast.info("Génération des shots annulée");
       } else {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
@@ -547,7 +578,13 @@ export default function Editor() {
 
     setGeneratingStoryboard(false);
     setRegeneratingSceneId(null);
+    storyAbortRef.current = null;
   }, [projectId, scenes]);
+
+  const stopStoryboard = useCallback(() => {
+    storyAbortRef.current?.abort();
+    storyAbortRef.current = null;
+  }, []);
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
@@ -891,6 +928,11 @@ export default function Editor() {
                 {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {segmenting ? "Segmentation..." : "Lancer la segmentation"}
               </Button>
+              {segmenting && (
+                <Button variant="destructive" onClick={stopSegmentation} className="min-h-[44px]">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -965,6 +1007,11 @@ export default function Editor() {
                   )}
                 </p>
               </div>
+              {segmenting && (
+                <Button variant="destructive" size="sm" onClick={stopSegmentation} className="min-h-[40px] shrink-0">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
               {!segmenting && scenes.length > 0 && (
                 <div className="flex gap-2 shrink-0">
                   <Button variant="outline" size="sm" onClick={runSegmentation} disabled={segmenting} className="min-h-[40px]">
@@ -1090,6 +1137,11 @@ export default function Editor() {
                 </div>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
               </div>
+              {generatingStoryboard && (
+                <Button variant="destructive" size="sm" onClick={stopStoryboard} className="min-h-[40px] shrink-0">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
               {!generatingStoryboard && scenes.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px] shrink-0">
                   <Play className="h-4 w-4" /> Re-générer tous les shots
