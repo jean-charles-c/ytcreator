@@ -47,7 +47,7 @@ serve(async (req) => {
 
     const narrationText = project.narration.trim();
     const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
-    const targetSceneCount = Math.min(140, Math.max(8, Math.ceil(wordCount / 55)));
+    const targetSceneCount = Math.min(200, Math.max(10, Math.ceil(wordCount / 35)));
 
     const normalizeForCoverage = (value: string) =>
       value
@@ -192,10 +192,11 @@ Rules:
 - Segment the FULL narration from first word to last word, without skipping any part.
 - Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
 - Preserve exact narrative order.
-- Each scene should map to 1-3 sentences from the source.
+- Each scene MUST contain at most 2-3 sentences. Prefer shorter scenes (1-2 sentences) over longer ones.
+- Create a new scene whenever the topic, subject, location, character focus, or action changes.
 - Generate a short descriptive title for each scene (max 10 words).
-- Generate visual_intention: one short sentence describing the documentary visual.
-- Create approximately ${targetCount} scenes to cover 100% of the narration.
+- Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about).
+- Create approximately ${targetCount} scenes to cover 100% of the narration. More scenes is better than fewer.
 ${strictMode ? "- CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
 
 Return data via the segment_narration tool call only.`,
@@ -301,7 +302,7 @@ Return data via the segment_narration tool call only.`,
 
       for (let i = 0; i < chunks.length; i++) {
         const chunkWords = chunks[i].split(/\s+/).filter(Boolean).length;
-        const chunkTarget = Math.max(4, Math.ceil(chunkWords / 55));
+        const chunkTarget = Math.max(4, Math.ceil(chunkWords / 35));
         console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words, target ${chunkTarget} scenes)`);
         
         let chunkScenes = await requestSegmentation(chunks[i], chunkTarget, false);

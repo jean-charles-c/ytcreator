@@ -12,10 +12,11 @@ const SHOT_TYPES = ["Establishing Shot", "Activity Shot", "Detail Shot", "Portra
 interface ShotCardProps {
   shot: Shot;
   globalIndex?: number;
+  sceneLabel?: string;
   onUpdate: (shot: Shot) => void;
 }
 
-export default function ShotCard({ shot, globalIndex, onUpdate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -81,7 +82,10 @@ export default function ShotCard({ shot, globalIndex, onUpdate }: ShotCardProps)
   return (
     <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
+          {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
+        </div>
         <div className="flex gap-1">
           <button onClick={copyPrompt} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copier le prompt">
             <Copy className="h-3.5 w-3.5" />
