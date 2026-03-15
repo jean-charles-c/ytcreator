@@ -93,8 +93,8 @@ Remember: ALL text including section markers must be in ${langLabel}.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        max_tokens: 8000,
+        model: "google/gemini-2.5-flash",
+        max_tokens: 12000,
         messages: [
           { role: "system", content: systemPrompt },
           {
