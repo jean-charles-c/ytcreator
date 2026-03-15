@@ -220,16 +220,45 @@ export default function PdfDocumentaryTab({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); onFileNameChange(dropped.name); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); }
+    if (dropped?.type === "application/pdf") {
+      setFile(dropped);
+      onFileNameChange(dropped.name);
+      onExtractedTextChange(null);
+      onAnalysisChange(null);
+      onDocStructureChange(null);
+      onScriptChange(null);
+      setScriptVersions([]);
+      setCurrentVersionId(null);
+      setShowVersionPreviewId(null);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); onFileNameChange(selected.name); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); }
+    if (selected?.type === "application/pdf") {
+      setFile(selected);
+      onFileNameChange(selected.name);
+      onExtractedTextChange(null);
+      onAnalysisChange(null);
+      onDocStructureChange(null);
+      onScriptChange(null);
+      setScriptVersions([]);
+      setCurrentVersionId(null);
+      setShowVersionPreviewId(null);
+    }
   };
 
   const removeFile = () => {
-    setFile(null); onFileNameChange(null); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); onPageCountChange(0);
+    setFile(null);
+    onFileNameChange(null);
+    onExtractedTextChange(null);
+    onAnalysisChange(null);
+    onDocStructureChange(null);
+    onScriptChange(null);
+    onPageCountChange(0);
+    setScriptVersions([]);
+    setCurrentVersionId(null);
+    setShowVersionPreviewId(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
