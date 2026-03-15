@@ -216,6 +216,62 @@ export type Database = {
           },
         ]
       }
+      vo_audio_history: {
+        Row: {
+          created_at: string | null
+          duration_estimate: number | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          language_code: string
+          project_id: string
+          speaking_rate: number | null
+          style: string | null
+          text_length: number | null
+          user_id: string
+          voice_gender: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_estimate?: number | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          language_code?: string
+          project_id: string
+          speaking_rate?: number | null
+          style?: string | null
+          text_length?: number | null
+          user_id: string
+          voice_gender?: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_estimate?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          language_code?: string
+          project_id?: string
+          speaking_rate?: number | null
+          style?: string | null
+          text_length?: number | null
+          user_id?: string
+          voice_gender?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vo_audio_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
