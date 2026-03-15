@@ -214,6 +214,53 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         </div>
       </div>
 
+      {/* Volume Gain */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Volume</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.volumeGainDb > 0 ? "+" : ""}{settings.volumeGainDb.toFixed(0)} dB</span>
+        </div>
+        <Slider
+          min={-10} max={10} step={1}
+          value={[settings.volumeGainDb]}
+          onValueChange={([v]) => update({ volumeGainDb: v })}
+          aria-label="Volume gain"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>-10 dB</span><span>0</span><span>+10 dB</span>
+        </div>
+      </div>
+
+      {/* Effects Profile */}
+      <div className="space-y-1.5">
+        <Label htmlFor="vo-profile" className="text-xs text-muted-foreground">Profil audio</Label>
+        <Select value={settings.effectsProfileId} onValueChange={(v) => update({ effectsProfileId: v })}>
+          <SelectTrigger id="vo-profile" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {EFFECTS_PROFILES.map((p) => (
+              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Pause between paragraphs */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Pause entre paragraphes</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.pauseBetweenParagraphs === 0 ? "Aucune" : `${settings.pauseBetweenParagraphs} ms`}</span>
+        </div>
+        <Slider
+          min={0} max={2000} step={100}
+          value={[settings.pauseBetweenParagraphs]}
+          onValueChange={([v]) => update({ pauseBetweenParagraphs: v })}
+          aria-label="Pause entre paragraphes"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Aucune</span><span>1s</span><span>2s</span>
+        </div>
+      </div>
+
       {/* Save as favorite */}
       <Button
         variant="outline"
