@@ -464,6 +464,8 @@ export default function Editor() {
       setPreviewShotVersionId(null);
       setGeneratingStoryboard(true);
       setActiveTab("storyboard");
+      const abortController = new AbortController();
+      storyAbortRef.current = abortController;
     }
 
     const callStoryboard = async (body: Record<string, string>) => {
