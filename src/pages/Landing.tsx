@@ -62,9 +62,6 @@ export default function Landing() {
         </div>
         {menuOpen && (
           <div className="sm:hidden border-t border-border bg-background px-4 py-3 space-y-2 animate-fade-in">
-            <Button variant="hero" className="w-full min-h-[44px]" onClick={() => { navigate("/signup"); setMenuOpen(false); }}>
-              Démarrer
-            </Button>
             <Button variant="outline" className="w-full min-h-[44px]" onClick={() => { navigate("/login"); setMenuOpen(false); }}>
               Se connecter
             </Button>
