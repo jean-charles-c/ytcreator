@@ -16,7 +16,7 @@ interface ShotCardProps {
   onUpdate: (shot: Shot) => void;
 }
 
-export default function ShotCard({ shot, globalIndex, onUpdate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
