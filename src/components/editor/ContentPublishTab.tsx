@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, FileText, Youtube, Tag } from "lucide-react";
+import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   Collapsible,
