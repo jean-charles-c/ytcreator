@@ -978,6 +978,51 @@ export default function Editor() {
               )}
             </div>
 
+            {/* Scene version buttons */}
+            {sceneVersions.length > 1 && !segmenting && (
+              <div className="mb-4 flex items-center gap-1.5 flex-wrap">
+                {sceneVersions.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      if (v.id === currentSceneVersionId) {
+                        setPreviewSceneVersionId(null);
+                        return;
+                      }
+                      setPreviewSceneVersionId(previewSceneVersionId === v.id ? null : v.id);
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                      currentSceneVersionId === v.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : previewSceneVersionId === v.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    V{v.id}
+                    {currentSceneVersionId === v.id && (
+                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                    )}
+                    <span className="ml-1 text-[9px] opacity-60">({v.scenes.length})</span>
+                  </button>
+                ))}
+                {previewSceneVersionId !== null && (() => {
+                  const pv = sceneVersions.find((v) => v.id === previewSceneVersionId);
+                  if (!pv) return null;
+                  return (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setScenes(pv.scenes);
+                      setCurrentSceneVersionId(pv.id);
+                      setPreviewSceneVersionId(null);
+                      toast.success(`Segmentation V${pv.id} restaurée`);
+                    }} className="h-6 text-[10px] px-2 ml-2">
+                      <RotateCcw className="h-2.5 w-2.5" /> Restaurer V{pv.id}
+                    </Button>
+                  );
+                })()}
+              </div>
+            )}
+
             {segmenting && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
