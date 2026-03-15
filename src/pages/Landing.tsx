@@ -115,21 +115,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="border-t border-border py-16 sm:py-24">
-        <div className="container max-w-2xl text-center px-4">
-          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-foreground mb-3 sm:mb-4">
-            Prêt à commencer ?
-          </h2>
-          <p className="text-muted-foreground mb-6 sm:mb-8 text-sm sm:text-base">
-            Créez votre premier projet en moins de 30 secondes. Gratuit, sans carte bancaire.
-          </p>
-          <Button variant="hero" size="lg" onClick={() => navigate("/signup")} className="w-full sm:w-auto min-h-[48px]">
-            Commencer maintenant
-            <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="border-t border-border py-6 sm:py-8">

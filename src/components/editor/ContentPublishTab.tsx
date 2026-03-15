@@ -226,7 +226,7 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
       <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">
-        Content Publish
+        Copy Paste
       </h2>
       <p className="text-sm text-muted-foreground mb-6 sm:mb-8">
         Centralisez et copiez rapidement votre contenu pour publication.
