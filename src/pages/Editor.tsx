@@ -42,6 +42,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "storyboard", label: "VisualPrompts", icon: Clapperboard },
   { key: "seo", label: "SEO", icon: Youtube },
   { key: "cp", label: "CP", icon: Save },
+  { key: "vo", label: "VO", icon: Mic },
   { key: "export", label: "Export", icon: Download },
 ];
 
