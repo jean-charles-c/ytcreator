@@ -367,6 +367,8 @@ export default function Editor() {
     generatedScript,
     seoResults,
     scriptVersions,
+    sceneVersions,
+    shotVersions,
   ]);
 
   useEffect(() => {
