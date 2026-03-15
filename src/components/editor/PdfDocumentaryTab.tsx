@@ -457,6 +457,19 @@ export default function PdfDocumentaryTab({
                 {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Objectif :</label>
+              <input
+                type="number"
+                min={5000}
+                max={30000}
+                step={1000}
+                value={targetChars}
+                onChange={(e) => setTargetChars(Number(e.target.value))}
+                className="h-9 w-24 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+            </div>
             <Button variant="hero" disabled={generatingScript} onClick={() => runFullScriptGeneration()} className="min-h-[44px]">
               {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
             </Button>
