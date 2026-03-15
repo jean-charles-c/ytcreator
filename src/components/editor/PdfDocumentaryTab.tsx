@@ -267,7 +267,14 @@ export default function PdfDocumentaryTab({
   const cleanScriptForExport = (raw: string): string => {
     return raw
       .split("\n")
-      .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+      .filter((line) => {
+        const t = line.trim();
+        if (t === "" || t.startsWith("---")) return false;
+        if (t.startsWith("#")) return false;
+        if (/^\*\*.*\*\*$/.test(t)) return false;
+        if (/^(HOOK|INTRODUCTION|ACTE?\s*\d|ACT\s*\d|CONTEXTE|CONTEXT|CLIMAX|CONCLUSION|RÉVÉLATION|REVELATION|BIENVENUE|WELCOME|MYSTÈRE|MYSTERY|DÉCOUVERTE|DISCOVERY|INVESTIGATION|ESCALADE|ESCALATION)\b/i.test(t)) return false;
+        return true;
+      })
       .map((line) => line.trim())
       .join("\n");
   };
