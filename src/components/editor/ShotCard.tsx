@@ -24,7 +24,7 @@ interface ShotCardProps {
   globalIndex?: number;
   sceneLabel?: string;
   onUpdate: (shot: Shot) => void;
-  onDelete?: (shotId: string) => void;
+  onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
 }
 
