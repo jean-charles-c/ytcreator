@@ -35,7 +35,7 @@ interface PlayerState {
   durationEstimate: number;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [hasFavorite, setHasFavorite] = useState(false);
