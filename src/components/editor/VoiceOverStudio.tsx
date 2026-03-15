@@ -214,8 +214,31 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
 
         {/* Right column on desktop — shown FIRST on mobile for quick config */}
         <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
-          <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} />
-          <VoicePreviewTest settings={settings} />
+          <Accordion type="multiple" defaultValue={[]}>
+            <AccordionItem value="settings" className="border rounded-lg border-border bg-card px-4">
+              <AccordionTrigger className="py-3 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                  Paramètres de voix
+                  {hasFavorite && <span className="text-[10px] text-primary ml-1">★ Favori</span>}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} hideHeader />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="preview" className="border rounded-lg border-border bg-card px-4 mt-3">
+              <AccordionTrigger className="py-3 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                  <AudioLines className="h-4 w-4 text-primary" />
+                  Test rapide
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <VoicePreviewTest settings={settings} hideHeader />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           {/* Audio player */}
           {playerState ? (
