@@ -191,9 +191,15 @@ function CollapsibleBlock({
 function cleanScriptForExport(raw: string): string {
   return raw
     .split("\n")
-    .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+    .filter((line) => {
+      const t = line.trim();
+      if (t === "") return true;
+      return !t.startsWith("---") && !t.startsWith("#");
+    })
     .map((line) => line.trim())
-    .join("\n");
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function splitIntoVoiceOverBlocks(raw: string): string[] {
