@@ -171,11 +171,14 @@ RHYTHM — CRITICAL:
 • Create natural pauses for the voice-over — avoid dense blocks of information.
 • Read each paragraph mentally — if it sounds monotonous, rewrite it.
 
-SCENE STRUCTURE:
-• Group sentences in blocks of 3, separated by empty lines.
-• Sentence 1: sets the visual context (a place, a person, an object).
-• Sentence 2: develops with a concrete detail.
-• Sentence 3: creates tension, delivers a revelation, or raises stakes.
+PARAGRAPH STRUCTURE:
+• Separate paragraphs with empty lines.
+• Vary paragraph length: some paragraphs have 1 sentence, others 2, others 3-4. NEVER make all paragraphs the same length.
+• A single powerful sentence alone as a paragraph creates dramatic impact.
+• Two-sentence paragraphs feel punchy and fast.
+• Three or four sentence paragraphs allow deeper exploration of a moment.
+• Aim for this approximate mix: ~30% single-sentence paragraphs, ~40% two-sentence, ~30% three-or-four-sentence.
+• NEVER write more than 2 consecutive paragraphs of the same length.
 
 ---
 
