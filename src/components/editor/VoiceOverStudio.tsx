@@ -30,12 +30,38 @@ interface PlayerState {
 export default function VoiceOverStudio({ narration, generatedScript, projectId }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
+  const [hasFavorite, setHasFavorite] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load favorite voice profile on mount
+  useEffect(() => {
+    const loadFavorite = async () => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from("favorite_voice_profile")
+          .select("*")
+          .maybeSingle();
+
+        if (!error && data) {
+          setSettings({
+            languageCode: data.language_code,
+            voiceGender: data.voice_gender,
+            style: data.style,
+            speakingRate: data.speaking_rate,
+          });
+          setHasFavorite(true);
+        }
+      } catch (e) {
+        console.error("Load favorite voice error:", e);
+      }
+    };
+    loadFavorite();
+  }, []);
 
   const handlePasteFromScript = () => {
     const source = generatedScript || narration;
@@ -224,7 +250,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
 
         {/* Right column */}
         <div className="space-y-4">
-          <VoiceSettingsPanel settings={settings} onChange={setSettings} />
+          <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} />
           <VoicePreviewTest settings={settings} />
 
           {/* Audio player */}
