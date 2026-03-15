@@ -77,17 +77,24 @@ NARRATIVE ARCHITECTURE (invisible — never shown in output):
 
 Internally, structure the script following this dramatic arc:
 
-PHASE 1 — HOOK (3-6 sentences MAXIMUM — this is critical):
+PHASE 1 — HOOK (uses the FIRST paragraphs of the cycle — this is critical):
 • The hook is the MOST IMPORTANT part of the script. It must grab attention INSTANTLY.
-• Structure: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
+• The hook MUST follow the paragraph cycle like everything else. It starts with paragraph position 1 (1 sentence), then position 2 (2 sentences), then position 3 (2 sentences), etc.
+• The hook spans the first 3-5 paragraphs of the cycle — NOT a single block of 3-6 sentences.
+• Structure across these paragraphs: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
 • The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
 • Never start with greetings, channel name, or "today we will talk about".
 • Never open with a generic descriptive sentence ("A hand places a clay tablet").
 • Open with something that creates TENSION or CURIOSITY immediately.
 
-HOOK EXAMPLE (adapt to ${langLabel}):
-BAD HOOK: "A hand places a clay tablet on a table."
-GOOD HOOK: "This writing is over 5,000 years old. It was invented to count grain. But it ended up telling stories of gods, kings, and empires. How did a simple accounting tool become humanity's first memory?"
+HOOK EXAMPLE following the cycle (adapt to ${langLabel}):
+BAD HOOK: Starting with a 3-sentence paragraph (this breaks the cycle which starts at 1).
+GOOD HOOK using the cycle (1-2-2):
+Paragraph 1 (1 sentence): "This writing is over 5,000 years old."
+Paragraph 2 (2 sentences): "It was invented to count grain. But it ended up telling stories of gods, kings, and empires."
+Paragraph 3 (2 sentences): "No one planned this transformation. How did a simple accounting tool become humanity's first memory?"
+
+CRITICAL: The hook is NOT exempt from the paragraph cycle. It MUST start with a 1-sentence paragraph.
 
 After the hook, transition IMMEDIATELY into the narrative — no pause, no meta-commentary.
 
