@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
+import GeneratedAudioHistory from "./GeneratedAudioHistory";
 
 interface VoiceOverStudioProps {
   narration: string;
@@ -20,10 +21,9 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   speakingRate: 1.0,
 };
 
-interface GeneratedAudio {
+interface PlayerState {
   audioUrl: string;
   fileName: string;
-  fileSize: number;
   durationEstimate: number;
 }
 
@@ -31,9 +31,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [generating, setGenerating] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<GeneratedAudio | null>(null);
+  const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handlePasteFromScript = () => {
@@ -91,12 +92,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
 
       const data = await response.json();
 
-      setCurrentAudio({
+      // Load into player
+      setPlayerState({
         audioUrl: data.audioUrl,
         fileName: data.fileName,
-        fileSize: data.fileSize,
         durationEstimate: data.durationEstimate,
       });
+
+      // Refresh history
+      setHistoryRefreshKey((k) => k + 1);
 
       toast.success(`Voix off générée — ${data.chunks} bloc(s), ${formatSize(data.fileSize)}`);
     } catch (e: any) {
@@ -107,23 +111,40 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
     }
   };
 
-  // Audio player controls
+  // Play from history or from generation
+  const handlePlayFromHistory = (audioUrl: string, fileName: string, duration: number) => {
+    // Stop current
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setPlayerState({ audioUrl, fileName, durationEstimate: duration });
+    setIsPlaying(false);
+    setAudioProgress(0);
+
+    // Auto-play
+    setTimeout(() => {
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.ontimeupdate = () => {
+        if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
+      };
+      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); };
+      audio.play();
+      setIsPlaying(true);
+    }, 100);
+  };
+
   const handlePlayPause = () => {
-    if (!currentAudio) return;
+    if (!playerState) return;
 
     if (!audioRef.current) {
-      const audio = new Audio(currentAudio.audioUrl);
+      const audio = new Audio(playerState.audioUrl);
       audioRef.current = audio;
-
       audio.ontimeupdate = () => {
-        if (audio.duration) {
-          setAudioProgress((audio.currentTime / audio.duration) * 100);
-        }
+        if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
       };
-      audio.onended = () => {
-        setIsPlaying(false);
-        setAudioProgress(0);
-      };
+      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); };
     }
 
     if (isPlaying) {
@@ -135,25 +156,18 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
     }
   };
 
-  // Cleanup audio on unmount
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     };
   }, []);
 
-  // Reset audio element when new audio is generated
+  // Reset audio element when player state changes
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     setIsPlaying(false);
     setAudioProgress(0);
-  }, [currentAudio?.audioUrl]);
+  }, [playerState?.audioUrl]);
 
   return (
     <div className="container max-w-6xl py-6 sm:py-10 px-4 animate-fade-in">
@@ -202,30 +216,24 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
               className="min-h-[44px] gap-2"
               onClick={handleGenerate}
             >
-              {generating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Volume2 className="h-4 w-4" />
-              )}
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
               {generating ? "Génération en cours..." : "Générer la voix off"}
             </Button>
           </div>
         </div>
 
-        {/* Right column — Settings + Preview + Player + History placeholder */}
+        {/* Right column */}
         <div className="space-y-4">
           <VoiceSettingsPanel settings={settings} onChange={setSettings} />
           <VoicePreviewTest settings={settings} />
 
           {/* Audio player */}
-          {currentAudio ? (
+          {playerState ? (
             <div className="rounded-lg border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-display text-sm font-semibold text-foreground">
-                  Lecteur audio
-                </h3>
+                <h3 className="font-display text-sm font-semibold text-foreground">Lecteur audio</h3>
                 <span className="text-[10px] text-muted-foreground font-mono">
-                  {formatDuration(currentAudio.durationEstimate)}
+                  {formatDuration(playerState.durationEstimate)}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -238,34 +246,25 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
                 </button>
                 <div className="flex-1">
                   <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-200"
-                      style={{ width: `${audioProgress}%` }}
-                    />
+                    <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>{currentAudio.fileName}</span>
-                <span>{formatSize(currentAudio.fileSize)}</span>
-              </div>
+              <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]">
               <Volume2 className="h-5 w-5 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/50 text-center">
-                Lecteur audio
-              </p>
+              <p className="text-xs text-muted-foreground/50 text-center">Lecteur audio</p>
             </div>
           )}
 
-          {/* History placeholder */}
-          <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
-            <Mic className="h-5 w-5 text-muted-foreground/30" />
-            <p className="text-xs text-muted-foreground/50 text-center">
-              Historique des audios
-            </p>
-          </div>
+          {/* History */}
+          <GeneratedAudioHistory
+            projectId={projectId}
+            refreshKey={historyRefreshKey}
+            onPlay={handlePlayFromHistory}
+          />
         </div>
       </div>
     </div>
