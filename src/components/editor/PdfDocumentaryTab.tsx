@@ -218,7 +218,7 @@ export default function PdfDocumentaryTab({
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, extractedText, scriptLanguage, script, onDocStructureChange, onScriptChange, onScriptReady]);
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, onDocStructureChange, onScriptChange, onScriptReady]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
