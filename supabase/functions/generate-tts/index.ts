@@ -47,6 +47,65 @@ async function callGoogleTTS(
   return data.audioContent; // base64 encoded
 }
 
+
+interface GoogleVoice {
+  name: string;
+  languageCodes: string[];
+  ssmlGender?: "MALE" | "FEMALE" | "NEUTRAL";
+}
+
+const VOICES_CACHE = new Map<string, { voices: GoogleVoice[]; cachedAt: number }>();
+const VOICES_TTL_MS = 60 * 60 * 1000;
+
+async function listGoogleVoices(apiKey: string, languageCode: string): Promise<GoogleVoice[]> {
+  const cacheKey = languageCode;
+  const cached = VOICES_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.cachedAt < VOICES_TTL_MS) return cached.voices;
+
+  const response = await fetch(`https://texttospeech.googleapis.com/v1/voices?key=${apiKey}`);
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Google voices API failed [${response.status}]: ${err}`);
+  }
+
+  const payload = await response.json();
+  const voices = ((payload.voices ?? []) as GoogleVoice[])
+    .filter((v) => Array.isArray(v.languageCodes) && v.languageCodes.includes(languageCode));
+
+  VOICES_CACHE.set(cacheKey, { voices, cachedAt: Date.now() });
+  return voices;
+}
+
+async function resolveVoiceName(
+  apiKey: string,
+  languageCode: string,
+  requestedVoiceName: string | undefined,
+  voiceType: string | undefined,
+  voiceGender: "MALE" | "FEMALE" | "NEUTRAL"
+): Promise<string | undefined> {
+  try {
+    const voices = await listGoogleVoices(apiKey, languageCode);
+    if (voices.length === 0) return requestedVoiceName;
+
+    const inferredType = requestedVoiceName?.match(/-(Standard|Wavenet|Neural2)-/i)?.[1];
+    const normalizedType = (voiceType || inferredType || "Standard").toLowerCase();
+
+    const exactRequested = requestedVoiceName
+      ? voices.find((v) => v.name === requestedVoiceName)
+      : undefined;
+    if (exactRequested) return exactRequested.name;
+
+    const typeVoices = voices.filter((v) => v.name.toLowerCase().includes(`-${normalizedType}-`));
+    const genderTypeVoices = typeVoices.filter((v) => v.ssmlGender === voiceGender);
+
+    const pick = (genderTypeVoices[0] || typeVoices[0] || voices.find((v) => v.ssmlGender === voiceGender) || voices[0]);
+    return pick?.name;
+  } catch (error) {
+    console.error("Voice resolve fallback:", error);
+    return requestedVoiceName;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
