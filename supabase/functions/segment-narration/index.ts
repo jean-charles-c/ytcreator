@@ -271,6 +271,7 @@ Return data via the segment_narration tool call only.`,
       return parsedScenes as {
         title: string;
         source_text: string;
+        source_text_fr?: string;
         visual_intention: string;
       }[];
     };
