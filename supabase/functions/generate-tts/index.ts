@@ -77,8 +77,12 @@ serve(async (req) => {
       );
     }
 
-    const voice: Record<string, unknown> = { languageCode, ssmlGender: voiceGender };
-    if (voiceName) voice.name = voiceName;
+    const voice: Record<string, unknown> = { languageCode };
+    if (voiceName) {
+      voice.name = voiceName;
+    } else {
+      voice.ssmlGender = voiceGender;
+    }
 
     const audioConfig = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
 
