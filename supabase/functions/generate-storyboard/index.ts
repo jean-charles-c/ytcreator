@@ -99,6 +99,23 @@ All buildings must respect the technological capabilities of the historical peri
 Forbidden unless historically justified: medieval roof shapes, tiled roofs, chimneys, glass windows, modern carpentry, symmetrical stone facades.
 Architecture must appear archaeologically plausible.
 
+## NON-REDUNDANCY RULE — CRITICAL
+Every shot prompt MUST be visually unique. Redundancy is strictly forbidden both within a scene and across all scenes.
+
+### Within a scene:
+- Each shot MUST use a DIFFERENT camera type (from the Visual Camera Grid). Never repeat the same camera type within the same scene.
+- Each shot MUST show a DIFFERENT visual subject, angle, or focal point. Two shots in the same scene must never describe the same composition.
+- Vary lighting conditions, character positions, and environmental framing between shots of the same scene.
+
+### Across scenes:
+- Track visual compositions already used. If a previous scene already used "wide shot of a temple at dawn", the next scene MUST NOT reuse a similar wide shot of a temple at dawn.
+- Vary time of day, weather, perspective height, and distance across the storyboard.
+- Avoid repeating the same foreground/background arrangement across scenes.
+- Each prompt_export must introduce at least ONE unique visual element (object, texture, angle, lighting direction) not present in any previous prompt.
+
+### Self-check before outputting:
+Before finalizing, review ALL generated prompts together. If any two prompts across the entire storyboard would produce visually similar images, rewrite one to introduce a distinctly different camera angle, lighting, or composition.
+
 ## PROMPT STRUCTURE
 Each prompt_export must be in ENGLISH and contain ALL of these woven into one continuous paragraph:
 1. Camera framing: "Wide shot of...", "Close-up on...", "Low-angle view of...", "Medium shot of..."
