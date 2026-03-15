@@ -17,8 +17,19 @@ export interface VoiceSettings {
   languageCode: string;
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL";
   voiceType: string; // "Standard" | "Wavenet" | "Neural2"
+  style: string; // tone preset
   speakingRate: number;
 }
+
+// Style presets → pitch + speakingRate adjustments sent to Google TTS
+export const STYLE_PRESETS: Record<string, { pitch: number; rateOffset: number; label: string }> = {
+  neutral:    { pitch: 0,    rateOffset: 0,    label: "Neutre" },
+  warm:       { pitch: -1.5, rateOffset: -0.05, label: "Chaleureux" },
+  calm:       { pitch: -2,   rateOffset: -0.1,  label: "Calme" },
+  energetic:  { pitch: 2,    rateOffset: 0.1,   label: "Énergique" },
+  serious:    { pitch: -3,   rateOffset: -0.05, label: "Sérieux" },
+  cheerful:   { pitch: 3,    rateOffset: 0.05,  label: "Joyeux" },
+};
 
 const VOICE_TYPES = [
   { value: "Standard", label: "Standard", desc: "Basique — gratuit" },
