@@ -1088,6 +1088,7 @@ export default function Editor() {
           <VoiceOverStudio
             narration={narration}
             generatedScript={generatedScript}
+            projectId={projectId}
           />
         )}
 
