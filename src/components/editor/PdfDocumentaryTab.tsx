@@ -40,7 +40,7 @@ interface PdfDocumentaryTabProps {
   projectId: string | null;
   scriptLanguage: string;
   onLanguageChange?: (lang: string) => void;
-  onSendToScriptInput?: (text: string) => void;
+  onSendToNarration?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
   extractedText: string | null;
@@ -59,6 +59,11 @@ interface PdfDocumentaryTabProps {
   onScriptVersionsChange: (versions: ScriptVersion[] | ((prev: ScriptVersion[]) => ScriptVersion[])) => void;
   currentVersionId: number | null;
   onCurrentVersionIdChange: (id: number | null) => void;
+  narration: string;
+  onNarrationChange: (text: string) => void;
+  onRunSegmentation: () => void;
+  segmenting: boolean;
+  onStopSegmentation: () => void;
 }
 
 export default function PdfDocumentaryTab({
