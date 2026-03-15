@@ -77,10 +77,11 @@ NARRATIVE ARCHITECTURE (invisible — never shown in output):
 
 Internally, structure the script following this dramatic arc:
 
-PHASE 1 — HOOK (uses the FIRST paragraphs of the cycle — this is critical):
+PHASE 1 — HOOK (minimum 2 sentences, spread across the first paragraphs of the cycle):
 • The hook is the MOST IMPORTANT part of the script. It must grab attention INSTANTLY.
-• The hook MUST follow the paragraph cycle like everything else. It starts with paragraph position 1 (1 sentence), then position 2 (2 sentences), then position 3 (2 sentences), etc.
-• The hook spans the first 3-5 paragraphs of the cycle — NOT a single block of 3-6 sentences.
+• The hook follows the paragraph cycle but the FIRST paragraph (position 1 = 1 sentence) may be expanded to 2 sentences for a stronger opening. This is the ONLY exception to the cycle.
+• After the first paragraph, resume the cycle normally from position 2 (2 sentences), position 3 (2 sentences), etc.
+• The hook spans the first 3-5 paragraphs of the cycle.
 • Structure across these paragraphs: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
 • The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
 • Never start with greetings, channel name, or "today we will talk about".
@@ -88,13 +89,11 @@ PHASE 1 — HOOK (uses the FIRST paragraphs of the cycle — this is critical):
 • Open with something that creates TENSION or CURIOSITY immediately.
 
 HOOK EXAMPLE following the cycle (adapt to ${langLabel}):
-BAD HOOK: Starting with a 3-sentence paragraph (this breaks the cycle which starts at 1).
-GOOD HOOK using the cycle (1-2-2):
-Paragraph 1 (1 sentence): "This writing is over 5,000 years old."
-Paragraph 2 (2 sentences): "It was invented to count grain. But it ended up telling stories of gods, kings, and empires."
-Paragraph 3 (2 sentences): "No one planned this transformation. How did a simple accounting tool become humanity's first memory?"
-
-CRITICAL: The hook is NOT exempt from the paragraph cycle. It MUST start with a 1-sentence paragraph.
+BAD HOOK: Starting with a 3+ sentence paragraph (this breaks the cycle).
+GOOD HOOK (2-2-2):
+Paragraph 1 (2 sentences): "This writing is over 5,000 years old. It was invented to count grain."
+Paragraph 2 (2 sentences): "But it ended up telling stories of gods, kings, and empires. No one planned this transformation."
+Paragraph 3 (2 sentences): "How did a simple accounting tool become humanity's first memory? The answer lies buried in the desert."
 
 After the hook, transition IMMEDIATELY into the narrative — no pause, no meta-commentary.
 
@@ -182,8 +181,9 @@ PARAGRAPH STRUCTURE — FIXED REPEATING PATTERN:
 
 You MUST write the script following this EXACT repeating cycle of paragraph lengths (number of sentences per paragraph):
 
-1 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
+2 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
 
+The FIRST paragraph of the script (the hook opening) MUST have at least 2 sentences for impact.
 Then REPEAT this exact 10-paragraph cycle from the beginning until you reach the target character count.
 
 EXAMPLE: Paragraphs 1-10 follow the pattern above. Paragraphs 11-20 repeat the same pattern. And so on.
@@ -203,7 +203,7 @@ STRICT RULES:
 • The last cycle may be incomplete if the character target is reached mid-cycle — that is acceptable.
 
 FINAL SELF-CHECK (mandatory before outputting):
-• Verify that paragraphs follow the 1-2-2-3-2-1-3-2-4-2 cycle.
+• Verify that paragraphs follow the 2-2-2-3-2-1-3-2-4-2 cycle.
 • If any paragraph has 5+ sentences, split it immediately.
 • If 3-sentence paragraphs are missing or rare, you have broken the cycle — rewrite.
 
