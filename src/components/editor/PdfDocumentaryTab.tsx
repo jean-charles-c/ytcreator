@@ -733,13 +733,7 @@ export default function PdfDocumentaryTab({
         <CollapsibleContent className="mt-3 animate-fade-in">
           <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <p className="text-sm text-muted-foreground mb-4">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
-            <textarea value={narration} onChange={(e) => onNarrationChange(e.target.value)}
-              placeholder="Collez votre voix-off ici..."
-              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-background p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
-            <div className="mt-1.5 text-xs text-muted-foreground text-right">
-              {narration.length.toLocaleString()} caractères
-            </div>
-            <div className="mt-3 flex flex-col sm:flex-row gap-3">
+            <div className="mb-4 flex flex-col sm:flex-row gap-3">
               <Button variant="hero" onClick={onRunSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
                 {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {segmenting ? "Segmentation..." : "Lancer la segmentation"}
@@ -749,6 +743,12 @@ export default function PdfDocumentaryTab({
                   <Square className="h-4 w-4" /> Stopper
                 </Button>
               )}
+            </div>
+            <textarea value={narration} onChange={(e) => onNarrationChange(e.target.value)}
+              placeholder="Collez votre voix-off ici..."
+              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-background p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
+            <div className="mt-1.5 text-xs text-muted-foreground text-right">
+              {narration.length.toLocaleString()} caractères
             </div>
           </div>
         </CollapsibleContent>
