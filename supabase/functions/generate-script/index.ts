@@ -173,12 +173,13 @@ RHYTHM — CRITICAL:
 
 PARAGRAPH STRUCTURE — STRICT DISTRIBUTION:
 • Separate paragraphs with empty lines.
-• Use ONLY 1, 2, or 3 sentences per paragraph. NEVER 4 or more.
 • 1-sentence paragraphs: ~30%. Dramatic impact, transitions, reveals.
 • 2-sentence paragraphs: ~40%. Your default format. Punchy and efficient.
-• 3-sentence paragraphs: ~30%. When a moment needs fuller development.
+• 3-sentence paragraphs: ~25%. When a moment needs fuller development.
+• 4-sentence paragraphs: ~5%. Rare — only when four sentences are truly inseparable.
+• NEVER 5 or more sentences in a paragraph.
 • NEVER write more than 2 consecutive paragraphs of the same length.
-• The MIX of 1/2/3 creates natural rhythm — like a film editor alternating quick cuts and longer shots.
+• The MIX of 1/2/3 (and occasional 4) creates natural rhythm.
 
 ---
 
