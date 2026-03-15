@@ -596,10 +596,9 @@ export default function PdfDocumentaryTab({
                           <Button variant="outline" size="sm" onClick={() => {
                             const old = previousScripts[showPreviousScript];
                             const currentScript = script;
+                            // Keep all previous versions intact, add current script as a new previous version
                             if (currentScript) {
-                              setPreviousScripts((prev) => prev.map((s, idx) => idx === showPreviousScript ? currentScript : s));
-                            } else {
-                              setPreviousScripts((prev) => prev.filter((_, idx) => idx !== showPreviousScript));
+                              setPreviousScripts((prev) => [...prev, currentScript]);
                             }
                             onScriptChange(old);
                             setShowPreviousScript(null);
