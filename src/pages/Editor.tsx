@@ -240,6 +240,7 @@ export default function Editor() {
           doc_structure: Array.isArray(scriptCreatorState.doc_structure) ? scriptCreatorState.doc_structure : null,
           generated_script: typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null,
           seo_results: normalizeSeoResults(scriptCreatorState.seo_results),
+          script_versions: Array.isArray(scriptCreatorState.script_versions) ? scriptCreatorState.script_versions : [],
         });
       }
 
