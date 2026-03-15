@@ -325,6 +325,7 @@ export default function Editor() {
       doc_structure: pdfDocStructure ?? null,
       generated_script: generatedScript ?? null,
       seo_results: seoResults,
+      script_versions: scriptVersions,
     };
 
     const snapshot = JSON.stringify(payload);
