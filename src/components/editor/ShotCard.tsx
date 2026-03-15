@@ -92,13 +92,15 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   };
 
   const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-      return;
+    if (!onDelete || deleting) return;
+
+    setDeleting(true);
+    try {
+      await onDelete(shot.id);
+      setDeleteDialogOpen(false);
+    } finally {
+      setDeleting(false);
     }
-    setConfirmDelete(false);
-    await onDelete?.(shot.id);
   };
 
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
