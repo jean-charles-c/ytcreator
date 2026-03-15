@@ -1070,6 +1070,7 @@ export default function Editor() {
             generatedScript={generatedScript}
             projectId={projectId}
             projectTitle={title}
+            scenes={scenes.map((s) => ({ source_text: s.source_text, title: s.title }))}
           />
         )}
 

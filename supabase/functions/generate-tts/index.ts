@@ -172,7 +172,21 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    const audioConfig = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
+    if (effectsProfileId) {
+      audioConfig.effectsProfileId = [effectsProfileId];
+    }
+
+    // Convert text to SSML if pause is configured
+    function textToSsml(rawText: string, pauseMs: number): string {
+      if (pauseMs <= 0) return rawText;
+      // Split on double newlines (paragraph/scene breaks)
+      const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
+      if (paragraphs.length <= 1) return rawText;
+      const breakTag = `<break time="${pauseMs}ms"/>`;
+      const inner = paragraphs.map((p) => p.trim().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")).join(`${breakTag}\n`);
+      return `<speak>${inner}</speak>`;
+    }
 
     if (mode === "preview") {
       const audioContent = await callGoogleTTS(text, GOOGLE_TTS_API_KEY, voice, audioConfig);
