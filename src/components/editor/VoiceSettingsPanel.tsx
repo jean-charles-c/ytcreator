@@ -19,6 +19,9 @@ export interface VoiceSettings {
   voiceType: string; // "Standard" | "Wavenet" | "Neural2"
   style: string; // tone preset
   speakingRate: number;
+  volumeGainDb: number;
+  effectsProfileId: string;
+  pauseBetweenParagraphs: number; // ms, 0 = disabled
 }
 
 // Style presets → pitch + speakingRate adjustments sent to Google TTS
