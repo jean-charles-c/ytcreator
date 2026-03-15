@@ -302,7 +302,7 @@ Return data via the segment_narration tool call only.`,
 
       for (let i = 0; i < chunks.length; i++) {
         const chunkWords = chunks[i].split(/\s+/).filter(Boolean).length;
-        const chunkTarget = Math.max(4, Math.ceil(chunkWords / 55));
+        const chunkTarget = Math.max(4, Math.ceil(chunkWords / 35));
         console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words, target ${chunkTarget} scenes)`);
         
         let chunkScenes = await requestSegmentation(chunks[i], chunkTarget, false);

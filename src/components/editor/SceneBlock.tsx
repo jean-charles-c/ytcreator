@@ -149,9 +149,9 @@ export default function SceneBlock({
           <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
           <p className="text-sm text-muted-foreground leading-relaxed mb-3">{scene.source_text}</p>
           {scene.visual_intention && (
-            <div className="flex items-start gap-2 rounded bg-secondary/50 border border-border p-3">
-              <Film className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-              <p className="text-xs text-muted-foreground italic leading-relaxed">{scene.visual_intention}</p>
+            <div className="rounded bg-secondary/50 border border-border p-3 space-y-1">
+              <span className="text-[10px] font-medium text-primary uppercase tracking-wide">Sujet de la scène</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">{scene.visual_intention}</p>
             </div>
           )}
         </>
