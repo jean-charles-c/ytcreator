@@ -65,6 +65,7 @@ export default function PdfDocumentaryTab({
   projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady,
   extractedText, onExtractedTextChange, pageCount, onPageCountChange, fileName, onFileNameChange,
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
+  scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
 }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
