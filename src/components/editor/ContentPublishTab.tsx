@@ -109,6 +109,32 @@ function SectionHeader({
   );
 }
 
+function cleanScriptForExport(raw: string): string {
+  return raw
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
+    .map((line) => line.trim())
+    .join("\n");
+}
+
+function splitIntoVoiceOverBlocks(raw: string): string[] {
+  const clean = cleanScriptForExport(raw);
+  const sentences = clean.split(/(?<=\.)\s+/);
+  const blocks: string[] = [];
+  let currentBlock = "";
+  for (const sentence of sentences) {
+    const candidate = currentBlock ? currentBlock + " " + sentence : sentence;
+    if (candidate.length > 8300 && currentBlock.length > 0) {
+      blocks.push(currentBlock.trim());
+      currentBlock = sentence;
+    } else {
+      currentBlock = candidate;
+    }
+  }
+  if (currentBlock.trim()) blocks.push(currentBlock.trim());
+  return blocks;
+}
+
 export default function ContentPublishTab({ generatedScript, seoResults }: ContentPublishTabProps) {
   const [scriptOpen, setScriptOpen] = useState(true);
   const [seoOpen, setSeoOpen] = useState(true);
@@ -120,6 +146,9 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
   const hasScript = !!generatedScript;
   const hasSeo = !!(titles || description || tags);
   const hasContent = hasScript || hasSeo;
+
+  const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
+  const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
 
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
@@ -155,11 +184,37 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
               <CollapsibleContent>
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6">
                   {hasScript ? (
-                    <CopyableBlock text={generatedScript!} label="Script complet">
-                      <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
-                        {generatedScript}
-                      </pre>
-                    </CopyableBlock>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* SCRIPT Column */}
+                      <div>
+                        <h4 className="text-xs font-display font-medium text-primary mb-3 uppercase tracking-wider">Script</h4>
+                        <div className="space-y-2">
+                          {cleanedScript!.split("\n").filter(Boolean).map((paragraph, i) => (
+                            <CopyableBlock key={`script-${i}`} text={paragraph} label={`Script Block ${i + 1}`}>
+                              <pre className="rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                                {paragraph}
+                              </pre>
+                            </CopyableBlock>
+                          ))}
+                        </div>
+                      </div>
+                      {/* VO Column */}
+                      <div>
+                        <h4 className="text-xs font-display font-medium text-primary mb-3 uppercase tracking-wider">VO</h4>
+                        <div className="space-y-2">
+                          {voBlocks.map((block, i) => (
+                            <CopyableBlock key={`vo-${i}`} text={block} label={`VO Block ${i + 1}`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-muted-foreground font-mono">Block {i + 1} — {block.length} car.</span>
+                              </div>
+                              <pre className="rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                                {block}
+                              </pre>
+                            </CopyableBlock>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground italic py-4">
                       Aucun script généré. Utilisez ScriptCreator pour en créer un.
