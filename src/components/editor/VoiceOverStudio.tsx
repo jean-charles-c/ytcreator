@@ -13,6 +13,7 @@ interface VoiceOverStudioProps {
   narration: string;
   generatedScript: string | null;
   projectId: string | null;
+  projectTitle?: string;
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
