@@ -253,12 +253,13 @@ serve(async (req) => {
                             items: {
                               type: "object",
                               properties: {
-                                shot_type: { type: "string", description: "Camera type from the Visual Camera Grid" },
-                                description: { type: "string", description: "2-3 sentence vivid visual description" },
-                                prompt_export: { type: "string", description: "Full Grok Image prompt, one continuous paragraph, at least 100 words, ending with Style/Visual quality/Aspect ratio lines" },
+                                shot_type: { type: "string", description: "Camera type in FRENCH from the Visual Camera Grid (e.g. Plan d'ensemble, Plan d'activité)" },
+                                description: { type: "string", description: "2-3 sentence vivid visual description IN FRENCH" },
+                                source_sentence: { type: "string", description: "The EXACT original sentence from the narration text, copied verbatim in its original language" },
+                                prompt_export: { type: "string", description: "Full Grok Image prompt IN ENGLISH, one continuous paragraph, at least 100 words, ending with Style/Visual quality/Aspect ratio lines" },
                                 guardrails: { type: "string", description: "Comma-separated list of historical constraints applied" },
                               },
-                              required: ["shot_type", "description", "prompt_export", "guardrails"],
+                              required: ["shot_type", "description", "source_sentence", "prompt_export", "guardrails"],
                               additionalProperties: false,
                             },
                           },
