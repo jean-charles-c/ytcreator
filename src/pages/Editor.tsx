@@ -232,6 +232,20 @@ export default function Editor() {
           setCurrentScriptVersionId(1);
         }
 
+        // Restore scene versions
+        if (Array.isArray(scriptCreatorState.scene_versions) && scriptCreatorState.scene_versions.length > 0) {
+          setSceneVersions(scriptCreatorState.scene_versions);
+          const maxId = Math.max(...scriptCreatorState.scene_versions.map((v: any) => v.id));
+          setCurrentSceneVersionId(maxId);
+        }
+
+        // Restore shot versions
+        if (Array.isArray(scriptCreatorState.shot_versions) && scriptCreatorState.shot_versions.length > 0) {
+          setShotVersions(scriptCreatorState.shot_versions);
+          const maxId = Math.max(...scriptCreatorState.shot_versions.map((v: any) => v.id));
+          setCurrentShotVersionId(maxId);
+        }
+
         lastSavedScriptCreatorSnapshotRef.current = JSON.stringify({
           file_name: scriptCreatorState.file_name ?? null,
           page_count: Number(scriptCreatorState.page_count) || 0,
@@ -241,6 +255,8 @@ export default function Editor() {
           generated_script: typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null,
           seo_results: normalizeSeoResults(scriptCreatorState.seo_results),
           script_versions: Array.isArray(scriptCreatorState.script_versions) ? scriptCreatorState.script_versions : [],
+          scene_versions: Array.isArray(scriptCreatorState.scene_versions) ? scriptCreatorState.scene_versions : [],
+          shot_versions: Array.isArray(scriptCreatorState.shot_versions) ? scriptCreatorState.shot_versions : [],
         });
       }
 
