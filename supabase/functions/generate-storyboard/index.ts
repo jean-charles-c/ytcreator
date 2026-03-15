@@ -299,7 +299,7 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; prompt_export: string; guardrails: string }[] }[] = [];
+    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; source_sentence?: string; prompt_export: string; guardrails: string }[] }[] = [];
 
     try {
       if (toolCall?.function?.arguments) {
