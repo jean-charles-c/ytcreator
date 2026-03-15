@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ interface VoiceOverStudioProps {
   narration: string;
   generatedScript: string | null;
   projectId: string | null;
+  projectTitle?: string;
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
@@ -29,11 +31,12 @@ interface PlayerState {
   durationEstimate: number;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [hasFavorite, setHasFavorite] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [customFileName, setCustomFileName] = useState("");
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
@@ -119,6 +122,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             style: settings.style,
             mode: "full",
             projectId,
+            customFileName: customFileName.trim() || undefined,
           }),
         }
       );
@@ -315,19 +319,30 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             className="min-h-[200px] sm:min-h-[350px] lg:min-h-[450px] text-sm leading-relaxed resize-y font-body"
             aria-label="Script narratif pour la voix off"
           />
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">
-              {voScript.length.toLocaleString()} caractères
-            </span>
-            <Button
-              variant="hero"
-              disabled={!voScript.trim() || generating}
-              className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto"
-              onClick={handleGenerate}
-            >
-              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-              {generating ? "Génération en cours..." : "Générer la voix off"}
-            </Button>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {voScript.length.toLocaleString()} caractères
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <Input
+                value={customFileName}
+                onChange={(e) => setCustomFileName(e.target.value)}
+                placeholder={`${projectTitle || "vo"}_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`}
+                className="h-10 sm:h-10 text-sm flex-1"
+                aria-label="Nom du fichier audio"
+              />
+              <Button
+                variant="hero"
+                disabled={!voScript.trim() || generating}
+                className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto shrink-0"
+                onClick={handleGenerate}
+              >
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                {generating ? "Génération..." : "Générer la voix off"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

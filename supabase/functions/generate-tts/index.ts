@@ -19,6 +19,7 @@ interface TTSRequest {
   volumeGainDb?: number;
   mode?: "preview" | "full";
   projectId?: string;
+  customFileName?: string;
 }
 
 async function callGoogleTTS(
@@ -163,7 +164,10 @@ serve(async (req) => {
 
     // Generate file name
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const fileName = `vo_${timestamp}.m4a`;
+    const sanitized = body.customFileName
+      ? body.customFileName.replace(/[^a-zA-Z0-9_\-\s]/g, "").replace(/\s+/g, "_").slice(0, 80)
+      : null;
+    const fileName = sanitized ? `${sanitized}.m4a` : `vo_${timestamp}.m4a`;
     const filePath = `${user.id}/${projectId}/${fileName}`;
 
     // Upload to storage

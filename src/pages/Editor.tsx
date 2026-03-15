@@ -1089,6 +1089,7 @@ export default function Editor() {
             narration={narration}
             generatedScript={generatedScript}
             projectId={projectId}
+            projectTitle={title}
           />
         )}
 
