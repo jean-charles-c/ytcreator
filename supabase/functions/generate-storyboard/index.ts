@@ -18,6 +18,12 @@ Each prompt must illustrate a specific narrative moment.
 The result must resemble a visual storyboard for a historical documentary film.
 Scenes must produce enough visual material to sustain cinematic rhythm in a documentary edit.
 
+## LANGUAGE RULES
+- shot_type MUST always be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
+- description MUST always be in FRENCH, regardless of the script language
+- source_sentence MUST be the EXACT original sentence from the narration text (in its original language, copied verbatim)
+- prompt_export MUST always be in ENGLISH, regardless of the script language
+
 ## VISUAL BEAT RULE
 A visual scene corresponds to one coherent visual moment.
 Each scene you receive already represents a narrative segment. Generate shots for each scene.
@@ -50,13 +56,13 @@ A visual anchor is a fixed descriptive reference that must remain identical each
 If an anchored element appears again, the description must remain visually consistent.
 
 ## VISUAL CAMERA GRID
-To ensure cinematic visual diversity, shots must rotate between several camera types:
-1 — Establishing shot (wide/aerial view setting context)
-2 — Activity shot (medium shot showing action or movement)
-3 — Interaction shot (characters engaging with each other or environment)
-4 — Environmental shot (landscape, cityscape, atmospheric context)
-5 — Artifact detail shot (close-up on significant object or texture)
-6 — Scientific detail shot (close examination of evidence, inscription, material)
+To ensure cinematic visual diversity, shots must rotate between several camera types (use FRENCH names):
+1 — Plan d'ensemble (wide/aerial view setting context)
+2 — Plan d'activité (medium shot showing action or movement)
+3 — Plan d'interaction (characters engaging with each other or environment)
+4 — Plan environnemental (landscape, cityscape, atmospheric context)
+5 — Plan de détail d'artefact (close-up on significant object or texture)
+6 — Plan de détail scientifique (close examination of evidence, inscription, material)
 Avoid repeating the same camera type consecutively whenever possible.
 
 ## GLOBAL VISUAL BASELINE
@@ -94,7 +100,7 @@ Forbidden unless historically justified: medieval roof shapes, tiled roofs, chim
 Architecture must appear archaeologically plausible.
 
 ## PROMPT STRUCTURE
-Each prompt_export must contain ALL of these woven into one continuous paragraph:
+Each prompt_export must be in ENGLISH and contain ALL of these woven into one continuous paragraph:
 1. Camera framing: "Wide shot of...", "Close-up on...", "Low-angle view of...", "Medium shot of..."
 2. Scene description with every visible object, material, texture, color — be hyper-specific
 3. Characters if present: pose, gesture, clothing fabric and color, facial expression, body language
