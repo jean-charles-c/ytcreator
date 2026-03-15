@@ -67,6 +67,12 @@ GLOBAL WRITING RULES:
 16. Each sentence must be STRICTLY UNDER 100 characters.
 17. ONE idea per sentence — never two pieces of information in the same sentence.
 18. Each scene contains EXACTLY 3 sentences, no more, no less.
+20. CRITICAL RHYTHM RULE — Vary sentence lengths for natural spoken flow:
+   • Alternate between SHORT sentences (30-50 characters) and LONGER sentences (60-95 characters).
+   • Never write 3 consecutive sentences of similar length.
+   • A typical scene pattern: long + short + medium, or short + long + short.
+   • Monotonous rhythm (all sentences ~40 characters) is FORBIDDEN — it sounds robotic.
+   • Think like a filmmaker: some beats are quick cuts, others are lingering shots.
 19. Separate each scene with an empty line.
 
 ---
