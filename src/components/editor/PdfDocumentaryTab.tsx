@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2 } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -66,6 +66,8 @@ export default function PdfDocumentaryTab({
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
+  const [previousScripts, setPreviousScripts] = useState<string[]>([]);
+  const [showPreviousScript, setShowPreviousScript] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -109,9 +111,14 @@ export default function PdfDocumentaryTab({
   }, [onAnalysisReady, onExtractedTextChange, onAnalysisChange, onDocStructureChange, onScriptChange, onPageCountChange]);
 
   // Combined: generate structure then script automatically
-  const runFullScriptGeneration = useCallback(async () => {
+  const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
     if (!analysis || !extractedText) return;
+    // Save current script before regenerating
+    if (isRegenerate && script) {
+      setPreviousScripts((prev) => [...prev, script]);
+    }
     setGeneratingScript(true);
+    setScriptOpen(true);
     onScriptChange("");
 
     // Step 1: Generate structure
@@ -186,7 +193,7 @@ export default function PdfDocumentaryTab({
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, extractedText, scriptLanguage, onDocStructureChange, onScriptChange, onScriptReady]);
+  }, [analysis, extractedText, scriptLanguage, script, onDocStructureChange, onScriptChange, onScriptReady]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -382,7 +389,7 @@ export default function PdfDocumentaryTab({
                 {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
-            <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
+            <Button variant="hero" disabled={generatingScript} onClick={() => runFullScriptGeneration()} className="min-h-[44px]">
               {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
             </Button>
           </div>
@@ -536,6 +543,59 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
+                    <RotateCcw className="h-3 w-3" /> Régénérer
+                  </Button>
+                </div>
+              )}
+              {/* Previous scripts */}
+              {previousScripts.length > 0 && !generatingScript && (
+                <div className="mb-4">
+                  <p className="text-[11px] text-muted-foreground mb-1.5">Versions précédentes :</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {previousScripts.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setShowPreviousScript(showPreviousScript === i ? null : i)}
+                        className={`text-[11px] px-2 py-1 rounded border transition-colors ${showPreviousScript === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                      >
+                        V{i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  {showPreviousScript !== null && previousScripts[showPreviousScript] && (
+                    <div className="mt-2 rounded border border-border bg-background p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] text-muted-foreground">Version {showPreviousScript + 1} — {previousScripts[showPreviousScript].length.toLocaleString()} car.</span>
+                        <div className="flex gap-1.5">
+                          <Button variant="outline" size="sm" onClick={() => {
+                            navigator.clipboard.writeText(cleanScriptForExport(previousScripts[showPreviousScript]));
+                            toast.success("Ancienne version copiée");
+                          }} className="h-6 text-[10px] px-2">
+                            <Copy className="h-2.5 w-2.5" /> Copier
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => {
+                            const old = previousScripts[showPreviousScript];
+                            const currentScript = script;
+                            // Swap: current becomes previous, old becomes current
+                            if (currentScript) {
+                              setPreviousScripts((prev) => prev.map((s, idx) => idx === showPreviousScript ? currentScript : s));
+                            } else {
+                              setPreviousScripts((prev) => prev.filter((_, idx) => idx !== showPreviousScript));
+                            }
+                            onScriptChange(old);
+                            setShowPreviousScript(null);
+                            toast.success("Version restaurée");
+                          }} className="h-6 text-[10px] px-2">
+                            <RotateCcw className="h-2.5 w-2.5" /> Restaurer
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="max-h-[150px] overflow-y-auto">
+                        <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previousScripts[showPreviousScript].slice(0, 2000)}…</pre>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
