@@ -28,7 +28,7 @@ import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
 
-type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "export";
+type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "cp" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
