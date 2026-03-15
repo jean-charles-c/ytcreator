@@ -55,9 +55,6 @@ export default function Landing() {
             <Button variant="outline" size="sm" onClick={() => navigate("/login")}>
               Se connecter
             </Button>
-            <Button variant="hero" size="sm" onClick={() => navigate("/signup")}>
-              Démarrer
-            </Button>
           </div>
           <button onClick={() => setMenuOpen(!menuOpen)} className="sm:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
