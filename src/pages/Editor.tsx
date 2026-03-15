@@ -1277,8 +1277,8 @@ export default function Editor() {
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Clapperboard className="h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">Segmentez d'abord votre narration.</p>
-                <Button variant="outline" onClick={() => setActiveTab("script")}>
-                  <ArrowLeft className="h-4 w-4" /> Retour au script
+                <Button variant="outline" onClick={() => setActiveTab("script-creator")}>
+                  <ArrowLeft className="h-4 w-4" /> Retour à ScriptCreator
                 </Button>
               </div>
             )}
