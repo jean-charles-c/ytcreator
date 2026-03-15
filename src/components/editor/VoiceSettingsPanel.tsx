@@ -108,7 +108,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
             user_id: user.id,
             language_code: settings.languageCode,
             voice_gender: settings.voiceGender,
-            style: settings.voiceType,
+            style: `${settings.voiceType}:${settings.style}`,
             speaking_rate: settings.speakingRate,
             updated_at: new Date().toISOString(),
           },
