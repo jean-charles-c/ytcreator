@@ -644,7 +644,7 @@ export default function PdfDocumentaryTab({
                       className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
-                    <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
+                    <Button variant="hero" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
                       <RotateCcw className="h-3 w-3" /> Régénérer
                     </Button>
                   </div>
