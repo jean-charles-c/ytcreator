@@ -258,8 +258,8 @@ export default function PdfDocumentaryTab({
     onDocStructureChange(null);
     onScriptChange(null);
     onPageCountChange(0);
-    setScriptVersions([]);
-    setCurrentVersionId(null);
+    onScriptVersionsChange([]);
+    onCurrentVersionIdChange(null);
     setShowVersionPreviewId(null);
     if (inputRef.current) inputRef.current.value = "";
   };
