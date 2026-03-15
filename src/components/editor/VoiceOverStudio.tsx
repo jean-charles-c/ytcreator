@@ -68,6 +68,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             voiceType,
             style: tone,
             speakingRate: data.speaking_rate,
+            volumeGainDb: DEFAULT_SETTINGS.volumeGainDb,
+            effectsProfileId: DEFAULT_SETTINGS.effectsProfileId,
+            pauseBetweenParagraphs: DEFAULT_SETTINGS.pauseBetweenParagraphs,
           });
           setHasFavorite(true);
         }
