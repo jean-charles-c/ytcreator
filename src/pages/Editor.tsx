@@ -147,6 +147,10 @@ export default function Editor() {
     return normalizeSeoResults(sessionStorage.getItem(`sc_seo_${id}`));
   });
 
+  // Versioning for script (ScriptCreator)
+  const [scriptVersions, setScriptVersions] = useState<{ id: number; content: string }[]>([]);
+  const [currentScriptVersionId, setCurrentScriptVersionId] = useState<number | null>(null);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
@@ -218,6 +222,16 @@ export default function Editor() {
         setGeneratedScript(typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null);
         setSeoResults(normalizeSeoResults(scriptCreatorState.seo_results));
 
+        // Restore script versions
+        if (Array.isArray(scriptCreatorState.script_versions) && scriptCreatorState.script_versions.length > 0) {
+          setScriptVersions(scriptCreatorState.script_versions);
+          const maxId = Math.max(...scriptCreatorState.script_versions.map((v: any) => v.id));
+          setCurrentScriptVersionId(maxId);
+        } else if (typeof scriptCreatorState.generated_script === "string" && scriptCreatorState.generated_script.trim()) {
+          setScriptVersions([{ id: 1, content: scriptCreatorState.generated_script }]);
+          setCurrentScriptVersionId(1);
+        }
+
         lastSavedScriptCreatorSnapshotRef.current = JSON.stringify({
           file_name: scriptCreatorState.file_name ?? null,
           page_count: Number(scriptCreatorState.page_count) || 0,
@@ -226,6 +240,7 @@ export default function Editor() {
           doc_structure: Array.isArray(scriptCreatorState.doc_structure) ? scriptCreatorState.doc_structure : null,
           generated_script: typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null,
           seo_results: normalizeSeoResults(scriptCreatorState.seo_results),
+          script_versions: Array.isArray(scriptCreatorState.script_versions) ? scriptCreatorState.script_versions : [],
         });
       }
 
@@ -311,6 +326,7 @@ export default function Editor() {
       doc_structure: pdfDocStructure ?? null,
       generated_script: generatedScript ?? null,
       seo_results: seoResults,
+      script_versions: scriptVersions,
     };
 
     const snapshot = JSON.stringify(payload);
@@ -348,6 +364,7 @@ export default function Editor() {
     pdfDocStructure,
     generatedScript,
     seoResults,
+    scriptVersions,
   ]);
 
   useEffect(() => {
@@ -1010,6 +1027,10 @@ export default function Editor() {
               onDocStructureChange={setPdfDocStructure}
               script={generatedScript}
               onScriptChange={setGeneratedScript}
+              scriptVersions={scriptVersions}
+              onScriptVersionsChange={setScriptVersions}
+              currentVersionId={currentScriptVersionId}
+              onCurrentVersionIdChange={setCurrentScriptVersionId}
             />
           </div>
         )}

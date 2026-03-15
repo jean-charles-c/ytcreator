@@ -43,7 +43,6 @@ interface PdfDocumentaryTabProps {
   onSendToScriptInput?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
-  // Lifted state for persistence
   extractedText: string | null;
   onExtractedTextChange: (text: string | null) => void;
   pageCount: number;
@@ -56,12 +55,17 @@ interface PdfDocumentaryTabProps {
   onDocStructureChange: (structure: DocSection[] | null) => void;
   script: string | null;
   onScriptChange: (script: string | null) => void;
+  scriptVersions: ScriptVersion[];
+  onScriptVersionsChange: (versions: ScriptVersion[] | ((prev: ScriptVersion[]) => ScriptVersion[])) => void;
+  currentVersionId: number | null;
+  onCurrentVersionIdChange: (id: number | null) => void;
 }
 
 export default function PdfDocumentaryTab({
   projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady,
   extractedText, onExtractedTextChange, pageCount, onPageCountChange, fileName, onFileNameChange,
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
+  scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
 }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -71,16 +75,14 @@ export default function PdfDocumentaryTab({
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
-  const [scriptVersions, setScriptVersions] = useState<ScriptVersion[]>([]);
-  const [currentVersionId, setCurrentVersionId] = useState<number | null>(null);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!generatingScript && script && script.trim() !== "" && scriptVersions.length === 0) {
-      setScriptVersions([{ id: 1, content: script }]);
-      setCurrentVersionId(1);
+      onScriptVersionsChange([{ id: 1, content: script }]);
+      onCurrentVersionIdChange(1);
     }
   }, [script, generatingScript, scriptVersions.length]);
 
@@ -199,17 +201,17 @@ export default function PdfDocumentaryTab({
 
       onScriptChange(full);
       if (isRegenerate) {
-        setScriptVersions((prev) => {
+        onScriptVersionsChange((prev) => {
           const baseVersions = prev.length > 0
             ? prev
             : (script && script.trim() !== "" ? [{ id: 1, content: script }] : []);
           const nextId = baseVersions.length > 0 ? Math.max(...baseVersions.map((v) => v.id)) + 1 : 1;
-          setCurrentVersionId(nextId);
+          onCurrentVersionIdChange(nextId);
           return [...baseVersions, { id: nextId, content: full }];
         });
       } else {
-        setScriptVersions([{ id: 1, content: full }]);
-        setCurrentVersionId(1);
+        onScriptVersionsChange([{ id: 1, content: full }]);
+        onCurrentVersionIdChange(1);
       }
       onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
@@ -227,8 +229,8 @@ export default function PdfDocumentaryTab({
       onAnalysisChange(null);
       onDocStructureChange(null);
       onScriptChange(null);
-      setScriptVersions([]);
-      setCurrentVersionId(null);
+      onScriptVersionsChange([]);
+      onCurrentVersionIdChange(null);
       setShowVersionPreviewId(null);
     }
   };
@@ -242,8 +244,8 @@ export default function PdfDocumentaryTab({
       onAnalysisChange(null);
       onDocStructureChange(null);
       onScriptChange(null);
-      setScriptVersions([]);
-      setCurrentVersionId(null);
+      onScriptVersionsChange([]);
+      onCurrentVersionIdChange(null);
       setShowVersionPreviewId(null);
     }
   };
@@ -256,8 +258,8 @@ export default function PdfDocumentaryTab({
     onDocStructureChange(null);
     onScriptChange(null);
     onPageCountChange(0);
-    setScriptVersions([]);
-    setCurrentVersionId(null);
+    onScriptVersionsChange([]);
+    onCurrentVersionIdChange(null);
     setShowVersionPreviewId(null);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -643,7 +645,7 @@ export default function PdfDocumentaryTab({
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => {
                               onScriptChange(previewVersion.content);
-                              setCurrentVersionId(previewVersion.id);
+                              onCurrentVersionIdChange(previewVersion.id);
                               setShowVersionPreviewId(null);
                               toast.success(`Version V${previewVersion.id} restaurée`);
                             }} className="h-6 text-[10px] px-2">
