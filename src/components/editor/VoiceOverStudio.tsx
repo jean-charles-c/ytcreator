@@ -250,7 +250,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
 
         {/* Right column */}
         <div className="space-y-4">
-          <VoiceSettingsPanel settings={settings} onChange={setSettings} />
+          <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} />
           <VoicePreviewTest settings={settings} />
 
           {/* Audio player */}
