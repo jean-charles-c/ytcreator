@@ -24,6 +24,9 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   voiceType: "Standard",
   style: "neutral",
   speakingRate: 1.0,
+  volumeGainDb: 0,
+  effectsProfileId: "none",
+  pauseBetweenParagraphs: 500,
 };
 
 interface PlayerState {
