@@ -195,7 +195,7 @@ ABSOLUTE RULES — NEVER DEVIATE:
 1. Segment the FULL narration from first word to last word, without skipping any part.
 2. Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
 3. Preserve exact narrative order.
-4. **CRITICAL — SCENE LENGTH**: Each scene MUST contain EXACTLY 1 to 3 sentences. NEVER more than 3 sentences per scene. If a passage has 4+ sentences on the same topic, SPLIT them into multiple scenes.
+4. **CRITICAL — SCENE LENGTH**: Each scene should contain 1 or 2 sentences. Use 3 sentences ONLY when they are inseparable (same action, same subject, no possible split). PREFER 1-sentence scenes for impactful statements, transitions, or topic changes. PREFER 2-sentence scenes as the default. 3-sentence scenes should be RARE (less than 20% of total scenes). NEVER more than 3 sentences per scene.
 5. A "sentence" ends with a period (.), question mark (?), or exclamation mark (!).
 6. Target approximately ${targetCount} scenes. Create MORE scenes rather than fewer — granularity is key.
 7. Create a new scene whenever the topic, subject, location, character focus, or action changes.
