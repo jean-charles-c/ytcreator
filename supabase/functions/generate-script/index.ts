@@ -209,7 +209,7 @@ LENGTH — NON-NEGOTIABLE:
 • If over ${charMax.toLocaleString()}, tighten by removing redundant sentences — never cut narrative tension.`;
 }
 
-function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string): string {
+function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string, charMin: number, charMax: number, charTarget: number): string {
   const a = analysis as {
     central_mystery?: string;
     main_contradiction?: string;
