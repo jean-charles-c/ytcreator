@@ -181,8 +181,9 @@ PARAGRAPH STRUCTURE — FIXED REPEATING PATTERN:
 
 You MUST write the script following this EXACT repeating cycle of paragraph lengths (number of sentences per paragraph):
 
-1 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
+2 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
 
+The FIRST paragraph of the script (the hook opening) MUST have at least 2 sentences for impact.
 Then REPEAT this exact 10-paragraph cycle from the beginning until you reach the target character count.
 
 EXAMPLE: Paragraphs 1-10 follow the pattern above. Paragraphs 11-20 repeat the same pattern. And so on.
@@ -202,7 +203,7 @@ STRICT RULES:
 • The last cycle may be incomplete if the character target is reached mid-cycle — that is acceptable.
 
 FINAL SELF-CHECK (mandatory before outputting):
-• Verify that paragraphs follow the 1-2-2-3-2-1-3-2-4-2 cycle.
+• Verify that paragraphs follow the 2-2-2-3-2-1-3-2-4-2 cycle.
 • If any paragraph has 5+ sentences, split it immediately.
 • If 3-sentence paragraphs are missing or rare, you have broken the cycle — rewrite.
 
