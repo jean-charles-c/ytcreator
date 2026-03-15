@@ -161,10 +161,10 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
               {/* Play button */}
               <button
                 onClick={() => handlePlay(entry)}
-                className="flex items-center justify-center h-8 w-8 rounded-full bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
+                className="flex items-center justify-center h-10 w-10 sm:h-8 sm:w-8 rounded-full bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
                 aria-label={`Lire ${entry.file_name}`}
               >
-                <Play className="h-3.5 w-3.5 ml-0.5" />
+                <Play className="h-4 w-4 sm:h-3.5 sm:w-3.5 ml-0.5" />
               </button>
 
               {/* Info */}
