@@ -548,6 +548,56 @@ export default function PdfDocumentaryTab({
                   </Button>
                 </div>
               )}
+              {/* Previous scripts */}
+              {previousScripts.length > 0 && !generatingScript && (
+                <div className="mb-4">
+                  <p className="text-[11px] text-muted-foreground mb-1.5">Versions précédentes :</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {previousScripts.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setShowPreviousScript(showPreviousScript === i ? null : i)}
+                        className={`text-[11px] px-2 py-1 rounded border transition-colors ${showPreviousScript === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                      >
+                        V{i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  {showPreviousScript !== null && previousScripts[showPreviousScript] && (
+                    <div className="mt-2 rounded border border-border bg-background p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] text-muted-foreground">Version {showPreviousScript + 1} — {previousScripts[showPreviousScript].length.toLocaleString()} car.</span>
+                        <div className="flex gap-1.5">
+                          <Button variant="outline" size="sm" onClick={() => {
+                            navigator.clipboard.writeText(cleanScriptForExport(previousScripts[showPreviousScript]));
+                            toast.success("Ancienne version copiée");
+                          }} className="h-6 text-[10px] px-2">
+                            <Copy className="h-2.5 w-2.5" /> Copier
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => {
+                            const old = previousScripts[showPreviousScript];
+                            const currentScript = script;
+                            // Swap: current becomes previous, old becomes current
+                            if (currentScript) {
+                              setPreviousScripts((prev) => prev.map((s, idx) => idx === showPreviousScript ? currentScript : s));
+                            } else {
+                              setPreviousScripts((prev) => prev.filter((_, idx) => idx !== showPreviousScript));
+                            }
+                            onScriptChange(old);
+                            setShowPreviousScript(null);
+                            toast.success("Version restaurée");
+                          }} className="h-6 text-[10px] px-2">
+                            <RotateCcw className="h-2.5 w-2.5" /> Restaurer
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="max-h-[150px] overflow-y-auto">
+                        <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previousScripts[showPreviousScript].slice(0, 2000)}…</pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
                 <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
                 <div ref={scriptEndRef} />
