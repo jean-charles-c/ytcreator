@@ -13,6 +13,7 @@ interface TTSRequest {
   voiceGender?: "MALE" | "FEMALE" | "NEUTRAL";
   voiceName?: string;
   voiceType?: string;
+  style?: string;
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
