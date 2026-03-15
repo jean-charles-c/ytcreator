@@ -460,8 +460,12 @@ export default function PdfDocumentaryTab({
                   setFindingTension(true);
                   try {
                     const { data, error } = await supabase.functions.invoke("find-tension", {
-                      body: { text: extractedText, existing_tensions: analysis.narrative_tensions },
+                      body: {
+                        text: extractedText.slice(0, 12000),
+                        existing_tensions: analysis.narrative_tensions.slice(0, 20),
+                      },
                     });
+
                     if (error || data?.error) {
                       toast.error(data?.error || "Erreur lors de la recherche");
                       console.error(error || data?.error);
@@ -470,7 +474,10 @@ export default function PdfDocumentaryTab({
                       onAnalysisChange(updated);
                       toast.success("Nouvelle tension ajoutée");
                     }
-                  } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Erreur inattendue");
+                  }
                   setFindingTension(false);
                 }}
                 disabled={findingTension || !extractedText}
