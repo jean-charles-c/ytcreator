@@ -147,6 +147,10 @@ export default function Editor() {
     return normalizeSeoResults(sessionStorage.getItem(`sc_seo_${id}`));
   });
 
+  // Versioning for script (ScriptCreator)
+  const [scriptVersions, setScriptVersions] = useState<{ id: number; content: string }[]>([]);
+  const [currentScriptVersionId, setCurrentScriptVersionId] = useState<number | null>(null);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
