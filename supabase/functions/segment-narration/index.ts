@@ -192,10 +192,11 @@ Rules:
 - Segment the FULL narration from first word to last word, without skipping any part.
 - Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
 - Preserve exact narrative order.
-- Each scene should map to 1-3 sentences from the source.
+- Each scene MUST contain at most 2-3 sentences. Prefer shorter scenes (1-2 sentences) over longer ones.
+- Create a new scene whenever the topic, subject, location, character focus, or action changes.
 - Generate a short descriptive title for each scene (max 10 words).
-- Generate visual_intention: one short sentence describing the documentary visual.
-- Create approximately ${targetCount} scenes to cover 100% of the narration.
+- Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about).
+- Create approximately ${targetCount} scenes to cover 100% of the narration. More scenes is better than fewer.
 ${strictMode ? "- CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
 
 Return data via the segment_narration tool call only.`,
