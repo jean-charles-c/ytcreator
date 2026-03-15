@@ -195,7 +195,7 @@ Rules:
 - Each scene MUST contain at most 2-3 sentences. Prefer shorter scenes (1-2 sentences) over longer ones.
 - Create a new scene whenever the topic, subject, location, character focus, or action changes.
 - Generate a short descriptive title for each scene (max 10 words).
-- Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST be written in the SAME LANGUAGE as the narration text.
+- Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
 - Create approximately ${targetCount} scenes to cover 100% of the narration. More scenes is better than fewer.
 ${strictMode ? "- CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
 
