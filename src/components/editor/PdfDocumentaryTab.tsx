@@ -251,6 +251,8 @@ export default function PdfDocumentaryTab({
     });
   };
 
+  const hasResults = !!(analysis || (script !== null && script !== ""));
+
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
       <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">
@@ -262,8 +264,56 @@ export default function PdfDocumentaryTab({
 
       <input ref={inputRef} type="file" accept=".pdf,application/pdf" onChange={handleFileChange} className="hidden" />
 
+      {/* Persistent PDF pill — shown when we have results */}
+      {hasResults && (
+        <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:p-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 shrink-0">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate max-w-[200px]">{fileName || "Document PDF"}</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  {pageCount > 0 && <span>{pageCount} p.</span>}
+                  {pageCount > 0 && extractedText && <span>·</span>}
+                  {extractedText && <span>{extractedText.length.toLocaleString()} car.</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              {analysis && (
+                <button
+                  onClick={() => setAnalysisOpen(!analysisOpen)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Analyse
+                </button>
+              )}
+              {script !== null && script !== "" && (
+                <button
+                  onClick={() => {
+                    const el = scriptEndRef.current;
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                >
+                  <ScrollText className="h-3 w-3" />
+                  Script
+                  <span className="text-[10px] text-primary/60">{script.length.toLocaleString()} car.</span>
+                </button>
+              )}
+              <button onClick={removeFile} className="text-muted-foreground hover:text-foreground transition-colors p-1" title="Retirer le document">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upload zone — hidden once text is extracted */}
-      {!extractedText && (
+      {!extractedText && !hasResults && (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
@@ -296,8 +346,8 @@ export default function PdfDocumentaryTab({
         </div>
       )}
 
-      {/* Compact file info + stats — shown after extraction */}
-      {extractedText && (
+      {/* Compact file info — shown during extraction (before pill appears) */}
+      {extractedText && !hasResults && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate max-w-[150px] font-medium text-foreground text-[11px]">{file?.name || fileName}</span>
@@ -313,7 +363,7 @@ export default function PdfDocumentaryTab({
 
       {/* Action buttons */}
       <div className="mt-4 flex flex-col sm:flex-row gap-3">
-        {!extractedText && !analyzing && (
+        {!extractedText && !analyzing && !hasResults && (
           <Button variant="hero" disabled={!file || !projectId || parsing} onClick={() => file && extractAndAnalyze(file)} className="min-h-[44px]">
             {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
           </Button>

@@ -663,10 +663,6 @@ export default function Editor() {
               {narration.length.toLocaleString()} caractères
             </div>
             <div className="mt-3 flex flex-col sm:flex-row gap-3">
-              <Button variant="hero" onClick={saveProject} disabled={saving} className="min-h-[44px]">
-                <Save className="h-4 w-4" />
-                {saving ? "Sauvegarde..." : "Sauvegarder"}
-              </Button>
               <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
                 {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {segmenting ? "Segmentation..." : "Lancer la segmentation"}
