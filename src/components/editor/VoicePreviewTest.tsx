@@ -87,10 +87,12 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <h3 className="font-display text-sm font-semibold text-foreground">
-        Test rapide
-      </h3>
+    <div className={hideHeader ? "space-y-3" : "rounded-lg border border-border bg-card p-4 space-y-3"}>
+      {!hideHeader && (
+        <h3 className="font-display text-sm font-semibold text-foreground">
+          Test rapide
+        </h3>
+      )}
       <Textarea
         value={testText}
         onChange={(e) => setTestText(e.target.value)}
