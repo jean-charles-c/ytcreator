@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      project_scriptcreator_state: {
+        Row: {
+          analysis: Json | null
+          created_at: string
+          doc_structure: Json | null
+          extracted_text: string | null
+          file_name: string | null
+          generated_script: string | null
+          page_count: number
+          project_id: string
+          seo_results: Json | null
+          updated_at: string
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string
+          doc_structure?: Json | null
+          extracted_text?: string | null
+          file_name?: string | null
+          generated_script?: string | null
+          page_count?: number
+          project_id: string
+          seo_results?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string
+          doc_structure?: Json | null
+          extracted_text?: string | null
+          file_name?: string | null
+          generated_script?: string | null
+          page_count?: number
+          project_id?: string
+          seo_results?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_scriptcreator_state_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           created_at: string
