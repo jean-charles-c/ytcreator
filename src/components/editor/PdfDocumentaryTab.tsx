@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,11 @@ interface DocSection {
   section_label: string;
   video_title: string;
   narrative_description: string;
+}
+
+interface ScriptVersion {
+  id: number;
+  content: string;
 }
 
 const LANGUAGES = [
@@ -66,10 +71,18 @@ export default function PdfDocumentaryTab({
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
-  const [previousScripts, setPreviousScripts] = useState<string[]>([]);
-  const [showPreviousScript, setShowPreviousScript] = useState<number | null>(null);
+  const [scriptVersions, setScriptVersions] = useState<ScriptVersion[]>([]);
+  const [currentVersionId, setCurrentVersionId] = useState<number | null>(null);
+  const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!generatingScript && script && script.trim() !== "" && scriptVersions.length === 0) {
+      setScriptVersions([{ id: 1, content: script }]);
+      setCurrentVersionId(1);
+    }
+  }, [script, generatingScript, scriptVersions.length]);
 
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
@@ -113,10 +126,6 @@ export default function PdfDocumentaryTab({
   // Combined: generate structure then script automatically
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
     if (!analysis || !extractedText) return;
-    // Save current script before regenerating
-    if (isRegenerate && script) {
-      setPreviousScripts((prev) => [...prev, script]);
-    }
     setGeneratingScript(true);
     setScriptOpen(true);
     onScriptChange("");
@@ -189,6 +198,19 @@ export default function PdfDocumentaryTab({
       }
 
       onScriptChange(full);
+      if (isRegenerate) {
+        setScriptVersions((prev) => {
+          const baseVersions = prev.length > 0
+            ? prev
+            : (script && script.trim() !== "" ? [{ id: 1, content: script }] : []);
+          const nextId = baseVersions.length > 0 ? Math.max(...baseVersions.map((v) => v.id)) + 1 : 1;
+          setCurrentVersionId(nextId);
+          return [...baseVersions, { id: nextId, content: full }];
+        });
+      } else {
+        setScriptVersions([{ id: 1, content: full }]);
+        setCurrentVersionId(1);
+      }
       onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
@@ -198,16 +220,45 @@ export default function PdfDocumentaryTab({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped?.type === "application/pdf") { setFile(dropped); onFileNameChange(dropped.name); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); }
+    if (dropped?.type === "application/pdf") {
+      setFile(dropped);
+      onFileNameChange(dropped.name);
+      onExtractedTextChange(null);
+      onAnalysisChange(null);
+      onDocStructureChange(null);
+      onScriptChange(null);
+      setScriptVersions([]);
+      setCurrentVersionId(null);
+      setShowVersionPreviewId(null);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected?.type === "application/pdf") { setFile(selected); onFileNameChange(selected.name); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); }
+    if (selected?.type === "application/pdf") {
+      setFile(selected);
+      onFileNameChange(selected.name);
+      onExtractedTextChange(null);
+      onAnalysisChange(null);
+      onDocStructureChange(null);
+      onScriptChange(null);
+      setScriptVersions([]);
+      setCurrentVersionId(null);
+      setShowVersionPreviewId(null);
+    }
   };
 
   const removeFile = () => {
-    setFile(null); onFileNameChange(null); onExtractedTextChange(null); onAnalysisChange(null); onDocStructureChange(null); onScriptChange(null); onPageCountChange(0);
+    setFile(null);
+    onFileNameChange(null);
+    onExtractedTextChange(null);
+    onAnalysisChange(null);
+    onDocStructureChange(null);
+    onScriptChange(null);
+    onPageCountChange(0);
+    setScriptVersions([]);
+    setCurrentVersionId(null);
+    setShowVersionPreviewId(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -557,62 +608,55 @@ export default function PdfDocumentaryTab({
                   </Button>
                 </div>
               )}
-              {/* Version buttons — show all versions including current */}
-              {previousScripts.length > 0 && !generatingScript && (
+              {/* Versions */}
+              {scriptVersions.length > 0 && !generatingScript && (
                 <div className="mb-4">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {previousScripts.map((_, i) => {
-                      const vNum = i + 1;
-                      return (
-                        <button
-                          key={`prev-${i}`}
-                          onClick={() => setShowPreviousScript(showPreviousScript === i ? null : i)}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${showPreviousScript === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
-                        >
-                          V{vNum}
-                        </button>
-                      );
-                    })}
-                    {/* Current version button */}
-                    <button
-                      onClick={() => setShowPreviousScript(null)}
-                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${showPreviousScript === null ? "border-primary bg-primary text-primary-foreground" : "border-primary/40 text-primary hover:bg-primary/10"}`}
-                    >
-                      V{previousScripts.length + 1}
-                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
-                    </button>
+                    {scriptVersions.map((version) => (
+                      <button
+                        key={version.id}
+                        onClick={() => setShowVersionPreviewId(showVersionPreviewId === version.id ? null : version.id)}
+                        className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${currentVersionId === version.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                      >
+                        V{version.id}
+                        {currentVersionId === version.id && (
+                          <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  {showPreviousScript !== null && previousScripts[showPreviousScript] && (
-                    <div className="mt-2 rounded border border-border bg-background p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] text-muted-foreground">Version {showPreviousScript + 1} — {previousScripts[showPreviousScript].length.toLocaleString()} car.</span>
-                        <div className="flex gap-1.5">
-                          <Button variant="outline" size="sm" onClick={() => {
-                            navigator.clipboard.writeText(cleanScriptForExport(previousScripts[showPreviousScript]));
-                            toast.success("Version copiée");
-                          }} className="h-6 text-[10px] px-2">
-                            <Copy className="h-2.5 w-2.5" /> Copier
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => {
-                            const old = previousScripts[showPreviousScript];
-                            const currentScript = script;
-                            // Keep all previous versions intact, add current script as a new previous version
-                            if (currentScript) {
-                              setPreviousScripts((prev) => [...prev, currentScript]);
-                            }
-                            onScriptChange(old);
-                            setShowPreviousScript(null);
-                            toast.success("Version restaurée");
-                          }} className="h-6 text-[10px] px-2">
-                            <RotateCcw className="h-2.5 w-2.5" /> Restaurer
-                          </Button>
+
+                  {showVersionPreviewId !== null && (() => {
+                    const previewVersion = scriptVersions.find((v) => v.id === showVersionPreviewId);
+                    if (!previewVersion) return null;
+
+                    return (
+                      <div className="mt-2 rounded border border-border bg-background p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] text-muted-foreground">Version {previewVersion.id} — {previewVersion.content.length.toLocaleString()} car.</span>
+                          <div className="flex gap-1.5">
+                            <Button variant="outline" size="sm" onClick={() => {
+                              navigator.clipboard.writeText(cleanScriptForExport(previewVersion.content));
+                              toast.success("Version copiée");
+                            }} className="h-6 text-[10px] px-2">
+                              <Copy className="h-2.5 w-2.5" /> Copier
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => {
+                              onScriptChange(previewVersion.content);
+                              setCurrentVersionId(previewVersion.id);
+                              setShowVersionPreviewId(null);
+                              toast.success(`Version V${previewVersion.id} restaurée`);
+                            }} className="h-6 text-[10px] px-2">
+                              <RotateCcw className="h-2.5 w-2.5" /> Restaurer
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="max-h-[150px] overflow-y-auto">
+                          <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previewVersion.content.slice(0, 2000)}…</pre>
                         </div>
                       </div>
-                      <div className="max-h-[150px] overflow-y-auto">
-                        <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previousScripts[showPreviousScript].slice(0, 2000)}…</pre>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
               <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
