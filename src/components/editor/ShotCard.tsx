@@ -44,7 +44,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const startEdit = () => {
     setEditType(shot.shot_type);
