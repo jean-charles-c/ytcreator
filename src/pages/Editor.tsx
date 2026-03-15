@@ -104,6 +104,16 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Versioning for segmentation
+  const [sceneVersions, setSceneVersions] = useState<{ id: number; scenes: Scene[] }[]>([]);
+  const [currentSceneVersionId, setCurrentSceneVersionId] = useState<number | null>(null);
+  const [previewSceneVersionId, setPreviewSceneVersionId] = useState<number | null>(null);
+
+  // Versioning for storyboard
+  const [shotVersions, setShotVersions] = useState<{ id: number; shots: Shot[] }[]>([]);
+  const [currentShotVersionId, setCurrentShotVersionId] = useState<number | null>(null);
+  const [previewShotVersionId, setPreviewShotVersionId] = useState<number | null>(null);
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
     try {
       const v = sessionStorage.getItem(`sc_analysis_${id}`);
