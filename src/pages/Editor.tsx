@@ -662,6 +662,40 @@ export default function Editor() {
     setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   };
 
+  const handleShotDelete = async (shotId: string) => {
+    const { error } = await supabase.from("shots").delete().eq("id", shotId);
+    if (error) { toast.error("Erreur de suppression"); return; }
+    setShots((prev) => prev.filter((s) => s.id !== shotId));
+    toast.success("Shot supprimé");
+  };
+
+  const handleShotRegenerate = async (shotId: string) => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/regenerate-shot`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ shot_id: shotId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
+      if (data.shot) {
+        setShots((prev) => prev.map((s) => (s.id === data.shot.id ? data.shot : s)));
+        toast.success("Shot regénéré");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erreur de regénération");
+    }
+  };
+
   // --- Export helpers ---
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
