@@ -200,7 +200,7 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
                 <button
                   onClick={() => handleDelete(entry)}
                   disabled={deletingId === entry.id}
-                  className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                  className="h-9 w-9 sm:h-7 sm:w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                   aria-label={`Supprimer ${entry.file_name}`}
                   title="Supprimer"
                 >
