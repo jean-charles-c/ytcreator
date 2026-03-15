@@ -123,6 +123,7 @@ serve(async (req) => {
       languageCode = "fr-FR",
       voiceGender = "FEMALE",
       voiceName,
+      voiceType,
       speakingRate = 1.0,
       pitch = 0,
       volumeGainDb = 0,
@@ -137,9 +138,17 @@ serve(async (req) => {
       );
     }
 
+    const resolvedVoiceName = await resolveVoiceName(
+      GOOGLE_TTS_API_KEY,
+      languageCode,
+      voiceName,
+      voiceType,
+      voiceGender
+    );
+
     const voice: Record<string, unknown> = { languageCode };
-    if (voiceName) {
-      voice.name = voiceName;
+    if (resolvedVoiceName) {
+      voice.name = resolvedVoiceName;
     } else {
       voice.ssmlGender = voiceGender;
     }
@@ -147,10 +156,9 @@ serve(async (req) => {
     const audioConfig = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
 
     if (mode === "preview") {
-      // Simple preview: return base64 audio directly
       const audioContent = await callGoogleTTS(text, GOOGLE_TTS_API_KEY, voice, audioConfig);
       return new Response(
-        JSON.stringify({ audioContent }),
+        JSON.stringify({ audioContent, usedVoiceName: resolvedVoiceName ?? null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
