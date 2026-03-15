@@ -50,11 +50,16 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
           .maybeSingle();
 
         if (!error && data) {
+          // Parse compound style format "VoiceType:tonality" or legacy values
+          const rawStyle = data.style || "";
+          const parts = rawStyle.split(":");
+          const voiceType = ["Standard", "Wavenet", "Neural2"].includes(parts[0]) ? parts[0] : "Standard";
+          const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
           setSettings({
             languageCode: data.language_code,
             voiceGender: data.voice_gender,
-            voiceType: ["Standard", "Wavenet", "Neural2"].includes(data.style) ? data.style : "Standard",
-            style: data.style && STYLE_PRESETS[data.style] ? data.style : "neutral",
+            voiceType,
+            style: tone,
             speakingRate: data.speaking_rate,
           });
           setHasFavorite(true);
