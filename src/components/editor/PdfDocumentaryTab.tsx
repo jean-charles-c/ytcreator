@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -40,7 +40,7 @@ interface PdfDocumentaryTabProps {
   projectId: string | null;
   scriptLanguage: string;
   onLanguageChange?: (lang: string) => void;
-  onSendToScriptInput?: (text: string) => void;
+  onSendToNarration?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
   extractedText: string | null;
@@ -59,13 +59,19 @@ interface PdfDocumentaryTabProps {
   onScriptVersionsChange: (versions: ScriptVersion[] | ((prev: ScriptVersion[]) => ScriptVersion[])) => void;
   currentVersionId: number | null;
   onCurrentVersionIdChange: (id: number | null) => void;
+  narration: string;
+  onNarrationChange: (text: string) => void;
+  onRunSegmentation: () => void;
+  segmenting: boolean;
+  onStopSegmentation: () => void;
 }
 
 export default function PdfDocumentaryTab({
-  projectId, scriptLanguage, onLanguageChange, onSendToScriptInput, onAnalysisReady, onScriptReady,
+  projectId, scriptLanguage, onLanguageChange, onSendToNarration, onAnalysisReady, onScriptReady,
   extractedText, onExtractedTextChange, pageCount, onPageCountChange, fileName, onFileNameChange,
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
+  narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation,
 }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -628,7 +634,7 @@ export default function PdfDocumentaryTab({
                   </Button>
                   <Button variant="hero" size="sm" onClick={() => {
                     const clean = cleanScriptForExport(script);
-                    onSendToScriptInput?.(clean);
+                    onSendToNarration?.(clean);
                     toast.success("Script envoyé dans ScriptInput");
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
@@ -644,7 +650,7 @@ export default function PdfDocumentaryTab({
                       className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
-                    <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
+                    <Button variant="hero" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
                       <RotateCcw className="h-3 w-3" /> Régénérer
                     </Button>
                   </div>
@@ -709,6 +715,44 @@ export default function PdfDocumentaryTab({
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      {/* ScriptInput — collapsible */}
+      <Collapsible className="mt-6">
+        <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+          <div className="flex items-center gap-2">
+            <Mic className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-semibold text-foreground">ScriptInput</h3>
+            {narration.trim() && (
+              <span className="text-xs text-muted-foreground">
+                {narration.length.toLocaleString()} car.
+              </span>
+            )}
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 animate-fade-in">
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <p className="text-sm text-muted-foreground mb-4">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
+            <textarea value={narration} onChange={(e) => onNarrationChange(e.target.value)}
+              placeholder="Collez votre voix-off ici..."
+              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-background p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
+            <div className="mt-1.5 text-xs text-muted-foreground text-right">
+              {narration.length.toLocaleString()} caractères
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row gap-3">
+              <Button variant="hero" onClick={onRunSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
+                {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {segmenting ? "Segmentation..." : "Lancer la segmentation"}
+              </Button>
+              {segmenting && (
+                <Button variant="destructive" onClick={onStopSegmentation} className="min-h-[44px]">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
     </div>
   );

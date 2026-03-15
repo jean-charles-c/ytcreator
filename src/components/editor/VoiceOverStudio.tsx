@@ -77,11 +77,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const handlePasteFromScript = () => {
     const source = narration;
     if (!source?.trim()) {
-      toast.error("Aucun texte disponible dans ScriptInput. Saisissez d'abord votre narration dans l'onglet ScriptInput.");
+      toast.error("Aucun texte disponible dans ScriptCreator. Saisissez d'abord votre narration dans l'onglet ScriptCreator.");
       return;
     }
     setVoScript(source);
-    toast.success("Script collé depuis ScriptInput");
+    toast.success("Script collé depuis ScriptCreator");
   };
 
   const handleGenerate = async () => {
@@ -296,6 +296,24 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
         {/* Left column — Script (shown SECOND on mobile, FIRST on desktop) */}
         <div className="lg:col-span-2 space-y-3 sm:space-y-4 order-2 lg:order-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-3">
+            <Input
+              value={customFileName}
+              onChange={(e) => setCustomFileName(e.target.value)}
+              placeholder={`${projectTitle || "vo"}_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`}
+              className="h-10 sm:h-10 text-sm flex-1"
+              aria-label="Nom du fichier audio"
+            />
+            <Button
+              variant="hero"
+              disabled={!voScript.trim() || generating}
+              className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto shrink-0"
+              onClick={handleGenerate}
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+              {generating ? "Génération..." : "Générer la voix off"}
+            </Button>
+          </div>
           <div className="flex items-center justify-between">
             <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
               Script narratif
@@ -307,7 +325,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               className="h-9 sm:h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground min-w-[44px]"
             >
               <ClipboardPaste className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Coller depuis ScriptInput</span>
+              <span className="hidden sm:inline">Coller depuis ScriptCreator</span>
               <span className="sm:hidden">Coller</span>
             </Button>
           </div>
@@ -319,30 +337,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             className="min-h-[200px] sm:min-h-[350px] lg:min-h-[450px] text-sm leading-relaxed resize-y font-body"
             aria-label="Script narratif pour la voix off"
           />
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {voScript.length.toLocaleString()} caractères
-              </span>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <Input
-                value={customFileName}
-                onChange={(e) => setCustomFileName(e.target.value)}
-                placeholder={`${projectTitle || "vo"}_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`}
-                className="h-10 sm:h-10 text-sm flex-1"
-                aria-label="Nom du fichier audio"
-              />
-              <Button
-                variant="hero"
-                disabled={!voScript.trim() || generating}
-                className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto shrink-0"
-                onClick={handleGenerate}
-              >
-                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                {generating ? "Génération..." : "Générer la voix off"}
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {voScript.length.toLocaleString()} caractères
+            </span>
           </div>
         </div>
       </div>
