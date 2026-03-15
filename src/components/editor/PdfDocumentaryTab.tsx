@@ -716,6 +716,44 @@ export default function PdfDocumentaryTab({
         </Collapsible>
       )}
 
+      {/* ScriptInput — collapsible */}
+      <Collapsible className="mt-6">
+        <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+          <div className="flex items-center gap-2">
+            <Mic className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-semibold text-foreground">ScriptInput</h3>
+            {narration.trim() && (
+              <span className="text-xs text-muted-foreground">
+                {narration.length.toLocaleString()} car.
+              </span>
+            )}
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 animate-fade-in">
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+            <p className="text-sm text-muted-foreground mb-4">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
+            <textarea value={narration} onChange={(e) => onNarrationChange(e.target.value)}
+              placeholder="Collez votre voix-off ici..."
+              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-background p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
+            <div className="mt-1.5 text-xs text-muted-foreground text-right">
+              {narration.length.toLocaleString()} caractères
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row gap-3">
+              <Button variant="hero" onClick={onRunSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
+                {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {segmenting ? "Segmentation..." : "Lancer la segmentation"}
+              </Button>
+              {segmenting && (
+                <Button variant="destructive" onClick={onStopSegmentation} className="min-h-[44px]">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
     </div>
   );
 }
