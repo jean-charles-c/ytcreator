@@ -994,30 +994,7 @@ export default function Editor() {
           </div>
         )}
 
-        {/* ScriptInput tab */}
-        {!showSetup && activeTab === "script" && (
-          <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
-            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">ScriptInput</h2>
-            <p className="text-sm text-muted-foreground mb-4 sm:mb-6">Collez ou saisissez votre narration ci-dessous, puis lancez la segmentation.</p>
-            <textarea value={narration} onChange={(e) => setNarration(e.target.value)}
-              placeholder="Collez votre voix-off ici..."
-              className="w-full min-h-[200px] sm:min-h-[300px] rounded border border-border bg-card p-3 sm:p-4 text-foreground text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50 font-body" />
-            <div className="mt-1.5 text-xs text-muted-foreground text-right">
-              {narration.length.toLocaleString()} caractères
-            </div>
-            <div className="mt-3 flex flex-col sm:flex-row gap-3">
-              <Button variant="outline" onClick={runSegmentation} disabled={!narration.trim() || segmenting} className="min-h-[44px]">
-                {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                {segmenting ? "Segmentation..." : "Lancer la segmentation"}
-              </Button>
-              {segmenting && (
-                <Button variant="destructive" onClick={stopSegmentation} className="min-h-[44px]">
-                  <Square className="h-4 w-4" /> Stopper
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
+        {/* ScriptInput tab removed — now integrated into ScriptCreator */}
 
         {/* ScriptCreator tab — kept mounted to preserve state */}
         {!showSetup && (
