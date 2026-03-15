@@ -30,11 +30,12 @@ interface PlayerState {
   durationEstimate: number;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [hasFavorite, setHasFavorite] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [customFileName, setCustomFileName] = useState("");
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
