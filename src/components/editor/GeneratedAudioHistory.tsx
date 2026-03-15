@@ -188,10 +188,10 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleDownload(entry)}
-                  className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  className="h-9 w-9 sm:h-7 sm:w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   aria-label={`Télécharger ${entry.file_name}`}
                   title="Télécharger"
                 >
