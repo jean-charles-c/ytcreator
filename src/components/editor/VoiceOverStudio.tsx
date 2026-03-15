@@ -82,6 +82,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   }, []);
 
   const handlePasteFromScript = () => {
+    // Build text from scenes if available, with blank lines between
+    if (scenes && scenes.length > 0) {
+      const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
+      if (sceneTexts.length > 0) {
+        setVoScript(sceneTexts.join("\n\n"));
+        toast.success("Script collé depuis les scènes");
+        return;
+      }
+    }
     const source = narration;
     if (!source?.trim()) {
       toast.error("Aucun texte disponible dans ScriptCreator. Saisissez d'abord votre narration dans l'onglet ScriptCreator.");
