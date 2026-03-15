@@ -928,6 +928,11 @@ export default function Editor() {
                 {segmenting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {segmenting ? "Segmentation..." : "Lancer la segmentation"}
               </Button>
+              {segmenting && (
+                <Button variant="destructive" onClick={stopSegmentation} className="min-h-[44px]">
+                  <Square className="h-4 w-4" /> Stopper
+                </Button>
+              )}
             </div>
           </div>
         )}
