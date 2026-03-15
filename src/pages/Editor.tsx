@@ -104,6 +104,16 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Versioning for segmentation
+  const [sceneVersions, setSceneVersions] = useState<{ id: number; scenes: Scene[] }[]>([]);
+  const [currentSceneVersionId, setCurrentSceneVersionId] = useState<number | null>(null);
+  const [previewSceneVersionId, setPreviewSceneVersionId] = useState<number | null>(null);
+
+  // Versioning for storyboard
+  const [shotVersions, setShotVersions] = useState<{ id: number; shots: Shot[] }[]>([]);
+  const [currentShotVersionId, setCurrentShotVersionId] = useState<number | null>(null);
+  const [previewShotVersionId, setPreviewShotVersionId] = useState<number | null>(null);
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
     try {
       const v = sessionStorage.getItem(`sc_analysis_${id}`);
@@ -374,17 +384,37 @@ export default function Editor() {
     }
     setSegmenting(true);
     setActiveTab("segmentation");
+    setPreviewSceneVersionId(null);
     try {
       const { data, error } = await supabase.functions.invoke("segment-narration", { body: { project_id: projectId } });
       if (error) { toast.error("Erreur de segmentation"); console.error(error); setSegmenting(false); return; }
       if (data?.error) { toast.error(data.error); setSegmenting(false); return; }
       const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
-      if (sceneData) setScenes(sceneData);
+      if (sceneData) {
+        // Save current scenes as a version before replacing (if any exist)
+        if (scenes.length > 0) {
+          setSceneVersions((prev) => {
+            const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+            // If we haven't saved the initial version yet, save it first
+            if (prev.length === 0) {
+              const newId = nextId + 1;
+              setCurrentSceneVersionId(newId);
+              return [{ id: nextId, scenes: [...scenes] }, { id: newId, scenes: sceneData }];
+            }
+            setCurrentSceneVersionId(nextId);
+            return [...prev, { id: nextId, scenes: sceneData }];
+          });
+        } else {
+          setSceneVersions([{ id: 1, scenes: sceneData }]);
+          setCurrentSceneVersionId(1);
+        }
+        setScenes(sceneData);
+      }
       setShots([]);
       toast.success(`${sceneData?.length ?? 0} scènes générées`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setSegmenting(false);
-  }, [projectId, narration]);
+  }, [projectId, narration, scenes]);
 
   // Generate storyboard (all or single scene)
   const runStoryboard = useCallback(async (sceneId?: string) => {
@@ -392,6 +422,17 @@ export default function Editor() {
     if (sceneId) {
       setRegeneratingSceneId(sceneId);
     } else {
+      // Save current shots as version before full regeneration
+      if (shots.length > 0) {
+        setShotVersions((prev) => {
+          const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+          if (prev.length === 0) {
+            return [{ id: nextId, shots: [...shots] }];
+          }
+          return [...prev, { id: nextId, shots: [...shots] }];
+        });
+      }
+      setPreviewShotVersionId(null);
       setGeneratingStoryboard(true);
       setActiveTab("storyboard");
     }
@@ -471,6 +512,22 @@ export default function Editor() {
               failedSceneIds.push(sid);
             }
           }
+        }
+
+        // Fetch final shots from DB and save as current version
+        const { data: finalShotData } = await supabase
+          .from("shots")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("scene_id", { ascending: true })
+          .order("shot_order", { ascending: true });
+        if (finalShotData) {
+          setShots(finalShotData);
+          setShotVersions((prev) => {
+            const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+            setCurrentShotVersionId(nextId);
+            return [...prev, { id: nextId, shots: finalShotData }];
+          });
         }
 
         if (failedSceneIds.length > 0) {
@@ -921,6 +978,51 @@ export default function Editor() {
               )}
             </div>
 
+            {/* Scene version buttons */}
+            {sceneVersions.length > 1 && !segmenting && (
+              <div className="mb-4 flex items-center gap-1.5 flex-wrap">
+                {sceneVersions.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      if (v.id === currentSceneVersionId) {
+                        setPreviewSceneVersionId(null);
+                        return;
+                      }
+                      setPreviewSceneVersionId(previewSceneVersionId === v.id ? null : v.id);
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                      currentSceneVersionId === v.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : previewSceneVersionId === v.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    V{v.id}
+                    {currentSceneVersionId === v.id && (
+                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                    )}
+                    <span className="ml-1 text-[9px] opacity-60">({v.scenes.length})</span>
+                  </button>
+                ))}
+                {previewSceneVersionId !== null && (() => {
+                  const pv = sceneVersions.find((v) => v.id === previewSceneVersionId);
+                  if (!pv) return null;
+                  return (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setScenes(pv.scenes);
+                      setCurrentSceneVersionId(pv.id);
+                      setPreviewSceneVersionId(null);
+                      toast.success(`Segmentation V${pv.id} restaurée`);
+                    }} className="h-6 text-[10px] px-2 ml-2">
+                      <RotateCcw className="h-2.5 w-2.5" /> Restaurer V{pv.id}
+                    </Button>
+                  );
+                })()}
+              </div>
+            )}
+
             {segmenting && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -994,6 +1096,51 @@ export default function Editor() {
                 </Button>
               )}
             </div>
+
+            {/* Shot version buttons */}
+            {shotVersions.length > 1 && !generatingStoryboard && (
+              <div className="mb-4 flex items-center gap-1.5 flex-wrap">
+                {shotVersions.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      if (v.id === currentShotVersionId) {
+                        setPreviewShotVersionId(null);
+                        return;
+                      }
+                      setPreviewShotVersionId(previewShotVersionId === v.id ? null : v.id);
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                      currentShotVersionId === v.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : previewShotVersionId === v.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    V{v.id}
+                    {currentShotVersionId === v.id && (
+                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                    )}
+                    <span className="ml-1 text-[9px] opacity-60">({v.shots.length})</span>
+                  </button>
+                ))}
+                {previewShotVersionId !== null && (() => {
+                  const pv = shotVersions.find((v) => v.id === previewShotVersionId);
+                  if (!pv) return null;
+                  return (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setShots(pv.shots);
+                      setCurrentShotVersionId(pv.id);
+                      setPreviewShotVersionId(null);
+                      toast.success(`VisualPrompts V${pv.id} restaurés`);
+                    }} className="h-6 text-[10px] px-2 ml-2">
+                      <RotateCcw className="h-2.5 w-2.5" /> Restaurer V{pv.id}
+                    </Button>
+                  );
+                })()}
+              </div>
+            )}
 
             {!generatingStoryboard && scenes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
