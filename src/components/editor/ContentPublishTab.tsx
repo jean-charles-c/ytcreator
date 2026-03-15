@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, FileText, Youtube, Tag } from "lucide-react";
+import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   Collapsible,
@@ -106,6 +106,46 @@ function SectionHeader({
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
       </svg>
     </CollapsibleTrigger>
+  );
+}
+
+function SubCollapsible({
+  icon: Icon,
+  title,
+  defaultOpen = false,
+  badge,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  defaultOpen?: boolean;
+  badge?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 w-full py-2 text-left group"
+      >
+        <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="text-xs font-display font-medium text-foreground uppercase tracking-wider">{title}</span>
+        {badge && <span className="text-[10px] text-muted-foreground">({badge})</span>}
+        <svg
+          className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pt-1 pb-2">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -237,17 +277,16 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                 />
               </div>
               <CollapsibleContent>
-                <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4">
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
                   {!hasSeo ? (
                     <p className="text-sm text-muted-foreground italic py-4">
                       Aucun contenu SEO. Générez le packaging YouTube dans l'onglet SEO.
                     </p>
                   ) : (
                     <>
-                      {/* Titles */}
+                      {/* Titres sub-collapsible */}
                       {titles && titles.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-display font-medium text-primary mb-2">Titres</h4>
+                        <SubCollapsible icon={Type} title="TITRES" defaultOpen>
                           <div className="space-y-2">
                             {titles.map((t, i) => (
                               <CopyableBlock key={i} text={t.title} label={`Titre ${i + 1}`}>
@@ -257,35 +296,29 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                               </CopyableBlock>
                             ))}
                           </div>
-                        </div>
+                        </SubCollapsible>
                       )}
 
-                      {/* Description */}
+                      {/* Description sub-collapsible */}
                       {description && (
-                        <div>
-                          <h4 className="text-xs font-display font-medium text-primary mb-2">Description</h4>
+                        <SubCollapsible icon={AlignLeft} title="DESCRIPTIONS" defaultOpen>
                           <CopyableBlock text={description} label="Description">
                             <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                               {description}
                             </pre>
                           </CopyableBlock>
-                        </div>
+                        </SubCollapsible>
                       )}
 
-                      {/* Tags */}
+                      {/* Tags sub-collapsible */}
                       {tags && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Tag className="h-3.5 w-3.5 text-primary" />
-                            <h4 className="text-xs font-display font-medium text-primary">Tags</h4>
-                            <span className="text-[10px] text-muted-foreground">({tags.length}/500 car.)</span>
-                          </div>
+                        <SubCollapsible icon={Tag} title="TAGS" defaultOpen badge={`${tags.length}/500 car.`}>
                           <CopyableBlock text={tags} label="Tags">
                             <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                               {tags}
                             </pre>
                           </CopyableBlock>
-                        </div>
+                        </SubCollapsible>
                       )}
                     </>
                   )}
