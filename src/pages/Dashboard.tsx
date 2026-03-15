@@ -34,6 +34,8 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithShotCount[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => { document.title = "Dashboard — YouTube Creator Toolkit"; }, []);
+
   useEffect(() => {
     const fetchProjects = async () => {
       const { data } = await supabase

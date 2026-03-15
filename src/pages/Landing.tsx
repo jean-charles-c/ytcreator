@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Film, Layers, Shield, FileText, ArrowRight, Clapperboard, Menu, X } from "lucide-react";
@@ -40,7 +40,26 @@ export default function Landing() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  useEffect(() => {
+    document.title = "YouTube Creator Toolkit — Script, Voice Over & VisualPrompts";
+  }, []);
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "YouTube Creator Toolkit",
+            applicationCategory: "MultimediaApplication",
+            operatingSystem: "Web",
+            description: "Suite complète pour créateurs YouTube : script narratif, voix off IA, segmentation visuelle, prompts pour IA génératives et optimisation SEO.",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+          }),
+        }}
+      />
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -127,5 +146,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
