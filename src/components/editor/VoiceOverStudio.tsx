@@ -64,13 +64,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
   }, []);
 
   const handlePasteFromScript = () => {
-    const source = generatedScript || narration;
+    const source = narration;
     if (!source?.trim()) {
-      toast.error("Aucun script disponible à coller. Générez d'abord un script dans ScriptCreator ou saisissez une narration dans ScriptInput.");
+      toast.error("Aucun texte disponible dans ScriptInput. Saisissez d'abord votre narration dans l'onglet ScriptInput.");
       return;
     }
     setVoScript(source);
-    toast.success("Script collé depuis l'onglet source");
+    toast.success("Script collé depuis ScriptInput");
   };
 
   const handleGenerate = async () => {
