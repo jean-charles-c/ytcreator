@@ -302,7 +302,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
+  parts.push(`CRITICAL REMINDER: Output ONLY the narration text. No titles, no sections, no markers. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). DO NOT EXCEED ${charMax.toLocaleString()} characters — count carefully before finishing. If over, cut secondary content until within limit. Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
 
   return parts.join("\n\n");
 }
