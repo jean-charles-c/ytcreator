@@ -1026,6 +1026,10 @@ export default function Editor() {
               onDocStructureChange={setPdfDocStructure}
               script={generatedScript}
               onScriptChange={setGeneratedScript}
+              scriptVersions={scriptVersions}
+              onScriptVersionsChange={setScriptVersions}
+              currentVersionId={currentScriptVersionId}
+              onCurrentVersionIdChange={setCurrentScriptVersionId}
             />
           </div>
         )}
