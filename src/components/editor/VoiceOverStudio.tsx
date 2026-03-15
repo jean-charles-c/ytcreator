@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   languageCode: "fr-FR",
   voiceGender: "FEMALE",
   voiceType: "Standard",
+  style: "neutral",
   speakingRate: 1.0,
 };
 
