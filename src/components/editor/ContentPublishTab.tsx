@@ -259,7 +259,7 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                   {hasScript ? (
                     <>
                       {/* SCRIPT sub-collapsible */}
-                      <SubCollapsible icon={ScrollText} title="SCRIPT" defaultOpen>
+                      <SubCollapsible icon={ScrollText} title="SCRIPT">
                         <CopyableBlock text={cleanedScript!} label="Script complet">
                           <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                             {cleanedScript}
@@ -268,17 +268,15 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                       </SubCollapsible>
 
                       {/* VO sub-collapsible */}
-                      <SubCollapsible icon={Mic} title="VO" defaultOpen badge={`${voBlocks.length} bloc(s)`}>
+                      <SubCollapsible icon={Mic} title="VO" badge={`${voBlocks.length} bloc(s)`}>
                         <div className="space-y-2">
                           {voBlocks.map((block, i) => (
-                            <CopyableBlock key={`vo-${i}`} text={block} label={`VO Block ${i + 1}`}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] text-muted-foreground font-mono">Block {i + 1} — {block.length} car.</span>
-                              </div>
-                              <pre className="rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
-                                {block}
-                              </pre>
-                            </CopyableBlock>
+                            <CollapsibleBlock
+                              key={`vo-${i}`}
+                              title={`Block ${i + 1} — ${block.length} car.`}
+                              text={block}
+                              label={`VO Block ${i + 1}`}
+                            />
                           ))}
                         </div>
                       </SubCollapsible>
