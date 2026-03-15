@@ -160,7 +160,7 @@ export default function PdfDocumentaryTab({
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage }),
+          body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage, targetChars }),
         }
       );
       if (!resp.ok || !resp.body) {
