@@ -191,7 +191,9 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
-      const audioContent = await callGoogleTTS(text, GOOGLE_TTS_API_KEY, voice, audioConfig);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+      const isSsml = ssmlText.startsWith("<speak>");
+      const audioContent = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
         JSON.stringify({ audioContent, usedVoiceName: resolvedVoiceName ?? null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
