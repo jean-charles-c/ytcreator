@@ -1097,6 +1097,51 @@ export default function Editor() {
               )}
             </div>
 
+            {/* Shot version buttons */}
+            {shotVersions.length > 1 && !generatingStoryboard && (
+              <div className="mb-4 flex items-center gap-1.5 flex-wrap">
+                {shotVersions.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      if (v.id === currentShotVersionId) {
+                        setPreviewShotVersionId(null);
+                        return;
+                      }
+                      setPreviewShotVersionId(previewShotVersionId === v.id ? null : v.id);
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                      currentShotVersionId === v.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : previewShotVersionId === v.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    V{v.id}
+                    {currentShotVersionId === v.id && (
+                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                    )}
+                    <span className="ml-1 text-[9px] opacity-60">({v.shots.length})</span>
+                  </button>
+                ))}
+                {previewShotVersionId !== null && (() => {
+                  const pv = shotVersions.find((v) => v.id === previewShotVersionId);
+                  if (!pv) return null;
+                  return (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setShots(pv.shots);
+                      setCurrentShotVersionId(pv.id);
+                      setPreviewShotVersionId(null);
+                      toast.success(`VisualPrompts V${pv.id} restaurés`);
+                    }} className="h-6 text-[10px] px-2 ml-2">
+                      <RotateCcw className="h-2.5 w-2.5" /> Restaurer V{pv.id}
+                    </Button>
+                  );
+                })()}
+              </div>
+            )}
+
             {!generatingStoryboard && scenes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Clapperboard className="h-10 w-10 text-muted-foreground/30" />
