@@ -39,14 +39,17 @@ serve(async (req) => {
       .single();
     if (shotErr || !shot) throw new Error("Shot not found");
 
-    // Verify ownership
+    // Verify ownership and get script_language
     const { data: project } = await supabase
       .from("projects")
-      .select("id")
+      .select("id, script_language")
       .eq("id", shot.project_id)
       .eq("user_id", user.id)
       .single();
     if (!project) throw new Error("Unauthorized");
+
+    const scriptLang = project.script_language || "fr";
+    const needsTranslation = scriptLang.toLowerCase() !== "fr";
 
     // Fetch the scene for context
     const { data: scene } = await supabase
@@ -101,6 +104,7 @@ Images must be photorealistic historical documentary style. Never illustration o
 Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
 
 Sentence to illustrate: "${sourceText}"
+${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST also provide "source_sentence_fr": a faithful French translation of the sentence above.` : ""}
 
 PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
 - Previous shot type: ${shot.shot_type}
@@ -121,8 +125,9 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
                     shot_type: { type: "string", description: "Camera type in FRENCH" },
                     description: { type: "string", description: "Visual description in FRENCH" },
                     prompt_export: { type: "string", description: "Full Grok Image prompt in ENGLISH, 100+ words" },
+                    ...(needsTranslation ? { source_sentence_fr: { type: "string", description: "French translation of the source sentence" } } : {}),
                   },
-                  required: ["shot_type", "description", "prompt_export"],
+                  required: ["shot_type", "description", "prompt_export", ...(needsTranslation ? ["source_sentence_fr"] : [])],
                   additionalProperties: false,
                 },
               },
@@ -142,7 +147,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    let newShot = { shot_type: shot.shot_type, description: shot.description, prompt_export: shot.prompt_export };
+    let newShot: any = { shot_type: shot.shot_type, description: shot.description, prompt_export: shot.prompt_export };
 
     try {
       if (toolCall?.function?.arguments) {
@@ -151,6 +156,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
           shot_type: parsed.shot_type || shot.shot_type,
           description: parsed.description || shot.description,
           prompt_export: parsed.prompt_export || shot.prompt_export,
+          source_sentence_fr: parsed.source_sentence_fr || null,
         };
       }
     } catch (e) {
@@ -163,6 +169,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
         shot_type: newShot.shot_type,
         description: newShot.description,
         prompt_export: newShot.prompt_export,
+        ...(newShot.source_sentence_fr ? { source_sentence_fr: newShot.source_sentence_fr } : {}),
       })
       .eq("id", shot_id);
 

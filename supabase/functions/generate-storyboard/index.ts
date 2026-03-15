@@ -230,10 +230,17 @@ serve(async (req) => {
       return Math.max(1, sentences);
     };
 
+    const scriptLang = project.script_language || "fr";
+    const needsTranslation = scriptLang.toLowerCase() !== "fr";
+
     const sceneDescriptions = scenes.map((s: any) => {
       const shotCount = calcShotCount(s.source_text);
       return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
     }).join("\n\n");
+
+    const translationRule = needsTranslation
+      ? `\n10. The narration is in "${scriptLang}" (NOT French). For each shot, you MUST also provide "source_sentence_fr": a faithful French translation of the source_sentence.`
+      : "";
 
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -248,7 +255,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence).\n2. Each shot must correspond to one sentence from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence).\n2. Each shot must correspond to one sentence from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
@@ -273,10 +280,11 @@ serve(async (req) => {
                                 shot_type: { type: "string", description: "Camera type in FRENCH from the Visual Camera Grid (e.g. Plan d'ensemble, Plan d'activité)" },
                                 description: { type: "string", description: "2-3 sentence vivid visual description IN FRENCH" },
                                 source_sentence: { type: "string", description: "The EXACT original sentence from the narration text, copied verbatim in its original language" },
+                                ...(needsTranslation ? { source_sentence_fr: { type: "string", description: "French translation of the source_sentence" } } : {}),
                                 prompt_export: { type: "string", description: "Full Grok Image prompt IN ENGLISH, one continuous paragraph, at least 100 words, ending with Style/Visual quality/Aspect ratio lines" },
                                 guardrails: { type: "string", description: "Comma-separated list of historical constraints applied" },
                               },
-                              required: ["shot_type", "description", "source_sentence", "prompt_export", "guardrails"],
+                              required: ["shot_type", "description", "source_sentence", "prompt_export", "guardrails", ...(needsTranslation ? ["source_sentence_fr"] : [])],
                               additionalProperties: false,
                             },
                           },
@@ -366,6 +374,7 @@ serve(async (req) => {
           shot_type: shot?.shot_type || fbType,
           description: shot?.description || fallbackDescription(fbSentence),
           source_sentence: shot?.source_sentence || fbSentence,
+          source_sentence_fr: shot?.source_sentence_fr || null,
           prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene.visual_intention, fbType),
           guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });
