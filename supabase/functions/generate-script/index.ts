@@ -77,11 +77,17 @@ RHYTHM RULE — CRITICAL:
 • Never write 3 consecutive sentences of similar length.
 • Typical patterns: long + short + medium, or short + long + short.
 • Monotonous rhythm (all sentences ~same length) is FORBIDDEN — it sounds robotic.
+• Think like a filmmaker: quick cuts alternate with lingering shots.
+• Read each scene aloud mentally — if it sounds mechanical, rewrite it.
 
-PACING:
+PACING & ENGAGEMENT:
 • Introduce a new idea every 5-8 seconds of narration.
 • Every 20-30 seconds, introduce a question, a surprising fact, or a narrative twist.
 • Maintain constant narrative momentum — no filler, no repetition.
+• Build curiosity progressively: each paragraph should make the viewer MORE curious, not less.
+• Reveal information gradually — never dump multiple revelations in the same paragraph.
+• Use rhetorical questions sparingly but effectively to re-engage attention.
+• Transitions between ideas should feel organic, not mechanical — use narrative bridges, not topic shifts.
 
 SCENE STRUCTURE:
 • Group sentences in blocks of 3, separated by empty lines.
@@ -98,11 +104,17 @@ CONTENT RULES:
 3. Every claim must be traceable to the provided material.
 4. ZERO redundancy: if a fact has been stated, do NOT restate it.
 5. ZERO filler: every sentence must carry meaningful, story-driven content.
+6. If the narrative elements are brief, ENRICH the narration by exploring implications, context, atmosphere, and visual descriptions — but NEVER fabricate new historical facts.
+7. Develop each discovery and tension with cinematic detail: who, where, when, what it looked like, what it meant.
 
 ---
 
-LENGTH: The final script MUST be between 10,000 and 12,000 characters. This is NON-NEGOTIABLE.
-Before finishing, verify your character count. If under 10,000, ADD MORE development to the Escalation phase.`;
+LENGTH — NON-NEGOTIABLE:
+• MINIMUM: 10,000 characters. MAXIMUM: 22,000 characters.
+• Aim for 15,000-18,000 characters as the ideal range for a compelling documentary.
+• The Escalation phase should be the longest — at least 40% of the total script.
+• Before finishing, COUNT your characters. If under 10,000, expand the Escalation and Setup phases with more cinematic detail and narrative development.
+• If over 22,000, tighten by removing redundant sentences — never cut narrative tension.`;
 }
 
 function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string): string {
@@ -155,7 +167,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between 10,000 and 12,000 characters total. Every sentence under 100 characters. Vary sentence lengths for natural rhythm.`);
+  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between 10,000 and 22,000 characters total (aim for 15,000-18,000). Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
 
   return parts.join("\n\n");
 }
@@ -190,7 +202,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
-        max_completion_tokens: 12000,
+        max_completion_tokens: 24000,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
