@@ -144,6 +144,8 @@ serve(async (req) => {
       speakingRate = 1.0,
       pitch = 0,
       volumeGainDb = 0,
+      effectsProfileId,
+      pauseBetweenParagraphs = 0,
       mode = "preview",
       projectId,
     } = body;
