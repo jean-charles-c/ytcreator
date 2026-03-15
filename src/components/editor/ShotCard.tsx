@@ -7,7 +7,17 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
 
-const SHOT_TYPES = ["Establishing Shot", "Activity Shot", "Detail Shot", "Portrait Shot", "POV Shot"];
+const SHOT_TYPES = [
+  "Plan d'ensemble",
+  "Plan d'activité",
+  "Plan de détail",
+  "Plan portrait",
+  "Plan subjectif",
+  "Plan d'interaction",
+  "Plan environnemental",
+  "Plan de détail d'artefact",
+  "Plan de détail scientifique",
+];
 
 interface ShotCardProps {
   shot: Shot;
@@ -95,11 +105,22 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate }: Sh
           </button>
         </div>
       </div>
+      {(shot as any).source_sentence && (
+        <div className="mb-2 rounded bg-secondary/50 border border-border px-3 py-2">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
+          <p className="text-xs text-foreground leading-relaxed mt-0.5 italic">"{(shot as any).source_sentence}"</p>
+        </div>
+      )}
       <p className="text-xs text-muted-foreground leading-relaxed mb-2">{shot.description}</p>
       {shot.prompt_export && (
-        <pre className="rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text">
-          {shot.prompt_export}
-        </pre>
+        <details className="group/details">
+          <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors">
+            Prompt visuel (EN)
+          </summary>
+          <pre className="mt-1 rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text">
+            {shot.prompt_export}
+          </pre>
+        </details>
       )}
     </div>
   );

@@ -18,6 +18,12 @@ Each prompt must illustrate a specific narrative moment.
 The result must resemble a visual storyboard for a historical documentary film.
 Scenes must produce enough visual material to sustain cinematic rhythm in a documentary edit.
 
+## LANGUAGE RULES
+- shot_type MUST always be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
+- description MUST always be in FRENCH, regardless of the script language
+- source_sentence MUST be the EXACT original sentence from the narration text (in its original language, copied verbatim)
+- prompt_export MUST always be in ENGLISH, regardless of the script language
+
 ## VISUAL BEAT RULE
 A visual scene corresponds to one coherent visual moment.
 Each scene you receive already represents a narrative segment. Generate shots for each scene.
@@ -50,13 +56,13 @@ A visual anchor is a fixed descriptive reference that must remain identical each
 If an anchored element appears again, the description must remain visually consistent.
 
 ## VISUAL CAMERA GRID
-To ensure cinematic visual diversity, shots must rotate between several camera types:
-1 — Establishing shot (wide/aerial view setting context)
-2 — Activity shot (medium shot showing action or movement)
-3 — Interaction shot (characters engaging with each other or environment)
-4 — Environmental shot (landscape, cityscape, atmospheric context)
-5 — Artifact detail shot (close-up on significant object or texture)
-6 — Scientific detail shot (close examination of evidence, inscription, material)
+To ensure cinematic visual diversity, shots must rotate between several camera types (use FRENCH names):
+1 — Plan d'ensemble (wide/aerial view setting context)
+2 — Plan d'activité (medium shot showing action or movement)
+3 — Plan d'interaction (characters engaging with each other or environment)
+4 — Plan environnemental (landscape, cityscape, atmospheric context)
+5 — Plan de détail d'artefact (close-up on significant object or texture)
+6 — Plan de détail scientifique (close examination of evidence, inscription, material)
 Avoid repeating the same camera type consecutively whenever possible.
 
 ## GLOBAL VISUAL BASELINE
@@ -94,7 +100,7 @@ Forbidden unless historically justified: medieval roof shapes, tiled roofs, chim
 Architecture must appear archaeologically plausible.
 
 ## PROMPT STRUCTURE
-Each prompt_export must contain ALL of these woven into one continuous paragraph:
+Each prompt_export must be in ENGLISH and contain ALL of these woven into one continuous paragraph:
 1. Camera framing: "Wide shot of...", "Close-up on...", "Low-angle view of...", "Medium shot of..."
 2. Scene description with every visible object, material, texture, color — be hyper-specific
 3. Characters if present: pose, gesture, clothing fabric and color, facial expression, body language
@@ -112,12 +118,12 @@ The prompt_export MUST be at least 100 words. Be extremely descriptive and speci
 The entire prompt must be one continuous paragraph. No bullet points, no numbered lists.`;
 
 const CAMERA_TYPES = [
-  "Establishing shot",
-  "Activity shot",
-  "Interaction shot",
-  "Environmental shot",
-  "Artifact detail shot",
-  "Scientific detail shot",
+  "Plan d'ensemble",
+  "Plan d'activité",
+  "Plan d'interaction",
+  "Plan environnemental",
+  "Plan de détail d'artefact",
+  "Plan de détail scientifique",
 ];
 
 const splitSentences = (text: string): string[] => {
@@ -129,13 +135,17 @@ const splitSentences = (text: string): string[] => {
 const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
   `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 
+const fallbackDescription = (sentence: string): string =>
+  `Description visuelle de la phrase : "${sentence}"`;
+
 const buildFallbackShots = (scene: any) => {
   const sentences = splitSentences(scene.source_text || "");
   return sentences.map((sentence, index) => {
     const shotType = CAMERA_TYPES[index % CAMERA_TYPES.length];
     return {
       shot_type: shotType,
-      description: sentence,
+      description: fallbackDescription(sentence),
+      source_sentence: sentence,
       prompt_export: fallbackPrompt(sentence, scene.visual_intention, shotType),
       guardrails: "historically accurate clothing, architecture, and materials",
     };
@@ -221,7 +231,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULE: Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence). Each shot must correspond to one sentence from the narration. Do NOT merge sentences. Do NOT skip sentences. Prompts must stay strictly faithful to the scene text. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence).\n2. Each shot must correspond to one sentence from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
@@ -243,12 +253,13 @@ serve(async (req) => {
                             items: {
                               type: "object",
                               properties: {
-                                shot_type: { type: "string", description: "Camera type from the Visual Camera Grid" },
-                                description: { type: "string", description: "2-3 sentence vivid visual description" },
-                                prompt_export: { type: "string", description: "Full Grok Image prompt, one continuous paragraph, at least 100 words, ending with Style/Visual quality/Aspect ratio lines" },
+                                shot_type: { type: "string", description: "Camera type in FRENCH from the Visual Camera Grid (e.g. Plan d'ensemble, Plan d'activité)" },
+                                description: { type: "string", description: "2-3 sentence vivid visual description IN FRENCH" },
+                                source_sentence: { type: "string", description: "The EXACT original sentence from the narration text, copied verbatim in its original language" },
+                                prompt_export: { type: "string", description: "Full Grok Image prompt IN ENGLISH, one continuous paragraph, at least 100 words, ending with Style/Visual quality/Aspect ratio lines" },
                                 guardrails: { type: "string", description: "Comma-separated list of historical constraints applied" },
                               },
-                              required: ["shot_type", "description", "prompt_export", "guardrails"],
+                              required: ["shot_type", "description", "source_sentence", "prompt_export", "guardrails"],
                               additionalProperties: false,
                             },
                           },
@@ -288,7 +299,7 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; prompt_export: string; guardrails: string }[] }[] = [];
+    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; source_sentence?: string; prompt_export: string; guardrails: string }[] }[] = [];
 
     try {
       if (toolCall?.function?.arguments) {
@@ -329,15 +340,16 @@ serve(async (req) => {
 
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
-        const fallbackType = CAMERA_TYPES[j % CAMERA_TYPES.length];
-        const fallbackDescription = splitSentences(scene.source_text || "")[j] || scene.source_text;
+        const fbType = CAMERA_TYPES[j % CAMERA_TYPES.length];
+        const fbSentence = splitSentences(scene.source_text || "")[j] || scene.source_text;
         shotRows.push({
           scene_id: scene.id,
           project_id,
           shot_order: j + 1,
-          shot_type: shot?.shot_type || fallbackType,
-          description: shot?.description || fallbackDescription,
-          prompt_export: shot?.prompt_export || fallbackPrompt(fallbackDescription, scene.visual_intention, fallbackType),
+          shot_type: shot?.shot_type || fbType,
+          description: shot?.description || fallbackDescription(fbSentence),
+          source_sentence: shot?.source_sentence || fbSentence,
+          prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene.visual_intention, fbType),
           guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });
       }
