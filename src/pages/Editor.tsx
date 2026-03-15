@@ -363,6 +363,7 @@ export default function Editor() {
     pdfDocStructure,
     generatedScript,
     seoResults,
+    scriptVersions,
   ]);
 
   useEffect(() => {
