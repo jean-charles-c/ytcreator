@@ -5,7 +5,7 @@ import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLin
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import VoiceSettingsPanel, { type VoiceSettings } from "./VoiceSettingsPanel";
+import VoiceSettingsPanel, { type VoiceSettings, getVoiceName } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 
@@ -18,7 +18,7 @@ interface VoiceOverStudioProps {
 const DEFAULT_SETTINGS: VoiceSettings = {
   languageCode: "fr-FR",
   voiceGender: "FEMALE",
-  style: "neutral",
+  voiceType: "Standard",
   speakingRate: 1.0,
 };
 
@@ -52,7 +52,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
           setSettings({
             languageCode: data.language_code,
             voiceGender: data.voice_gender,
-            style: data.style,
+            voiceType: ["Standard", "Wavenet", "Neural2"].includes(data.style) ? data.style : "Standard",
             speakingRate: data.speaking_rate,
           });
           setHasFavorite(true);
@@ -105,7 +105,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             text: voScript,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
-            style: settings.style,
+            voiceName: getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType),
+            voiceType: settings.voiceType,
             speakingRate: settings.speakingRate,
             mode: "full",
             projectId,

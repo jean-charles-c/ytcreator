@@ -12,10 +12,10 @@ interface TTSRequest {
   languageCode?: string;
   voiceGender?: "MALE" | "FEMALE" | "NEUTRAL";
   voiceName?: string;
+  voiceType?: string;
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
-  // Full generation params
   mode?: "preview" | "full";
   projectId?: string;
 }
@@ -195,7 +195,7 @@ serve(async (req) => {
         duration_estimate: durationEstimate,
         language_code: languageCode,
         voice_gender: voiceGender,
-        style: "neutral",
+        style: body.voiceType || (voiceName ? "Wavenet" : "Standard"),
         speaking_rate: speakingRate,
         text_length: text.length,
       })
