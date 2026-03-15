@@ -107,6 +107,7 @@ export type Database = {
           project_id: string
           scene_order: number
           source_text: string
+          source_text_fr: string | null
           title: string
           updated_at: string
           validated: boolean
@@ -118,6 +119,7 @@ export type Database = {
           project_id: string
           scene_order: number
           source_text: string
+          source_text_fr?: string | null
           title: string
           updated_at?: string
           validated?: boolean
@@ -129,6 +131,7 @@ export type Database = {
           project_id?: string
           scene_order?: number
           source_text?: string
+          source_text_fr?: string | null
           title?: string
           updated_at?: string
           validated?: boolean
