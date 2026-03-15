@@ -514,6 +514,14 @@ export default function Editor() {
           }
         }
 
+        // Save the newly generated shots as the current version
+        const finalShots = shots;
+        setShotVersions((prev) => {
+          const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+          setCurrentShotVersionId(nextId);
+          return [...prev, { id: nextId, shots: finalShots }];
+        });
+
         if (failedSceneIds.length > 0) {
           toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
         } else {
