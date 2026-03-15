@@ -118,12 +118,12 @@ The prompt_export MUST be at least 100 words. Be extremely descriptive and speci
 The entire prompt must be one continuous paragraph. No bullet points, no numbered lists.`;
 
 const CAMERA_TYPES = [
-  "Establishing shot",
-  "Activity shot",
-  "Interaction shot",
-  "Environmental shot",
-  "Artifact detail shot",
-  "Scientific detail shot",
+  "Plan d'ensemble",
+  "Plan d'activité",
+  "Plan d'interaction",
+  "Plan environnemental",
+  "Plan de détail d'artefact",
+  "Plan de détail scientifique",
 ];
 
 const splitSentences = (text: string): string[] => {
