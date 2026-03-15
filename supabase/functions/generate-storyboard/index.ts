@@ -135,13 +135,17 @@ const splitSentences = (text: string): string[] => {
 const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
   `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 
+const fallbackDescription = (sentence: string): string =>
+  `Description visuelle de la phrase : "${sentence}"`;
+
 const buildFallbackShots = (scene: any) => {
   const sentences = splitSentences(scene.source_text || "");
   return sentences.map((sentence, index) => {
     const shotType = CAMERA_TYPES[index % CAMERA_TYPES.length];
     return {
       shot_type: shotType,
-      description: sentence,
+      description: fallbackDescription(sentence),
+      source_sentence: sentence,
       prompt_export: fallbackPrompt(sentence, scene.visual_intention, shotType),
       guardrails: "historically accurate clothing, architecture, and materials",
     };
