@@ -46,6 +46,8 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const narrationText = project.narration.trim();
+    const scriptLanguage = project.script_language || "en";
+    const needsFrenchTranslation = scriptLanguage !== "fr";
     const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
     const targetSceneCount = Math.min(200, Math.max(10, Math.ceil(wordCount / 35)));
 
