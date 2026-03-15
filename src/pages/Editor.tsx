@@ -29,8 +29,9 @@ import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
+import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 
-type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "cp" | "export";
+type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
