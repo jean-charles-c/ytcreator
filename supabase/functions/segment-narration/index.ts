@@ -47,7 +47,7 @@ serve(async (req) => {
 
     const narrationText = project.narration.trim();
     const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
-    const targetSceneCount = Math.min(140, Math.max(8, Math.ceil(wordCount / 55)));
+    const targetSceneCount = Math.min(200, Math.max(10, Math.ceil(wordCount / 35)));
 
     const normalizeForCoverage = (value: string) =>
       value
