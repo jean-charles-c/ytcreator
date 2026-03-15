@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft } from "lucide-react";
+import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft, Mic, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import {
   Collapsible,
@@ -222,25 +222,20 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                 />
               </div>
               <CollapsibleContent>
-                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
                   {hasScript ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* SCRIPT Column */}
-                      <div>
-                        <h4 className="text-xs font-display font-medium text-primary mb-3 uppercase tracking-wider">Script</h4>
-                        <div className="space-y-2">
-                          {cleanedScript!.split("\n").filter(Boolean).map((paragraph, i) => (
-                            <CopyableBlock key={`script-${i}`} text={paragraph} label={`Script Block ${i + 1}`}>
-                              <pre className="rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
-                                {paragraph}
-                              </pre>
-                            </CopyableBlock>
-                          ))}
-                        </div>
-                      </div>
-                      {/* VO Column */}
-                      <div>
-                        <h4 className="text-xs font-display font-medium text-primary mb-3 uppercase tracking-wider">VO</h4>
+                    <>
+                      {/* SCRIPT sub-collapsible */}
+                      <SubCollapsible icon={ScrollText} title="SCRIPT" defaultOpen>
+                        <CopyableBlock text={cleanedScript!} label="Script complet">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {cleanedScript}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+
+                      {/* VO sub-collapsible */}
+                      <SubCollapsible icon={Mic} title="VO" defaultOpen badge={`${voBlocks.length} bloc(s)`}>
                         <div className="space-y-2">
                           {voBlocks.map((block, i) => (
                             <CopyableBlock key={`vo-${i}`} text={block} label={`VO Block ${i + 1}`}>
@@ -253,8 +248,8 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                             </CopyableBlock>
                           ))}
                         </div>
-                      </div>
-                    </div>
+                      </SubCollapsible>
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground italic py-4">
                       Aucun script généré. Utilisez ScriptCreator pour en créer un.
