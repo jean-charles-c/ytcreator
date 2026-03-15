@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft, Mic, ScrollText, ChevronDown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Copy, Check, FileText, Youtube, Tag, Type, AlignLeft, Mic, ScrollText, ChevronDown, Image } from "lucide-react";
 import { toast } from "sonner";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Scene = Tables<"scenes">;
+type Shot = Tables<"shots">;
 
 interface YoutubeTitle {
   rank: number;
@@ -22,6 +26,8 @@ interface SeoResults {
 interface ContentPublishTabProps {
   generatedScript: string | null;
   seoResults: SeoResults;
+  scenes?: Scene[];
+  shots?: Shot[];
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -208,9 +214,10 @@ function splitIntoVoiceOverBlocks(raw: string): string[] {
   return blocks;
 }
 
-export default function ContentPublishTab({ generatedScript, seoResults }: ContentPublishTabProps) {
+export default function ContentPublishTab({ generatedScript, seoResults, scenes = [], shots = [] }: ContentPublishTabProps) {
   const [scriptOpen, setScriptOpen] = useState(false);
   const [seoOpen, setSeoOpen] = useState(false);
+  const [promptsOpen, setPromptsOpen] = useState(false);
 
   const titles = seoResults?.titles ?? null;
   const description = seoResults?.description ?? null;
@@ -218,7 +225,27 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
 
   const hasScript = !!generatedScript;
   const hasSeo = !!(titles || description || tags);
-  const hasContent = hasScript || hasSeo;
+
+  const promptsMd = useMemo(() => {
+    if (scenes.length === 0 || shots.length === 0) return "";
+    let md = "";
+    let shotIndex = 1;
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    sortedScenes.forEach((scene) => {
+      const sceneShots = shots
+        .filter((s) => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      sceneShots.forEach((shot) => {
+        const prompt = shot.prompt_export || shot.description;
+        md += `SHOT ${shotIndex}: ${prompt}\n\n`;
+        shotIndex++;
+      });
+    });
+    return md.trim();
+  }, [scenes, shots]);
+
+  const hasPrompts = promptsMd.length > 0;
+  const hasContent = hasScript || hasSeo || hasPrompts;
 
   const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
   const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
@@ -347,6 +374,35 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
                         </SubCollapsible>
                       )}
                     </>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
+          {/* PROMPTS Section */}
+          <Collapsible open={promptsOpen} onOpenChange={setPromptsOpen}>
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div className="px-4 sm:px-6">
+                <SectionHeader
+                  icon={Image}
+                  title="PROMPTS"
+                  open={promptsOpen}
+                  onToggle={() => setPromptsOpen((v) => !v)}
+                />
+              </div>
+              <CollapsibleContent>
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                  {!hasPrompts ? (
+                    <p className="text-sm text-muted-foreground italic py-4">
+                      Aucun prompt visuel. Générez les VisualPrompts d'abord.
+                    </p>
+                  ) : (
+                    <CopyableBlock text={promptsMd} label="Visual Prompts">
+                      <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                        {promptsMd}
+                      </pre>
+                    </CopyableBlock>
                   )}
                 </div>
               </CollapsibleContent>
