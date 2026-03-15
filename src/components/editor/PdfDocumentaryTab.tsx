@@ -634,7 +634,7 @@ export default function PdfDocumentaryTab({
                   </Button>
                   <Button variant="hero" size="sm" onClick={() => {
                     const clean = cleanScriptForExport(script);
-                    onSendToScriptInput?.(clean);
+                    onSendToNarration?.(clean);
                     toast.success("Script envoyé dans ScriptInput");
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
