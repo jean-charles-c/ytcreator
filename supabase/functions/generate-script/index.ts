@@ -171,14 +171,17 @@ RHYTHM — CRITICAL:
 • Create natural pauses for the voice-over — avoid dense blocks of information.
 • Read each paragraph mentally — if it sounds monotonous, rewrite it.
 
-PARAGRAPH STRUCTURE:
+PARAGRAPH STRUCTURE — THIS IS A HARD CONSTRAINT:
 • Separate paragraphs with empty lines.
-• Vary paragraph length: some paragraphs have 1 sentence, others 2, others 3-4. NEVER make all paragraphs the same length.
-• A single powerful sentence alone as a paragraph creates dramatic impact.
-• Two-sentence paragraphs feel punchy and fast.
-• Three or four sentence paragraphs allow deeper exploration of a moment.
-• Aim for this approximate mix: ~30% single-sentence paragraphs, ~40% two-sentence, ~30% three-or-four-sentence.
+• MANDATORY paragraph length distribution — you MUST follow this precisely:
+  - AT LEAST 30% of paragraphs must be EXACTLY 1 sentence (single powerful statement alone).
+  - AT LEAST 35% of paragraphs must be EXACTLY 2 sentences.
+  - NO MORE than 25% of paragraphs can have 3 sentences.
+  - Paragraphs of 4+ sentences are STRICTLY FORBIDDEN. Maximum is 3 sentences per paragraph.
 • NEVER write more than 2 consecutive paragraphs of the same length.
+• After every 2-sentence paragraph, the NEXT paragraph should be 1 sentence (or vice versa).
+• COUNT your paragraphs before finishing. If more than 25% have 3 sentences, split some into smaller paragraphs.
+• A script where most paragraphs have the same length is a FAILED script.
 
 ---
 
