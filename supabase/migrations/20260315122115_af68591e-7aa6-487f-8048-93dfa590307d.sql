@@ -1,0 +1,1 @@
+ALTER TABLE public.shots ADD COLUMN source_sentence_fr TEXT DEFAULT NULL;
