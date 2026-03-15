@@ -389,7 +389,7 @@ export default function PdfDocumentaryTab({
                 {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
-            <Button variant="hero" disabled={generatingScript} onClick={runFullScriptGeneration} className="min-h-[44px]">
+            <Button variant="hero" disabled={generatingScript} onClick={() => runFullScriptGeneration()} className="min-h-[44px]">
               {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
             </Button>
           </div>
