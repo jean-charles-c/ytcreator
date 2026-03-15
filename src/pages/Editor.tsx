@@ -13,6 +13,7 @@ import {
   Save,
   Loader2,
   RotateCcw,
+  Square,
   CheckCircle2,
   Menu,
   X,
