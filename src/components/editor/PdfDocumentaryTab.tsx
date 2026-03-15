@@ -608,62 +608,55 @@ export default function PdfDocumentaryTab({
                   </Button>
                 </div>
               )}
-              {/* Version buttons — show all versions including current */}
-              {previousScripts.length > 0 && !generatingScript && (
+              {/* Versions */}
+              {scriptVersions.length > 0 && !generatingScript && (
                 <div className="mb-4">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {previousScripts.map((_, i) => {
-                      const vNum = i + 1;
-                      return (
-                        <button
-                          key={`prev-${i}`}
-                          onClick={() => setShowPreviousScript(showPreviousScript === i ? null : i)}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${showPreviousScript === i ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
-                        >
-                          V{vNum}
-                        </button>
-                      );
-                    })}
-                    {/* Current version button */}
-                    <button
-                      onClick={() => setShowPreviousScript(null)}
-                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${showPreviousScript === null ? "border-primary bg-primary text-primary-foreground" : "border-primary/40 text-primary hover:bg-primary/10"}`}
-                    >
-                      V{previousScripts.length + 1}
-                      <span className="ml-1 text-[9px] opacity-70">actuelle</span>
-                    </button>
+                    {scriptVersions.map((version) => (
+                      <button
+                        key={version.id}
+                        onClick={() => setShowVersionPreviewId(showVersionPreviewId === version.id ? null : version.id)}
+                        className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${currentVersionId === version.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                      >
+                        V{version.id}
+                        {currentVersionId === version.id && (
+                          <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  {showPreviousScript !== null && previousScripts[showPreviousScript] && (
-                    <div className="mt-2 rounded border border-border bg-background p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] text-muted-foreground">Version {showPreviousScript + 1} — {previousScripts[showPreviousScript].length.toLocaleString()} car.</span>
-                        <div className="flex gap-1.5">
-                          <Button variant="outline" size="sm" onClick={() => {
-                            navigator.clipboard.writeText(cleanScriptForExport(previousScripts[showPreviousScript]));
-                            toast.success("Version copiée");
-                          }} className="h-6 text-[10px] px-2">
-                            <Copy className="h-2.5 w-2.5" /> Copier
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => {
-                            const old = previousScripts[showPreviousScript];
-                            const currentScript = script;
-                            // Keep all previous versions intact, add current script as a new previous version
-                            if (currentScript) {
-                              setPreviousScripts((prev) => [...prev, currentScript]);
-                            }
-                            onScriptChange(old);
-                            setShowPreviousScript(null);
-                            toast.success("Version restaurée");
-                          }} className="h-6 text-[10px] px-2">
-                            <RotateCcw className="h-2.5 w-2.5" /> Restaurer
-                          </Button>
+
+                  {showVersionPreviewId !== null && (() => {
+                    const previewVersion = scriptVersions.find((v) => v.id === showVersionPreviewId);
+                    if (!previewVersion) return null;
+
+                    return (
+                      <div className="mt-2 rounded border border-border bg-background p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] text-muted-foreground">Version {previewVersion.id} — {previewVersion.content.length.toLocaleString()} car.</span>
+                          <div className="flex gap-1.5">
+                            <Button variant="outline" size="sm" onClick={() => {
+                              navigator.clipboard.writeText(cleanScriptForExport(previewVersion.content));
+                              toast.success("Version copiée");
+                            }} className="h-6 text-[10px] px-2">
+                              <Copy className="h-2.5 w-2.5" /> Copier
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => {
+                              onScriptChange(previewVersion.content);
+                              setCurrentVersionId(previewVersion.id);
+                              setShowVersionPreviewId(null);
+                              toast.success(`Version V${previewVersion.id} restaurée`);
+                            }} className="h-6 text-[10px] px-2">
+                              <RotateCcw className="h-2.5 w-2.5" /> Restaurer
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="max-h-[150px] overflow-y-auto">
+                          <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previewVersion.content.slice(0, 2000)}…</pre>
                         </div>
                       </div>
-                      <div className="max-h-[150px] overflow-y-auto">
-                        <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previousScripts[showPreviousScript].slice(0, 2000)}…</pre>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
               <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
