@@ -104,6 +104,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             text: voScript,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
+            style: settings.style,
             speakingRate: settings.speakingRate,
             mode: "full",
             projectId,
