@@ -327,7 +327,7 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
 
                       {/* Description sub-collapsible */}
                       {description && (
-                        <SubCollapsible icon={AlignLeft} title="DESCRIPTIONS" defaultOpen>
+                        <SubCollapsible icon={AlignLeft} title="DESCRIPTIONS">
                           <CopyableBlock text={description} label="Description">
                             <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                               {description}
