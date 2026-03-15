@@ -63,6 +63,59 @@ PHASE 5 — CONCLUSION (≈5-8 sentences):
 
 ---
 
+QUESTION USAGE — STRICT LIMITS:
+
+• Maximum ONE question every 8-12 sentences.
+• Questions must serve a real narrative mystery — never decorative.
+• FORBIDDEN: repetitive rhetorical questions, questions used as filler, chains of 2+ consecutive questions.
+• ALWAYS prefer strong declarative revelations over questions.
+• BAD: "How did these signs change the world?"
+• GOOD: "But these signs were about to change the world."
+• BAD: "What happened next? Could anyone have predicted it? Was this the end?"
+• GOOD: "What happened next defied every prediction. It was only the beginning."
+• When tempted to write a question, rewrite it as a powerful affirmation or a teasing statement instead.
+
+---
+
+REVELATION PATTERN — MANDATORY:
+
+The script MUST create regular revelation moments using this 3-step pattern:
+1. Introduce a mysterious or intriguing element.
+2. Accumulate clues, details, or context that build expectation.
+3. Deliver an unexpected revelation that reframes what came before.
+
+Apply this pattern at least 3-4 times across the script, especially during Escalation and Revelation phases.
+
+Example structure:
+- Present a discovery and its apparent function.
+- Layer additional details that seem to confirm the initial reading.
+- Reveal the true significance, which contradicts or transcends the obvious interpretation.
+
+Each revelation must feel earned — never abrupt, never telegraphed.
+
+---
+
+TENSION & CURIOSITY BUILDING — MANDATORY:
+
+Maintain viewer engagement through:
+• Forward-looking statements that announce upcoming information without spoiling it.
+• Intriguing transitions between ideas that create anticipation.
+• Progressive build toward a deeper understanding.
+
+Approved transition patterns (adapt to ${langLabel}, do not copy verbatim):
+- "But the story doesn't end there."
+- "What the researchers discover next is even more surprising."
+- "And this is where everything changes."
+- "No one expected what came next."
+- "The real answer was hiding in plain sight."
+
+FORBIDDEN transitions:
+- "Let's now turn to..." / "Moving on to..."
+- "Another interesting fact is..."
+- Any mechanical, academic, or list-like transition.
+
+---
+
 WRITING STYLE — MANDATORY:
 
 1. Narrative, immersive, dynamic, investigative tone — like a high-end documentary.
@@ -71,6 +124,7 @@ WRITING STYLE — MANDATORY:
 4. Active voice. Concrete imagery over abstract explanations.
 5. Spoken ${langLabel} suitable for voice-over — natural, not literary.
 6. Each sentence STRICTLY UNDER 100 characters.
+7. NEVER repeat the same sentence structure more than twice consecutively.
 
 RHYTHM RULE — CRITICAL:
 • Alternate between SHORT sentences (30-50 characters) and LONGER sentences (60-95 characters).
@@ -82,18 +136,17 @@ RHYTHM RULE — CRITICAL:
 
 PACING & ENGAGEMENT:
 • Introduce a new idea every 5-8 seconds of narration.
-• Every 20-30 seconds, introduce a question, a surprising fact, or a narrative twist.
+• Every 20-30 seconds, introduce a surprising fact, a revelation, or a narrative twist.
 • Maintain constant narrative momentum — no filler, no repetition.
 • Build curiosity progressively: each paragraph should make the viewer MORE curious, not less.
 • Reveal information gradually — never dump multiple revelations in the same paragraph.
-• Use rhetorical questions sparingly but effectively to re-engage attention.
-• Transitions between ideas should feel organic, not mechanical — use narrative bridges, not topic shifts.
+• Transitions between ideas should feel organic — use narrative bridges, not topic shifts.
 
 SCENE STRUCTURE:
 • Group sentences in blocks of 3, separated by empty lines.
 • Sentence 1: sets the visual context.
 • Sentence 2: develops or adds a detail.
-• Sentence 3: creates tension or raises a question.
+• Sentence 3: creates tension, delivers a revelation, or raises stakes.
 
 ---
 
