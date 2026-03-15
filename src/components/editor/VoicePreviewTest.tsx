@@ -98,13 +98,13 @@ export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
         maxLength={200}
         aria-label="Texte de test vocal"
       />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <span className="text-[10px] text-muted-foreground">
           {testText.length}/200 caractères
         </span>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           {playing && (
-            <Button variant="destructive" size="sm" onClick={handleStop} className="min-h-[36px]">
+            <Button variant="destructive" size="sm" onClick={handleStop} className="min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-none">
               <Square className="h-3.5 w-3.5" />
               Stop
             </Button>
@@ -114,7 +114,7 @@ export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
             size="sm"
             onClick={handlePreview}
             disabled={loading || !testText.trim()}
-            className="min-h-[36px]"
+            className="min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-none"
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
