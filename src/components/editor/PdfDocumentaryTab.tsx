@@ -81,8 +81,8 @@ export default function PdfDocumentaryTab({
 
   useEffect(() => {
     if (!generatingScript && script && script.trim() !== "" && scriptVersions.length === 0) {
-      setScriptVersions([{ id: 1, content: script }]);
-      setCurrentVersionId(1);
+      onScriptVersionsChange([{ id: 1, content: script }]);
+      onCurrentVersionIdChange(1);
     }
   }, [script, generatingScript, scriptVersions.length]);
 
