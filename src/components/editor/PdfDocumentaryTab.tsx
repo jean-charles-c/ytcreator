@@ -543,6 +543,9 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
+                    <RotateCcw className="h-3 w-3" /> Régénérer
+                  </Button>
                 </div>
               )}
               <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
