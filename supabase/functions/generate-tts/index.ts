@@ -17,6 +17,8 @@ interface TTSRequest {
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
+  effectsProfileId?: string;
+  pauseBetweenParagraphs?: number; // ms
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
@@ -26,14 +28,16 @@ async function callGoogleTTS(
   text: string,
   apiKey: string,
   voice: Record<string, unknown>,
-  audioConfig: Record<string, unknown>
+  audioConfig: Record<string, unknown>,
+  useSsml = false
 ): Promise<string> {
+  const input = useSsml ? { ssml: text } : { text };
   const response = await fetch(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input: { text }, voice, audioConfig }),
+      body: JSON.stringify({ input, voice, audioConfig }),
     }
   );
 
@@ -142,6 +146,8 @@ serve(async (req) => {
       speakingRate = 1.0,
       pitch = 0,
       volumeGainDb = 0,
+      effectsProfileId,
+      pauseBetweenParagraphs = 0,
       mode = "preview",
       projectId,
     } = body;
@@ -168,10 +174,26 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    const audioConfig = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
+    if (effectsProfileId) {
+      audioConfig.effectsProfileId = [effectsProfileId];
+    }
+
+    // Convert text to SSML if pause is configured
+    function textToSsml(rawText: string, pauseMs: number): string {
+      if (pauseMs <= 0) return rawText;
+      // Split on double newlines (paragraph/scene breaks)
+      const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
+      if (paragraphs.length <= 1) return rawText;
+      const breakTag = `<break time="${pauseMs}ms"/>`;
+      const inner = paragraphs.map((p) => p.trim().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")).join(`${breakTag}\n`);
+      return `<speak>${inner}</speak>`;
+    }
 
     if (mode === "preview") {
-      const audioContent = await callGoogleTTS(text, GOOGLE_TTS_API_KEY, voice, audioConfig);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+      const isSsml = ssmlText.startsWith("<speak>");
+      const audioContent = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
         JSON.stringify({ audioContent, usedVoiceName: resolvedVoiceName ?? null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -206,30 +228,51 @@ serve(async (req) => {
       );
     }
 
+    // Convert text to SSML with pauses
+    const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+    const isSsml = ssmlText.startsWith("<speak>");
+
     // Google TTS has a 5000 byte limit per request — split if needed
     const MAX_CHARS = 4800;
     const chunks: string[] = [];
-    if (text.length <= MAX_CHARS) {
-      chunks.push(text);
+    if (ssmlText.length <= MAX_CHARS) {
+      chunks.push(ssmlText);
     } else {
-      // Split at sentence boundaries
-      const sentences = text.split(/(?<=[.!?])\s+/);
-      let current = "";
-      for (const sentence of sentences) {
-        if ((current + " " + sentence).length > MAX_CHARS && current.length > 0) {
-          chunks.push(current.trim());
-          current = sentence;
-        } else {
-          current = current ? current + " " + sentence : sentence;
+      // For SSML, split by paragraphs; for plain text, split at sentence boundaries
+      if (isSsml) {
+        // Strip <speak> wrapper, split on <break>, re-wrap each chunk
+        const inner = ssmlText.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
+        const parts = inner.split(/(<break[^/]*\/>)/);
+        let current = "<speak>";
+        for (const part of parts) {
+          if ((current + part + "</speak>").length > MAX_CHARS && current !== "<speak>") {
+            chunks.push(current + "</speak>");
+            current = "<speak>" + part;
+          } else {
+            current += part;
+          }
         }
+        if (current !== "<speak>") chunks.push(current + "</speak>");
+      } else {
+        const sentences = ssmlText.split(/(?<=[.!?])\s+/);
+        let current = "";
+        for (const sentence of sentences) {
+          if ((current + " " + sentence).length > MAX_CHARS && current.length > 0) {
+            chunks.push(current.trim());
+            current = sentence;
+          } else {
+            current = current ? current + " " + sentence : sentence;
+          }
+        }
+        if (current.trim()) chunks.push(current.trim());
       }
-      if (current.trim()) chunks.push(current.trim());
     }
 
     // Generate audio for all chunks
     const audioBuffers: Uint8Array[] = [];
     for (const chunk of chunks) {
-      const b64 = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig);
+      const chunkIsSsml = chunk.startsWith("<speak>");
+      const b64 = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
       // Decode base64 to binary
       const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       audioBuffers.push(raw);

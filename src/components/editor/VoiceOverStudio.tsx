@@ -15,6 +15,7 @@ interface VoiceOverStudioProps {
   generatedScript: string | null;
   projectId: string | null;
   projectTitle?: string;
+  scenes?: { source_text: string; title: string }[];
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
@@ -23,6 +24,9 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   voiceType: "Standard",
   style: "neutral",
   speakingRate: 1.0,
+  volumeGainDb: 0,
+  effectsProfileId: "none",
+  pauseBetweenParagraphs: 500,
 };
 
 interface PlayerState {
@@ -31,7 +35,7 @@ interface PlayerState {
   durationEstimate: number;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [hasFavorite, setHasFavorite] = useState(false);
@@ -64,6 +68,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             voiceType,
             style: tone,
             speakingRate: data.speaking_rate,
+            volumeGainDb: DEFAULT_SETTINGS.volumeGainDb,
+            effectsProfileId: DEFAULT_SETTINGS.effectsProfileId,
+            pauseBetweenParagraphs: DEFAULT_SETTINGS.pauseBetweenParagraphs,
           });
           setHasFavorite(true);
         }
@@ -75,6 +82,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   }, []);
 
   const handlePasteFromScript = () => {
+    // Build text from scenes if available, with blank lines between
+    if (scenes && scenes.length > 0) {
+      const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
+      if (sceneTexts.length > 0) {
+        setVoScript(sceneTexts.join("\n\n"));
+        toast.success("Script collé depuis les scènes");
+        return;
+      }
+    }
     const source = narration;
     if (!source?.trim()) {
       toast.error("Aucun texte disponible dans ScriptCreator. Saisissez d'abord votre narration dans l'onglet ScriptCreator.");
@@ -119,6 +135,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             voiceType: settings.voiceType,
             speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
             pitch: STYLE_PRESETS[settings.style]?.pitch || 0,
+            volumeGainDb: settings.volumeGainDb,
+            effectsProfileId: settings.effectsProfileId !== "none" ? settings.effectsProfileId : undefined,
+            pauseBetweenParagraphs: settings.pauseBetweenParagraphs,
             style: settings.style,
             mode: "full",
             projectId,
