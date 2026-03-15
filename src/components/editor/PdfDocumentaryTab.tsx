@@ -278,7 +278,8 @@ export default function PdfDocumentaryTab({
       .split("\n")
       .filter((line) => {
         const t = line.trim();
-        if (!t || t.startsWith("---") || t.startsWith("#")) return false;
+        if (t === "") return true; // preserve blank lines (paragraph spacing)
+        if (t.startsWith("---") || t.startsWith("#")) return false;
         if (/^\*\*.*\*\*$/.test(t)) return false;
 
         const normalized = t
@@ -290,7 +291,9 @@ export default function PdfDocumentaryTab({
         return true;
       })
       .map((line) => line.trim())
-      .join("\n");
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n") // collapse multiple blank lines to one
+      .trim();
   };
 
   const splitIntoVoiceOverBlocks = (raw: string): string[] => {
