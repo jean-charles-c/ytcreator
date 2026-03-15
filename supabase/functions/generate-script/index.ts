@@ -171,15 +171,17 @@ RHYTHM — CRITICAL:
 • Create natural pauses for the voice-over — avoid dense blocks of information.
 • Read each paragraph mentally — if it sounds monotonous, rewrite it.
 
-PARAGRAPH STRUCTURE — STRICT DISTRIBUTION:
+PARAGRAPH STRUCTURE — STRICT RHYTHMIC DISTRIBUTION:
 • Separate paragraphs with empty lines.
-• 1-sentence paragraphs: ~20%. Dramatic impact, transitions, reveals.
-• 2-sentence paragraphs: ~35%. Punchy and efficient.
-• 3-sentence paragraphs: ~35%. Your workhorse format — develops a moment with rhythm.
-• 4-sentence paragraphs: ~10%. Used when a sequence needs full development.
-• NEVER 5 or more sentences in a paragraph.
-• NEVER write more than 2 consecutive paragraphs of the same length.
-• SELF-CHECK: If more than 50% of your paragraphs have exactly 2 sentences, you MUST convert some to 3-sentence paragraphs. A script dominated by 2-sentence paragraphs is monotonous.
+• Each paragraph contains BETWEEN 1 AND 4 sentences. NEVER 5 or more.
+• Target distribution:
+  - 1-sentence paragraphs: ~20%. Use for IMPACT: a revelation, a dramatic transition, a striking statement. Examples: "Et tout bascule." / "But the story doesn't end there." / "Fire changes everything."
+  - 2-sentence paragraphs: ~40%. The DEFAULT format. Punchy, efficient, easy to read aloud. Used for describing a scene, stating a fact and its consequence.
+  - 3-sentence paragraphs: ~30%. The DEVELOPMENT format. Used to describe a scene in detail, explain an event, or build a progression. Must remain clear, visual, and speakable.
+  - 4-sentence paragraphs: ~10%. RARE. Used ONLY when an important idea, a key moment, or a major revelation requires full development. Never routine.
+• ANTI-MONOTONY RULE: NEVER write more than 2 consecutive paragraphs of the same length. Vary constantly: 2-1-3-2-1-4-2-3-1-2 etc.
+• SELF-CHECK before finishing: Count your paragraph lengths. If more than 50% are exactly 2 sentences, you MUST convert some into 3-sentence paragraphs. A script dominated by same-length paragraphs is monotonous and fails the rhythm requirement.
+• Think like a film editor: short cuts (1 sentence) create punch, medium shots (2-3 sentences) carry the story, long takes (4 sentences) develop key moments.
 
 ---
 
