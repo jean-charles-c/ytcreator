@@ -242,11 +242,14 @@ CONTENT RULES:
 ---
 
 LENGTH — NON-NEGOTIABLE:
-• MINIMUM: ${charMin.toLocaleString()} characters. MAXIMUM: ${charMax.toLocaleString()} characters.
-• Aim for ${charTarget.toLocaleString()} characters as the ideal target.
+• HARD MAXIMUM: ${charMax.toLocaleString()} characters. You MUST NOT exceed this limit under any circumstances.
+• HARD MINIMUM: ${charMin.toLocaleString()} characters.
+• Ideal target: ${charTarget.toLocaleString()} characters.
 • The Escalation phase should be the longest — at least 40% of the total script.
-• Before finishing, COUNT your characters. If under ${charMin.toLocaleString()}, expand with more concrete scenes and visual details.
-• If over ${charMax.toLocaleString()}, tighten by removing redundant sentences — never cut narrative tension.`;
+• BEFORE FINISHING: Count your total characters carefully. This is NON-NEGOTIABLE.
+• If you are OVER ${charMax.toLocaleString()} characters, you MUST cut content until you are under. Remove secondary examples, condense explanations, merge similar paragraphs. Keep cutting until you are within the limit.
+• If you are UNDER ${charMin.toLocaleString()} characters, expand with more concrete scenes and visual details.
+• A script that exceeds ${charMax.toLocaleString()} characters is a FAILED script. Verify your count.`;
 }
 
 function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string, charMin: number, charMax: number, charTarget: number): string {
