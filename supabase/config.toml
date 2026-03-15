@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.generate-script]
 verify_jwt = false
+
+[functions.find-tension]
+verify_jwt = false
