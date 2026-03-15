@@ -40,6 +40,10 @@ export default function Landing() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  useEffect(() => {
+    document.title = "YouTube Creator Toolkit — Script, Voice Over & VisualPrompts";
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
