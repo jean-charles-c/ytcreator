@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   Youtube,
+  Mic,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,8 +29,9 @@ import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
+import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 
-type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "cp" | "export";
+type Tab = "script-creator" | "script" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
@@ -40,6 +42,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "storyboard", label: "VisualPrompts", icon: Clapperboard },
   { key: "seo", label: "SEO", icon: Youtube },
   { key: "cp", label: "CP", icon: Save },
+  { key: "vo", label: "VO", icon: Mic },
   { key: "export", label: "Export", icon: Download },
 ];
 
@@ -1077,6 +1080,14 @@ export default function Editor() {
             seoResults={seoResults}
             scenes={scenes}
             shots={shots}
+          />
+        )}
+
+        {/* VO — Voice Over tab */}
+        {!showSetup && activeTab === "vo" && (
+          <VoiceOverStudio
+            narration={narration}
+            generatedScript={generatedScript}
           />
         )}
 
