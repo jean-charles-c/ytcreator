@@ -286,8 +286,8 @@ serve(async (req) => {
     const charMin = Math.round(charTarget * 0.9);
     const charMax = Math.round(charTarget * 1.1);
 
-    const systemPrompt = buildSystemPrompt(langLabel);
-    const userMessage = buildUserMessage(analysis, structure || [], sourceText);
+    const systemPrompt = buildSystemPrompt(langLabel, charMin, charMax, charTarget);
+    const userMessage = buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
