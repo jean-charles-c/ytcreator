@@ -663,10 +663,19 @@ export default function Editor() {
   };
 
   const handleShotDelete = async (shotId: string) => {
-    const { error } = await supabase.from("shots").delete().eq("id", shotId);
-    if (error) { toast.error("Erreur de suppression"); return; }
-    setShots((prev) => prev.filter((s) => s.id !== shotId));
-    toast.success("Shot supprimé");
+    try {
+      const { error } = await supabase.from("shots").delete().eq("id", shotId);
+      if (error) {
+        console.error("Delete error:", error);
+        toast.error("Erreur de suppression");
+        return;
+      }
+      setShots((prev) => prev.filter((s) => s.id !== shotId));
+      toast.success("Shot supprimé");
+    } catch (e) {
+      console.error("Delete exception:", e);
+      toast.error("Erreur de suppression");
+    }
   };
 
   const handleShotRegenerate = async (shotId: string) => {
@@ -1278,6 +1287,9 @@ export default function Editor() {
                           </div>
                           <div className="rounded border border-border bg-card p-4 mb-4">
                             <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                            {(scene as any).source_text_fr && (
+                              <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                            )}
                           </div>
 
                           {isRegenerating || isPendingGeneration ? (

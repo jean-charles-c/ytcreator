@@ -1,0 +1,1 @@
+ALTER TABLE public.scenes ADD COLUMN source_text_fr TEXT DEFAULT NULL;

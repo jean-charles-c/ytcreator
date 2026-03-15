@@ -24,7 +24,7 @@ interface ShotCardProps {
   globalIndex?: number;
   sceneLabel?: string;
   onUpdate: (shot: Shot) => void;
-  onDelete?: (shotId: string) => void;
+  onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
 }
 
@@ -87,7 +87,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
       setTimeout(() => setConfirmDelete(false), 3000);
       return;
     }
-    onDelete?.(shot.id);
+    setConfirmDelete(false);
+    await onDelete?.(shot.id);
   };
 
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";

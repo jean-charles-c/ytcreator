@@ -198,7 +198,8 @@ ABSOLUTE RULES — NEVER DEVIATE:
 7. Create a new scene whenever the topic, subject, location, character focus, or action changes.
 8. Generate a short descriptive title for each scene (max 10 words).
 9. Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
-${strictMode ? "10. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
+10. If the narration is NOT in French, you MUST also provide "source_text_fr": a faithful French translation of source_text. If the narration IS in French, do NOT include source_text_fr.
+${strictMode ? "11. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
 
 SELF-CHECK: Before returning, verify that NO scene contains more than 3 sentences. If any scene has 4+ sentences, split it.
 
@@ -226,6 +227,7 @@ Return data via the segment_narration tool call only.`,
                           properties: {
                             title: { type: "string" },
                             source_text: { type: "string" },
+                            source_text_fr: { type: "string", description: "French translation of source_text. Only include if narration is NOT in French." },
                             visual_intention: { type: "string" },
                           },
                           required: [
@@ -269,6 +271,7 @@ Return data via the segment_narration tool call only.`,
       return parsedScenes as {
         title: string;
         source_text: string;
+        source_text_fr?: string;
         visual_intention: string;
       }[];
     };
@@ -278,7 +281,7 @@ Return data via the segment_narration tool call only.`,
       return text.split(/\n\n+/).filter(p => p.trim().length > 0);
     };
 
-    let allScenes: { title: string; source_text: string; visual_intention: string }[] = [];
+    let allScenes: { title: string; source_text: string; source_text_fr?: string; visual_intention: string }[] = [];
 
     if (wordCount > 1500) {
       console.log(`Long narration detected (${wordCount} words). Processing in chunks.`);
@@ -335,6 +338,7 @@ Return data via the segment_narration tool call only.`,
       scene_order: i + 1,
       title: s.title,
       source_text: s.source_text,
+      source_text_fr: s.source_text_fr || null,
       visual_intention: s.visual_intention,
     }));
 
