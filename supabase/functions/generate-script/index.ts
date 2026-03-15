@@ -202,11 +202,11 @@ CONTENT RULES:
 ---
 
 LENGTH — NON-NEGOTIABLE:
-• MINIMUM: 10,000 characters. MAXIMUM: 22,000 characters.
-• Aim for 15,000-18,000 characters as the ideal range.
+• MINIMUM: ${charMin.toLocaleString()} characters. MAXIMUM: ${charMax.toLocaleString()} characters.
+• Aim for ${charTarget.toLocaleString()} characters as the ideal target.
 • The Escalation phase should be the longest — at least 40% of the total script.
-• Before finishing, COUNT your characters. If under 10,000, expand with more concrete scenes and visual details.
-• If over 22,000, tighten by removing redundant sentences — never cut narrative tension.`;
+• Before finishing, COUNT your characters. If under ${charMin.toLocaleString()}, expand with more concrete scenes and visual details.
+• If over ${charMax.toLocaleString()}, tighten by removing redundant sentences — never cut narrative tension.`;
 }
 
 function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string): string {
