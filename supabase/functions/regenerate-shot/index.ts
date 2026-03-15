@@ -147,7 +147,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    let newShot = { shot_type: shot.shot_type, description: shot.description, prompt_export: shot.prompt_export };
+    let newShot: any = { shot_type: shot.shot_type, description: shot.description, prompt_export: shot.prompt_export };
 
     try {
       if (toolCall?.function?.arguments) {
@@ -156,6 +156,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
           shot_type: parsed.shot_type || shot.shot_type,
           description: parsed.description || shot.description,
           prompt_export: parsed.prompt_export || shot.prompt_export,
+          source_sentence_fr: parsed.source_sentence_fr || null,
         };
       }
     } catch (e) {
