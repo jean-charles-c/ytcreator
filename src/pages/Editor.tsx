@@ -104,6 +104,8 @@ export default function Editor() {
   const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const segAbortRef = useRef<AbortController | null>(null);
+  const storyAbortRef = useRef<AbortController | null>(null);
 
   // Versioning for segmentation
   const [sceneVersions, setSceneVersions] = useState<{ id: number; scenes: Scene[] }[]>([]);
