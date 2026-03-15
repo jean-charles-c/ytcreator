@@ -7,6 +7,7 @@ import type { VoiceSettings } from "./VoiceSettingsPanel";
 
 interface VoicePreviewTestProps {
   settings: VoiceSettings;
+  hideHeader?: boolean;
 }
 
 export default function VoicePreviewTest({ settings }: VoicePreviewTestProps) {
