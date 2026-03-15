@@ -93,6 +93,16 @@ const GENDERS = [
 
 const STYLES = Object.entries(STYLE_PRESETS).map(([value, { label }]) => ({ value, label }));
 
+const EFFECTS_PROFILES = [
+  { value: "none", label: "Aucun (défaut)" },
+  { value: "headphone-class-device", label: "🎧 Casque / Écouteurs" },
+  { value: "small-bluetooth-speaker-class-device", label: "🔈 Petite enceinte" },
+  { value: "medium-bluetooth-speaker-class-device", label: "🔉 Enceinte moyenne" },
+  { value: "large-home-entertainment-class-device", label: "🔊 Home cinéma" },
+  { value: "handset-class-device", label: "📱 Smartphone" },
+  { value: "large-automotive-class-device", label: "🚗 Système auto" },
+];
+
 export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
