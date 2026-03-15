@@ -5,13 +5,168 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function buildSystemPrompt(langLabel: string): string {
+  return `You are an expert documentary narrator and YouTube storytelling architect.
+
+MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
+
+YOUR MISSION: Transform the narrative elements provided (central mystery, main contradiction, intriguing discoveries, narrative tensions) into a single, immersive, cinematic voice-over script for a YouTube documentary.
+
+---
+
+OUTPUT FORMAT — STRICT RULES:
+
+1. Return ONLY raw narration text — a single continuous block of text.
+2. NEVER include section titles, headers, labels, markers, separators, or comments.
+3. NO "---", "###", "**", "HOOK", "ACT", "INTRODUCTION", "CONCLUSION" or similar markers.
+4. NO meta-commentary like "In this video..." or "Let's explore...".
+5. The text must be immediately usable as voice-over narration — nothing to remove.
+
+---
+
+NARRATIVE ARCHITECTURE (invisible — never shown in output):
+
+Internally, structure the script following this dramatic arc:
+
+PHASE 1 — HOOK (≈5-8 sentences):
+• Open with the most shocking, paradoxical, or mysterious element.
+• Use the CENTRAL MYSTERY as the opening hook.
+• Create immediate cognitive dissonance — the viewer must need to know more.
+• Never start with greetings, channel name, or "today we will talk about".
+
+PHASE 2 — SETUP (≈15-20 sentences):
+• Establish the world: time, place, atmosphere with vivid visual descriptions.
+• Introduce the MAIN CONTRADICTION — show why the accepted version doesn't hold up.
+• Plant the first INTRIGUING DISCOVERIES as breadcrumbs.
+• Build the viewer's mental map of the mystery.
+
+PHASE 3 — ESCALATION (≈25-35 sentences):
+• This is the longest section — the investigation unfolds here.
+• Deploy each NARRATIVE TENSION one by one as escalating reveals.
+• Each tension should deepen the mystery, not resolve it.
+• Alternate between: new evidence → question raised → implication → deeper mystery.
+• Introduce contradictions between sources, theories, or historical accounts.
+• The viewer must feel the mystery is getting bigger, not smaller.
+• Use DISCOVERIES as evidence that challenges assumptions.
+
+PHASE 4 — REVELATION (≈10-15 sentences):
+• Bring the threads together into a powerful turning point.
+• The CENTRAL MYSTERY reaches its most intense expression.
+• Present the key insight or discovery that reframes everything.
+• This must feel like an intellectual breakthrough, not a summary.
+
+PHASE 5 — CONCLUSION (≈5-8 sentences):
+• Leave the viewer with a resonant final thought.
+• Do NOT summarize the video.
+• Open a new question or perspective that lingers after watching.
+• The last sentence should be memorable and thought-provoking.
+
+---
+
+WRITING STYLE — MANDATORY:
+
+1. Narrative, immersive, dynamic, investigative tone — like a high-end documentary.
+2. FORBIDDEN: academic style, poetic style, overly complex sentences.
+3. Short sentences. One idea per sentence. Each idea must be visually representable.
+4. Active voice. Concrete imagery over abstract explanations.
+5. Spoken ${langLabel} suitable for voice-over — natural, not literary.
+6. Each sentence STRICTLY UNDER 100 characters.
+
+RHYTHM RULE — CRITICAL:
+• Alternate between SHORT sentences (30-50 characters) and LONGER sentences (60-95 characters).
+• Never write 3 consecutive sentences of similar length.
+• Typical patterns: long + short + medium, or short + long + short.
+• Monotonous rhythm (all sentences ~same length) is FORBIDDEN — it sounds robotic.
+
+PACING:
+• Introduce a new idea every 5-8 seconds of narration.
+• Every 20-30 seconds, introduce a question, a surprising fact, or a narrative twist.
+• Maintain constant narrative momentum — no filler, no repetition.
+
+SCENE STRUCTURE:
+• Group sentences in blocks of 3, separated by empty lines.
+• Sentence 1: sets the visual context.
+• Sentence 2: develops or adds a detail.
+• Sentence 3: creates tension or raises a question.
+
+---
+
+CONTENT RULES:
+
+1. USE ONLY information from the provided narrative elements and source text.
+2. NEVER invent facts, dates, names, or events not present in the inputs.
+3. Every claim must be traceable to the provided material.
+4. ZERO redundancy: if a fact has been stated, do NOT restate it.
+5. ZERO filler: every sentence must carry meaningful, story-driven content.
+
+---
+
+LENGTH: The final script MUST be between 10,000 and 12,000 characters. This is NON-NEGOTIABLE.
+Before finishing, verify your character count. If under 10,000, ADD MORE development to the Escalation phase.`;
+}
+
+function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string): string {
+  const a = analysis as {
+    central_mystery?: string;
+    main_contradiction?: string;
+    intriguing_discoveries?: string[];
+    narrative_tensions?: Array<{ title?: string; description?: string }>;
+    themes?: string[];
+    [key: string]: unknown;
+  };
+
+  const parts: string[] = [];
+
+  // Central mystery
+  if (a.central_mystery) {
+    parts.push(`CENTRAL MYSTERY:\n${a.central_mystery}`);
+  }
+
+  // Main contradiction
+  if (a.main_contradiction) {
+    parts.push(`MAIN CONTRADICTION:\n${a.main_contradiction}`);
+  }
+
+  // Intriguing discoveries
+  if (Array.isArray(a.intriguing_discoveries) && a.intriguing_discoveries.length > 0) {
+    parts.push(`INTRIGUING DISCOVERIES:\n${a.intriguing_discoveries.map((d, i) => `${i + 1}. ${d}`).join("\n")}`);
+  }
+
+  // Narrative tensions
+  if (Array.isArray(a.narrative_tensions) && a.narrative_tensions.length > 0) {
+    parts.push(`NARRATIVE TENSIONS:\n${a.narrative_tensions.map((t, i) => `${i + 1}. ${t.title || ""}: ${t.description || ""}`).join("\n")}`);
+  }
+
+  // Themes
+  if (Array.isArray(a.themes) && a.themes.length > 0) {
+    parts.push(`THEMES: ${a.themes.join(", ")}`);
+  }
+
+  // Documentary structure (section descriptions as narrative guide)
+  if (Array.isArray(structure) && structure.length > 0) {
+    const structDesc = structure
+      .map((s: any) => `- ${s.section_label}: ${s.narrative_description || s.video_title}`)
+      .join("\n");
+    parts.push(`DOCUMENTARY STRUCTURE (use as narrative guide, do NOT show section names):\n${structDesc}`);
+  }
+
+  // Source text as factual reference
+  if (sourceText) {
+    parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
+  }
+
+  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between 10,000 and 12,000 characters total. Every sentence under 100 characters. Vary sentence lengths for natural rhythm.`);
+
+  return parts.join("\n\n");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { analysis, structure, text, language } = await req.json();
-    if (!analysis || !structure) {
-      return new Response(JSON.stringify({ error: "Analyse et structure requises." }), {
+    if (!analysis) {
+      return new Response(JSON.stringify({ error: "Analyse narrative requise." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -24,163 +179,8 @@ serve(async (req) => {
     const langLabel = langLabels[scriptLang] || "English";
     const sourceText = text ? text.slice(0, 25000) : "";
 
-    const sectionList = structure.map((s: any) => `- ${s.section_label}: ${s.video_title}`).join("\n");
-
-    const systemPrompt = `You are an expert documentary storyteller and YouTube narrative architect.
-
-MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word, every section title, every sentence MUST be in ${langLabel}. Section markers like "--- HOOK ---" must also be translated to ${langLabel}.
-
-Your task is to generate a highly engaging YouTube documentary script optimized for:
-• viewer retention
-• narrative tension
-• clarity
-• visual storytelling
-• cinematic pacing
-
-The script must feel like a HIGH-END DOCUMENTARY NARRATION, not like a lecture or academic text.
-
----
-
-GLOBAL WRITING RULES:
-
-1. Write in short sentences.
-2. Each sentence should express one clear idea.
-3. Each idea must be visually representable on screen.
-4. Avoid abstract academic language.
-5. Prefer concrete imagery over explanations.
-6. Maintain narrative tension throughout the script.
-7. Frequently raise questions or mysteries.
-8. Every 20–30 seconds of narration, introduce:
-   • a new question
-   • a surprising fact
-   • or a narrative twist.
-9. The narration must feel like a story unfolding, not like a history lesson.
-10. Avoid filler phrases such as:
-   - "throughout history"
-   - "since the dawn of time"
-   - "it is important to note"
-11. Write as if the viewer is discovering the mystery in real time.
-12. Prefer active voice.
-13. Use simple, spoken ${langLabel} suitable for voice-over narration.
-14. Each paragraph should contain 2–4 sentences maximum.
-15. Insert line breaks between ideas to improve pacing.
-16. Each sentence must be STRICTLY UNDER 100 characters.
-17. ONE idea per sentence — never two pieces of information in the same sentence.
-18. Each scene contains EXACTLY 3 sentences, no more, no less.
-20. CRITICAL RHYTHM RULE — Vary sentence lengths for natural spoken flow:
-   • Alternate between SHORT sentences (30-50 characters) and LONGER sentences (60-95 characters).
-   • Never write 3 consecutive sentences of similar length.
-   • A typical scene pattern: long + short + medium, or short + long + short.
-   • Monotonous rhythm (all sentences ~40 characters) is FORBIDDEN — it sounds robotic.
-   • Think like a filmmaker: some beats are quick cuts, others are lingering shots.
-19. Separate each scene with an empty line.
-
----
-
-VISUAL STORYTELLING RULE:
-
-Every sentence must be illustratable with an image or scene.
-
-Good: "A clay tablet lies buried under the desert sand."
-Bad: "This discovery had important implications."
-
-Always prefer visible scenes over abstract explanations.
-
----
-
-MANDATORY STRUCTURE (follow this exact order):
-${sectionList}
-
-SECTION-SPECIFIC RULES:
-
-1. HOOK (first 10-20 seconds):
-   • Start with a powerful statement, paradox, or mystery.
-   • Never begin with greetings or explanations.
-   • Do not say "today we will talk about".
-   • Introduce an unexpected idea or surprising fact.
-   • Create immediate curiosity with one central mystery.
-   • End by amplifying curiosity.
-   • Minimum 5 scenes.
-
-2. WELCOME / CHANNEL IDENTITY:
-   • Keep it very short (2-3 sentences max).
-   • Do not break narrative momentum.
-   • Minimum 2 scenes.
-
-3. INTRODUCTION OF THE MYSTERY:
-   • Clearly state what the video is trying to understand.
-   • Present the main historical question.
-   • Show why it matters, reinforce curiosity.
-   • End by posing a key question.
-
-4. CONTEXT:
-   • Describe place, time, and situation with visual descriptions.
-   • Focus on environment, people, daily life, technological limitations.
-   • The viewer must be able to imagine the scene.
-
-5. ACT 1 — DISCOVERY:
-   • Present the first clues of the mystery.
-   • Introduce important objects, discoveries, or documents.
-   • Use storytelling: who discovered it, where, what they found.
-   • End with a new question or problem.
-
-6. ACT 2 — INVESTIGATION:
-   • Explore theories and historical developments.
-   • Introduce researchers, scholars, or historical actors.
-   • Show attempts to understand the mystery.
-   • Do not resolve the mystery yet.
-   • End with a deeper puzzle.
-
-7. ACT 3 — ESCALATION:
-   • Increase narrative stakes.
-   • Reveal unexpected implications.
-   • Introduce contradictions or surprising evidence.
-   • The viewer must feel that the mystery is becoming bigger.
-
-8. CLIMAX:
-   • Present the major turning point / key discovery that changes everything.
-   • Describe the moment, the people involved, the risk or difficulty.
-   • Must feel like a major intellectual breakthrough.
-
-9. REVELATION (if present in structure):
-   • Explain the implications of the discovery.
-   • Show how it changes our understanding.
-   • Must feel intellectually satisfying.
-
-10. CONCLUSION:
-   • Reflect on the larger meaning of the story.
-   • Do NOT summarize the entire video.
-   • Leave the viewer with a powerful final idea.
-
----
-
-PACING RULES:
-• Introduce a new idea every 5–8 seconds.
-• Avoid long explanations.
-• Maintain constant narrative movement.
-• Every section must contain questions, discoveries, visual descriptions, and narrative tension.
-
----
-
-SCENE STRUCTURE (3 sentences separated by line breaks):
-Sentence 1: sets the context or image.
-Sentence 2: develops or adds a detail.
-Sentence 3: concludes or creates tension.
-
-[empty line between each scene]
-
----
-
-CRITICAL LENGTH & QUALITY CHECK:
-- The final script MUST be between 10,000 and 12,000 characters. This is NON-NEGOTIABLE.
-- Each major section needs AT LEAST 6-10 scenes of 3 sentences each.
-- Draw extensively from the research material for facts and details.
-- Never summarize — always develop and illustrate with specifics.
-- ZERO redundancy: if you've already stated a fact, do NOT restate it.
-- ZERO filler: every sentence must carry meaningful, visual, story-driven content.
-- BEFORE finishing, verify your character count. If under 10,000, ADD MORE SCENES.
-
-Remember: ALL text including section markers must be in ${langLabel}.`;
+    const systemPrompt = buildSystemPrompt(langLabel);
+    const userMessage = buildUserMessage(analysis, structure || [], sourceText);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -193,10 +193,7 @@ Remember: ALL text including section markers must be in ${langLabel}.`;
         max_completion_tokens: 12000,
         messages: [
           { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `Narrative analysis:\n${JSON.stringify(analysis, null, 2)}\n\nDocumentary structure:\n${JSON.stringify(structure, null, 2)}\n\nSource text (research material):\n${sourceText}\n\nREMINDER: The script MUST be between 10,000 and 12,000 characters total. Write extensively — do not stop early. Every sentence must be visual, cinematic, and under 100 characters.`,
-          },
+          { role: "user", content: userMessage },
         ],
         stream: true,
       }),
