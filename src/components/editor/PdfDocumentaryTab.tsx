@@ -158,20 +158,24 @@ export default function PdfDocumentaryTab({
 
     // Step 2: Generate script (streaming)
     try {
+      const session = (await supabase.auth.getSession()).data.session;
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "x-supabase-client-platform": "web",
           },
           body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage, targetChars }),
         }
       );
       if (!resp.ok || !resp.body) {
+        const errorText = await resp.text();
         toast.error("Erreur de génération du script");
-        console.error(await resp.text());
+        console.error("generate-script response error:", resp.status, errorText);
         setGeneratingScript(false);
         return;
       }
