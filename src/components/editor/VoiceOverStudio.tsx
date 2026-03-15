@@ -18,7 +18,7 @@ interface VoiceOverStudioProps {
 const DEFAULT_SETTINGS: VoiceSettings = {
   languageCode: "fr-FR",
   voiceGender: "FEMALE",
-  style: "neutral",
+  voiceType: "Standard",
   speakingRate: 1.0,
 };
 
