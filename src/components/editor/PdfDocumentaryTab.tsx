@@ -173,8 +173,9 @@ export default function PdfDocumentaryTab({
         }
       );
       if (!resp.ok || !resp.body) {
+        const errorText = await resp.text();
         toast.error("Erreur de génération du script");
-        console.error(await resp.text());
+        console.error("generate-script response error:", resp.status, errorText);
         setGeneratingScript(false);
         return;
       }
