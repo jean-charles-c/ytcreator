@@ -227,6 +227,7 @@ Return data via the segment_narration tool call only.`,
                           properties: {
                             title: { type: "string" },
                             source_text: { type: "string" },
+                            source_text_fr: { type: "string", description: "French translation of source_text. Only include if narration is NOT in French." },
                             visual_intention: { type: "string" },
                           },
                           required: [
