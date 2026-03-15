@@ -1,0 +1,184 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS")
+    return new Response(null, { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Missing auth header");
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const supabaseUser = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (userError || !user) throw new Error("Unauthorized");
+
+    const { shot_id } = await req.json();
+    if (!shot_id) throw new Error("Missing shot_id");
+
+    // Fetch the shot
+    const { data: shot, error: shotErr } = await supabase
+      .from("shots")
+      .select("*")
+      .eq("id", shot_id)
+      .single();
+    if (shotErr || !shot) throw new Error("Shot not found");
+
+    // Verify ownership
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", shot.project_id)
+      .eq("user_id", user.id)
+      .single();
+    if (!project) throw new Error("Unauthorized");
+
+    // Fetch the scene for context
+    const { data: scene } = await supabase
+      .from("scenes")
+      .select("*")
+      .eq("id", shot.scene_id)
+      .single();
+    if (!scene) throw new Error("Scene not found");
+
+    const sourceText = shot.source_sentence || shot.description;
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    const aiResponse = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          max_tokens: 2048,
+          messages: [
+            {
+              role: "system",
+              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.
+
+LANGUAGE RULES:
+- shot_type MUST be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
+- description MUST be in FRENCH (2-3 sentences)
+- prompt_export MUST be in ENGLISH, at least 100 words, one continuous paragraph
+
+PROMPT STRUCTURE (prompt_export, in ENGLISH):
+1. Camera framing
+2. Scene description with objects, materials, textures, colors
+3. Characters: pose, gesture, clothing, expression
+4. Environment and background
+5. Foreground depth elements
+6. Lighting: source, direction, quality, shadows
+7. Atmosphere and mood
+8. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
+
+Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
+            },
+            {
+              role: "user",
+              content: `Regenerate a new visual shot for this sentence from a documentary narration.
+
+Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
+
+Sentence to illustrate: "${sourceText}"
+
+Generate a fresh, different cinematic angle than the previous version. Vary the camera type.`,
+            },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "regenerate_shot",
+                description: "Regenerates a single cinematic shot",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    shot_type: { type: "string", description: "Camera type in FRENCH" },
+                    description: { type: "string", description: "Visual description in FRENCH" },
+                    prompt_export: { type: "string", description: "Full Grok Image prompt in ENGLISH, 100+ words" },
+                  },
+                  required: ["shot_type", "description", "prompt_export"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
+          tool_choice: { type: "function", function: { name: "regenerate_shot" } },
+        }),
+      }
+    );
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error("AI error:", aiResponse.status, errText);
+      throw new Error("AI gateway error");
+    }
+
+    const aiData = await aiResponse.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+
+    let newShot = { shot_type: shot.shot_type, description: shot.description, prompt_export: shot.prompt_export };
+
+    try {
+      if (toolCall?.function?.arguments) {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        newShot = {
+          shot_type: parsed.shot_type || shot.shot_type,
+          description: parsed.description || shot.description,
+          prompt_export: parsed.prompt_export || shot.prompt_export,
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to parse AI response for shot regeneration", e);
+    }
+
+    const { error: updateErr } = await supabase
+      .from("shots")
+      .update({
+        shot_type: newShot.shot_type,
+        description: newShot.description,
+        prompt_export: newShot.prompt_export,
+      })
+      .eq("id", shot_id);
+
+    if (updateErr) throw new Error("Failed to update shot");
+
+    // Fetch updated shot
+    const { data: updatedShot } = await supabase
+      .from("shots")
+      .select("*")
+      .eq("id", shot_id)
+      .single();
+
+    return new Response(JSON.stringify({ shot: updatedShot }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("regenerate-shot error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
