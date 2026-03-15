@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardPaste, Mic, Volume2 } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 
 interface VoiceOverStudioProps {
   narration: string;
   generatedScript: string | null;
+  projectId: string | null;
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
@@ -18,9 +20,21 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   speakingRate: 1.0,
 };
 
-export default function VoiceOverStudio({ narration, generatedScript }: VoiceOverStudioProps) {
+interface GeneratedAudio {
+  audioUrl: string;
+  fileName: string;
+  fileSize: number;
+  durationEstimate: number;
+}
+
+export default function VoiceOverStudio({ narration, generatedScript, projectId }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
+  const [generating, setGenerating] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<GeneratedAudio | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handlePasteFromScript = () => {
     const source = generatedScript || narration;
@@ -31,6 +45,115 @@ export default function VoiceOverStudio({ narration, generatedScript }: VoiceOve
     setVoScript(source);
     toast.success("Script collé depuis l'onglet source");
   };
+
+  const handleGenerate = async () => {
+    if (!voScript.trim()) {
+      toast.error("Saisissez ou collez un script avant de générer.");
+      return;
+    }
+    if (!projectId) {
+      toast.error("Sauvegardez d'abord le projet.");
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        toast.error("Vous devez être connecté.");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            text: voScript,
+            languageCode: settings.languageCode,
+            voiceGender: settings.voiceGender,
+            speakingRate: settings.speakingRate,
+            mode: "full",
+            projectId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error || `Erreur ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      setCurrentAudio({
+        audioUrl: data.audioUrl,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        durationEstimate: data.durationEstimate,
+      });
+
+      toast.success(`Voix off générée — ${data.chunks} bloc(s), ${formatSize(data.fileSize)}`);
+    } catch (e: any) {
+      console.error("Full TTS generation error:", e);
+      toast.error(e?.message || "Erreur de génération");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Audio player controls
+  const handlePlayPause = () => {
+    if (!currentAudio) return;
+
+    if (!audioRef.current) {
+      const audio = new Audio(currentAudio.audioUrl);
+      audioRef.current = audio;
+
+      audio.ontimeupdate = () => {
+        if (audio.duration) {
+          setAudioProgress((audio.currentTime / audio.duration) * 100);
+        }
+      };
+      audio.onended = () => {
+        setIsPlaying(false);
+        setAudioProgress(0);
+      };
+    }
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Reset audio element when new audio is generated
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsPlaying(false);
+    setAudioProgress(0);
+  }, [currentAudio?.audioUrl]);
 
   return (
     <div className="container max-w-6xl py-6 sm:py-10 px-4 animate-fade-in">
@@ -75,29 +198,66 @@ export default function VoiceOverStudio({ narration, generatedScript }: VoiceOve
             </span>
             <Button
               variant="hero"
-              disabled={!voScript.trim()}
+              disabled={!voScript.trim() || generating}
               className="min-h-[44px] gap-2"
-              title="Génération complète disponible à l'étape 5"
-              onClick={() => toast.info("La génération complète sera disponible à l'étape suivante.")}
+              onClick={handleGenerate}
             >
-              <Volume2 className="h-4 w-4" />
-              Générer la voix off
+              {generating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
+              {generating ? "Génération en cours..." : "Générer la voix off"}
             </Button>
           </div>
         </div>
 
-        {/* Right column — Settings + Preview + Placeholders */}
+        {/* Right column — Settings + Preview + Player + History placeholder */}
         <div className="space-y-4">
           <VoiceSettingsPanel settings={settings} onChange={setSettings} />
           <VoicePreviewTest settings={settings} />
 
-          {/* Audio player placeholder */}
-          <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]">
-            <Volume2 className="h-5 w-5 text-muted-foreground/30" />
-            <p className="text-xs text-muted-foreground/50 text-center">
-              Lecteur audio
-            </p>
-          </div>
+          {/* Audio player */}
+          {currentAudio ? (
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-sm font-semibold text-foreground">
+                  Lecteur audio
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {formatDuration(currentAudio.durationEstimate)}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handlePlayPause}
+                  className="flex items-center justify-center h-10 w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                  aria-label={isPlaying ? "Pause" : "Lecture"}
+                >
+                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+                </button>
+                <div className="flex-1">
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-200"
+                      style={{ width: `${audioProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{currentAudio.fileName}</span>
+                <span>{formatSize(currentAudio.fileSize)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]">
+              <Volume2 className="h-5 w-5 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground/50 text-center">
+                Lecteur audio
+              </p>
+            </div>
+          )}
 
           {/* History placeholder */}
           <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
@@ -110,4 +270,16 @@ export default function VoiceOverStudio({ narration, generatedScript }: VoiceOve
       </div>
     </div>
   );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
