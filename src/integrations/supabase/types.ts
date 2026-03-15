@@ -24,8 +24,10 @@ export type Database = {
           generated_script: string | null
           page_count: number
           project_id: string
+          scene_versions: Json | null
           script_versions: Json | null
           seo_results: Json | null
+          shot_versions: Json | null
           updated_at: string
         }
         Insert: {
@@ -37,8 +39,10 @@ export type Database = {
           generated_script?: string | null
           page_count?: number
           project_id: string
+          scene_versions?: Json | null
           script_versions?: Json | null
           seo_results?: Json | null
+          shot_versions?: Json | null
           updated_at?: string
         }
         Update: {
@@ -50,8 +54,10 @@ export type Database = {
           generated_script?: string | null
           page_count?: number
           project_id?: string
+          scene_versions?: Json | null
           script_versions?: Json | null
           seo_results?: Json | null
+          shot_versions?: Json | null
           updated_at?: string
         }
         Relationships: [
