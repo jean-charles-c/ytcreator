@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,11 @@ interface DocSection {
   section_label: string;
   video_title: string;
   narrative_description: string;
+}
+
+interface ScriptVersion {
+  id: number;
+  content: string;
 }
 
 const LANGUAGES = [
