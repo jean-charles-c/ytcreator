@@ -189,6 +189,7 @@ serve(async (req) => {
               {
                 role: "system",
                 content: `You are a documentary narration segmentation engine.
+The narration language is: ${scriptLanguage}.
 
 ABSOLUTE RULES — NEVER DEVIATE:
 1. Segment the FULL narration from first word to last word, without skipping any part.
@@ -200,10 +201,10 @@ ABSOLUTE RULES — NEVER DEVIATE:
 7. Create a new scene whenever the topic, subject, location, character focus, or action changes.
 8. Generate a short descriptive title for each scene (max 10 words).
 9. Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
-10. If the narration is NOT in French, you MUST also provide "source_text_fr": a faithful French translation of source_text. If the narration IS in French, do NOT include source_text_fr.
-${strictMode ? "11. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration." : ""}
+${needsFrenchTranslation ? `10. **MANDATORY**: The narration is in "${scriptLanguage}" (NOT French). You MUST provide "source_text_fr" for EVERY scene: a faithful, complete French translation of source_text. This field is REQUIRED and must NEVER be omitted or left empty.` : "10. The narration is already in French. Do NOT include source_text_fr."}
+${strictMode ? `11. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration.` : ""}
 
-SELF-CHECK: Before returning, verify that NO scene contains more than 3 sentences. If any scene has 4+ sentences, split it.
+SELF-CHECK: Before returning, verify that NO scene contains more than 3 sentences. If any scene has 4+ sentences, split it.${needsFrenchTranslation ? " Also verify that EVERY scene has a non-empty source_text_fr field." : ""}
 
 Return data via the segment_narration tool call only.`,
               },
@@ -229,12 +230,13 @@ Return data via the segment_narration tool call only.`,
                           properties: {
                             title: { type: "string" },
                             source_text: { type: "string" },
-                            source_text_fr: { type: "string", description: "French translation of source_text. Only include if narration is NOT in French." },
+                            ...(needsFrenchTranslation ? { source_text_fr: { type: "string", description: "REQUIRED: French translation of source_text. Must be provided for every scene." } } : {}),
                             visual_intention: { type: "string" },
                           },
                           required: [
                             "title",
                             "source_text",
+                            ...(needsFrenchTranslation ? ["source_text_fr"] : []),
                             "visual_intention",
                           ],
                           additionalProperties: false,
