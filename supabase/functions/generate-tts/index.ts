@@ -93,13 +93,28 @@ async function resolveVoiceName(
     const exactRequested = requestedVoiceName
       ? voices.find((v) => v.name === requestedVoiceName)
       : undefined;
-    if (exactRequested) return exactRequested.name;
 
-    const typeVoices = voices.filter((v) => v.name.toLowerCase().includes(`-${normalizedType}-`));
+    // Keep exact requested only when voiceType is not explicitly requested
+    if (!voiceType && exactRequested) return exactRequested.name;
+
+    const typeVoices = voices
+      .filter((v) => v.name.toLowerCase().includes(`-${normalizedType}-`))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     const genderTypeVoices = typeVoices.filter((v) => v.ssmlGender === voiceGender);
+    const pool = (genderTypeVoices.length > 0 ? genderTypeVoices : typeVoices);
 
-    const pick = (genderTypeVoices[0] || typeVoices[0] || voices.find((v) => v.ssmlGender === voiceGender) || voices[0]);
-    return pick?.name;
+    if (pool.length > 0) {
+      const idx = normalizedType === "wavenet"
+        ? pool.length - 1
+        : normalizedType === "neural2"
+          ? Math.floor(pool.length / 2)
+          : 0;
+      return pool[Math.max(0, Math.min(idx, pool.length - 1))].name;
+    }
+
+    const byGender = voices.filter((v) => v.ssmlGender === voiceGender);
+    return (byGender[0] || voices[0])?.name;
   } catch (error) {
     console.error("Voice resolve fallback:", error);
     return requestedVoiceName;

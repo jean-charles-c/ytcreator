@@ -55,6 +55,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
 
       const data = await response.json();
       const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
+      toast.success(`Voix appliquée: ${data.usedVoiceName ?? "automatique"}`);
 
       // Stop any currently playing audio
       if (audioRef.current) {
