@@ -374,6 +374,7 @@ serve(async (req) => {
           shot_type: shot?.shot_type || fbType,
           description: shot?.description || fallbackDescription(fbSentence),
           source_sentence: shot?.source_sentence || fbSentence,
+          source_sentence_fr: shot?.source_sentence_fr || null,
           prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene.visual_intention, fbType),
           guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });

@@ -139,6 +139,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
         <div className="mb-2 rounded bg-secondary/50 border border-border px-3 py-2">
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
           <p className="text-xs text-foreground leading-relaxed mt-0.5 italic">"{(shot as any).source_sentence}"</p>
+          {(shot as any).source_sentence_fr && (
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1">🇫🇷 "{(shot as any).source_sentence_fr}"</p>
+          )}
         </div>
       )}
       <p className="text-xs text-muted-foreground leading-relaxed mb-2">{shot.description}</p>
