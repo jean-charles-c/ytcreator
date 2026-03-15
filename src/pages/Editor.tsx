@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
@@ -47,6 +47,39 @@ const LANGUAGES = [
   { value: "de", label: "Deutsch" },
 ];
 
+const SEO_FALLBACK = { titles: null, description: null, tags: null } as {
+  titles: any[] | null;
+  description: string | null;
+  tags: string | null;
+};
+
+const normalizeSeoResults = (raw: unknown): { titles: any[] | null; description: string | null; tags: string | null } => {
+  if (!raw) return SEO_FALLBACK;
+
+  let parsed: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return SEO_FALLBACK;
+    }
+  }
+
+  if (!parsed || typeof parsed !== "object") return SEO_FALLBACK;
+
+  const candidate = parsed as {
+    titles?: unknown;
+    description?: unknown;
+    tags?: unknown;
+  };
+
+  return {
+    titles: Array.isArray(candidate.titles) ? candidate.titles : null,
+    description: typeof candidate.description === "string" ? candidate.description : null,
+    tags: typeof candidate.tags === "string" ? candidate.tags : null,
+  };
+};
+
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -70,113 +103,245 @@ export default function Editor() {
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
-    try { const v = sessionStorage.getItem(`sc_analysis_${id}`); return v ? JSON.parse(v) : null; } catch { return null; }
+    try {
+      const v = sessionStorage.getItem(`sc_analysis_${id}`);
+      return v ? JSON.parse(v) : null;
+    } catch {
+      return null;
+    }
   });
   const [pdfExtractedText, setPdfExtractedText] = useState<string | null>(() => sessionStorage.getItem(`sc_text_${id}`) || null);
   const [pdfPageCount, setPdfPageCount] = useState(() => {
-    try { return Number(sessionStorage.getItem(`sc_pages_${id}`)) || 0; } catch { return 0; }
+    try {
+      return Number(sessionStorage.getItem(`sc_pages_${id}`)) || 0;
+    } catch {
+      return 0;
+    }
   });
   const [pdfFileName, setPdfFileName] = useState<string | null>(() => sessionStorage.getItem(`sc_fname_${id}`) || null);
   const [pdfDocStructure, setPdfDocStructure] = useState<any[] | null>(() => {
-    try { const v = sessionStorage.getItem(`sc_struct_${id}`); return v ? JSON.parse(v) : null; } catch { return null; }
+    try {
+      const v = sessionStorage.getItem(`sc_struct_${id}`);
+      return v ? JSON.parse(v) : null;
+    } catch {
+      return null;
+    }
   });
   const [generatedScript, setGeneratedScript] = useState<string | null>(() => sessionStorage.getItem(`sc_script_${id}`) || null);
   const [seoResults, setSeoResults] = useState<{ titles: any[] | null; description: string | null; tags: string | null }>(() => {
-    const fallback = { titles: null, description: null, tags: null };
-
-    try {
-      const v = sessionStorage.getItem(`sc_seo_${id}`);
-      if (!v) return fallback;
-
-      const parsed = JSON.parse(v) as {
-        titles?: unknown;
-        description?: unknown;
-        tags?: unknown;
-      } | null;
-
-      if (!parsed || typeof parsed !== "object") return fallback;
-
-      return {
-        titles: Array.isArray(parsed.titles) ? parsed.titles : null,
-        description: typeof parsed.description === "string" ? parsed.description : null,
-        tags: typeof parsed.tags === "string" ? parsed.tags : null,
-      };
-    } catch {
-      return fallback;
-    }
+    return normalizeSeoResults(sessionStorage.getItem(`sc_seo_${id}`));
   });
 
-  // Load existing project + scenes + shots
+  const scriptCreatorHydratedRef = useRef(false);
+  const lastSavedScriptCreatorSnapshotRef = useRef("");
+  const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
+
+  // Rehydrate local state whenever route project id changes
+  useEffect(() => {
+    if (!id || isNew) return;
+
+    try {
+      const analysisRaw = sessionStorage.getItem(`sc_analysis_${id}`);
+      const structRaw = sessionStorage.getItem(`sc_struct_${id}`);
+
+      setPdfAnalysis(analysisRaw ? JSON.parse(analysisRaw) : null);
+      setPdfExtractedText(sessionStorage.getItem(`sc_text_${id}`) || null);
+      setPdfPageCount(Number(sessionStorage.getItem(`sc_pages_${id}`)) || 0);
+      setPdfFileName(sessionStorage.getItem(`sc_fname_${id}`) || null);
+      setPdfDocStructure(structRaw ? JSON.parse(structRaw) : null);
+      setGeneratedScript(sessionStorage.getItem(`sc_script_${id}`) || null);
+      setSeoResults(normalizeSeoResults(sessionStorage.getItem(`sc_seo_${id}`)));
+    } catch {
+      setPdfAnalysis(null);
+      setPdfExtractedText(null);
+      setPdfPageCount(0);
+      setPdfFileName(null);
+      setPdfDocStructure(null);
+      setGeneratedScript(null);
+      setSeoResults(SEO_FALLBACK);
+    }
+  }, [id, isNew]);
+
+  // Load existing project + scenes + shots + ScriptCreator persisted state
   useEffect(() => {
     if (isNew || !id) return;
+
     const load = async () => {
-      const { data, error } = await supabase.from("projects").select("*").eq("id", id).single();
-      if (error || !data) { toast.error("Projet introuvable"); navigate("/dashboard"); return; }
-      setTitle(data.title);
-      setSubject(data.subject ?? "");
-      setScriptLanguage(data.script_language);
-      setNarration(data.narration ?? "");
-      setProjectId(data.id);
+      setLoadingProject(true);
+      scriptCreatorHydratedRef.current = false;
+
+      const [projectRes, scenesRes, shotsRes, scriptCreatorRes] = await Promise.all([
+        supabase.from("projects").select("*").eq("id", id).single(),
+        supabase.from("scenes").select("*").eq("project_id", id).order("scene_order", { ascending: true }),
+        supabase.from("shots").select("*").eq("project_id", id).order("shot_order", { ascending: true }),
+        (supabase as any).from("project_scriptcreator_state").select("*").eq("project_id", id).maybeSingle(),
+      ]);
+
+      if (projectRes.error || !projectRes.data) {
+        toast.error("Projet introuvable");
+        navigate("/dashboard");
+        return;
+      }
+
+      setTitle(projectRes.data.title);
+      setSubject(projectRes.data.subject ?? "");
+      setScriptLanguage(projectRes.data.script_language);
+      setNarration(projectRes.data.narration ?? "");
+      setProjectId(projectRes.data.id);
       setShowSetup(false);
-      const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", id).order("scene_order", { ascending: true });
-      if (sceneData) setScenes(sceneData);
-      const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", id).order("shot_order", { ascending: true });
-      if (shotData) setShots(shotData);
+
+      if (scenesRes.data) setScenes(scenesRes.data);
+      if (shotsRes.data) setShots(shotsRes.data);
+
+      const scriptCreatorState = scriptCreatorRes?.data;
+      if (scriptCreatorState) {
+        setPdfAnalysis(scriptCreatorState.analysis ?? null);
+        setPdfExtractedText(scriptCreatorState.extracted_text ?? null);
+        setPdfPageCount(Number(scriptCreatorState.page_count) || 0);
+        setPdfFileName(scriptCreatorState.file_name ?? null);
+        setPdfDocStructure(Array.isArray(scriptCreatorState.doc_structure) ? scriptCreatorState.doc_structure : null);
+        setGeneratedScript(typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null);
+        setSeoResults(normalizeSeoResults(scriptCreatorState.seo_results));
+
+        lastSavedScriptCreatorSnapshotRef.current = JSON.stringify({
+          file_name: scriptCreatorState.file_name ?? null,
+          page_count: Number(scriptCreatorState.page_count) || 0,
+          extracted_text: scriptCreatorState.extracted_text ?? null,
+          analysis: scriptCreatorState.analysis ?? null,
+          doc_structure: Array.isArray(scriptCreatorState.doc_structure) ? scriptCreatorState.doc_structure : null,
+          generated_script: typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null,
+          seo_results: normalizeSeoResults(scriptCreatorState.seo_results),
+        });
+      }
+
+      scriptCreatorHydratedRef.current = true;
       setLoadingProject(false);
     };
+
     load();
   }, [id, isNew, navigate]);
 
+  const storageProjectId = id ?? projectId;
+
   // Persist ScriptCreator state to sessionStorage
   useEffect(() => {
-    if (!id) return;
+    if (!storageProjectId) return;
     try {
-      if (pdfAnalysis) sessionStorage.setItem(`sc_analysis_${id}`, JSON.stringify(pdfAnalysis));
-      else sessionStorage.removeItem(`sc_analysis_${id}`);
-    } catch { /* quota exceeded */ }
-  }, [id, pdfAnalysis]);
+      if (pdfAnalysis) sessionStorage.setItem(`sc_analysis_${storageProjectId}`, JSON.stringify(pdfAnalysis));
+      else sessionStorage.removeItem(`sc_analysis_${storageProjectId}`);
+    } catch {
+      // quota exceeded
+    }
+  }, [storageProjectId, pdfAnalysis]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!storageProjectId) return;
     try {
-      if (pdfExtractedText) sessionStorage.setItem(`sc_text_${id}`, pdfExtractedText);
-      else sessionStorage.removeItem(`sc_text_${id}`);
-    } catch { /* quota exceeded */ }
-  }, [id, pdfExtractedText]);
+      if (pdfExtractedText) sessionStorage.setItem(`sc_text_${storageProjectId}`, pdfExtractedText);
+      else sessionStorage.removeItem(`sc_text_${storageProjectId}`);
+    } catch {
+      // quota exceeded
+    }
+  }, [storageProjectId, pdfExtractedText]);
 
   useEffect(() => {
-    if (!id) return;
-    sessionStorage.setItem(`sc_pages_${id}`, String(pdfPageCount));
-  }, [id, pdfPageCount]);
+    if (!storageProjectId) return;
+    sessionStorage.setItem(`sc_pages_${storageProjectId}`, String(pdfPageCount));
+  }, [storageProjectId, pdfPageCount]);
 
   useEffect(() => {
-    if (!id) return;
-    if (pdfFileName) sessionStorage.setItem(`sc_fname_${id}`, pdfFileName);
-    else sessionStorage.removeItem(`sc_fname_${id}`);
-  }, [id, pdfFileName]);
+    if (!storageProjectId) return;
+    if (pdfFileName) sessionStorage.setItem(`sc_fname_${storageProjectId}`, pdfFileName);
+    else sessionStorage.removeItem(`sc_fname_${storageProjectId}`);
+  }, [storageProjectId, pdfFileName]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!storageProjectId) return;
     try {
-      if (pdfDocStructure) sessionStorage.setItem(`sc_struct_${id}`, JSON.stringify(pdfDocStructure));
-      else sessionStorage.removeItem(`sc_struct_${id}`);
-    } catch { /* quota exceeded */ }
-  }, [id, pdfDocStructure]);
+      if (pdfDocStructure) sessionStorage.setItem(`sc_struct_${storageProjectId}`, JSON.stringify(pdfDocStructure));
+      else sessionStorage.removeItem(`sc_struct_${storageProjectId}`);
+    } catch {
+      // quota exceeded
+    }
+  }, [storageProjectId, pdfDocStructure]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!storageProjectId) return;
     try {
-      if (generatedScript) sessionStorage.setItem(`sc_script_${id}`, generatedScript);
-      else sessionStorage.removeItem(`sc_script_${id}`);
-    } catch { /* quota exceeded */ }
-  }, [id, generatedScript]);
+      if (generatedScript) sessionStorage.setItem(`sc_script_${storageProjectId}`, generatedScript);
+      else sessionStorage.removeItem(`sc_script_${storageProjectId}`);
+    } catch {
+      // quota exceeded
+    }
+  }, [storageProjectId, generatedScript]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!storageProjectId) return;
     try {
-      sessionStorage.setItem(`sc_seo_${id}`, JSON.stringify(seoResults));
-    } catch { /* quota exceeded */ }
-  }, [id, seoResults]);
+      sessionStorage.setItem(`sc_seo_${storageProjectId}`, JSON.stringify(seoResults));
+    } catch {
+      // quota exceeded
+    }
+  }, [storageProjectId, seoResults]);
+
+  // Persist ScriptCreator state to backend (debounced)
+  useEffect(() => {
+    if (!projectId || showSetup || loadingProject || !scriptCreatorHydratedRef.current) return;
+
+    const payload = {
+      file_name: pdfFileName ?? null,
+      page_count: Number(pdfPageCount) || 0,
+      extracted_text: pdfExtractedText ?? null,
+      analysis: pdfAnalysis ?? null,
+      doc_structure: pdfDocStructure ?? null,
+      generated_script: generatedScript ?? null,
+      seo_results: seoResults,
+    };
+
+    const snapshot = JSON.stringify(payload);
+    if (snapshot === lastSavedScriptCreatorSnapshotRef.current) return;
+
+    if (scriptCreatorSaveTimeoutRef.current) {
+      window.clearTimeout(scriptCreatorSaveTimeoutRef.current);
+    }
+
+    scriptCreatorSaveTimeoutRef.current = window.setTimeout(async () => {
+      const { error } = await (supabase as any)
+        .from("project_scriptcreator_state")
+        .upsert({ project_id: projectId, ...payload }, { onConflict: "project_id" });
+
+      if (!error) {
+        lastSavedScriptCreatorSnapshotRef.current = snapshot;
+      } else {
+        console.error("ScriptCreator backend persistence error:", error);
+      }
+    }, 900);
+
+    return () => {
+      if (scriptCreatorSaveTimeoutRef.current) {
+        window.clearTimeout(scriptCreatorSaveTimeoutRef.current);
+      }
+    };
+  }, [
+    projectId,
+    showSetup,
+    loadingProject,
+    pdfFileName,
+    pdfPageCount,
+    pdfExtractedText,
+    pdfAnalysis,
+    pdfDocStructure,
+    generatedScript,
+    seoResults,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (scriptCreatorSaveTimeoutRef.current) {
+        window.clearTimeout(scriptCreatorSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Save / create project
   const saveProject = useCallback(async () => {
