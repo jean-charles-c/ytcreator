@@ -338,7 +338,7 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
 
                       {/* Tags sub-collapsible */}
                       {tags && (
-                        <SubCollapsible icon={Tag} title="TAGS" defaultOpen badge={`${tags.length}/500 car.`}>
+                        <SubCollapsible icon={Tag} title="TAGS" badge={`${tags.length}/500 car.`}>
                           <CopyableBlock text={tags} label="Tags">
                             <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                               {tags}
