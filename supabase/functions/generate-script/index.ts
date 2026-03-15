@@ -18,43 +18,8 @@ function encodeSseComment(message: string): Uint8Array {
   return sseEncoder.encode(`: ${message}\n\n`);
 }
 
-function createSseRelayStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const reader = upstream.getReader();
-      controller.enqueue(encodeSseComment("stream-open"));
-
-      const heartbeat = setInterval(() => {
-        try {
-          controller.enqueue(encodeSseComment("keep-alive"));
-        } catch {
-          clearInterval(heartbeat);
-        }
-      }, 15000);
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) controller.enqueue(value);
-        }
-      } catch (error) {
-        console.error("generate-script relay error:", error);
-      } finally {
-        clearInterval(heartbeat);
-        try {
-          reader.releaseLock();
-        } catch {
-          // no-op
-        }
-        try {
-          controller.close();
-        } catch {
-          // stream may already be closed by the runtime
-        }
-      }
-    },
-  });
+function encodeSseData(data: string): Uint8Array {
+  return sseEncoder.encode(`data: ${data}\n\n`);
 }
 
 function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
@@ -131,21 +96,13 @@ Internally, structure the script following this dramatic arc:
 
 PHASE 1 — HOOK (minimum 2 sentences, spread across the first paragraphs of the cycle):
 • The hook is the MOST IMPORTANT part of the script. It must grab attention INSTANTLY.
-• The hook follows the paragraph cycle but the FIRST paragraph (position 1 = 1 sentence) may be expanded to 2 sentences for a stronger opening. This is the ONLY exception to the cycle.
-• After the first paragraph, resume the cycle normally from position 2 (2 sentences), position 3 (2 sentences), etc.
+• The hook follows the paragraph cycle but the FIRST paragraph (position 1 = 2 sentences) must have at least 2 sentences for a stronger opening.
 • The hook spans the first 3-5 paragraphs of the cycle.
 • Structure across these paragraphs: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
 • The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
 • Never start with greetings, channel name, or "today we will talk about".
 • Never open with a generic descriptive sentence ("A hand places a clay tablet").
 • Open with something that creates TENSION or CURIOSITY immediately.
-
-HOOK EXAMPLE following the cycle (adapt to ${langLabel}):
-BAD HOOK: Starting with a 3+ sentence paragraph (this breaks the cycle).
-GOOD HOOK (2-2-2):
-Paragraph 1 (2 sentences): "This writing is over 5,000 years old. It was invented to count grain."
-Paragraph 2 (2 sentences): "But it ended up telling stories of gods, kings, and empires. No one planned this transformation."
-Paragraph 3 (2 sentences): "How did a simple accounting tool become humanity's first memory? The answer lies buried in the desert."
 
 After the hook, transition IMMEDIATELY into the narrative — no pause, no meta-commentary.
 
@@ -243,21 +200,21 @@ EXAMPLE: Paragraphs 1-10 follow the pattern above. Paragraphs 11-20 repeat the s
 THIS IS NON-NEGOTIABLE. Every paragraph MUST match its position in the cycle.
 
 NARRATIVE ROLES by paragraph length:
-• 1 sentence: Pure impact — punchline, revelation, dramatic transition. Examples: "Et tout bascule." / "But the story doesn't end there." / "Fire changes everything."
-• 2 sentences: The workhorse — a fact and its consequence, a scene in two strokes. Punchy, efficient. Carries the main narration.
-• 3 sentences: The development format — describe a scene in detail, explain a discovery, build a progression. Must remain clear, visual, speakable. MUST appear regularly (twice per cycle).
-• 4 sentences: Reserved for the script's most important moments — a major revelation that needs full development. Appears once per cycle.
+• 1 sentence: Pure impact — punchline, revelation, dramatic transition.
+• 2 sentences: The workhorse — a fact and its consequence, a scene in two strokes.
+• 3 sentences: The development format — describe a scene in detail, explain a discovery, build a progression.
+• 4 sentences: Reserved for the script's most important moments — a major revelation that needs full development.
 
 STRICT RULES:
-• NEVER exceed 4 sentences in any paragraph. NEVER.
-• NEVER skip a position in the cycle — follow it mechanically.
+• NEVER exceed 4 sentences in any paragraph.
+• NEVER skip a position in the cycle.
 • Separate paragraphs with empty lines.
-• The last cycle may be incomplete if the character target is reached mid-cycle — that is acceptable.
+• The last cycle may be incomplete if the character target is reached mid-cycle.
 
-FINAL SELF-CHECK (mandatory before outputting):
+FINAL SELF-CHECK:
 • Verify that paragraphs follow the 2-2-2-3-2-1-3-2-4-2 cycle.
 • If any paragraph has 5+ sentences, split it immediately.
-• If 3-sentence paragraphs are missing or rare, you have broken the cycle — rewrite.
+• If 3-sentence paragraphs are missing or rare, rewrite.
 
 ---
 
@@ -282,31 +239,24 @@ PRIORITY HIERARCHY — include in this order:
 4. Surprising facts that challenge assumptions.
 
 RUTHLESSLY CUT:
-• Secondary technical details that don't serve the narrative (linguistics classifications, complex taxonomies, specialized jargon).
-• Redundant historical examples — if 3 cities show the same pattern, pick the MOST dramatic one and summarize the rest in one sentence.
-• Dense explanations that slow the story — simplify or skip entirely.
+• Secondary technical details that don't serve the narrative.
+• Redundant historical examples — pick the most dramatic one.
+• Dense explanations that slow the story — simplify or skip.
 
 CONDENSING RULE:
-• When multiple examples illustrate the SAME idea, choose the single most representative one.
-• Summarize the others in ONE sentence: "The same pattern repeats across dozens of sites."
+• When multiple examples illustrate the same idea, choose the single most representative one.
+• Summarize the others in ONE sentence.
 • NEVER list more than 2 examples for the same concept.
-
-BAD (repetitive listing):
-❌ "Tablets are found in Uruk. More tablets appear in Nippur. Similar tablets surface in Lagash. Ebla reveals yet more tablets."
-GOOD (condensed):
-✅ "Tablets appear first in Uruk. Within centuries, the same system spreads to dozens of cities across the region."
 
 TECHNICAL SIMPLIFICATION:
 • Replace jargon with plain language the viewer can picture.
-• BAD: "The system combines logograms, syllables, and determinatives in a complex semiological framework."
-• GOOD: "The system mixes signs for words and signs for sounds."
 • If a technical concept doesn't create tension, surprise, or visual interest — cut it.
 
 EVERY SENTENCE MUST EARN ITS PLACE:
-• Does it reveal something new? Keep it.
-• Does it create a visual image? Keep it.
-• Does it advance the story? Keep it.
-• Does it repeat, explain jargon, or fill space? CUT IT.
+• Does it reveal something new?
+• Does it create a visual image?
+• Does it advance the story?
+• If not, cut it.
 
 ---
 
@@ -315,23 +265,23 @@ CONTENT RULES:
 1. USE ONLY information from the provided narrative elements and source text.
 2. NEVER invent facts, dates, names, or events not present in the inputs.
 3. Every claim must be traceable to the provided material.
-4. ZERO redundancy: if a fact has been stated, do NOT restate it.
-5. ZERO filler: every sentence must carry meaningful, story-driven content.
-6. If the narrative elements are brief, ENRICH by exploring implications and visual descriptions — but NEVER fabricate new facts.
-7. Develop each discovery with cinematic detail: who, where, when, what it looked like, what it meant.
-8. When the target length is short, be MORE selective — keep only the essential narrative arc and cut secondary threads entirely.
+4. ZERO redundancy.
+5. ZERO filler.
+6. If the narrative elements are brief, enrich by exploring implications and visual descriptions — but NEVER fabricate new facts.
+7. Develop each discovery with cinematic detail.
+8. When the target length is short, be MORE selective.
 
 ---
 
 LENGTH — NON-NEGOTIABLE:
-• HARD MAXIMUM: ${charMax.toLocaleString()} characters. You MUST NOT exceed this limit under any circumstances.
+• HARD MAXIMUM: ${charMax.toLocaleString()} characters.
 • HARD MINIMUM: ${charMin.toLocaleString()} characters.
 • Ideal target: ${charTarget.toLocaleString()} characters.
 • The Escalation phase should be the longest — at least 40% of the total script.
-• BEFORE FINISHING: Count your total characters carefully. This is NON-NEGOTIABLE.
-• If you are OVER ${charMax.toLocaleString()} characters, you MUST cut content until you are under. Remove secondary examples, condense explanations, merge similar paragraphs. Keep cutting until you are within the limit.
+• BEFORE FINISHING: Count your total characters carefully.
+• If you are OVER ${charMax.toLocaleString()} characters, cut content until you are under.
 • If you are UNDER ${charMin.toLocaleString()} characters, expand with more concrete scenes and visual details.
-• A script that exceeds ${charMax.toLocaleString()} characters is a FAILED script. Verify your count.`;
+• A script that exceeds ${charMax.toLocaleString()} characters is a FAILED script.`;
 }
 
 function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string, charMin: number, charMax: number, charTarget: number): string {
@@ -346,45 +296,28 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
 
   const parts: string[] = [];
 
-  // Central mystery
-  if (a.central_mystery) {
-    parts.push(`CENTRAL MYSTERY:\n${a.central_mystery}`);
-  }
-
-  // Main contradiction
-  if (a.main_contradiction) {
-    parts.push(`MAIN CONTRADICTION:\n${a.main_contradiction}`);
-  }
-
-  // Intriguing discoveries
+  if (a.central_mystery) parts.push(`CENTRAL MYSTERY:\n${a.central_mystery}`);
+  if (a.main_contradiction) parts.push(`MAIN CONTRADICTION:\n${a.main_contradiction}`);
   if (Array.isArray(a.intriguing_discoveries) && a.intriguing_discoveries.length > 0) {
     parts.push(`INTRIGUING DISCOVERIES:\n${a.intriguing_discoveries.map((d, i) => `${i + 1}. ${d}`).join("\n")}`);
   }
-
-  // Narrative tensions
   if (Array.isArray(a.narrative_tensions) && a.narrative_tensions.length > 0) {
     parts.push(`NARRATIVE TENSIONS:\n${a.narrative_tensions.map((t, i) => `${i + 1}. ${t.title || ""}: ${t.description || ""}`).join("\n")}`);
   }
-
-  // Themes
   if (Array.isArray(a.themes) && a.themes.length > 0) {
     parts.push(`THEMES: ${a.themes.join(", ")}`);
   }
-
-  // Documentary structure (section descriptions as narrative guide)
   if (Array.isArray(structure) && structure.length > 0) {
     const structDesc = structure
       .map((s: any) => `- ${s.section_label}: ${s.narrative_description || s.video_title}`)
       .join("\n");
     parts.push(`DOCUMENTARY STRUCTURE (use as narrative guide, do NOT show section names):\n${structDesc}`);
   }
-
-  // Source text as factual reference
   if (sourceText) {
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output ONLY the narration text. No titles, no sections, no markers. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). DO NOT EXCEED ${charMax.toLocaleString()} characters — count carefully before finishing. If over, cut secondary content until within limit. Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
+  parts.push(`CRITICAL REMINDER: Output ONLY the narration text. No titles, no sections, no markers. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). DO NOT EXCEED ${charMax.toLocaleString()} characters. Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences. Never 3 consecutive sentences of similar length.`);
 
   return parts.join("\n\n");
 }
@@ -392,68 +325,91 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  try {
-    const { analysis, structure, text, language, targetChars } = await req.json();
-    if (!analysis) {
-      return new Response(JSON.stringify({ error: "Analyse narrative requise." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(encodeSseComment("stream-open"));
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encodeSseComment("keep-alive"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 15000);
 
-    const scriptLang = language || "en";
-    const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
-    const langLabel = langLabels[scriptLang] || "English";
-    const sourceText = text ? text.slice(0, 25000) : "";
-    const charTarget = targetChars ? Number(targetChars) : 15000;
-    const charMin = Math.round(charTarget * 0.9);
-    const charMax = Math.round(charTarget * 1.1);
+      try {
+        const { analysis, structure, text, language, targetChars } = await req.json();
+        if (!analysis) {
+          controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
+          controller.close();
+          clearInterval(heartbeat);
+          return;
+        }
 
-    const systemPrompt = buildSystemPrompt(langLabel, charMin, charMax, charTarget);
-    const userMessage = buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget);
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        max_completion_tokens: 24000,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        stream: true,
-      }),
-    });
+        const scriptLang = language || "en";
+        const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
+        const langLabel = langLabels[scriptLang] || "English";
+        const sourceText = text ? text.slice(0, 25000) : "";
+        const charTarget = targetChars ? Number(targetChars) : 15000;
+        const charMin = Math.round(charTarget * 0.9);
+        const charMax = Math.round(charTarget * 1.1);
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Trop de requêtes, réessayez." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-5",
+            max_completion_tokens: 24000,
+            messages: [
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget) },
+              { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
+            ],
+            stream: true,
+          }),
         });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Crédits AI épuisés." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
-    }
 
-    return new Response(createSseRelayStream(response.body), {
-      headers: sseHeaders,
-    });
-  } catch (e) {
-    console.error("generate-script error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+        if (!response.ok || !response.body) {
+          const errorText = await response.text();
+          console.error("AI gateway error:", response.status, errorText);
+          controller.enqueue(encodeSseData(JSON.stringify({ error: response.status === 429 ? "Trop de requêtes, réessayez." : response.status === 402 ? "Crédits AI épuisés." : "AI gateway error" })));
+          controller.close();
+          clearInterval(heartbeat);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) controller.enqueue(value);
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      } catch (e) {
+        console.error("generate-script error:", e);
+        try {
+          controller.enqueue(encodeSseData(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" })));
+        } catch {
+          // no-op
+        }
+      } finally {
+        clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders });
 });
