@@ -292,6 +292,7 @@ serve(async (req) => {
         durationEstimate,
         historyId: historyEntry?.id ?? null,
         chunks: chunks.length,
+        usedVoiceName: resolvedVoiceName ?? null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
