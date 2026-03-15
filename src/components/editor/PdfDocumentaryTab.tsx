@@ -43,7 +43,6 @@ interface PdfDocumentaryTabProps {
   onSendToScriptInput?: (text: string) => void;
   onAnalysisReady?: (analysis: NarrativeAnalysis, text: string) => void;
   onScriptReady?: (script: string) => void;
-  // Lifted state for persistence
   extractedText: string | null;
   onExtractedTextChange: (text: string | null) => void;
   pageCount: number;
@@ -56,6 +55,10 @@ interface PdfDocumentaryTabProps {
   onDocStructureChange: (structure: DocSection[] | null) => void;
   script: string | null;
   onScriptChange: (script: string | null) => void;
+  scriptVersions: ScriptVersion[];
+  onScriptVersionsChange: (versions: ScriptVersion[] | ((prev: ScriptVersion[]) => ScriptVersion[])) => void;
+  currentVersionId: number | null;
+  onCurrentVersionIdChange: (id: number | null) => void;
 }
 
 export default function PdfDocumentaryTab({
