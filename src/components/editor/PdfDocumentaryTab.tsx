@@ -66,6 +66,8 @@ export default function PdfDocumentaryTab({
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
+  const [previousScripts, setPreviousScripts] = useState<string[]>([]);
+  const [showPreviousScript, setShowPreviousScript] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
