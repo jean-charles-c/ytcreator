@@ -171,17 +171,51 @@ RHYTHM — CRITICAL:
 • Create natural pauses for the voice-over — avoid dense blocks of information.
 • Read each paragraph mentally — if it sounds monotonous, rewrite it.
 
-PARAGRAPH STRUCTURE — STRICT RHYTHMIC DISTRIBUTION:
+PARAGRAPH STRUCTURE — MANDATORY PLANNING STEP:
+
+BEFORE writing a single word of the script, you MUST complete this internal planning phase (never shown in output):
+
+STEP 1 — ESTIMATE TOTAL PARAGRAPHS:
+• Based on the character target (${charTarget.toLocaleString()} chars), estimate the total number of paragraphs.
+• Average paragraph ≈ 120-180 characters. Use this to calculate: total_paragraphs ≈ charTarget / 150.
+
+STEP 2 — ALLOCATE PARAGRAPH LENGTHS:
+• Distribute the total paragraphs according to this STRICT ratio:
+  - 20% → 1-sentence paragraphs (IMPACT: punchline, revelation, dramatic transition)
+  - 40% → 2-sentence paragraphs (DEFAULT: narration, description, scene-setting)
+  - 30% → 3-sentence paragraphs (DEVELOPMENT: detailed explanation, event progression, key scene)
+  - 10% → 4-sentence paragraphs (RARE: major revelation, complex turning point)
+• Example for 100 paragraphs: 20×1-sentence, 40×2-sentence, 30×3-sentence, 10×4-sentence.
+
+STEP 3 — PLAN THE SEQUENCE:
+• Arrange the paragraph lengths in a varied sequence across the 5 narrative phases.
+• Follow these anti-monotony rules:
+  - NEVER place more than 2 consecutive 1-sentence paragraphs.
+  - NEVER place more than 3 consecutive paragraphs of the same length.
+  - Vary constantly. Good patterns: 2-1-3-2-4-2-3-1-2-3-2-1-3-2...
+• Distribute 4-sentence paragraphs at key narrative moments (revelations, turning points).
+• Distribute 1-sentence paragraphs at transitions and impact moments.
+
+STEP 4 — WRITE THE SCRIPT following the planned sequence exactly.
+• Each paragraph MUST match the planned sentence count.
+• NEVER exceed 4 sentences per paragraph. NEVER.
 • Separate paragraphs with empty lines.
-• Each paragraph contains BETWEEN 1 AND 4 sentences. NEVER 5 or more.
-• Target distribution:
-  - 1-sentence paragraphs: ~20%. Use for IMPACT: a revelation, a dramatic transition, a striking statement. Examples: "Et tout bascule." / "But the story doesn't end there." / "Fire changes everything."
-  - 2-sentence paragraphs: ~40%. The DEFAULT format. Punchy, efficient, easy to read aloud. Used for describing a scene, stating a fact and its consequence.
-  - 3-sentence paragraphs: ~30%. The DEVELOPMENT format. Used to describe a scene in detail, explain an event, or build a progression. Must remain clear, visual, and speakable.
-  - 4-sentence paragraphs: ~10%. RARE. Used ONLY when an important idea, a key moment, or a major revelation requires full development. Never routine.
-• ANTI-MONOTONY RULE: NEVER write more than 2 consecutive paragraphs of the same length. Vary constantly: 2-1-3-2-1-4-2-3-1-2 etc.
-• SELF-CHECK before finishing: Count your paragraph lengths. If more than 50% are exactly 2 sentences, you MUST convert some into 3-sentence paragraphs. A script dominated by same-length paragraphs is monotonous and fails the rhythm requirement.
-• Think like a film editor: short cuts (1 sentence) create punch, medium shots (2-3 sentences) carry the story, long takes (4 sentences) develop key moments.
+
+NARRATIVE ROLES by paragraph length:
+• 1 sentence: "Et tout bascule." / "But the story doesn't end there." / "Fire changes everything." — Pure impact.
+• 2 sentences: The workhorse. A fact and its consequence. A scene in two strokes. Punchy, efficient.
+• 3 sentences: The development format. Describe a scene in detail, explain a discovery, build a progression. Must remain clear, visual, speakable.
+• 4 sentences: Reserved for the script's most important moments. A major revelation that needs full development. Never routine.
+
+FINAL SELF-CHECK (mandatory before outputting):
+• Count your paragraphs by length. Verify:
+  - 1-sentence: approximately 20% (±5%)
+  - 2-sentence: approximately 40% (±5%)
+  - 3-sentence: approximately 30% (±5%)
+  - 4-sentence: approximately 10% (±5%)
+• If 2-sentence paragraphs exceed 45%, convert some into 3-sentence paragraphs.
+• If 3-sentence paragraphs are below 25%, you MUST add more. This is NON-NEGOTIABLE.
+• If any paragraph has 5+ sentences, split it immediately.
 
 ---
 
