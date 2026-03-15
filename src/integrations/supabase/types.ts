@@ -24,6 +24,7 @@ export type Database = {
           generated_script: string | null
           page_count: number
           project_id: string
+          script_versions: Json | null
           seo_results: Json | null
           updated_at: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           generated_script?: string | null
           page_count?: number
           project_id: string
+          script_versions?: Json | null
           seo_results?: Json | null
           updated_at?: string
         }
@@ -48,6 +50,7 @@ export type Database = {
           generated_script?: string | null
           page_count?: number
           project_id?: string
+          script_versions?: Json | null
           seo_results?: Json | null
           updated_at?: string
         }

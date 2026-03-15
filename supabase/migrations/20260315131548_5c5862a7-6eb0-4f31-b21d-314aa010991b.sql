@@ -1,0 +1,1 @@
+ALTER TABLE public.project_scriptcreator_state ADD COLUMN IF NOT EXISTS script_versions jsonb DEFAULT '[]'::jsonb;
