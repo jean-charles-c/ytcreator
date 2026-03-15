@@ -340,15 +340,16 @@ serve(async (req) => {
 
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
-        const fallbackType = CAMERA_TYPES[j % CAMERA_TYPES.length];
-        const fallbackDescription = splitSentences(scene.source_text || "")[j] || scene.source_text;
+        const fbType = CAMERA_TYPES[j % CAMERA_TYPES.length];
+        const fbSentence = splitSentences(scene.source_text || "")[j] || scene.source_text;
         shotRows.push({
           scene_id: scene.id,
           project_id,
           shot_order: j + 1,
-          shot_type: shot?.shot_type || fallbackType,
-          description: shot?.description || fallbackDescription,
-          prompt_export: shot?.prompt_export || fallbackPrompt(fallbackDescription, scene.visual_intention, fallbackType),
+          shot_type: shot?.shot_type || fbType,
+          description: shot?.description || fallbackDescription(fbSentence),
+          source_sentence: shot?.source_sentence || fbSentence,
+          prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene.visual_intention, fbType),
           guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });
       }
