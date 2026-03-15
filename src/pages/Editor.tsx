@@ -1278,6 +1278,9 @@ export default function Editor() {
                           </div>
                           <div className="rounded border border-border bg-card p-4 mb-4">
                             <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                            {(scene as any).source_text_fr && (
+                              <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                            )}
                           </div>
 
                           {isRegenerating || isPendingGeneration ? (
