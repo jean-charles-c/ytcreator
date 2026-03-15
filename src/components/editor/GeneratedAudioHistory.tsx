@@ -82,12 +82,21 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
     }
   };
 
-  const handleDownload = (entry: AudioEntry) => {
-    const { data } = supabase.storage.from("vo-audio").getPublicUrl(entry.file_path);
-    const a = document.createElement("a");
-    a.href = data.publicUrl;
-    a.download = entry.file_name;
-    a.click();
+  const handleDownload = async (entry: AudioEntry) => {
+    try {
+      const { data } = supabase.storage.from("vo-audio").getPublicUrl(entry.file_path);
+      const response = await fetch(data.publicUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = entry.file_name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Download error:", e);
+      toast.error("Erreur de téléchargement");
+    }
   };
 
   const handlePlay = (entry: AudioEntry) => {
