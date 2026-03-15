@@ -384,13 +384,28 @@ export default function Editor() {
     if (narration.trim()) {
       await supabase.from("projects").update({ narration: narration.trim() }).eq("id", projectId);
     }
+    const abortController = new AbortController();
+    segAbortRef.current = abortController;
     setSegmenting(true);
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
     try {
-      const { data, error } = await supabase.functions.invoke("segment-narration", { body: { project_id: projectId } });
-      if (error) { toast.error("Erreur de segmentation"); console.error(error); setSegmenting(false); return; }
-      if (data?.error) { toast.error(data.error); setSegmenting(false); return; }
+      const session = (await supabase.auth.getSession()).data.session;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/segment-narration`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ project_id: projectId }),
+          signal: abortController.signal,
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data?.error) { toast.error(data?.error || "Erreur de segmentation"); setSegmenting(false); segAbortRef.current = null; return; }
       const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
       if (sceneData) {
         // Save current scenes as a version before replacing (if any exist)
@@ -414,9 +429,21 @@ export default function Editor() {
       }
       setShots([]);
       toast.success(`${sceneData?.length ?? 0} scènes générées`);
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        toast.info("Segmentation annulée");
+      } else {
+        console.error(e); toast.error("Erreur inattendue");
+      }
+    }
     setSegmenting(false);
+    segAbortRef.current = null;
   }, [projectId, narration, scenes]);
+
+  const stopSegmentation = useCallback(() => {
+    segAbortRef.current?.abort();
+    segAbortRef.current = null;
+  }, []);
 
   // Generate storyboard (all or single scene)
   const runStoryboard = useCallback(async (sceneId?: string) => {
