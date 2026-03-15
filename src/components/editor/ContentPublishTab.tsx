@@ -379,6 +379,35 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
               </CollapsibleContent>
             </div>
           </Collapsible>
+
+          {/* PROMPTS Section */}
+          <Collapsible open={promptsOpen} onOpenChange={setPromptsOpen}>
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div className="px-4 sm:px-6">
+                <SectionHeader
+                  icon={Image}
+                  title="PROMPTS"
+                  open={promptsOpen}
+                  onToggle={() => setPromptsOpen((v) => !v)}
+                />
+              </div>
+              <CollapsibleContent>
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                  {!hasPrompts ? (
+                    <p className="text-sm text-muted-foreground italic py-4">
+                      Aucun prompt visuel. Générez les VisualPrompts d'abord.
+                    </p>
+                  ) : (
+                    <CopyableBlock text={promptsMd} label="Visual Prompts">
+                      <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                        {promptsMd}
+                      </pre>
+                    </CopyableBlock>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
         </div>
       )}
     </div>
