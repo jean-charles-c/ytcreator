@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildSystemPrompt(langLabel: string): string {
+function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
   return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
