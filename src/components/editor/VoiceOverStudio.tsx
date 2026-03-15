@@ -52,7 +52,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
           setSettings({
             languageCode: data.language_code,
             voiceGender: data.voice_gender,
-            style: data.style,
+            voiceType: ["Standard", "Wavenet", "Neural2"].includes(data.style) ? data.style : "Standard",
             speakingRate: data.speaking_rate,
           });
           setHasFavorite(true);
