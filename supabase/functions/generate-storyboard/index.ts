@@ -231,7 +231,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULE: Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence). Each shot must correspond to one sentence from the narration. Do NOT merge sentences. Do NOT skip sentences. Prompts must stay strictly faithful to the scene text. Follow the VISUAL CAMERA GRID to vary shot types. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
+            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence).\n2. Each shot must correspond to one sentence from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
