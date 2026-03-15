@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildSystemPrompt(langLabel: string): string {
+function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
   return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
@@ -202,14 +202,14 @@ CONTENT RULES:
 ---
 
 LENGTH — NON-NEGOTIABLE:
-• MINIMUM: 10,000 characters. MAXIMUM: 22,000 characters.
-• Aim for 15,000-18,000 characters as the ideal range.
+• MINIMUM: ${charMin.toLocaleString()} characters. MAXIMUM: ${charMax.toLocaleString()} characters.
+• Aim for ${charTarget.toLocaleString()} characters as the ideal target.
 • The Escalation phase should be the longest — at least 40% of the total script.
-• Before finishing, COUNT your characters. If under 10,000, expand with more concrete scenes and visual details.
-• If over 22,000, tighten by removing redundant sentences — never cut narrative tension.`;
+• Before finishing, COUNT your characters. If under ${charMin.toLocaleString()}, expand with more concrete scenes and visual details.
+• If over ${charMax.toLocaleString()}, tighten by removing redundant sentences — never cut narrative tension.`;
 }
 
-function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string): string {
+function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string, charMin: number, charMax: number, charTarget: number): string {
   const a = analysis as {
     central_mystery?: string;
     main_contradiction?: string;
@@ -259,7 +259,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between 10,000 and 22,000 characters total (aim for 15,000-18,000). Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
+  parts.push(`REMINDER: Output ONLY the narration text. No titles, no sections, no markers. Between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences for natural voice-over rhythm. Never 3 consecutive sentences of similar length.`);
 
   return parts.join("\n\n");
 }
@@ -268,7 +268,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { analysis, structure, text, language } = await req.json();
+    const { analysis, structure, text, language, targetChars } = await req.json();
     if (!analysis) {
       return new Response(JSON.stringify({ error: "Analyse narrative requise." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -282,9 +282,12 @@ serve(async (req) => {
     const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
     const langLabel = langLabels[scriptLang] || "English";
     const sourceText = text ? text.slice(0, 25000) : "";
+    const charTarget = targetChars ? Number(targetChars) : 15000;
+    const charMin = Math.round(charTarget * 0.9);
+    const charMax = Math.round(charTarget * 1.1);
 
-    const systemPrompt = buildSystemPrompt(langLabel);
-    const userMessage = buildUserMessage(analysis, structure || [], sourceText);
+    const systemPrompt = buildSystemPrompt(langLabel, charMin, charMax, charTarget);
+    const userMessage = buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

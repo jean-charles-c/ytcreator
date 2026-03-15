@@ -69,6 +69,7 @@ export default function PdfDocumentaryTab({
 }: PdfDocumentaryTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [targetChars, setTargetChars] = useState(15000);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingScript, setGeneratingScript] = useState(false);
@@ -159,7 +160,7 @@ export default function PdfDocumentaryTab({
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage }),
+          body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage, targetChars }),
         }
       );
       if (!resp.ok || !resp.body) {
@@ -217,7 +218,7 @@ export default function PdfDocumentaryTab({
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingScript(false);
-  }, [analysis, extractedText, scriptLanguage, script, onDocStructureChange, onScriptChange, onScriptReady]);
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, onDocStructureChange, onScriptChange, onScriptReady]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -456,6 +457,19 @@ export default function PdfDocumentaryTab({
                 {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Objectif :</label>
+              <input
+                type="number"
+                min={5000}
+                max={30000}
+                step={1000}
+                value={targetChars}
+                onChange={(e) => setTargetChars(Number(e.target.value))}
+                className="h-9 w-24 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+            </div>
             <Button variant="hero" disabled={generatingScript} onClick={() => runFullScriptGeneration()} className="min-h-[44px]">
               {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
             </Button>
@@ -619,9 +633,21 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
-                    <RotateCcw className="h-3 w-3" /> Régénérer
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={5000}
+                      max={30000}
+                      step={1000}
+                      value={targetChars}
+                      onChange={(e) => setTargetChars(Number(e.target.value))}
+                      className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+                    <Button variant="outline" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
+                      <RotateCcw className="h-3 w-3" /> Régénérer
+                    </Button>
+                  </div>
                 </div>
               )}
               {/* Versions */}
