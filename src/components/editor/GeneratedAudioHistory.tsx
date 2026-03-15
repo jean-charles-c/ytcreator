@@ -152,19 +152,19 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
       )}
 
       {entries.length > 0 && (
-        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+        <div className="space-y-2 sm:space-y-2 max-h-[250px] sm:max-h-[300px] overflow-y-auto pr-1">
           {entries.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center gap-2 rounded border border-border bg-background p-2.5 group hover:border-primary/30 transition-colors"
+              className="flex items-center gap-2 sm:gap-2 rounded border border-border bg-background p-3 sm:p-2.5 group hover:border-primary/30 transition-colors"
             >
               {/* Play button */}
               <button
                 onClick={() => handlePlay(entry)}
-                className="flex items-center justify-center h-8 w-8 rounded-full bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
+                className="flex items-center justify-center h-10 w-10 sm:h-8 sm:w-8 rounded-full bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
                 aria-label={`Lire ${entry.file_name}`}
               >
-                <Play className="h-3.5 w-3.5 ml-0.5" />
+                <Play className="h-4 w-4 sm:h-3.5 sm:w-3.5 ml-0.5" />
               </button>
 
               {/* Info */}
@@ -188,10 +188,10 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleDownload(entry)}
-                  className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  className="h-9 w-9 sm:h-7 sm:w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   aria-label={`Télécharger ${entry.file_name}`}
                   title="Télécharger"
                 >
@@ -200,7 +200,7 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
                 <button
                   onClick={() => handleDelete(entry)}
                   disabled={deletingId === entry.id}
-                  className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                  className="h-9 w-9 sm:h-7 sm:w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                   aria-label={`Supprimer ${entry.file_name}`}
                   title="Supprimer"
                 >
