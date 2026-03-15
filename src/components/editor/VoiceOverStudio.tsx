@@ -54,6 +54,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId 
             languageCode: data.language_code,
             voiceGender: data.voice_gender,
             voiceType: ["Standard", "Wavenet", "Neural2"].includes(data.style) ? data.style : "Standard",
+            style: data.style && STYLE_PRESETS[data.style] ? data.style : "neutral",
             speakingRate: data.speaking_rate,
           });
           setHasFavorite(true);

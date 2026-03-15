@@ -183,6 +183,17 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         </p>
       </div>
 
+      {/* Style / Tone */}
+      <div className="space-y-1.5">
+        <Label htmlFor="vo-style" className="text-xs text-muted-foreground">Tonalité</Label>
+        <Select value={settings.style} onValueChange={(v) => update({ style: v })}>
+          <SelectTrigger id="vo-style" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {STYLES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Speaking Rate */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
