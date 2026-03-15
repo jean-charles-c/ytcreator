@@ -446,18 +446,34 @@ export default function PdfDocumentaryTab({
                   </div>
                 ))}
               </div>
-              {/* Add new tension */}
+              {/* Add new tension via AI */}
               <button
-                onClick={() => {
-                  const title = prompt("Titre de la tension narrative :");
-                  if (!title?.trim()) return;
-                  const description = prompt("Description :") || "";
-                  const updated = { ...analysis, narrative_tensions: [...analysis.narrative_tensions, { title: title.trim(), description: description.trim() }] };
-                  onAnalysisChange(updated);
+                onClick={async () => {
+                  if (!extractedText || findingTension) return;
+                  setFindingTension(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("find-tension", {
+                      body: { text: extractedText, existing_tensions: analysis.narrative_tensions },
+                    });
+                    if (error || data?.error) {
+                      toast.error(data?.error || "Erreur lors de la recherche");
+                      console.error(error || data?.error);
+                    } else if (data?.tension) {
+                      const updated = { ...analysis, narrative_tensions: [...analysis.narrative_tensions, data.tension] };
+                      onAnalysisChange(updated);
+                      toast.success("Nouvelle tension ajoutée");
+                    }
+                  } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+                  setFindingTension(false);
                 }}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded border border-dashed border-border p-2 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-secondary/30 transition-colors"
+                disabled={findingTension || !extractedText}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded border border-dashed border-border p-2.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-secondary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="h-3.5 w-3.5" /> Ajouter une tension
+                {findingTension ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Recherche dans le document…</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5" /> Trouver une nouvelle tension</>
+                )}
               </button>
             </div>
           </CollapsibleContent>
