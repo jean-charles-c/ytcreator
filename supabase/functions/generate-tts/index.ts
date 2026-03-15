@@ -17,6 +17,8 @@ interface TTSRequest {
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
+  effectsProfileId?: string;
+  pauseBetweenParagraphs?: number; // ms
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
