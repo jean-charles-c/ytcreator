@@ -430,7 +430,7 @@ export default function PdfDocumentaryTab({
             {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
           </Button>
         )}
-        {analysis && !script && script === null && (
+        {analysis && !script && !generatingScript && (
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground whitespace-nowrap">Langue :</label>
