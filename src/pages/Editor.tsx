@@ -422,6 +422,17 @@ export default function Editor() {
     if (sceneId) {
       setRegeneratingSceneId(sceneId);
     } else {
+      // Save current shots as version before full regeneration
+      if (shots.length > 0) {
+        setShotVersions((prev) => {
+          const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+          if (prev.length === 0) {
+            return [{ id: nextId, shots: [...shots] }];
+          }
+          return [...prev, { id: nextId, shots: [...shots] }];
+        });
+      }
+      setPreviewShotVersionId(null);
       setGeneratingStoryboard(true);
       setActiveTab("storyboard");
     }
