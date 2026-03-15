@@ -41,7 +41,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             text: previewText,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
-            style: settings.style,
+            voiceName: getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType),
             speakingRate: settings.speakingRate,
           }),
         }

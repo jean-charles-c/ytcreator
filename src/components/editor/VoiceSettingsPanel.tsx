@@ -70,7 +70,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
             user_id: user.id,
             language_code: settings.languageCode,
             voice_gender: settings.voiceGender,
-            style: settings.style,
+            style: settings.voiceType,
             speaking_rate: settings.speakingRate,
             updated_at: new Date().toISOString(),
           },
