@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -429,12 +429,35 @@ export default function PdfDocumentaryTab({
               <div className="flex items-center gap-2 mb-3"><Swords className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Tensions narratives</h3></div>
               <div className="space-y-3">
                 {analysis.narrative_tensions.map((t, i) => (
-                  <div key={i} className="rounded border border-border bg-background p-3">
-                    <p className="text-sm font-medium text-foreground mb-1">{t.title}</p>
+                  <div key={i} className="group rounded border border-border bg-background p-3 relative">
+                    <button
+                      onClick={() => {
+                        const updated = { ...analysis, narrative_tensions: analysis.narrative_tensions.filter((_, idx) => idx !== i) };
+                        onAnalysisChange(updated);
+                      }}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded hover:bg-destructive/10"
+                      title="Retirer cette tension"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <p className="text-sm font-medium text-foreground mb-1 pr-6">{t.title}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
                   </div>
                 ))}
               </div>
+              {/* Add new tension */}
+              <button
+                onClick={() => {
+                  const title = prompt("Titre de la tension narrative :");
+                  if (!title?.trim()) return;
+                  const description = prompt("Description :") || "";
+                  const updated = { ...analysis, narrative_tensions: [...analysis.narrative_tensions, { title: title.trim(), description: description.trim() }] };
+                  onAnalysisChange(updated);
+                }}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded border border-dashed border-border p-2 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-secondary/30 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" /> Ajouter une tension
+              </button>
             </div>
           </CollapsibleContent>
         </Collapsible>
