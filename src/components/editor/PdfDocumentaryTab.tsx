@@ -201,17 +201,17 @@ export default function PdfDocumentaryTab({
 
       onScriptChange(full);
       if (isRegenerate) {
-        setScriptVersions((prev) => {
+        onScriptVersionsChange((prev) => {
           const baseVersions = prev.length > 0
             ? prev
             : (script && script.trim() !== "" ? [{ id: 1, content: script }] : []);
           const nextId = baseVersions.length > 0 ? Math.max(...baseVersions.map((v) => v.id)) + 1 : 1;
-          setCurrentVersionId(nextId);
+          onCurrentVersionIdChange(nextId);
           return [...baseVersions, { id: nextId, content: full }];
         });
       } else {
-        setScriptVersions([{ id: 1, content: full }]);
-        setCurrentVersionId(1);
+        onScriptVersionsChange([{ id: 1, content: full }]);
+        onCurrentVersionIdChange(1);
       }
       onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
