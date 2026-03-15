@@ -124,15 +124,25 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         </Select>
       </div>
 
-      {/* Style */}
+      {/* Voice Type */}
       <div className="space-y-1.5">
-        <Label htmlFor="vo-style" className="text-xs text-muted-foreground">Style</Label>
-        <Select value={settings.style} onValueChange={(v) => update({ style: v })}>
-          <SelectTrigger id="vo-style" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+        <Label htmlFor="vo-type" className="text-xs text-muted-foreground">Type de voix</Label>
+        <Select value={settings.voiceType} onValueChange={(v) => update({ voiceType: v })}>
+          <SelectTrigger id="vo-type" className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {STYLES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            {getAvailableVoiceTypes(settings.languageCode).map((t) => (
+              <SelectItem key={t.value} value={t.value}>
+                <span className="flex items-center gap-2">
+                  {t.label}
+                  <span className="text-[10px] text-muted-foreground">{t.desc}</span>
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        <p className="text-[10px] text-muted-foreground/60">
+          Voix : {getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType)}
+        </p>
       </div>
 
       {/* Speaking Rate */}
