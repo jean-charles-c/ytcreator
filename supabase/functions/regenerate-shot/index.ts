@@ -104,6 +104,7 @@ Images must be photorealistic historical documentary style. Never illustration o
 Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
 
 Sentence to illustrate: "${sourceText}"
+${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST also provide "source_sentence_fr": a faithful French translation of the sentence above.` : ""}
 
 PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
 - Previous shot type: ${shot.shot_type}
