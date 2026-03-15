@@ -19,6 +19,7 @@ interface TTSRequest {
   volumeGainDb?: number;
   mode?: "preview" | "full";
   projectId?: string;
+  customFileName?: string;
 }
 
 async function callGoogleTTS(
