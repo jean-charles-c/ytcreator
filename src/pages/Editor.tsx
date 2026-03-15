@@ -568,7 +568,7 @@ export default function Editor() {
       }
     } catch (e: any) {
       if (e?.name === "AbortError") {
-        toast.error("Timeout — relancez la génération (les scènes restantes seront générées)");
+        toast.info("Génération des shots annulée");
       } else {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
@@ -577,7 +577,13 @@ export default function Editor() {
 
     setGeneratingStoryboard(false);
     setRegeneratingSceneId(null);
+    storyAbortRef.current = null;
   }, [projectId, scenes]);
+
+  const stopStoryboard = useCallback(() => {
+    storyAbortRef.current?.abort();
+    storyAbortRef.current = null;
+  }, []);
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
