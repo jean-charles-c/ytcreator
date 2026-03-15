@@ -149,6 +149,7 @@ function SubCollapsible({
   );
 }
 
+function cleanScriptForExport(raw: string): string {
   return raw
     .split("\n")
     .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
