@@ -121,6 +121,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             style: settings.style,
             mode: "full",
             projectId,
+            customFileName: customFileName.trim() || undefined,
           }),
         }
       );
