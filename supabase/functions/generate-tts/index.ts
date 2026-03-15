@@ -12,10 +12,10 @@ interface TTSRequest {
   languageCode?: string;
   voiceGender?: "MALE" | "FEMALE" | "NEUTRAL";
   voiceName?: string;
+  voiceType?: string;
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
-  // Full generation params
   mode?: "preview" | "full";
   projectId?: string;
 }
