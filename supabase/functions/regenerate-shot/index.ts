@@ -39,14 +39,17 @@ serve(async (req) => {
       .single();
     if (shotErr || !shot) throw new Error("Shot not found");
 
-    // Verify ownership
+    // Verify ownership and get script_language
     const { data: project } = await supabase
       .from("projects")
-      .select("id")
+      .select("id, script_language")
       .eq("id", shot.project_id)
       .eq("user_id", user.id)
       .single();
     if (!project) throw new Error("Unauthorized");
+
+    const scriptLang = project.script_language || "fr";
+    const needsTranslation = scriptLang.toLowerCase() !== "fr";
 
     // Fetch the scene for context
     const { data: scene } = await supabase
