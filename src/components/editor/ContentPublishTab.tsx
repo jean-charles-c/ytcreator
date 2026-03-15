@@ -214,9 +214,10 @@ function splitIntoVoiceOverBlocks(raw: string): string[] {
   return blocks;
 }
 
-export default function ContentPublishTab({ generatedScript, seoResults }: ContentPublishTabProps) {
+export default function ContentPublishTab({ generatedScript, seoResults, scenes = [], shots = [] }: ContentPublishTabProps) {
   const [scriptOpen, setScriptOpen] = useState(false);
   const [seoOpen, setSeoOpen] = useState(false);
+  const [promptsOpen, setPromptsOpen] = useState(false);
 
   const titles = seoResults?.titles ?? null;
   const description = seoResults?.description ?? null;
@@ -224,7 +225,27 @@ export default function ContentPublishTab({ generatedScript, seoResults }: Conte
 
   const hasScript = !!generatedScript;
   const hasSeo = !!(titles || description || tags);
-  const hasContent = hasScript || hasSeo;
+
+  const promptsMd = useMemo(() => {
+    if (scenes.length === 0 || shots.length === 0) return "";
+    let md = "";
+    let shotIndex = 1;
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    sortedScenes.forEach((scene) => {
+      const sceneShots = shots
+        .filter((s) => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      sceneShots.forEach((shot) => {
+        const prompt = shot.prompt_export || shot.description;
+        md += `SHOT ${shotIndex}: ${prompt}\n\n`;
+        shotIndex++;
+      });
+    });
+    return md.trim();
+  }, [scenes, shots]);
+
+  const hasPrompts = promptsMd.length > 0;
+  const hasContent = hasScript || hasSeo || hasPrompts;
 
   const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
   const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
