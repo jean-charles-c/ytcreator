@@ -40,7 +40,7 @@ interface PlayerState {
   durationEstimate: number;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [generating, setGenerating] = useState(false);
