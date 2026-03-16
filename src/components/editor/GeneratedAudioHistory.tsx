@@ -20,8 +20,9 @@ interface AudioEntry {
 
 interface GeneratedAudioHistoryProps {
   projectId: string | null;
-  refreshKey: number; // increment to trigger refresh
+  refreshKey: number;
   onPlay: (audioUrl: string, fileName: string, duration: number) => void;
+  hideHeader?: boolean;
 }
 
 export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }: GeneratedAudioHistoryProps) {
