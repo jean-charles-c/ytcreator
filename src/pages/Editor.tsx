@@ -756,7 +756,7 @@ export default function Editor() {
             Authorization: `Bearer ${session?.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ shot_id: shotId, model: imageModel }),
+          body: JSON.stringify({ shot_id: shotId, model: imageModel, aspect_ratio: imageAspectRatio }),
         }
       );
       const data = await response.json();
