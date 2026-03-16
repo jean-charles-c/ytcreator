@@ -302,31 +302,44 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const [isScrubbing, setIsScrubbing] = useState(false);
   const wasPlayingRef = useRef(false);
 
-  const scrubFromEvent = useCallback((e: MouseEvent | React.MouseEvent) => {
+  const scrubFromPointer = useCallback((clientX: number) => {
     if (!scrubTargetRef.current) return;
     const rect = scrubTargetRef.current.getBoundingClientRect();
-    seekTo(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * audioDuration);
+    seekTo(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * audioDuration);
   }, [seekTo, audioDuration]);
 
-  const handleScrubStart = useCallback((e: React.MouseEvent) => {
+  const scrubFromEvent = useCallback((e: MouseEvent | React.MouseEvent) => {
+    scrubFromPointer(e.clientX);
+  }, [scrubFromPointer]);
+
+  const handleScrubStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     scrubTargetRef.current = e.currentTarget as HTMLDivElement;
     setIsScrubbing(true);
     wasPlayingRef.current = isPlaying;
     if (isPlaying) audioRef.current?.pause();
-    scrubFromEvent(e);
-  }, [isPlaying, scrubFromEvent]);
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    scrubFromPointer(clientX);
+  }, [isPlaying, scrubFromPointer]);
 
   useEffect(() => {
     if (!isScrubbing) return;
-    const onMove = (e: MouseEvent) => scrubFromEvent(e);
-    const onUp = () => {
+    const onMouseMove = (e: MouseEvent) => scrubFromPointer(e.clientX);
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); scrubFromPointer(e.touches[0].clientX); };
+    const onEnd = () => {
       setIsScrubbing(false);
       if (wasPlayingRef.current) { audioRef.current?.play(); setIsPlaying(true); }
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-  }, [isScrubbing, scrubFromEvent]);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onEnd);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onEnd);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [isScrubbing, scrubFromPointer]);
 
   const progressPct = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
