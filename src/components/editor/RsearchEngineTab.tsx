@@ -1,19 +1,25 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { Square, Loader2 } from "lucide-react";
+import { Square, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import ResearchQueryForm from "./ResearchQueryForm";
 import ResearchDossierView, { parseSections } from "./ResearchDossierView";
 import ResearchSectionNav from "./ResearchSectionNav";
 import PdfExportButton from "./PdfExportButton";
+import ResearchHistory from "./ResearchHistory";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
   projectTitle: string;
+  onSendToScriptCreator?: (content: string) => void;
 }
 
-export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEngineTabProps) {
+export default function RsearchEngineTab({ projectId, projectTitle, onSendToScriptCreator }: RsearchEngineTabProps) {
+  const { user } = useAuth();
   const [content, setContent] = useState("");
+  const [topic, setTopic] = useState("");
   const [generating, setGenerating] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>();
   const [progress, setProgress] = useState<{ current: number; total: number; section: string } | null>(null);
@@ -41,10 +47,24 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
     setGenerating(false);
   }, []);
 
+  const saveDossier = useCallback(async (topicText: string, angle?: string, depth?: string, instructions?: string, finalContent?: string) => {
+    if (!user || !projectId || !finalContent?.trim()) return;
+    await (supabase as any).from("research_dossiers").insert({
+      project_id: projectId,
+      user_id: user.id,
+      topic: topicText,
+      angle: angle || null,
+      depth: depth || "very deep",
+      instructions: instructions || null,
+      content: finalContent,
+    });
+  }, [user, projectId]);
+
   const handleGenerate = useCallback(
     async (data: { topic: string; angle?: string; depth: string; instructions?: string }) => {
       setGenerating(true);
       setContent("");
+      setTopic(data.topic);
       setCurrentSection(undefined);
       setProgress(null);
       sectionRefs.current = {};
@@ -112,6 +132,8 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
         }
 
         toast.success("Dossier de recherche généré avec succès");
+        // Save to history
+        await saveDossier(data.topic, data.angle, data.depth, data.instructions, accumulated);
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération arrêtée");
@@ -124,8 +146,23 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
         abortRef.current = null;
       }
     },
-    []
+    [saveDossier]
   );
+
+  const handleLoadFromHistory = useCallback((dossier: { topic: string; content: string; angle?: string | null }) => {
+    setContent(dossier.content);
+    setTopic(dossier.topic);
+    setCurrentSection(undefined);
+    sectionRefs.current = {};
+  }, []);
+
+  const handleSendToScriptCreator = useCallback(() => {
+    if (!content.trim() || !onSendToScriptCreator) return;
+    // Strip section markers for clean text
+    const cleanContent = content.replace(/\[SECTION:[^\]]+\]/g, "").trim();
+    onSendToScriptCreator(cleanContent);
+    toast.success("Dossier envoyé dans ScriptCreator");
+  }, [content, onSendToScriptCreator]);
 
   const hasContent = content.trim().length > 0;
 
@@ -141,6 +178,7 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
       {!hasContent && !generating && (
         <div className="max-w-lg">
           <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
+          <ResearchHistory projectId={projectId} onLoad={handleLoadFromHistory} />
         </div>
       )}
 
@@ -159,12 +197,23 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
                   contentRef={exportRef}
                   fileName={`recherche_${projectTitle.replace(/\s+/g, "_")}`}
                 />
+                {onSendToScriptCreator && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full min-h-[36px] text-xs"
+                    onClick={handleSendToScriptCreator}
+                  >
+                    <Send className="h-3.5 w-3.5" /> Envoyer dans ScriptCreator
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   className="w-full min-h-[36px] text-xs"
                   onClick={() => {
                     setContent("");
+                    setTopic("");
                     setCurrentSection(undefined);
                   }}
                 >
@@ -196,12 +245,23 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
                     contentRef={exportRef}
                     fileName={`recherche_${projectTitle.replace(/\s+/g, "_")}`}
                   />
+                  {onSendToScriptCreator && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[36px]"
+                      onClick={handleSendToScriptCreator}
+                    >
+                      <Send className="h-3.5 w-3.5" /> ScriptCreator
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
                     className="min-h-[36px]"
                     onClick={() => {
                       setContent("");
+                      setTopic("");
                       setCurrentSection(undefined);
                     }}
                   >
@@ -226,6 +286,7 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
               <ResearchDossierView
                 ref={exportRef}
                 content={content}
+                topic={topic}
                 sectionRefs={sectionRefs}
               />
             </div>

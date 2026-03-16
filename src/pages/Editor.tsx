@@ -976,7 +976,15 @@ export default function Editor() {
         {/* RsearchEngine tab — kept mounted to preserve state */}
         {!showSetup && (
           <div className={activeTab === "rsearch" ? "" : "hidden"}>
-            <RsearchEngineTab projectId={projectId} projectTitle={title} />
+            <RsearchEngineTab
+              projectId={projectId}
+              projectTitle={title}
+              onSendToScriptCreator={(text) => {
+                setNarration(text);
+                setPdfExtractedText(text);
+                setActiveTab("script-creator");
+              }}
+            />
           </div>
         )}
 

@@ -47,6 +47,19 @@ export default function ResearchQueryForm({ onSubmit, generating }: ResearchQuer
         />
       </div>
 
+      {/* Submit button right after topic */}
+      <Button type="submit" variant="hero" disabled={generating || !topic.trim()} className="w-full min-h-[44px]">
+        {generating ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...
+          </>
+        ) : (
+          <>
+            <Search className="h-4 w-4" /> Lancer la recherche
+          </>
+        )}
+      </Button>
+
       <div>
         <Label className="text-xs text-muted-foreground mb-1.5 block">Angle de recherche</Label>
         <Input
@@ -85,18 +98,6 @@ export default function ResearchQueryForm({ onSubmit, generating }: ResearchQuer
           className="bg-card resize-none"
         />
       </div>
-
-      <Button type="submit" variant="hero" disabled={generating || !topic.trim()} className="w-full min-h-[44px]">
-        {generating ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...
-          </>
-        ) : (
-          <>
-            <Search className="h-4 w-4" /> Lancer la recherche
-          </>
-        )}
-      </Button>
     </form>
   );
 }
