@@ -161,6 +161,8 @@ export async function exportTimelineToMp4(
   onProgress: (p: ExportProgress) => void,
   options: Partial<ExportOptions> = {}
 ): Promise<Blob> {
+  abortFlag = false;
+  const opts = { ...DEFAULT_OPTIONS, ...options };
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const { segments } = timeline.videoTrack;
 
