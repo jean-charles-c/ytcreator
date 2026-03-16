@@ -232,9 +232,10 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const hasScript = !!generatedScript;
   const hasSeo = !!(titles || description || tags);
 
-  const promptsMd = useMemo(() => {
-    if (scenes.length === 0 || shots.length === 0) return "";
-    let md = "";
+  const { promptsNumbered, promptsRaw } = useMemo(() => {
+    if (scenes.length === 0 || shots.length === 0) return { promptsNumbered: "", promptsRaw: "" };
+    let numbered = "";
+    let raw = "";
     let shotIndex = 1;
     const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
     sortedScenes.forEach((scene) => {
@@ -243,11 +244,12 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
         .sort((a, b) => a.shot_order - b.shot_order);
       sceneShots.forEach((shot) => {
         const prompt = shot.prompt_export || shot.description;
-        md += `SHOT ${shotIndex}: ${prompt}\n\n`;
+        numbered += `SHOT ${shotIndex}: ${prompt}\n\n`;
+        raw += `${prompt}\n\n`;
         shotIndex++;
       });
     });
-    return md.trim();
+    return { promptsNumbered: numbered.trim(), promptsRaw: raw.trim() };
   }, [scenes, shots]);
 
   const hasPrompts = promptsMd.length > 0;
