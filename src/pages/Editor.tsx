@@ -35,8 +35,9 @@ import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
 import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
+import VideoEditTab from "@/components/editor/VideoEditTab";
 
-type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "export";
+type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
@@ -48,6 +49,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "seo", label: "SEO", icon: Youtube },
   { key: "cp", label: "CP", icon: Save },
   { key: "vo", label: "VO", icon: Mic },
+  { key: "videoedit", label: "VidéoEdit", icon: Film },
   { key: "export", label: "Export", icon: Download },
 ];
 
@@ -1195,7 +1197,15 @@ export default function Editor() {
           />
         )}
 
-        {/* Segmentation View */}
+        {/* VidéoEdit tab */}
+        {!showSetup && activeTab === "videoedit" && (
+          <VideoEditTab
+            projectId={projectId}
+            scenes={scenes}
+            shots={shots}
+          />
+        )}
+
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
