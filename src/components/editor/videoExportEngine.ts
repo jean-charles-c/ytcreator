@@ -163,7 +163,6 @@ export async function exportTimelineToMp4(
 ): Promise<Blob> {
   abortFlag = false;
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  const opts = { ...DEFAULT_OPTIONS, ...options };
   const { segments } = timeline.videoTrack;
 
   const ffmpeg = await getFFmpeg(onProgress);
