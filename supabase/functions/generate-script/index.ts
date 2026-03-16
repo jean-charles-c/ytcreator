@@ -22,13 +22,32 @@ function encodeSseData(data: string): Uint8Array {
   return sseEncoder.encode(`data: ${data}\n\n`);
 }
 
-function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
+const NARRATIVE_STYLE_INSTRUCTIONS: Record<string, string> = {
+  storytelling: "Write as a captivating storyteller with a classic narrative arc: setup, rising tension, climax, resolution. Use vivid anecdotes, relatable characters, and emotional beats to pull the viewer in.",
+  pedagogical: "Write as an expert educator. Prioritize clarity and structured explanation. Break complex ideas into digestible steps. Use analogies and examples to ensure understanding.",
+  conversational: "Write in a natural, relaxed tone — as if chatting with a friend over coffee. Use informal language, direct address ('you'), and spontaneous-sounding reactions.",
+  dramatic: "Write with dramatic tension and suspense. Build mystery progressively, withhold key information strategically, and create reveals that reframe everything the viewer thought they knew.",
+  punchy: "Write with short, punchy sentences. High impact, fast rhythm. Cut every unnecessary word. Each sentence hits like a headline.",
+  humorous: "Write with a light, witty tone. Use unexpected analogies, playful observations, and well-timed humor. Stay informative but make the viewer smile.",
+  documentary: "Write in an immersive, cinematic documentary style. Rich visual descriptions, atmospheric scene-setting, and a sense of 'being there'. Let the viewer see, hear, and feel the story.",
+  journalistic: "Write in a factual, investigative journalism style. Lead with the most newsworthy elements. Be precise, cite specifics, and maintain objectivity while keeping the narrative compelling.",
+  motivational: "Write with positive energy and inspiration. Build toward empowering conclusions. Use uplifting language, calls to action, and moments that make the viewer feel they can change things.",
+  analytical: "Write with depth and structured argumentation. Present multiple perspectives, weigh evidence carefully, and guide the viewer through a rigorous intellectual journey.",
+};
+
+function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number, narrativeStyle: string): string {
   const wordTarget = Math.round(charTarget / 5.5);
   const wordMin = Math.round(charMin / 5.5);
   const wordMax = Math.round(charMax / 5.5);
   const paragraphEstimate = Math.round(charTarget / 130);
 
-  return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
+  const styleInstruction = NARRATIVE_STYLE_INSTRUCTIONS[narrativeStyle] || NARRATIVE_STYLE_INSTRUCTIONS["documentary"];
+
+  return `You are an expert YouTube documentary narrator.
+
+NARRATIVE STYLE: ${styleInstruction}
+
+Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
 
@@ -422,7 +441,7 @@ serve(async (req) => {
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
             messages: [
-              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget) },
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle) },
               { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
             ],
             stream: true,
