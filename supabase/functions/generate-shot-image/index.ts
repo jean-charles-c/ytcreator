@@ -77,7 +77,7 @@ serve(async (req) => {
           messages: [
             {
               role: "user",
-              content: prompt,
+              content: fullPrompt,
             },
           ],
           modalities: ["image", "text"],
