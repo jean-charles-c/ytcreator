@@ -973,6 +973,13 @@ export default function Editor() {
 
         {/* ScriptInput tab removed — now integrated into ScriptCreator */}
 
+        {/* RsearchEngine tab — kept mounted to preserve state */}
+        {!showSetup && (
+          <div className={activeTab === "rsearch" ? "" : "hidden"}>
+            <RsearchEngineTab projectId={projectId} projectTitle={title} />
+          </div>
+        )}
+
         {/* ScriptCreator tab — kept mounted to preserve state */}
         {!showSetup && (
           <div className={activeTab === "script-creator" ? "" : "hidden"}>
