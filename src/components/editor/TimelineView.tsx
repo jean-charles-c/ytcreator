@@ -3,7 +3,6 @@ import {
   Film,
   ImageIcon,
   Volume2,
-  Layers,
   Play,
   Pause,
   SkipBack,
