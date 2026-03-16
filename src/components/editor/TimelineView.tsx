@@ -465,12 +465,12 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             {/* Video track */}
             <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
               <div className="flex h-full">
-                {segments.map((seg) => {
+                {segments.map((seg, idx) => {
                   const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
                   const active = seg.id === activeSegment?.id;
                   return (
-                    <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${seg.shotOrder}`}>
-                      {seg.imageUrl ? <img src={seg.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-[7px] text-muted-foreground">{seg.shotOrder}</span></div>}
+                    <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${idx + 1}`}>
+                      {seg.imageUrl ? <img src={seg.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-[7px] text-muted-foreground">{idx + 1}</span></div>}
                     </div>
                   );
                 })}
