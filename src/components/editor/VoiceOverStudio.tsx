@@ -233,11 +233,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 <span className="flex items-center gap-2 text-sm font-semibold font-display">
                   <Settings2 className="h-4 w-4 text-primary" />
                   Paramètres de voix
-                  {hasFavorite && <span className="text-[10px] text-primary ml-1">★ Favori</span>}
                 </span>
               </AccordionTrigger>
               <AccordionContent>
-                <VoiceSettingsPanel settings={settings} onChange={setSettings} hasFavorite={hasFavorite} hideHeader />
+                <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader />
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="preview" className="border rounded-lg border-border bg-card px-4 mt-3">
