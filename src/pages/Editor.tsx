@@ -762,7 +762,7 @@ export default function Editor() {
       const data = await response.json();
       if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
       if (data.image_url) {
-        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url } as any : s)));
+        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url, generation_cost: data.generation_cost ?? s.generation_cost } : s)));
         return data.image_url;
       }
       return null;
