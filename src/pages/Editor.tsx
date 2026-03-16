@@ -1565,6 +1565,7 @@ export default function Editor() {
             onImageModelChange={setImageModel}
             onRegenerateShot={handleShotRegenerate}
             onGenerateImage={handleGenerateShotImage}
+            totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
           />
           </>
         )}
