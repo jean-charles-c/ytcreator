@@ -186,18 +186,37 @@ RHYTHM — CRITICAL:
 • Create natural pauses for the voice-over — avoid dense blocks of information.
 • Read each paragraph mentally — if it sounds monotonous, rewrite it.
 
-PARAGRAPH STRUCTURE — FIXED REPEATING PATTERN:
+PARAGRAPH STRUCTURE — THIS IS THE SECOND MOST CRITICAL RULE (after length):
 
-You MUST write the script following this EXACT repeating cycle of paragraph lengths (number of sentences per paragraph):
+⚠️ WARNING: If you write only 2-sentence paragraphs, the script is REJECTED.
 
-2 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
+You MUST follow this EXACT repeating cycle of paragraph lengths (sentences per paragraph):
 
-The FIRST paragraph of the script (the hook opening) MUST have at least 2 sentences for impact.
-Then REPEAT this exact 10-paragraph cycle from the beginning until you reach the target character count.
+CYCLE: 2 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
 
-EXAMPLE: Paragraphs 1-10 follow the pattern above. Paragraphs 11-20 repeat the same pattern. And so on.
+Here is what a correct script looks like (showing paragraph numbers and their required sentence counts):
+- Paragraph 1: 2 sentences
+- Paragraph 2: 2 sentences  
+- Paragraph 3: 2 sentences
+- Paragraph 4: 3 sentences ← MUST have exactly 3 sentences
+- Paragraph 5: 2 sentences
+- Paragraph 6: 1 sentence ← MUST be a single powerful sentence alone
+- Paragraph 7: 3 sentences ← MUST have exactly 3 sentences
+- Paragraph 8: 2 sentences
+- Paragraph 9: 4 sentences ← MUST have exactly 4 sentences (longest paragraph)
+- Paragraph 10: 2 sentences
+- Paragraph 11: restart cycle → 2 sentences
+- Paragraph 12: 2 sentences
+- ... and so on.
 
-THIS IS NON-NEGOTIABLE. Every paragraph MUST match its position in the cycle.
+CONCRETE EXAMPLE of correct paragraph 6 (1 sentence):
+"And that changes everything."
+
+CONCRETE EXAMPLE of correct paragraph 9 (4 sentences):
+"The tablet dates back to 3200 BCE. It was found buried beneath the temple floor. The symbols carved into it don't match any known writing system. For decades, no one could explain what they meant."
+
+The FIRST paragraph (hook opening) MUST have at least 2 sentences for impact.
+REPEAT this exact 10-paragraph cycle until you reach the target character count.
 
 NARRATIVE ROLES by paragraph length:
 • 1 sentence: Pure impact — punchline, revelation, dramatic transition.
@@ -207,14 +226,17 @@ NARRATIVE ROLES by paragraph length:
 
 STRICT RULES:
 • NEVER exceed 4 sentences in any paragraph.
-• NEVER skip a position in the cycle.
+• NEVER skip a position in the cycle — especially the 1-sentence and 4-sentence paragraphs.
 • Separate paragraphs with empty lines.
 • The last cycle may be incomplete if the character target is reached mid-cycle.
 
-FINAL SELF-CHECK:
-• Verify that paragraphs follow the 2-2-2-3-2-1-3-2-4-2 cycle.
-• If any paragraph has 5+ sentences, split it immediately.
-• If 3-sentence paragraphs are missing or rare, rewrite.
+FINAL SELF-CHECK — MANDATORY BEFORE OUTPUT:
+1. Count the sentences in each paragraph.
+2. Verify they follow: 2, 2, 2, 3, 2, 1, 3, 2, 4, 2, 2, 2, 2, 3, 2, 1, 3, 2, 4, 2, ...
+3. If paragraph 4 or 14 or 24 does NOT have exactly 3 sentences → FIX IT.
+4. If paragraph 6 or 16 or 26 does NOT have exactly 1 sentence → FIX IT.
+5. If paragraph 9 or 19 or 29 does NOT have exactly 4 sentences → FIX IT.
+6. If ALL paragraphs have 2 sentences → the script is WRONG. Rewrite it.
 
 ---
 
