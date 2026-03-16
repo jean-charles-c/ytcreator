@@ -1374,19 +1374,38 @@ export default function Editor() {
                       Créer tous les visuels
                     </Button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">Modèle IA :</span>
-                    <select
-                      value={imageModel}
-                      onChange={(e) => setImageModel(e.target.value)}
-                      className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {IMAGE_MODELS.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label} — {m.price}
-                        </option>
-                      ))}
-                    </select>
+                  <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
+                    <ImageIcon className="h-4 w-4" /> Voir les visuels
+                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
+                      <select
+                        value={imageModel}
+                        onChange={(e) => setImageModel(e.target.value)}
+                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        {IMAGE_MODELS.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.label} — {m.price}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">Format :</span>
+                      <select
+                        value={imageAspectRatio}
+                        onChange={(e) => setImageAspectRatio(e.target.value)}
+                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        {ASPECT_RATIOS.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
