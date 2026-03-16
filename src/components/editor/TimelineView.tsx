@@ -297,7 +297,6 @@ export default function TimelineView({ timeline }: TimelineViewProps) {
         <div className="px-3 py-2 space-y-2">
           {/* Progress bar (scrubable) */}
           <div
-            ref={timelineBarRef}
             className="relative h-2 rounded-full bg-secondary cursor-pointer group"
             onMouseDown={handleScrubStart}
           >
