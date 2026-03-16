@@ -1561,6 +1561,7 @@ export default function Editor() {
             onRegenerateShot={handleShotRegenerate}
             onGenerateImage={handleGenerateShotImage}
           />
+          </>
         )}
 
         {/* Export tab */}
