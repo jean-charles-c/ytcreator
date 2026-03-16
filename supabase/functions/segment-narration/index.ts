@@ -422,7 +422,7 @@ Return data via the segment_narration tool call only.`,
     // Delete existing scenes for this project
     await supabase.from("scenes").delete().eq("project_id", project_id);
 
-    // Insert new scenes
+    // Insert new scenes with all enriched fields
     const sceneRows = scenes.map((s, i) => ({
       project_id,
       scene_order: i + 1,
@@ -430,6 +430,11 @@ Return data via the segment_narration tool call only.`,
       source_text: s.source_text,
       source_text_fr: s.source_text_fr || null,
       visual_intention: s.visual_intention,
+      narrative_action: s.narrative_action,
+      characters: s.characters,
+      location: s.location,
+      scene_type: s.scene_type,
+      continuity: s.continuity,
     }));
 
     const { error: insertErr } = await supabase.from("scenes").insert(sceneRows);
