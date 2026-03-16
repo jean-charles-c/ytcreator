@@ -391,7 +391,7 @@ serve(async (req) => {
       }, 15000);
 
       try {
-        const { analysis, structure, text, language, targetChars } = await req.json();
+        const { analysis, structure, text, language, targetChars, narrativeStyle } = await req.json();
         if (!analysis) {
           controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
           controller.close();

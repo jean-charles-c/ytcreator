@@ -188,6 +188,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               text: params.extractedText,
               language: params.scriptLanguage,
               targetChars: params.targetChars,
+              narrativeStyle: params.narrativeStyle,
             }),
             signal: ac.signal,
           }
