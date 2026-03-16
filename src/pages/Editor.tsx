@@ -90,6 +90,7 @@ export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { startSegmentation: bgStartSegmentation, startStoryboard: bgStartStoryboard, getTask, subscribe, stopTask } = useBackgroundTasks();
   const isNew = id === "new";
 
   const [title, setTitle] = useState("");
@@ -104,12 +105,13 @@ export default function Editor() {
 
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
-  const [segmenting, setSegmenting] = useState(false);
-  const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const segAbortRef = useRef<AbortController | null>(null);
   const storyAbortRef = useRef<AbortController | null>(null);
+
+  // Derive loading states from background tasks
+  const segmenting = projectId ? getTask(projectId, "segmentation")?.status === "running" : false;
+  const generatingStoryboard = projectId ? getTask(projectId, "storyboard")?.status === "running" : false;
 
   // Versioning for segmentation
   const [sceneVersions, setSceneVersions] = useState<{ id: number; scenes: Scene[] }[]>([]);
