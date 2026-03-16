@@ -541,7 +541,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
                   Régénérer
                 </Button>
               </div>
-              <TimelineView timeline={timeline} onTimelineChange={setTimeline} />
+              <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} />
               <ExportManager timeline={timeline} />
             </>
           )}
