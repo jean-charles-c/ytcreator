@@ -1506,6 +1506,7 @@ export default function Editor() {
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts, disabled: scenes.length === 0 },
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping, disabled: scenes.length === 0 },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation, disabled: scenes.length === 0 },
+                { label: "Visuels (.zip)", desc: "Télécharger tous les visuels générés", generate: downloadAllImages, disabled: !shots.some((s: any) => s.image_url) },
               ].map((exp, i) => (
                 <div key={exp.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
