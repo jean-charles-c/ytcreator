@@ -130,7 +130,7 @@ const EFFECTS_PROFILES = [
 
 const GENDER_LABELS: Record<string, string> = { MALE: "♂", FEMALE: "♀", NEUTRAL: "◎" };
 
-export default function VoiceSettingsPanel({ settings, onChange, hideHeader }: VoiceSettingsPanelProps) {
+export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onActiveProfileChange }: VoiceSettingsPanelProps) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
