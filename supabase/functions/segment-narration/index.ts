@@ -1,6 +1,80 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * SEGMENTATION PIPELINE — SceneBlock JSON Contract v2
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * Each SceneBlock produced by the AI MUST conform to this schema:
+ *
+ * {
+ *   title:             string   — Short descriptive title (max 10 words)
+ *   source_text:       string   — Faithful verbatim extract from the original narration
+ *   source_text_fr?:   string   — French translation (required when script language ≠ "fr")
+ *   visual_intention:  string   — Topic summary in FRENCH (what the scene is about)
+ *   narrative_action:  string   — The core narrative action or beat of this scene
+ *   characters:        string   — Characters/subjects present (comma-separated, or "none")
+ *   location:          string   — Setting/place described (or "unspecified")
+ *   scene_type:        string   — One of: "action" | "description" | "dialogue" | "transition" | "exposition"
+ *   continuity:        string   — Link to previous scene: "new" (new thread), "continues" (same action), "develops" (same topic, new angle)
+ * }
+ *
+ * SEGMENTATION RULES (Narrative-Action-Based):
+ * ─────────────────────────────────────────────
+ * R1: New scene when a NEW ACTION begins (physical or mental)
+ * R2: New scene when the FOCUS/SUBJECT changes
+ * R3: New scene when the LOCATION changes
+ * R4: New scene when TIME shifts (ellipsis, flashback, flash-forward)
+ * R5: New scene when the NARRATIVE INTENT changes (inform→move, expose→argue)
+ * R6: SAME SCENE if multiple sentences describe ONE continuous action
+ * R7: NO micro-scenes — a single sentence is only a scene if it's an autonomous narrative beat
+ *
+ * A scene MAY contain 1, 2, 3, 5, or more sentences if they belong to the same continuous action.
+ * The number of sentences is NOT a segmentation criterion.
+ * Target: ~30-50% fewer scenes than the previous word-count-based pipeline.
+ *
+ * COVERAGE: The CoverageValidation (isCompleteSegmentation) is unchanged.
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+const VALID_SCENE_TYPES = ["action", "description", "dialogue", "transition", "exposition"];
+const VALID_CONTINUITY = ["new", "continues", "develops"];
+
+/**
+ * Validates and normalizes a raw SceneBlock from AI output.
+ * Ensures every field exists with a sensible default so the JSON is always stable.
+ */
+function validateSceneBlock(raw: Record<string, unknown>, index: number): {
+  title: string;
+  source_text: string;
+  source_text_fr?: string;
+  visual_intention: string;
+  narrative_action: string;
+  characters: string;
+  location: string;
+  scene_type: string;
+  continuity: string;
+} {
+  const str = (v: unknown, fallback: string) =>
+    typeof v === "string" && v.trim() ? v.trim() : fallback;
+
+  const scene_type_raw = str(raw.scene_type, "description").toLowerCase();
+  const continuity_raw = str(raw.continuity, index === 0 ? "new" : "continues").toLowerCase();
+
+  return {
+    title: str(raw.title, `Scene ${index + 1}`),
+    source_text: str(raw.source_text, ""),
+    ...(raw.source_text_fr ? { source_text_fr: str(raw.source_text_fr, "") } : {}),
+    visual_intention: str(raw.visual_intention, "Non spécifié"),
+    narrative_action: str(raw.narrative_action, "Non spécifié"),
+    characters: str(raw.characters, "none"),
+    location: str(raw.location, "unspecified"),
+    scene_type: VALID_SCENE_TYPES.includes(scene_type_raw) ? scene_type_raw : "description",
+    continuity: VALID_CONTINUITY.includes(continuity_raw) ? continuity_raw : (index === 0 ? "new" : "continues"),
+  };
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
