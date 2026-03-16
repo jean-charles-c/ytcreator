@@ -28,7 +28,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { shot_id, model } = await req.json();
+    const { shot_id, model, aspect_ratio } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
 
     const ALLOWED_MODELS = [
@@ -37,6 +37,7 @@ serve(async (req) => {
       "google/gemini-3-pro-image-preview",
     ];
     const selectedModel = ALLOWED_MODELS.includes(model) ? model : "google/gemini-2.5-flash-image";
+    const selectedAspectRatio = ["16:9", "9:16", "1:1", "4:3", "3:2", "3:4", "2:3"].includes(aspect_ratio) ? aspect_ratio : "16:9";
 
     // Fetch the shot
     const { data: shot, error: shotErr } = await supabase
@@ -57,6 +58,7 @@ serve(async (req) => {
 
     const prompt = shot.prompt_export || shot.description;
     if (!prompt) throw new Error("No prompt available for this shot");
+    const fullPrompt = `Generate an image in ${selectedAspectRatio} aspect ratio. ${prompt}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -75,7 +77,7 @@ serve(async (req) => {
           messages: [
             {
               role: "user",
-              content: prompt,
+              content: fullPrompt,
             },
           ],
           modalities: ["image", "text"],

@@ -29,6 +29,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
+import VisualGallery from "@/components/editor/VisualGallery";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
@@ -726,11 +727,21 @@ export default function Editor() {
   const [generatingAllImages, setGeneratingAllImages] = useState(false);
   const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
+  const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   const IMAGE_MODELS = [
     { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "$" },
     { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "$$" },
     { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "$$$" },
+  ];
+
+  const ASPECT_RATIOS = [
+    { value: "16:9", label: "16:9 (Paysage)" },
+    { value: "9:16", label: "9:16 (Portrait)" },
+    { value: "1:1", label: "1:1 (Carré)" },
+    { value: "4:3", label: "4:3 (Standard)" },
+    { value: "3:2", label: "3:2 (Photo)" },
   ];
 
   const generateShotImage = async (shotId: string): Promise<string | null> => {
@@ -745,7 +756,7 @@ export default function Editor() {
             Authorization: `Bearer ${session?.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ shot_id: shotId, model: imageModel }),
+          body: JSON.stringify({ shot_id: shotId, model: imageModel, aspect_ratio: imageAspectRatio }),
         }
       );
       const data = await response.json();
@@ -1333,6 +1344,7 @@ export default function Editor() {
 
         {/* Storyboard View */}
         {!showSetup && activeTab === "storyboard" && (
+          <>
           <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-2">
               <div>
@@ -1363,19 +1375,38 @@ export default function Editor() {
                       Créer tous les visuels
                     </Button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">Modèle IA :</span>
-                    <select
-                      value={imageModel}
-                      onChange={(e) => setImageModel(e.target.value)}
-                      className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {IMAGE_MODELS.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label} — {m.price}
-                        </option>
-                      ))}
-                    </select>
+                  <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
+                    <ImageIcon className="h-4 w-4" /> Voir les visuels
+                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
+                      <select
+                        value={imageModel}
+                        onChange={(e) => setImageModel(e.target.value)}
+                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        {IMAGE_MODELS.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.label} — {m.price}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">Format :</span>
+                      <select
+                        value={imageAspectRatio}
+                        onChange={(e) => setImageAspectRatio(e.target.value)}
+                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        {ASPECT_RATIOS.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1519,6 +1550,18 @@ export default function Editor() {
               </>
             )}
           </div>
+          <VisualGallery
+            open={galleryOpen}
+            onOpenChange={setGalleryOpen}
+            shots={shots}
+            scenes={scenes}
+            imageModels={IMAGE_MODELS}
+            imageModel={imageModel}
+            onImageModelChange={setImageModel}
+            onRegenerateShot={handleShotRegenerate}
+            onGenerateImage={handleGenerateShotImage}
+          />
+          </>
         )}
 
         {/* Export tab */}
