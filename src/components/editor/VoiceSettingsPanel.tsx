@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,14 +17,15 @@ export interface VoiceSettings {
   languageCode: string;
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL";
   voiceType: string; // "Standard" | "Wavenet" | "Neural2"
+  voiceName: string; // explicit voice name e.g. "fr-FR-Wavenet-A", empty = auto
   style: string; // tone preset
   speakingRate: number;
   volumeGainDb: number;
   effectsProfileId: string;
-  pauseBetweenParagraphs: number; // ms, 0 = disabled
-  pauseAfterSentences: number; // ms, 0 = disabled
-  sentenceStartBoost: number; // %, 0 = disabled, e.g. 10 = +10% speed on first words
-  sentenceEndSlow: number; // %, 0 = disabled, e.g. 10 = -10% speed on last words
+  pauseBetweenParagraphs: number;
+  pauseAfterSentences: number;
+  sentenceStartBoost: number;
+  sentenceEndSlow: number;
 }
 
 // Style presets → pitch + speakingRate adjustments sent to Google TTS
@@ -43,30 +44,35 @@ const VOICE_TYPES = [
   { value: "Neural2", label: "Neural2", desc: "Très naturelle — premium" },
 ];
 
-// Voice name letter mapping per language+gender (most reliable voices)
-const VOICE_LETTER_MAP: Record<string, Record<string, string>> = {
-  "fr-FR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
-  "en-US": { FEMALE: "C", MALE: "D", NEUTRAL: "C" },
-  "en-GB": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
-  "es-ES": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
-  "de-DE": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
-  "it-IT": { FEMALE: "A", MALE: "C", NEUTRAL: "A" },
-  "pt-BR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
-  "ja-JP": { FEMALE: "A", MALE: "C", NEUTRAL: "A" },
-  "ar-XA": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
-};
-
-// Languages that support Neural2
 const NEURAL2_LANGS = new Set(["fr-FR", "en-US", "en-GB", "de-DE", "it-IT", "pt-BR", "ja-JP", "es-US"]);
 
 export function getVoiceName(lang: string, gender: string, voiceType: string): string {
+  // Kept for backward compat — returns a default name
+  const VOICE_LETTER_MAP: Record<string, Record<string, string>> = {
+    "fr-FR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "en-US": { FEMALE: "C", MALE: "D", NEUTRAL: "C" },
+    "en-GB": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "es-ES": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "de-DE": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "it-IT": { FEMALE: "A", MALE: "C", NEUTRAL: "A" },
+    "pt-BR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "ja-JP": { FEMALE: "A", MALE: "C", NEUTRAL: "A" },
+    "ar-XA": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+  };
   const letter = VOICE_LETTER_MAP[lang]?.[gender] || "A";
   return `${lang}-${voiceType}-${letter}`;
 }
 
 export function getAvailableVoiceTypes(lang: string) {
-  const types = VOICE_TYPES.filter(t => t.value !== "Neural2" || NEURAL2_LANGS.has(lang));
-  return types;
+  return VOICE_TYPES.filter(t => t.value !== "Neural2" || NEURAL2_LANGS.has(lang));
+}
+
+interface VoiceInfo {
+  name: string;
+  gender: string;
+  type: string;
+  letter: string;
+  sampleRate: number;
 }
 
 interface VoiceSettingsPanelProps {
@@ -106,9 +112,56 @@ const EFFECTS_PROFILES = [
   { value: "large-automotive-class-device", label: "🚗 Système auto" },
 ];
 
+const GENDER_LABELS: Record<string, string> = { MALE: "♂", FEMALE: "♀", NEUTRAL: "◎" };
+
 export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
   const [savingFavorite, setSavingFavorite] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<VoiceInfo[]>([]);
+  const [loadingVoices, setLoadingVoices] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
+
+  // Fetch voices when language changes
+  const fetchVoices = useCallback(async (lang: string) => {
+    setLoadingVoices(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-voices`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ languageCode: lang }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch voices");
+      const data = await response.json();
+      setAvailableVoices(data.voices ?? []);
+    } catch (e) {
+      console.error("Fetch voices error:", e);
+      setAvailableVoices([]);
+    } finally {
+      setLoadingVoices(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVoices(settings.languageCode);
+  }, [settings.languageCode, fetchVoices]);
+
+  // Filter voices for current type + gender
+  const filteredVoices = availableVoices.filter((v) => {
+    const matchType = v.type.toLowerCase() === settings.voiceType.toLowerCase();
+    const matchGender = v.gender === settings.voiceGender;
+    return matchType && matchGender;
+  });
+
+  // If all genders shown when no match for current gender
+  const voicesForDropdown = filteredVoices.length > 0
+    ? filteredVoices
+    : availableVoices.filter((v) => v.type.toLowerCase() === settings.voiceType.toLowerCase());
 
   const handleSaveFavorite = async () => {
     setSavingFavorite(true);
@@ -116,7 +169,6 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Non connecté"); return; }
 
-      // Upsert favorite (unique on user_id)
       const { error } = await (supabase as any)
         .from("favorite_voice_profile")
         .upsert(
@@ -165,7 +217,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
       {/* Language */}
       <div className="space-y-1.5">
         <Label htmlFor="vo-lang" className="text-xs text-muted-foreground">Langue</Label>
-        <Select value={settings.languageCode} onValueChange={(v) => update({ languageCode: v })}>
+        <Select value={settings.languageCode} onValueChange={(v) => update({ languageCode: v, voiceName: "" })}>
           <SelectTrigger id="vo-lang" className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
             {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
@@ -176,7 +228,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
       {/* Gender */}
       <div className="space-y-1.5">
         <Label htmlFor="vo-gender" className="text-xs text-muted-foreground">Genre</Label>
-        <Select value={settings.voiceGender} onValueChange={(v) => update({ voiceGender: v as VoiceSettings["voiceGender"] })}>
+        <Select value={settings.voiceGender} onValueChange={(v) => update({ voiceGender: v as VoiceSettings["voiceGender"], voiceName: "" })}>
           <SelectTrigger id="vo-gender" className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
             {GENDERS.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
@@ -187,7 +239,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
       {/* Voice Type */}
       <div className="space-y-1.5">
         <Label htmlFor="vo-type" className="text-xs text-muted-foreground">Type de voix</Label>
-        <Select value={settings.voiceType} onValueChange={(v) => update({ voiceType: v })}>
+        <Select value={settings.voiceType} onValueChange={(v) => update({ voiceType: v, voiceName: "" })}>
           <SelectTrigger id="vo-type" className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
             {getAvailableVoiceTypes(settings.languageCode).map((t) => (
@@ -200,9 +252,43 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
             ))}
           </SelectContent>
         </Select>
-        <p className="text-[10px] text-muted-foreground/60">
-          Voix : {getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType)}
-        </p>
+      </div>
+
+      {/* Voice Name (dynamic) */}
+      <div className="space-y-1.5">
+        <Label htmlFor="vo-name" className="text-xs text-muted-foreground">
+          Voix
+          {loadingVoices && <Loader2 className="inline h-3 w-3 ml-1 animate-spin" />}
+        </Label>
+        <Select
+          value={settings.voiceName || "auto"}
+          onValueChange={(v) => update({ voiceName: v === "auto" ? "" : v })}
+        >
+          <SelectTrigger id="vo-name" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="auto">
+              <span className="text-muted-foreground">Automatique</span>
+            </SelectItem>
+            {voicesForDropdown.map((v) => (
+              <SelectItem key={v.name} value={v.name}>
+                <span className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{v.letter}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {GENDER_LABELS[v.gender] || v.gender}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {v.name}
+                  </span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {voicesForDropdown.length === 0 && !loadingVoices && (
+          <p className="text-[10px] text-muted-foreground/60">
+            Aucune voix trouvée pour cette combinaison. La sélection automatique sera utilisée.
+          </p>
+        )}
       </div>
 
       {/* Style / Tone */}
@@ -333,7 +419,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
           <span>Désactivé</span><span>-50%</span><span>-100%</span>
         </div>
         <p className="text-[10px] text-muted-foreground/60">
-          Ralentit les derniers mots de chaque phrase pour un effet posé et conclusif.
+          Ralentit les derniers mots de chaque phrase déclarative (ignoré pour ? et !).
         </p>
       </div>
 

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.find-tension]
 verify_jwt = false
+
+[functions.list-voices]
+verify_jwt = false
