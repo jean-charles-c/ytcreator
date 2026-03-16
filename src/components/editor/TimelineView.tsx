@@ -63,87 +63,90 @@ function EditableSegmentCard({
 
   return (
     <div
-      className={`flex gap-2 items-start rounded-md px-2 py-1.5 transition-colors ${
+      className={`flex flex-col sm:flex-row gap-2 items-start rounded-md px-2 py-2 sm:py-1.5 transition-colors ${
         isActive ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-muted/50"
       }`}
     >
-      {/* Timecode — clickable to seek */}
-      <button onClick={onSeek} className="w-12 shrink-0 pt-1 text-right" title="Aller à ce segment">
-        <span className={`text-[10px] font-mono ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-          {formatTime(segment.startTime)}
-        </span>
-      </button>
-
-      {/* Thumbnail — clickable to replace */}
-      <button
-        onClick={onReplaceImage}
-        className={`relative w-16 h-10 rounded border shrink-0 overflow-hidden group/thumb ${isActive ? "border-primary/40" : "border-border"}`}
-        title="Remplacer le visuel"
-      >
-        {hasImage ? (
-          <img src={segment.imageUrl!} alt="" className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted">
-            <ImageIcon className="h-3 w-3 text-muted-foreground/30" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity">
-          <Replace className="h-3 w-3 text-white" />
-        </div>
-      </button>
-
-      {/* Info */}
-      <button onClick={onSeek} className="flex-1 min-w-0 py-0.5 text-left">
-        <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-semibold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-            Shot {segment.shotOrder}
+      {/* Top row on mobile: timecode + thumbnail + info */}
+      <div className="flex gap-2 items-start w-full sm:w-auto sm:contents">
+        {/* Timecode */}
+        <button onClick={onSeek} className="w-12 shrink-0 pt-1 text-right min-h-[44px] sm:min-h-0 flex items-center sm:items-start justify-end" title="Aller à ce segment">
+          <span className={`text-[10px] font-mono ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+            {formatTime(segment.startTime)}
           </span>
-        </div>
-        <p className="text-xs text-foreground leading-snug mt-0.5 line-clamp-1">
-          {segment.sentence || segment.description}
-        </p>
-      </button>
+        </button>
 
-      {/* Edit controls */}
-      <div className="flex flex-col items-center gap-0.5 shrink-0">
+        {/* Thumbnail */}
+        <button
+          onClick={onReplaceImage}
+          className={`relative w-16 h-10 rounded border shrink-0 overflow-hidden group/thumb ${isActive ? "border-primary/40" : "border-border"}`}
+          title="Remplacer le visuel"
+        >
+          {hasImage ? (
+            <img src={segment.imageUrl!} alt="" className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-muted">
+              <ImageIcon className="h-3 w-3 text-muted-foreground/30" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity">
+            <Replace className="h-3 w-3 text-white" />
+          </div>
+        </button>
+
+        {/* Info */}
+        <button onClick={onSeek} className="flex-1 min-w-0 py-0.5 text-left min-h-[44px] sm:min-h-0 flex flex-col justify-center">
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-semibold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+              Shot {segment.shotOrder}
+            </span>
+          </div>
+          <p className="text-xs text-foreground leading-snug mt-0.5 line-clamp-1">
+            {segment.sentence || segment.description}
+          </p>
+        </button>
+      </div>
+
+      {/* Edit controls — horizontal row on mobile, vertical on desktop */}
+      <div className="flex sm:flex-col items-center gap-1 sm:gap-0.5 shrink-0 w-full sm:w-auto justify-end sm:justify-start">
         {/* Reorder */}
         <div className="flex gap-0.5">
           <button
             onClick={onMoveUp}
             disabled={index === 0}
-            className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
+            className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
             title="Monter"
           >
-            <ArrowUp className="h-3 w-3" />
+            <ArrowUp className="h-4 w-4 sm:h-3 sm:w-3" />
           </button>
           <button
             onClick={onMoveDown}
             disabled={index === total - 1}
-            className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
+            className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
             title="Descendre"
           >
-            <ArrowDown className="h-3 w-3" />
+            <ArrowDown className="h-4 w-4 sm:h-3 sm:w-3" />
           </button>
         </div>
         {/* Duration */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 ml-2 sm:ml-0">
           <button
             onClick={() => onDurationChange(-0.5)}
             disabled={segment.duration <= 0.5}
-            className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
+            className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
             title="−0.5s"
           >
-            <Minus className="h-2.5 w-2.5" />
+            <Minus className="h-3.5 w-3.5 sm:h-2.5 sm:w-2.5" />
           </button>
           <span className="text-[9px] font-mono text-muted-foreground w-8 text-center" title="Durée">
             {formatTime(segment.duration)}
           </span>
           <button
             onClick={() => onDurationChange(0.5)}
-            className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="+0.5s"
           >
-            <Plus className="h-2.5 w-2.5" />
+            <Plus className="h-3.5 w-3.5 sm:h-2.5 sm:w-2.5" />
           </button>
         </div>
       </div>
