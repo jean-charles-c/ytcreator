@@ -197,19 +197,20 @@ export default function TimelineView({ timeline }: TimelineViewProps) {
     seekTo(seg.startTime);
   }, [seekTo]);
 
-  // Scrubbing on the timeline bar
-  const timelineBarRef = useRef<HTMLDivElement | null>(null);
+  // Scrubbing on any timeline/progress bar
+  const scrubTargetRef = useRef<HTMLDivElement | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const wasPlayingRef = useRef(false);
 
   const scrubFromEvent = useCallback((e: MouseEvent | React.MouseEvent) => {
-    if (!timelineBarRef.current) return;
-    const rect = timelineBarRef.current.getBoundingClientRect();
+    if (!scrubTargetRef.current) return;
+    const rect = scrubTargetRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     seekTo(pct * audioDuration);
   }, [seekTo, audioDuration]);
 
   const handleScrubStart = useCallback((e: React.MouseEvent) => {
+    scrubTargetRef.current = e.currentTarget as HTMLDivElement;
     setIsScrubbing(true);
     wasPlayingRef.current = isPlaying;
     if (isPlaying) audioRef.current?.pause();
