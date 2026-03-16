@@ -24,7 +24,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
     }
 
     // Limit preview to 200 chars
-    const previewText = text.slice(0, 200);
+    const previewText = text.slice(0, 1000);
 
     setLoading(true);
     try {
