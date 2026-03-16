@@ -238,8 +238,23 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(true);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<Timeline | null>(null);
 
-  // Fetch available audio files for this project
+  const handleAssembleTimeline = useCallback(() => {
+    if (!selectedAudioId) {
+      toast.error("Sélectionnez un audio avant d'assembler la timeline.");
+      return;
+    }
+    const audioFile = audioFiles.find((a) => a.id === selectedAudioId);
+    if (!audioFile) return;
+    if (shots.length === 0) {
+      toast.error("Aucun shot disponible pour générer la timeline.");
+      return;
+    }
+    const assembled = assembleTimeline(scenes, shots, audioFile);
+    setTimeline(assembled);
+    toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s`);
+  }, [selectedAudioId, audioFiles, scenes, shots]);
   useEffect(() => {
     if (!projectId) {
       setLoadingAudio(false);
