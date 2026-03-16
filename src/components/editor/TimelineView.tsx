@@ -506,7 +506,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
         </div>
       </div>
 
-      {/* ═══ Editable Segment list ═══ */}
+      {/* ═══ Editable Segment list (flat, by shot) ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
           <Film className="h-3.5 w-3.5 text-primary" />
@@ -514,33 +514,24 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
           <span className="text-[10px] text-muted-foreground ml-auto">{segments.length} shots</span>
         </div>
         <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
-          {sceneGroups.map((group) => (
-            <div key={group.sceneId}>
-              <div className="flex items-center gap-2 px-3 py-1 bg-muted/20 sticky top-0 z-[1]">
-                <Layers className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Scène {group.sceneOrder}</span>
-                <span className="text-[10px] text-muted-foreground truncate">— {group.sceneTitle}</span>
+          <div className="px-1 py-1 space-y-0.5">
+            {segments.map((seg, globalIndex) => (
+              <div key={seg.id} data-seg-index={globalIndex}>
+                <EditableSegmentCard
+                  segment={seg}
+                  displayIndex={globalIndex + 1}
+                  index={globalIndex}
+                  total={segments.length}
+                  isActive={seg.id === activeSegment?.id}
+                  onSeek={() => seekTo(seg.startTime)}
+                  onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
+                  onMoveDown={() => handleMoveSegment(globalIndex, globalIndex + 1)}
+                  onDurationChange={(delta) => handleDurationChange(seg.id, delta)}
+                  onReplaceImage={() => triggerReplace(seg.id)}
+                />
               </div>
-              <div className="px-1 py-1 space-y-0.5">
-              {group.segments.map(({ seg, globalIndex }, localIdx) => (
-                  <div key={seg.id} data-seg-index={globalIndex}>
-                    <EditableSegmentCard
-                      segment={seg}
-                      displayIndex={localIdx + 1}
-                      index={globalIndex}
-                      total={segments.length}
-                      isActive={seg.id === activeSegment?.id}
-                      onSeek={() => seekTo(seg.startTime)}
-                      onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
-                      onMoveDown={() => handleMoveSegment(globalIndex, globalIndex + 1)}
-                      onDurationChange={(delta) => handleDurationChange(seg.id, delta)}
-                      onReplaceImage={() => triggerReplace(seg.id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
