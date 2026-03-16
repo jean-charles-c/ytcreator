@@ -351,6 +351,7 @@ export type Database = {
           id: string
           language_code: string
           project_id: string
+          shot_timepoints: Json | null
           speaking_rate: number | null
           style: string | null
           text_length: number | null
@@ -366,6 +367,7 @@ export type Database = {
           id?: string
           language_code?: string
           project_id: string
+          shot_timepoints?: Json | null
           speaking_rate?: number | null
           style?: string | null
           text_length?: number | null
@@ -381,6 +383,7 @@ export type Database = {
           id?: string
           language_code?: string
           project_id?: string
+          shot_timepoints?: Json | null
           speaking_rate?: number | null
           style?: string | null
           text_length?: number | null

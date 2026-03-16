@@ -16,6 +16,7 @@ interface VoiceOverStudioProps {
   projectId: string | null;
   projectTitle?: string;
   scenes?: { source_text: string; title: string }[];
+  shots?: { id: string; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
@@ -39,7 +40,7 @@ interface PlayerState {
   durationEstimate: number;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [generating, setGenerating] = useState(false);
@@ -123,6 +124,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
+            // Pass shot sentences for precise audio-visual sync
+            shotSentences: shots && shots.length > 0
+              ? shots.map((s) => ({
+                  id: s.id,
+                  text: s.source_sentence || s.source_sentence_fr || s.description,
+                }))
+              : undefined,
           }),
         }
       );

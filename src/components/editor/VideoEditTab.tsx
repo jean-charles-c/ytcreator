@@ -290,10 +290,13 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
       toast.error("Aucun shot disponible pour générer la timeline.");
       return;
     }
-    const assembled = assembleTimeline(scenes, shots, audioFile);
+    // Use shot_timepoints from the audio file if available
+    const timepoints = (audioFile as any).shot_timepoints ?? null;
+    const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
     setTimeline(assembled);
     saveTimelineToDb(assembled);
-    toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s`);
+    const syncMode = timepoints ? "sync précis" : "sync proportionnel";
+    toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s (${syncMode})`);
   }, [selectedAudioId, audioFiles, scenes, shots, saveTimelineToDb]);
   useEffect(() => {
     if (!projectId) {
