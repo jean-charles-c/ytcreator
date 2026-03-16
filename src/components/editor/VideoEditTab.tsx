@@ -240,6 +240,44 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [loadingAudio, setLoadingAudio] = useState(true);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<Timeline | null>(null);
+  const [savingTimeline, setSavingTimeline] = useState(false);
+
+  // ── Persist timeline to DB ──
+  const saveTimelineToDb = useCallback(async (tl: Timeline) => {
+    if (!projectId) return;
+    setSavingTimeline(true);
+    try {
+      await supabase
+        .from("project_scriptcreator_state")
+        .update({ timeline_state: tl as any })
+        .eq("project_id", projectId);
+    } catch (e) {
+      console.error("Failed to save timeline:", e);
+    } finally {
+      setSavingTimeline(false);
+    }
+  }, [projectId]);
+
+  // ── Restore timeline from DB on mount ──
+  useEffect(() => {
+    if (!projectId) return;
+    const restore = async () => {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      if (data?.timeline_state) {
+        setTimeline(data.timeline_state as unknown as Timeline);
+      }
+    };
+    restore();
+  }, [projectId]);
+
+  const handleTimelineChange = useCallback((tl: Timeline) => {
+    setTimeline(tl);
+    saveTimelineToDb(tl);
+  }, [saveTimelineToDb]);
 
   const handleAssembleTimeline = useCallback(() => {
     if (!selectedAudioId) {
@@ -254,8 +292,9 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     }
     const assembled = assembleTimeline(scenes, shots, audioFile);
     setTimeline(assembled);
+    saveTimelineToDb(assembled);
     toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s`);
-  }, [selectedAudioId, audioFiles, scenes, shots]);
+  }, [selectedAudioId, audioFiles, scenes, shots, saveTimelineToDb]);
   useEffect(() => {
     if (!projectId) {
       setLoadingAudio(false);
@@ -502,7 +541,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
                   Régénérer
                 </Button>
               </div>
-              <TimelineView timeline={timeline} onTimelineChange={setTimeline} />
+              <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} />
               <ExportManager timeline={timeline} />
             </>
           )}

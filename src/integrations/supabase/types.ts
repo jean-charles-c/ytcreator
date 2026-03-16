@@ -85,6 +85,7 @@ export type Database = {
           script_versions: Json | null
           seo_results: Json | null
           shot_versions: Json | null
+          timeline_state: Json | null
           updated_at: string
         }
         Insert: {
@@ -100,6 +101,7 @@ export type Database = {
           script_versions?: Json | null
           seo_results?: Json | null
           shot_versions?: Json | null
+          timeline_state?: Json | null
           updated_at?: string
         }
         Update: {
@@ -115,6 +117,7 @@ export type Database = {
           script_versions?: Json | null
           seo_results?: Json | null
           shot_versions?: Json | null
+          timeline_state?: Json | null
           updated_at?: string
         }
         Relationships: [

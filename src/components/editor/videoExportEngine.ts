@@ -19,6 +19,12 @@ export interface ExportProgress {
 const DEFAULT_OPTIONS: ExportOptions = { fps: 25, width: 1920, height: 1080 };
 
 let ffmpegInstance: FFmpeg | null = null;
+let abortFlag = false;
+
+/** Call to abort an in-progress export */
+export function abortExport() {
+  abortFlag = true;
+}
 
 async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpeg> {
   if (ffmpegInstance && ffmpegInstance.loaded) return ffmpegInstance;
@@ -155,6 +161,7 @@ export async function exportTimelineToMp4(
   onProgress: (p: ExportProgress) => void,
   options: Partial<ExportOptions> = {}
 ): Promise<Blob> {
+  abortFlag = false;
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const { segments } = timeline.videoTrack;
 
@@ -166,6 +173,7 @@ export async function exportTimelineToMp4(
   const concatLines: string[] = [];
 
   for (let i = 0; i < segments.length; i++) {
+    if (abortFlag) throw new Error("Export annulé");
     const seg = segments[i];
     const fileName = `img_${String(i).padStart(4, "0")}.jpg`;
 

@@ -3,7 +3,6 @@ import {
   Film,
   ImageIcon,
   Volume2,
-  Layers,
   Play,
   Pause,
   SkipBack,
@@ -372,18 +371,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
 
   // progressPct already defined above
 
-  const sceneGroups = useMemo(() => {
-    const groups: { sceneId: string; sceneTitle: string; sceneOrder: number; segments: { seg: ShotSegment; globalIndex: number }[] }[] = [];
-    segments.forEach((seg, gi) => {
-      const last = groups[groups.length - 1];
-      if (last && last.sceneId === seg.sceneId) {
-        last.segments.push({ seg, globalIndex: gi });
-      } else {
-        groups.push({ sceneId: seg.sceneId, sceneTitle: seg.sceneTitle, sceneOrder: seg.sceneOrder, segments: [{ seg, globalIndex: gi }] });
-      }
-    });
-    return groups;
-  }, [segments]);
+  // sceneGroups removed — flat shot-based list
 
   return (
     <div className="space-y-4">
@@ -392,13 +380,13 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
       {/* ═══ VideoPreviewPlayer ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-          {segments.map((seg) => {
+          {segments.map((seg, idx) => {
             const isActive = seg.id === activeSegment?.id;
             return seg.imageUrl ? (
               <img
                 key={seg.id}
                 src={seg.imageUrl}
-                alt={`Shot ${seg.shotOrder}`}
+                alt={`Shot ${idx + 1}`}
                 className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ease-in-out ${isActive ? "opacity-100 z-[1]" : "opacity-0 z-0"}`}
               />
             ) : isActive ? (
@@ -406,7 +394,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
                 <div className="w-16 h-16 rounded-xl border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
                   <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
                 </div>
-                <span className="text-xs text-muted-foreground/40">Shot {seg.shotOrder} — pas de visuel</span>
+                <span className="text-xs text-muted-foreground/40">Shot {idx + 1} — pas de visuel</span>
               </div>
             ) : null;
           })}
@@ -420,7 +408,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-8">
               <p className="text-white text-sm leading-snug line-clamp-2 drop-shadow">{activeSegment.sentence || activeSegment.description}</p>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-[10px] text-white/60 font-mono">Shot {activeSegment.shotOrder}</span>
+                <span className="text-[10px] text-white/60 font-mono">Shot {activeIndex + 1}</span>
                 <span className="text-[10px] text-white/40 truncate">{activeSegment.sceneTitle}</span>
               </div>
             </div>
@@ -477,12 +465,12 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             {/* Video track */}
             <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
               <div className="flex h-full">
-                {segments.map((seg) => {
+                {segments.map((seg, idx) => {
                   const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
                   const active = seg.id === activeSegment?.id;
                   return (
-                    <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${seg.shotOrder}`}>
-                      {seg.imageUrl ? <img src={seg.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-[7px] text-muted-foreground">{seg.shotOrder}</span></div>}
+                    <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${idx + 1}`}>
+                      {seg.imageUrl ? <img src={seg.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-[7px] text-muted-foreground">{idx + 1}</span></div>}
                     </div>
                   );
                 })}
@@ -506,7 +494,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
         </div>
       </div>
 
-      {/* ═══ Editable Segment list ═══ */}
+      {/* ═══ Editable Segment list (flat, by shot) ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
           <Film className="h-3.5 w-3.5 text-primary" />
@@ -514,33 +502,24 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
           <span className="text-[10px] text-muted-foreground ml-auto">{segments.length} shots</span>
         </div>
         <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
-          {sceneGroups.map((group) => (
-            <div key={group.sceneId}>
-              <div className="flex items-center gap-2 px-3 py-1 bg-muted/20 sticky top-0 z-[1]">
-                <Layers className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Scène {group.sceneOrder}</span>
-                <span className="text-[10px] text-muted-foreground truncate">— {group.sceneTitle}</span>
+          <div className="px-1 py-1 space-y-0.5">
+            {segments.map((seg, globalIndex) => (
+              <div key={seg.id} data-seg-index={globalIndex}>
+                <EditableSegmentCard
+                  segment={seg}
+                  displayIndex={globalIndex + 1}
+                  index={globalIndex}
+                  total={segments.length}
+                  isActive={seg.id === activeSegment?.id}
+                  onSeek={() => seekTo(seg.startTime)}
+                  onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
+                  onMoveDown={() => handleMoveSegment(globalIndex, globalIndex + 1)}
+                  onDurationChange={(delta) => handleDurationChange(seg.id, delta)}
+                  onReplaceImage={() => triggerReplace(seg.id)}
+                />
               </div>
-              <div className="px-1 py-1 space-y-0.5">
-              {group.segments.map(({ seg, globalIndex }, localIdx) => (
-                  <div key={seg.id} data-seg-index={globalIndex}>
-                    <EditableSegmentCard
-                      segment={seg}
-                      displayIndex={localIdx + 1}
-                      index={globalIndex}
-                      total={segments.length}
-                      isActive={seg.id === activeSegment?.id}
-                      onSeek={() => seekTo(seg.startTime)}
-                      onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
-                      onMoveDown={() => handleMoveSegment(globalIndex, globalIndex + 1)}
-                      onDurationChange={(delta) => handleDurationChange(seg.id, delta)}
-                      onReplaceImage={() => triggerReplace(seg.id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
