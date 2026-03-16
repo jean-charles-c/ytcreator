@@ -455,7 +455,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
           <span className="text-xs font-medium text-foreground">Segments — Édition</span>
           <span className="text-[10px] text-muted-foreground ml-auto">{segments.length} shots</span>
         </div>
-        <div ref={listRef} className="max-h-[400px] overflow-y-auto divide-y divide-border/30">
+        <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
           {sceneGroups.map((group) => (
             <div key={group.sceneId}>
               <div className="flex items-center gap-2 px-3 py-1 bg-muted/20 sticky top-0 z-[1]">

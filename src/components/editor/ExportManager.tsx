@@ -178,14 +178,14 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleDownload} className="flex-1 gap-2">
+              <Button onClick={handleDownload} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
                 <Download className="h-4 w-4" />
                 Télécharger
               </Button>
-              <Button variant="outline" onClick={handleReExport} className="gap-1.5" title="Relancer l'export">
+              <Button variant="outline" onClick={handleReExport} className="gap-1.5 min-h-[48px] sm:min-h-[36px]" title="Relancer l'export">
                 <RefreshCw className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="outline" onClick={handleDelete} className="gap-1.5 text-destructive hover:text-destructive" title="Supprimer l'export">
+              <Button variant="outline" onClick={handleDelete} className="gap-1.5 text-destructive hover:text-destructive min-h-[48px] sm:min-h-[36px]" title="Supprimer l'export">
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
