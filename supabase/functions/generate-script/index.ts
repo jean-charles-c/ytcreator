@@ -22,7 +22,7 @@ function encodeSseData(data: string): Uint8Array {
   return sseEncoder.encode(`data: ${data}\n\n`);
 }
 
-function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
+function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number, narrativeStyleId: string): string {
   const wordTarget = Math.round(charTarget / 5.5);
   const wordMin = Math.round(charMin / 5.5);
   const wordMax = Math.round(charMax / 5.5);
