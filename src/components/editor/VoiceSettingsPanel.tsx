@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -9,16 +10,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Star, Loader2 } from "lucide-react";
+import { Star, Loader2, Mic2, Pencil, Check, X, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface VoiceSettings {
   languageCode: string;
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL";
-  voiceType: string; // "Standard" | "Wavenet" | "Neural2"
-  voiceName: string; // explicit voice name e.g. "fr-FR-Wavenet-A", empty = auto
-  style: string; // tone preset
+  voiceType: string;
+  voiceName: string;
+  style: string;
   speakingRate: number;
   volumeGainDb: number;
   effectsProfileId: string;
@@ -28,7 +29,6 @@ export interface VoiceSettings {
   sentenceEndSlow: number;
 }
 
-// Style presets → pitch + speakingRate adjustments sent to Google TTS
 export const STYLE_PRESETS: Record<string, { pitch: number; rateOffset: number; label: string }> = {
   neutral:    { pitch: 0,    rateOffset: 0,    label: "Neutre" },
   warm:       { pitch: -1.5, rateOffset: -0.05, label: "Chaleureux" },
@@ -47,7 +47,6 @@ const VOICE_TYPES = [
 const NEURAL2_LANGS = new Set(["fr-FR", "en-US", "en-GB", "de-DE", "it-IT", "pt-BR", "ja-JP", "es-US"]);
 
 export function getVoiceName(lang: string, gender: string, voiceType: string): string {
-  // Kept for backward compat — returns a default name
   const VOICE_LETTER_MAP: Record<string, Record<string, string>> = {
     "fr-FR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
     "en-US": { FEMALE: "C", MALE: "D", NEUTRAL: "C" },
@@ -73,6 +72,22 @@ interface VoiceInfo {
   type: string;
   letter: string;
   sampleRate: number;
+}
+
+interface VoiceProfile {
+  id: string;
+  profile_name: string;
+  language_code: string;
+  voice_gender: string;
+  voice_name: string;
+  style: string;
+  speaking_rate: number;
+  volume_gain_db: number;
+  effects_profile_id: string;
+  pause_between_paragraphs: number;
+  pause_after_sentences: number;
+  sentence_start_boost: number;
+  sentence_end_slow: number;
 }
 
 interface VoiceSettingsPanelProps {
@@ -114,8 +129,14 @@ const EFFECTS_PROFILES = [
 
 const GENDER_LABELS: Record<string, string> = { MALE: "♂", FEMALE: "♀", NEUTRAL: "◎" };
 
-export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hideHeader }: VoiceSettingsPanelProps) {
-  const [savingFavorite, setSavingFavorite] = useState(false);
+export default function VoiceSettingsPanel({ settings, onChange, hideHeader }: VoiceSettingsPanelProps) {
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [newProfileName, setNewProfileName] = useState("");
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const [availableVoices, setAvailableVoices] = useState<VoiceInfo[]>([]);
   const [loadingVoices, setLoadingVoices] = useState(false);
   const update = (patch: Partial<VoiceSettings>) => onChange({ ...settings, ...patch });
@@ -151,6 +172,173 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
     fetchVoices(settings.languageCode);
   }, [settings.languageCode, fetchVoices]);
 
+  // Load all profiles on mount
+  useEffect(() => {
+    loadProfiles();
+  }, []);
+
+  const loadProfiles = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("favorite_voice_profile")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setProfiles(data);
+        // Auto-select last used if none active
+        if (!activeProfileId) {
+          const last = data[data.length - 1];
+          setActiveProfileId(last.id);
+          applyProfile(last);
+        }
+      }
+    } catch (e) {
+      console.error("Load profiles error:", e);
+    }
+  };
+
+  const applyProfile = (p: VoiceProfile) => {
+    const rawStyle = p.style || "";
+    const parts = rawStyle.split(":");
+    const voiceType = ["Standard", "Wavenet", "Neural2"].includes(parts[0]) ? parts[0] : "Standard";
+    const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
+    onChange({
+      languageCode: p.language_code,
+      voiceGender: p.voice_gender as VoiceSettings["voiceGender"],
+      voiceType,
+      voiceName: p.voice_name || "",
+      style: tone,
+      speakingRate: p.speaking_rate,
+      volumeGainDb: p.volume_gain_db ?? 0,
+      effectsProfileId: p.effects_profile_id ?? "none",
+      pauseBetweenParagraphs: p.pause_between_paragraphs ?? 500,
+      pauseAfterSentences: p.pause_after_sentences ?? 0,
+      sentenceStartBoost: p.sentence_start_boost ?? 0,
+      sentenceEndSlow: p.sentence_end_slow ?? 0,
+    });
+    setActiveProfileId(p.id);
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Non connecté"); return; }
+
+      const profileName = newProfileName.trim() || `Profil ${profiles.length + 1}`;
+
+      const { data, error } = await (supabase as any)
+        .from("favorite_voice_profile")
+        .insert({
+          user_id: user.id,
+          profile_name: profileName,
+          language_code: settings.languageCode,
+          voice_gender: settings.voiceGender,
+          voice_name: settings.voiceName,
+          style: `${settings.voiceType}:${settings.style}`,
+          speaking_rate: settings.speakingRate,
+          volume_gain_db: settings.volumeGainDb,
+          effects_profile_id: settings.effectsProfileId,
+          pause_between_paragraphs: settings.pauseBetweenParagraphs,
+          pause_after_sentences: settings.pauseAfterSentences,
+          sentence_start_boost: settings.sentenceStartBoost,
+          sentence_end_slow: settings.sentenceEndSlow,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setProfiles((prev) => [...prev, data]);
+      setActiveProfileId(data.id);
+      setNewProfileName("");
+      setShowNameInput(false);
+      toast.success(`Profil « ${profileName} » enregistré`);
+    } catch (e: any) {
+      console.error("Save profile error:", e);
+      toast.error(e?.message || "Erreur de sauvegarde");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleUpdateActiveProfile = async () => {
+    if (!activeProfileId) return;
+    setSavingProfile(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("favorite_voice_profile")
+        .update({
+          language_code: settings.languageCode,
+          voice_gender: settings.voiceGender,
+          voice_name: settings.voiceName,
+          style: `${settings.voiceType}:${settings.style}`,
+          speaking_rate: settings.speakingRate,
+          volume_gain_db: settings.volumeGainDb,
+          effects_profile_id: settings.effectsProfileId,
+          pause_between_paragraphs: settings.pauseBetweenParagraphs,
+          pause_after_sentences: settings.pauseAfterSentences,
+          sentence_start_boost: settings.sentenceStartBoost,
+          sentence_end_slow: settings.sentenceEndSlow,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", activeProfileId);
+
+      if (error) throw error;
+      setProfiles((prev) => prev.map((p) => p.id === activeProfileId ? {
+        ...p,
+        language_code: settings.languageCode,
+        voice_gender: settings.voiceGender,
+        voice_name: settings.voiceName,
+        style: `${settings.voiceType}:${settings.style}`,
+        speaking_rate: settings.speakingRate,
+        volume_gain_db: settings.volumeGainDb,
+        effects_profile_id: settings.effectsProfileId,
+        pause_between_paragraphs: settings.pauseBetweenParagraphs,
+        pause_after_sentences: settings.pauseAfterSentences,
+        sentence_start_boost: settings.sentenceStartBoost,
+        sentence_end_slow: settings.sentenceEndSlow,
+      } : p));
+      toast.success("Profil mis à jour");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleRenameProfile = async (profileId: string) => {
+    const name = editingName.trim();
+    if (!name) return;
+    try {
+      const { error } = await (supabase as any)
+        .from("favorite_voice_profile")
+        .update({ profile_name: name, updated_at: new Date().toISOString() })
+        .eq("id", profileId);
+      if (error) throw error;
+      setProfiles((prev) => prev.map((p) => p.id === profileId ? { ...p, profile_name: name } : p));
+      setEditingProfileId(null);
+      toast.success("Nom modifié");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    }
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("favorite_voice_profile")
+        .delete()
+        .eq("id", profileId);
+      if (error) throw error;
+      setProfiles((prev) => prev.filter((p) => p.id !== profileId));
+      if (activeProfileId === profileId) setActiveProfileId(null);
+      toast.success("Profil supprimé");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    }
+  };
+
   // Filter voices for current type + gender
   const filteredVoices = availableVoices.filter((v) => {
     const matchType = (v.type || "").toLowerCase() === settings.voiceType.toLowerCase();
@@ -158,46 +346,9 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
     return matchType && matchGender;
   });
 
-  // If all genders shown when no match for current gender
   const voicesForDropdown = filteredVoices.length > 0
     ? filteredVoices
     : availableVoices.filter((v) => (v.type || "").toLowerCase() === settings.voiceType.toLowerCase());
-
-  const handleSaveFavorite = async () => {
-    setSavingFavorite(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast.error("Non connecté"); return; }
-
-      const { error } = await (supabase as any)
-        .from("favorite_voice_profile")
-        .upsert(
-          {
-            user_id: user.id,
-            language_code: settings.languageCode,
-            voice_gender: settings.voiceGender,
-            style: `${settings.voiceType}:${settings.style}`,
-            speaking_rate: settings.speakingRate,
-            volume_gain_db: settings.volumeGainDb,
-            effects_profile_id: settings.effectsProfileId,
-            pause_between_paragraphs: settings.pauseBetweenParagraphs,
-            pause_after_sentences: settings.pauseAfterSentences,
-            sentence_start_boost: settings.sentenceStartBoost,
-            sentence_end_slow: settings.sentenceEndSlow,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id" }
-        );
-
-      if (error) throw error;
-      toast.success("Voix favorite enregistrée");
-    } catch (e: any) {
-      console.error("Save favorite error:", e);
-      toast.error(e?.message || "Erreur de sauvegarde");
-    } finally {
-      setSavingFavorite(false);
-    }
-  };
 
   return (
     <div className={hideHeader ? "space-y-4" : "rounded-lg border border-border bg-card p-4 space-y-4"}>
@@ -206,11 +357,6 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
           <h3 className="font-display text-sm font-semibold text-foreground">
             Paramètres de voix
           </h3>
-          {hasFavorite && (
-            <span className="flex items-center gap-1 text-[10px] text-primary">
-              <Star className="h-2.5 w-2.5 fill-primary" /> Favori chargé
-            </span>
-          )}
         </div>
       )}
 
@@ -430,17 +576,116 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         </p>
       )}
 
-      {/* Save as favorite */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleSaveFavorite}
-        disabled={savingFavorite}
-        className="w-full min-h-[36px] gap-1.5 text-xs"
-      >
-        {savingFavorite ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className="h-3.5 w-3.5" />}
-        Enregistrer comme voix favorite
-      </Button>
+      {/* Save / Update profile */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        {showNameInput ? (
+          <div className="flex gap-2 items-center">
+            <Input
+              value={newProfileName}
+              onChange={(e) => setNewProfileName(e.target.value)}
+              placeholder={`Profil ${profiles.length + 1}`}
+              className="h-8 text-xs flex-1"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleSaveProfile()}
+            />
+            <Button size="sm" onClick={handleSaveProfile} disabled={savingProfile} className="h-8 px-3 gap-1 text-xs">
+              {savingProfile ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              OK
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setShowNameInput(false)} className="h-8 px-2">
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowNameInput(true)}
+              className="flex-1 min-h-[36px] gap-1.5 text-xs"
+            >
+              <Star className="h-3.5 w-3.5" />
+              Nouveau profil de voix
+            </Button>
+            {activeProfileId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUpdateActiveProfile}
+                disabled={savingProfile}
+                className="min-h-[36px] gap-1.5 text-xs"
+                title="Mettre à jour le profil actif"
+              >
+                {savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                Sauver
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Profile list */}
+        {profiles.length > 0 && (
+          <div className="space-y-1 pt-1">
+            {profiles.map((p) => (
+              <div
+                key={p.id}
+                className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
+                  p.id === activeProfileId
+                    ? "bg-primary/10 border border-primary/30 text-primary"
+                    : "bg-secondary/50 border border-transparent hover:border-border text-foreground"
+                }`}
+              >
+                <Mic2 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                {editingProfileId === p.id ? (
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <Input
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="h-6 text-xs flex-1 min-w-0"
+                      autoFocus
+                      onKeyDown={(e) => e.key === "Enter" && handleRenameProfile(p.id)}
+                    />
+                    <button onClick={() => handleRenameProfile(p.id)} className="p-0.5 text-primary hover:text-primary/80">
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button onClick={() => setEditingProfileId(null)} className="p-0.5 text-muted-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span
+                      className="flex-1 truncate min-w-0"
+                      onClick={() => applyProfile(p)}
+                    >
+                      {p.profile_name}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/60 shrink-0">
+                      {p.voice_name ? p.voice_name.split("-").pop() : "auto"}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingProfileId(p.id); setEditingName(p.profile_name); }}
+                      className="p-0.5 opacity-0 group-hover:opacity-100 hover:text-primary text-muted-foreground transition-opacity"
+                      style={{ opacity: p.id === activeProfileId ? 1 : undefined }}
+                      title="Renommer"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id); }}
+                      className="p-0.5 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
+                      style={{ opacity: p.id === activeProfileId ? 1 : undefined }}
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

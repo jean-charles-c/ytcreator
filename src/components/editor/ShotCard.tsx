@@ -205,11 +205,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
           >
             <X className="h-6 w-6" />
           </button>
-          <div className="max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          <div className="max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
             <img
               src={imageUrl}
               alt={`Shot ${globalIndex ?? ""}`}
-              className="max-w-full max-h-[75vh] object-contain rounded"
+              className="max-w-full max-h-[75vh] object-contain rounded cursor-pointer"
+              onClick={() => setLightboxOpen(false)}
             />
             <div className="text-white text-center space-y-1">
               <p className="font-display font-semibold">SHOT {globalIndex} — {shot.shot_type}</p>
