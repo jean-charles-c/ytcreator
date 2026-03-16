@@ -347,12 +347,28 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
       {/* ═══ VideoPreviewPlayer ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-          {activeSegment?.imageUrl ? (
-            <img src={activeSegment.imageUrl} alt={`Shot ${activeSegment.shotOrder}`} className="w-full h-full object-contain transition-opacity duration-300" key={activeSegment.id} />
-          ) : (
+          {segments.map((seg) => {
+            const isActive = seg.id === activeSegment?.id;
+            return seg.imageUrl ? (
+              <img
+                key={seg.id}
+                src={seg.imageUrl}
+                alt={`Shot ${seg.shotOrder}`}
+                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ease-in-out ${isActive ? "opacity-100 z-[1]" : "opacity-0 z-0"}`}
+              />
+            ) : isActive ? (
+              <div key={seg.id} className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-[1] animate-fade-in">
+                <div className="w-16 h-16 rounded-xl border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
+                </div>
+                <span className="text-xs text-muted-foreground/40">Shot {seg.shotOrder} — pas de visuel</span>
+              </div>
+            ) : null;
+          })}
+          {!activeSegment && (
             <div className="flex flex-col items-center gap-2">
               <ImageIcon className="h-10 w-10 text-muted-foreground/20" />
-              <span className="text-xs text-muted-foreground/40">{activeSegment ? `Shot ${activeSegment.shotOrder} — pas de visuel` : "Aucun segment"}</span>
+              <span className="text-xs text-muted-foreground/40">Aucun segment</span>
             </div>
           )}
           {activeSegment && (
