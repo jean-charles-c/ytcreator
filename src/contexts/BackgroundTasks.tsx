@@ -36,6 +36,7 @@ export interface ScriptGenParams {
   extractedText: string;
   scriptLanguage: string;
   targetChars: number;
+  narrativeStyle?: string;
   existingScript?: string | null;
   isRegenerate?: boolean;
 }
