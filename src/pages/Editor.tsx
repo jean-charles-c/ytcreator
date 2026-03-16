@@ -29,6 +29,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
+import VisualGallery from "@/components/editor/VisualGallery";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
