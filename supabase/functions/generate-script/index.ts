@@ -41,7 +41,8 @@ function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, 
   const wordMax = Math.round(charMax / 5.5);
   const paragraphEstimate = Math.round(charTarget / 130);
 
-  const styleInstruction = NARRATIVE_STYLE_INSTRUCTIONS[narrativeStyle] || NARRATIVE_STYLE_INSTRUCTIONS["documentary"];
+  const styleInstruction = NARRATIVE_STYLE_INSTRUCTIONS[narrativeStyle]
+    || `Write using a "${narrativeStyle}" narrative tone. Adapt your voice, rhythm, and vocabulary to embody this style authentically throughout the entire script.`;
 
   return `You are an expert YouTube documentary narrator.
 

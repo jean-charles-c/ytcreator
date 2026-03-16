@@ -151,6 +151,7 @@ export default function PdfDocumentaryTab({
   const [dragOver, setDragOver] = useState(false);
   const [targetChars, setTargetChars] = useState(15000);
   const [narrativeStyleId, setNarrativeStyleId] = useState(DEFAULT_NARRATIVE_STYLE_ID);
+  const [customStyleLabel, setCustomStyleLabel] = useState("");
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -256,11 +257,11 @@ export default function PdfDocumentaryTab({
       extractedText,
       scriptLanguage,
       targetChars,
-      narrativeStyle: narrativeStyleId,
+      narrativeStyle: narrativeStyleId === "custom" ? customStyleLabel || "documentary" : narrativeStyleId,
       existingScript: script,
       isRegenerate,
     });
-  }, [analysis, extractedText, scriptLanguage, script, targetChars, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, narrativeStyleId, customStyleLabel, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -506,12 +507,22 @@ export default function PdfDocumentaryTab({
               <label className="text-xs text-muted-foreground whitespace-nowrap">Style :</label>
               <select
                 value={narrativeStyleId}
-                onChange={(e) => setNarrativeStyleId(e.target.value)}
+                onChange={(e) => { setNarrativeStyleId(e.target.value); if (e.target.value !== "custom") setCustomStyleLabel(""); }}
                 className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                <option value="custom">+ Style personnalisé</option>
               </select>
             </div>
+            {narrativeStyleId === "custom" && (
+              <input
+                type="text"
+                placeholder="Ex: Poétique, Satirique…"
+                value={customStyleLabel}
+                onChange={(e) => setCustomStyleLabel(e.target.value)}
+                className="h-9 w-44 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            )}
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground whitespace-nowrap">Objectif :</label>
               <input
@@ -688,7 +699,31 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={scriptLanguage}
+                      onChange={(e) => onLanguageChange?.(e.target.value)}
+                      className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                    <select
+                      value={narrativeStyleId}
+                      onChange={(e) => { setNarrativeStyleId(e.target.value); if (e.target.value !== "custom") setCustomStyleLabel(""); }}
+                      className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                      <option value="custom">+ Personnalisé</option>
+                    </select>
+                    {narrativeStyleId === "custom" && (
+                      <input
+                        type="text"
+                        placeholder="Style personnalisé…"
+                        value={customStyleLabel}
+                        onChange={(e) => setCustomStyleLabel(e.target.value)}
+                        className="h-8 w-36 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    )}
                     <input
                       type="number"
                       min={5000}
