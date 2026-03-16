@@ -143,7 +143,7 @@ export default function SceneBlock({
             <CheckCircle2 className="h-2.5 w-2.5" /> Validée
           </span>
         )}
-        <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+        <div className="ml-auto flex items-center gap-0 sm:gap-0.5">
           {!editing && (
             <>
               <button onClick={startEdit} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Éditer">
