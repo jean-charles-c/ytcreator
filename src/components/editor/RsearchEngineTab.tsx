@@ -98,6 +98,9 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
                 setGenerating(false);
                 return;
               }
+              if (parsed.progress) {
+                setProgress(parsed.progress);
+              }
               if (parsed.text) {
                 accumulated += parsed.text;
                 setContent(accumulated);
