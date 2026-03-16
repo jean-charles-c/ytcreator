@@ -507,12 +507,22 @@ export default function PdfDocumentaryTab({
               <label className="text-xs text-muted-foreground whitespace-nowrap">Style :</label>
               <select
                 value={narrativeStyleId}
-                onChange={(e) => setNarrativeStyleId(e.target.value)}
+                onChange={(e) => { setNarrativeStyleId(e.target.value); if (e.target.value !== "custom") setCustomStyleLabel(""); }}
                 className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                <option value="custom">+ Style personnalisé</option>
               </select>
             </div>
+            {narrativeStyleId === "custom" && (
+              <input
+                type="text"
+                placeholder="Ex: Poétique, Satirique…"
+                value={customStyleLabel}
+                onChange={(e) => setCustomStyleLabel(e.target.value)}
+                className="h-9 w-44 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            )}
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground whitespace-nowrap">Objectif :</label>
               <input
