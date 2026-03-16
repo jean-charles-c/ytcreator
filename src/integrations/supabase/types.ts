@@ -160,6 +160,50 @@ export type Database = {
         }
         Relationships: []
       }
+      research_dossiers: {
+        Row: {
+          angle: string | null
+          content: string
+          created_at: string
+          depth: string
+          id: string
+          instructions: string | null
+          project_id: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          angle?: string | null
+          content?: string
+          created_at?: string
+          depth?: string
+          id?: string
+          instructions?: string | null
+          project_id: string
+          topic: string
+          user_id: string
+        }
+        Update: {
+          angle?: string | null
+          content?: string
+          created_at?: string
+          depth?: string
+          id?: string
+          instructions?: string | null
+          project_id?: string
+          topic?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_dossiers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenes: {
         Row: {
           characters: string | null
