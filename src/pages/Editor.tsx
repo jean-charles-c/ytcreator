@@ -781,8 +781,9 @@ export default function Editor() {
     setGeneratingSceneImages(sceneId);
     const sceneShots = shots.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
     let count = 0;
-    for (const shot of sceneShots) {
-      const url = await generateShotImage(shot.id);
+    for (let i = 0; i < sceneShots.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 8000));
+      const url = await generateShotImage(sceneShots[i].id);
       if (url) count++;
     }
     setGeneratingSceneImages(null);
