@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Film,
@@ -14,8 +14,13 @@ import {
   Pause,
   Clock,
   FileAudio,
+  Wand2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { assembleTimeline, type Timeline } from "./timelineAssembly";
+import TimelineView from "./TimelineView";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -233,8 +238,23 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(true);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<Timeline | null>(null);
 
-  // Fetch available audio files for this project
+  const handleAssembleTimeline = useCallback(() => {
+    if (!selectedAudioId) {
+      toast.error("Sélectionnez un audio avant d'assembler la timeline.");
+      return;
+    }
+    const audioFile = audioFiles.find((a) => a.id === selectedAudioId);
+    if (!audioFile) return;
+    if (shots.length === 0) {
+      toast.error("Aucun shot disponible pour générer la timeline.");
+      return;
+    }
+    const assembled = assembleTimeline(scenes, shots, audioFile);
+    setTimeline(assembled);
+    toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s`);
+  }, [selectedAudioId, audioFiles, scenes, shots]);
   useEffect(() => {
     if (!projectId) {
       setLoadingAudio(false);
@@ -455,13 +475,35 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
         </div>
       )}
 
-      {/* Placeholder for future timeline assembly */}
-      {allValid && (
-        <div className="mt-8 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 flex flex-col items-center gap-3">
-          <Film className="h-8 w-8 text-primary/40" />
-          <p className="text-sm text-muted-foreground text-center">
-            Tous les assets sont prêts. La génération de timeline sera disponible à l'étape suivante.
-          </p>
+      {/* Assemble button + Timeline */}
+      {selectedAudioId && shots.length > 0 && (
+        <div className="mt-8 space-y-6">
+          {!timeline && (
+            <div className="flex justify-center">
+              <Button
+                variant="hero"
+                onClick={handleAssembleTimeline}
+                className="min-h-[48px] gap-2"
+              >
+                <Wand2 className="h-4 w-4" />
+                Assembler la timeline
+              </Button>
+            </div>
+          )}
+          {timeline && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Timeline générée le {new Date(timeline.createdAt).toLocaleString("fr-FR")}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleAssembleTimeline} className="h-7 text-xs gap-1.5">
+                  <Wand2 className="h-3 w-3" />
+                  Régénérer
+                </Button>
+              </div>
+              <TimelineView timeline={timeline} />
+            </>
+          )}
         </div>
       )}
     </div>
