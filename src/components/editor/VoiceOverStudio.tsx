@@ -324,8 +324,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             </div>
           )}
 
-          {/* History — collapsible, open by default */}
-          <Accordion type="multiple" defaultValue={["history"]}>
+          {/* History — collapsible, closed by default */}
+          <Accordion type="multiple" defaultValue={[]}>
             <AccordionItem value="history" className="border rounded-lg border-border bg-card px-4">
               <AccordionTrigger className="py-3 hover:no-underline gap-2">
                 <span className="flex items-center gap-2 text-sm font-semibold font-display">
