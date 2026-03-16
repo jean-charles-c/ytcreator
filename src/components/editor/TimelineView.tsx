@@ -274,20 +274,15 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying]);
 
+  // Scroll active shot to TOP of list during playback
   useEffect(() => {
     if (!listRef.current) return;
     const el = listRef.current.querySelector(`[data-seg-index="${activeIndex}"]`) as HTMLElement | null;
     if (!el) return;
     const container = listRef.current;
-    const elTop = el.offsetTop;
-    const elBottom = elTop + el.offsetHeight;
-    const scrollTop = container.scrollTop;
-    const viewBottom = scrollTop + container.clientHeight;
-    if (elTop < scrollTop) {
-      container.scrollTo({ top: elTop, behavior: "smooth" });
-    } else if (elBottom > viewBottom) {
-      container.scrollTo({ top: elBottom - container.clientHeight, behavior: "smooth" });
-    }
+    // Scroll so the active element is at the top of the visible area
+    const scrollTarget = el.offsetTop - container.offsetTop;
+    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
   }, [activeIndex]);
 
   // progressPct (needed early for mini-timeline auto-scroll)
