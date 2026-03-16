@@ -132,22 +132,22 @@ function EditableSegmentCard({
           </button>
         </div>
         {/* Duration */}
-        <div className="flex items-center gap-0.5 ml-2 sm:ml-0">
+        <div className="flex items-center gap-0.5 ml-2 sm:ml-0" title="Durée d'affichage du visuel">
           <button
             onClick={() => onDurationChange(-0.5)}
             disabled={segment.duration <= 0.5}
             className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
-            title="−0.5s"
+            title="Réduire la durée de 0.5s"
           >
             <Minus className="h-3.5 w-3.5 sm:h-2.5 sm:w-2.5" />
           </button>
-          <span className="text-[9px] font-mono text-muted-foreground w-8 text-center" title="Durée">
-            {formatTime(segment.duration)}
+          <span className="text-[9px] font-mono text-muted-foreground w-8 text-center" title="Durée d'affichage">
+            {segment.duration.toFixed(1)}s
           </span>
           <button
             onClick={() => onDurationChange(0.5)}
             className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="+0.5s"
+            title="Augmenter la durée de 0.5s"
           >
             <Plus className="h-3.5 w-3.5 sm:h-2.5 sm:w-2.5" />
           </button>
@@ -274,20 +274,15 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying]);
 
+  // Scroll active shot to TOP of list during playback
   useEffect(() => {
     if (!listRef.current) return;
     const el = listRef.current.querySelector(`[data-seg-index="${activeIndex}"]`) as HTMLElement | null;
     if (!el) return;
     const container = listRef.current;
-    const elTop = el.offsetTop;
-    const elBottom = elTop + el.offsetHeight;
-    const scrollTop = container.scrollTop;
-    const viewBottom = scrollTop + container.clientHeight;
-    if (elTop < scrollTop) {
-      container.scrollTo({ top: elTop, behavior: "smooth" });
-    } else if (elBottom > viewBottom) {
-      container.scrollTo({ top: elBottom - container.clientHeight, behavior: "smooth" });
-    }
+    // Scroll so the active element is at the top of the visible area
+    const scrollTarget = el.offsetTop - container.offsetTop;
+    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: "smooth" });
   }, [activeIndex]);
 
   // progressPct (needed early for mini-timeline auto-scroll)
