@@ -112,7 +112,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
       />
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <span className="text-[10px] text-muted-foreground">
-          {testText.length}/200 caractères
+          {testText.length} caractères
         </span>
         <div className="flex gap-2 w-full sm:w-auto">
           {playing && (
