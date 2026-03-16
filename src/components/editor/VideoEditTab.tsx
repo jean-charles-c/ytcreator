@@ -503,6 +503,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
                 </Button>
               </div>
               <TimelineView timeline={timeline} onTimelineChange={setTimeline} />
+              <ExportManager timeline={timeline} />
             </>
           )}
         </div>
