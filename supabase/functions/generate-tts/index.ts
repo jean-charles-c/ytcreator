@@ -188,23 +188,43 @@ serve(async (req) => {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number): string {
-      if (paraPauseMs <= 0 && sentPauseMs <= 0) return rawText;
+    function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number): string {
+      if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0) return rawText;
 
       const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
       const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
       const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
 
+      // Boost the first N words of a sentence with <prosody rate="+X%">
+      function boostSentenceStart(sentence: string): string {
+        if (startBoostPct <= 0) return sentence;
+        const words = sentence.split(/(\s+)/); // preserve whitespace tokens
+        // Take first 3-4 actual words
+        let wordCount = 0;
+        let splitIdx = 0;
+        for (let i = 0; i < words.length; i++) {
+          if (words[i].trim()) wordCount++;
+          if (wordCount >= 3) { splitIdx = i + 1; break; }
+        }
+        if (splitIdx === 0 || splitIdx >= words.length) {
+          // Sentence too short, boost entirely
+          return `<prosody rate="+${startBoostPct}%">${sentence}</prosody>`;
+        }
+        const head = words.slice(0, splitIdx).join("");
+        const tail = words.slice(splitIdx).join("");
+        return `<prosody rate="+${startBoostPct}%">${head}</prosody>${tail}`;
+      }
+
       const processedParagraphs = paragraphs.map((p) => {
         const escaped = escapeXml(p.trim());
-        if (sentPauseMs <= 0) return escaped;
-        // Insert break after sentence-ending punctuation (. ! ?)
-        return escaped.replace(/([.!?])\s+/g, `$1${sentBreak} `);
+        // Split into sentences, apply boost, then add breaks
+        const sentences = escaped.split(/(?<=[.!?])\s+/);
+        const boosted = sentences.map((s) => boostSentenceStart(s));
+        const joined = sentPauseMs > 0
+          ? boosted.join(`${sentBreak} `)
+          : boosted.join(" ");
+        return joined;
       });
-
-      if (processedParagraphs.length <= 1 && !paraBreak) {
-        return `<speak>${processedParagraphs[0] || ""}</speak>`;
-      }
 
       const inner = processedParagraphs.join(paraBreak ? `${paraBreak}\n` : "\n");
       return `<speak>${inner}</speak>`;
