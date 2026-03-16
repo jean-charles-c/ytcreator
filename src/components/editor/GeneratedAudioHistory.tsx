@@ -25,7 +25,7 @@ interface GeneratedAudioHistoryProps {
   hideHeader?: boolean;
 }
 
-export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }: GeneratedAudioHistoryProps) {
+export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay, hideHeader }: GeneratedAudioHistoryProps) {
   const [entries, setEntries] = useState<AudioEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
