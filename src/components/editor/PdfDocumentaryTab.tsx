@@ -208,134 +208,56 @@ export default function PdfDocumentaryTab({
     setAnalyzing(false);
   }, [onAnalysisReady, onExtractedTextChange, onAnalysisChange, onDocStructureChange, onScriptChange, onPageCountChange]);
 
-  // Combined: generate structure then script automatically
+  // Subscribe to background task progress for live streaming updates
+  useEffect(() => {
+    if (!projectId) return;
+    const unsub = subscribe(projectId, "script", (task) => {
+      if (task.streamedText !== undefined) {
+        onScriptChange(task.streamedText);
+      }
+      if (task.status === "done" && task.streamedText) {
+        const full = task.streamedText;
+        onScriptChange(full);
+        onScriptReady?.(full);
+        // Add to versions
+        onScriptVersionsChange((prev) => {
+          if (prev.length > 0) {
+            const nextId = Math.max(...prev.map((v) => v.id)) + 1;
+            onCurrentVersionIdChange(nextId);
+            return [...prev, { id: nextId, content: full }];
+          }
+          onCurrentVersionIdChange(1);
+          return [{ id: 1, content: full }];
+        });
+      }
+    });
+    return unsub;
+  }, [projectId, subscribe, onScriptChange, onScriptReady, onScriptVersionsChange, onCurrentVersionIdChange]);
+
+  // Delegate script generation to background context
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
-    if (!analysis || !extractedText) return;
-    setGeneratingScript(true);
+    if (!analysis || !extractedText || !projectId) return;
     setScriptOpen(true);
     onScriptChange("");
 
-    // Step 1: Generate structure
-    let sections: DocSection[];
-    try {
-      const { data, error } = await supabase.functions.invoke("documentary-structure", {
-        body: { analysis, text: extractedText },
+    // Save existing script as version before regeneration
+    if (isRegenerate && script && script.trim() !== "") {
+      onScriptVersionsChange((prev) => {
+        if (prev.length === 0) return [{ id: 1, content: script! }];
+        return prev;
       });
-      if (error || data?.error) {
-        toast.error("Erreur de génération de la structure");
-        console.error(error || data?.error);
-        setGeneratingScript(false);
-        return;
-      }
-      sections = data.sections;
-      onDocStructureChange(sections);
-      toast.success("Structure documentaire générée");
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); setGeneratingScript(false); return; }
+    }
 
-    // Step 2: Generate script (streaming)
-    try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "x-supabase-client-platform": "web",
-          },
-          body: JSON.stringify({ analysis, structure: sections, text: extractedText, language: scriptLanguage, targetChars }),
-        }
-      );
-      if (!resp.ok || !resp.body) {
-        const errorText = await resp.text();
-        toast.error("Erreur de génération du script");
-        console.error("generate-script response error:", resp.status, errorText);
-        setGeneratingScript(false);
-        return;
-      }
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let full = "";
-      let done = false;
-
-      while (!done) {
-        const chunk = await reader.read();
-        done = chunk.done;
-        buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !done });
-
-        let eventBoundaryIndex: number;
-        while ((eventBoundaryIndex = buffer.indexOf("\n\n")) !== -1) {
-          const rawEvent = buffer.slice(0, eventBoundaryIndex);
-          buffer = buffer.slice(eventBoundaryIndex + 2);
-
-          if (!rawEvent.trim()) continue;
-          if (rawEvent.split("\n").every((line) => line.trimStart().startsWith(":"))) continue;
-
-          const eventData = readSseEventData(rawEvent);
-          if (!eventData) continue;
-          if (eventData === "[DONE]") {
-            done = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(eventData);
-            const content = extractTextFromStreamPayload(parsed);
-            if (content) {
-              full += content;
-              // Strip <plan> block for live display
-              const displayText = full.replace(/<plan>[\s\S]*?<\/plan>\s*/gi, "").replace(/<plan>[\s\S]*/gi, "");
-              onScriptChange(displayText);
-            }
-          } catch (error) {
-            console.error("Invalid SSE chunk:", eventData, error);
-          }
-        }
-      }
-
-      if (buffer.trim()) {
-        const eventData = readSseEventData(buffer);
-        if (eventData && eventData !== "[DONE]") {
-          try {
-            const parsed = JSON.parse(eventData);
-            const content = extractTextFromStreamPayload(parsed);
-            if (content) full += content;
-          } catch (error) {
-            console.error("Invalid trailing SSE chunk:", buffer, error);
-          }
-        }
-      }
-
-      // Strip <plan>...</plan> block used for internal LLM planning
-      full = full.replace(/<plan>[\s\S]*?<\/plan>\s*/gi, "").trim();
-
-      if (!full.trim()) {
-        throw new Error("Le flux AI n'a retourné aucun texte exploitable.");
-      }
-
-      onScriptChange(full);
-      if (isRegenerate) {
-        onScriptVersionsChange((prev) => {
-          const baseVersions = prev.length > 0
-            ? prev
-            : (script && script.trim() !== "" ? [{ id: 1, content: script }] : []);
-          const nextId = baseVersions.length > 0 ? Math.max(...baseVersions.map((v) => v.id)) + 1 : 1;
-          onCurrentVersionIdChange(nextId);
-          return [...baseVersions, { id: nextId, content: full }];
-        });
-      } else {
-        onScriptVersionsChange([{ id: 1, content: full }]);
-        onCurrentVersionIdChange(1);
-      }
-      onScriptReady?.(full);
-      toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
-    } catch (e) { console.error(e); toast.error(e instanceof Error ? e.message : "Erreur inattendue"); }
-    setGeneratingScript(false);
-  }, [analysis, extractedText, scriptLanguage, script, targetChars, onDocStructureChange, onScriptChange, onScriptReady]);
+    startScriptGeneration({
+      projectId,
+      analysis,
+      extractedText,
+      scriptLanguage,
+      targetChars,
+      existingScript: script,
+      isRegenerate,
+    });
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
