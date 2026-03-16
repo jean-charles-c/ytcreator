@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { assembleTimeline, type Timeline } from "./timelineAssembly";
 import TimelineView from "./TimelineView";
+import ExportManager from "./ExportManager";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -502,6 +503,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
                 </Button>
               </div>
               <TimelineView timeline={timeline} onTimelineChange={setTimeline} />
+              <ExportManager timeline={timeline} />
             </>
           )}
         </div>
