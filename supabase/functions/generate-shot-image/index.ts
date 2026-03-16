@@ -8,9 +8,9 @@ const corsHeaders = {
 };
 
 const MODEL_COSTS: Record<string, number> = {
-  "google/gemini-2.5-flash-image": 1,
-  "google/gemini-3.1-flash-image-preview": 3,
-  "google/gemini-3-pro-image-preview": 5,
+  "google/gemini-2.5-flash-image": 0.02,
+  "google/gemini-3.1-flash-image-preview": 0.06,
+  "google/gemini-3-pro-image-preview": 0.10,
 };
 
 serve(async (req) => {
