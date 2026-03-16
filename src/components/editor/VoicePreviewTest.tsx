@@ -45,6 +45,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             voiceType: settings.voiceType,
             speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
             pitch: STYLE_PRESETS[settings.style]?.pitch || 0,
+            sentenceStartBoost: settings.sentenceStartBoost,
           }),
         }
       );

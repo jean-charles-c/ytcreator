@@ -23,6 +23,7 @@ export interface VoiceSettings {
   effectsProfileId: string;
   pauseBetweenParagraphs: number; // ms, 0 = disabled
   pauseAfterSentences: number; // ms, 0 = disabled
+  sentenceStartBoost: number; // %, 0 = disabled, e.g. 10 = +10% speed on first words
 }
 
 // Style presets → pitch + speakingRate adjustments sent to Google TTS
@@ -287,6 +288,26 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         <div className="flex justify-between text-[10px] text-muted-foreground/60">
           <span>Aucune</span><span>1s</span><span>2s</span>
         </div>
+      </div>
+
+      {/* Sentence start boost */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Élan en début de phrase</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.sentenceStartBoost === 0 ? "Désactivé" : `+${settings.sentenceStartBoost}%`}</span>
+        </div>
+        <Slider
+          min={0} max={20} step={2}
+          value={[settings.sentenceStartBoost]}
+          onValueChange={([v]) => update({ sentenceStartBoost: v })}
+          aria-label="Élan en début de phrase"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Désactivé</span><span>+10%</span><span>+20%</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          Accélère légèrement les premiers mots de chaque phrase pour un effet narratif plus dynamique.
+        </p>
       </div>
 
       {/* Save as favorite */}
