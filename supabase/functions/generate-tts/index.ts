@@ -19,6 +19,7 @@ interface TTSRequest {
   volumeGainDb?: number;
   effectsProfileId?: string;
   pauseBetweenParagraphs?: number; // ms
+  pauseAfterSentences?: number; // ms
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
