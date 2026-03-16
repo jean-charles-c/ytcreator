@@ -161,7 +161,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
   // If all genders shown when no match for current gender
   const voicesForDropdown = filteredVoices.length > 0
     ? filteredVoices
-    : availableVoices.filter((v) => v.type.toLowerCase() === settings.voiceType.toLowerCase());
+    : availableVoices.filter((v) => (v.type || "").toLowerCase() === settings.voiceType.toLowerCase());
 
   const handleSaveFavorite = async () => {
     setSavingFavorite(true);
