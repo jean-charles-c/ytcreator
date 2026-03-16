@@ -126,7 +126,7 @@ export default function SceneBlock({
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {/* ─── Header ─── */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap">
         <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
         {sceneTypeInfo && (
           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${sceneTypeInfo.color}`}>
