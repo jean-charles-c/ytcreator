@@ -368,7 +368,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     };
   }, [isScrubbing, scrubFromPointer]);
 
-  const progressPct = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+  // progressPct already defined above
 
   const sceneGroups = useMemo(() => {
     const groups: { sceneId: string; sceneTitle: string; sceneOrder: number; segments: { seg: ShotSegment; globalIndex: number }[] }[] = [];
