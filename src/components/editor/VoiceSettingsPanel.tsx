@@ -337,6 +337,13 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         </p>
       </div>
 
+      {/* Prosody warning for Standard voices */}
+      {(settings.sentenceStartBoost > 0 || settings.sentenceEndSlow > 0) && settings.voiceType === "Standard" && (
+        <p className="text-[10px] text-destructive bg-destructive/10 rounded px-2 py-1.5">
+          ⚠️ Les réglages Élan et Ralentissement nécessitent une voix <strong>WaveNet</strong> ou <strong>Neural2</strong>. Les voix Standard ne supportent pas les variations de rythme intra-phrase (balises SSML prosody).
+        </p>
+      )}
+
       {/* Save as favorite */}
       <Button
         variant="outline"
