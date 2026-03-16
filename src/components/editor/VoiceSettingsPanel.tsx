@@ -95,6 +95,7 @@ interface VoiceSettingsPanelProps {
   onChange: (settings: VoiceSettings) => void;
   hasFavorite?: boolean;
   hideHeader?: boolean;
+  onActiveProfileChange?: (profileName: string | null) => void;
 }
 
 const LANGUAGES = [
