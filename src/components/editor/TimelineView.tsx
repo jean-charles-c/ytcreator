@@ -437,14 +437,14 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500" />
           </div>
         </div>
-        <div className="relative h-6 rounded-md overflow-hidden border border-border bg-emerald-400/5">
+        <div className="relative h-8 sm:h-6 rounded-md overflow-hidden border border-border bg-emerald-400/5 min-w-[300px]">
           <div className="absolute inset-0 flex items-center px-1">
             {waveformHeights.map((h, i) => <div key={i} className="flex-1 mx-px" style={{ height: `${h}%`, minHeight: "12%" }}><div className="w-full h-full rounded-sm bg-emerald-400/30" /></div>)}
           </div>
           <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none transition-[left] duration-75" style={{ left: `${progressPct}%` }} />
         </div>
-        <div className="flex justify-between text-[9px] font-mono text-muted-foreground px-0.5">
-          <span>0:00</span><span>{formatTime(audioDuration / 4)}</span><span>{formatTime(audioDuration / 2)}</span><span>{formatTime((audioDuration * 3) / 4)}</span><span>{formatTime(audioDuration)}</span>
+        <div className="flex justify-between text-[9px] font-mono text-muted-foreground px-0.5 min-w-[300px]">
+          <span>0:00</span><span className="hidden sm:inline">{formatTime(audioDuration / 4)}</span><span>{formatTime(audioDuration / 2)}</span><span className="hidden sm:inline">{formatTime((audioDuration * 3) / 4)}</span><span>{formatTime(audioDuration)}</span>
         </div>
       </div>
 
