@@ -20,11 +20,12 @@ interface AudioEntry {
 
 interface GeneratedAudioHistoryProps {
   projectId: string | null;
-  refreshKey: number; // increment to trigger refresh
+  refreshKey: number;
   onPlay: (audioUrl: string, fileName: string, duration: number) => void;
+  hideHeader?: boolean;
 }
 
-export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }: GeneratedAudioHistoryProps) {
+export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay, hideHeader }: GeneratedAudioHistoryProps) {
   const [entries, setEntries] = useState<AudioEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -136,17 +137,19 @@ export default function GeneratedAudioHistory({ projectId, refreshKey, onPlay }:
   if (!projectId) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-semibold text-foreground">
-          Historique des audios
-        </h3>
-        {entries.length > 0 && (
-          <span className="text-[10px] text-muted-foreground">
-            {entries.length} fichier{entries.length > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
+    <div className={hideHeader ? "space-y-3" : "rounded-lg border border-border bg-card p-4 space-y-3"}>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-sm font-semibold text-foreground">
+            Historique des audios
+          </h3>
+          {entries.length > 0 && (
+            <span className="text-[10px] text-muted-foreground">
+              {entries.length} fichier{entries.length > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      )}
 
       {loading && entries.length === 0 && (
         <div className="flex items-center justify-center py-4">

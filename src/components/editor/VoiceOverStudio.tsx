@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,22 +88,30 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   }, []);
 
   const handlePasteFromScript = () => {
-    // Build text from scenes if available, with blank lines between
-    if (scenes && scenes.length > 0) {
-      const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
-      if (sceneTexts.length > 0) {
-        setVoScript(sceneTexts.join("\n\n"));
-        toast.success("Script collé depuis les scènes");
-        return;
+    // Priority: use generated script with scene structure
+    if (generatedScript?.trim()) {
+      // If we have scenes, build structured text with scene breaks
+      if (scenes && scenes.length > 0) {
+        const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
+        if (sceneTexts.length > 0) {
+          setVoScript(sceneTexts.join("\n\n"));
+          toast.success("Script généré collé (structure par scènes)");
+          return;
+        }
       }
+      // Fallback: use the generated script directly
+      setVoScript(generatedScript);
+      toast.success("Script généré collé");
+      return;
     }
+    // Last resort: narration
     const source = narration;
     if (!source?.trim()) {
-      toast.error("Aucun texte disponible dans ScriptCreator. Saisissez d'abord votre narration dans l'onglet ScriptCreator.");
+      toast.error("Aucun script généré disponible. Générez d'abord un script dans l'onglet ScriptCreator.");
       return;
     }
     setVoScript(source);
-    toast.success("Script collé depuis ScriptCreator");
+    toast.success("Narration collée");
   };
 
   const handleGenerate = async () => {
@@ -314,12 +322,25 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             </div>
           )}
 
-          {/* History */}
-          <GeneratedAudioHistory
-            projectId={projectId}
-            refreshKey={historyRefreshKey}
-            onPlay={handlePlayFromHistory}
-          />
+          {/* History — collapsible, open by default */}
+          <Accordion type="multiple" defaultValue={["history"]}>
+            <AccordionItem value="history" className="border rounded-lg border-border bg-card px-4">
+              <AccordionTrigger className="py-3 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Historique des audios
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <GeneratedAudioHistory
+                  projectId={projectId}
+                  refreshKey={historyRefreshKey}
+                  onPlay={handlePlayFromHistory}
+                  hideHeader
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {/* Left column — Script (shown SECOND on mobile, FIRST on desktop) */}
@@ -353,7 +374,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               className="h-9 sm:h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground min-w-[44px]"
             >
               <ClipboardPaste className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Coller depuis ScriptCreator</span>
+              <span className="hidden sm:inline">Coller le script généré</span>
               <span className="sm:hidden">Coller</span>
             </Button>
           </div>
