@@ -178,6 +178,12 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
     loadProfiles();
   }, []);
 
+  // Notify parent of active profile name changes
+  useEffect(() => {
+    const activeName = profiles.find((p) => p.id === activeProfileId)?.profile_name ?? null;
+    onActiveProfileChange?.(activeName);
+  }, [activeProfileId, profiles, onActiveProfileChange]);
+
   const loadProfiles = async () => {
     try {
       const { data, error } = await (supabase as any)
