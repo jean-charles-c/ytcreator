@@ -16,6 +16,7 @@ interface VoiceOverStudioProps {
   projectId: string | null;
   projectTitle?: string;
   scenes?: { source_text: string; title: string }[];
+  shots?: { id: string; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
