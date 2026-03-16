@@ -122,11 +122,11 @@ export default function SceneBlock({
 
   return (
     <div
-      className={`rounded-lg border bg-card p-5 animate-fade-in transition-colors ${scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border"}`}
+      className={`rounded-lg border bg-card p-3 sm:p-5 animate-fade-in transition-colors ${scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border"}`}
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {/* ─── Header ─── */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap">
         <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
         {sceneTypeInfo && (
           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${sceneTypeInfo.color}`}>
@@ -143,26 +143,26 @@ export default function SceneBlock({
             <CheckCircle2 className="h-2.5 w-2.5" /> Validée
           </span>
         )}
-        <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+        <div className="ml-auto flex items-center gap-0 sm:gap-0.5">
           {!editing && (
             <>
-              <button onClick={startEdit} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Éditer">
-                <Pencil className="h-3.5 w-3.5" />
+              <button onClick={startEdit} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Éditer">
+                <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
-              <button onClick={() => setShowSplit(!showSplit)} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Scinder">
-                <Scissors className="h-3.5 w-3.5" />
+              <button onClick={() => setShowSplit(!showSplit)} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Scinder">
+                <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
               {!isLast && (
-                <button onClick={() => onMergeWithNext(scene.id)} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Fusionner avec la suivante">
-                  <Merge className="h-3.5 w-3.5" />
+                <button onClick={() => onMergeWithNext(scene.id)} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Fusionner avec la suivante">
+                  <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                 </button>
               )}
               <button
                 onClick={() => onToggleValidated(scene.id, !scene.validated)}
-                className={`p-2 rounded transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${scene.validated ? "text-primary hover:text-muted-foreground" : "text-muted-foreground hover:text-primary"} hover:bg-secondary`}
+                className={`p-2 sm:p-2.5 rounded transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${scene.validated ? "text-primary hover:text-muted-foreground" : "text-muted-foreground hover:text-primary"} hover:bg-secondary active:bg-secondary`}
                 title={scene.validated ? "Invalider" : "Valider"}
               >
-                <CheckCircle2 className="h-3.5 w-3.5" />
+                <CheckCircle2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
             </>
           )}
@@ -234,7 +234,7 @@ export default function SceneBlock({
         <div className="mt-4 rounded border border-border bg-secondary/30 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">Déplacez le curseur pour choisir le point de scission :</p>
           <input type="range" min={10} max={scene.source_text.length - 10} value={splitPos} onChange={(e) => setSplitPos(Number(e.target.value))} className="w-full" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded border border-border bg-card p-2">
               <p className="text-[10px] text-muted-foreground font-medium mb-1">Partie 1</p>
               <p className="text-xs text-foreground">{scene.source_text.slice(0, splitPos).trim()}</p>
