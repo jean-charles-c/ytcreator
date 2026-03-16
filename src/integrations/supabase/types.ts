@@ -17,33 +17,51 @@ export type Database = {
       favorite_voice_profile: {
         Row: {
           created_at: string | null
+          effects_profile_id: string
           id: string
           language_code: string
+          pause_after_sentences: number
+          pause_between_paragraphs: number
+          sentence_end_slow: number
+          sentence_start_boost: number
           speaking_rate: number
           style: string
           updated_at: string | null
           user_id: string
           voice_gender: string
+          volume_gain_db: number
         }
         Insert: {
           created_at?: string | null
+          effects_profile_id?: string
           id?: string
           language_code?: string
+          pause_after_sentences?: number
+          pause_between_paragraphs?: number
+          sentence_end_slow?: number
+          sentence_start_boost?: number
           speaking_rate?: number
           style?: string
           updated_at?: string | null
           user_id: string
           voice_gender?: string
+          volume_gain_db?: number
         }
         Update: {
           created_at?: string | null
+          effects_profile_id?: string
           id?: string
           language_code?: string
+          pause_after_sentences?: number
+          pause_between_paragraphs?: number
+          sentence_end_slow?: number
+          sentence_start_boost?: number
           speaking_rate?: number
           style?: string
           updated_at?: string | null
           user_id?: string
           voice_gender?: string
+          volume_gain_db?: number
         }
         Relationships: []
       }
