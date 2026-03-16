@@ -520,10 +520,10 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
                 <span className="text-[10px] text-muted-foreground truncate">— {group.sceneTitle}</span>
               </div>
               <div className="px-1 py-1 space-y-0.5">
-                {group.segments.map(({ seg, globalIndex }) => (
+              {group.segments.map(({ seg, globalIndex }, localIdx) => (
                   <div key={seg.id} data-seg-index={globalIndex}>
                     <EditableSegmentCard
-                      segment={seg}
+                      segment={{ ...seg, displayIndex: localIdx + 1 } as ShotSegment & { displayIndex: number }}
                       index={globalIndex}
                       total={segments.length}
                       isActive={seg.id === activeSegment?.id}
