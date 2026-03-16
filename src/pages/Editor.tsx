@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
