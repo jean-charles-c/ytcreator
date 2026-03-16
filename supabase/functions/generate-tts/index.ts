@@ -231,7 +231,7 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost);
       const isSsml = ssmlText.startsWith("<speak>");
       const audioContent = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(

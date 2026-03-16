@@ -290,6 +290,26 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
         </div>
       </div>
 
+      {/* Sentence start boost */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Élan en début de phrase</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.sentenceStartBoost === 0 ? "Désactivé" : `+${settings.sentenceStartBoost}%`}</span>
+        </div>
+        <Slider
+          min={0} max={20} step={2}
+          value={[settings.sentenceStartBoost]}
+          onValueChange={([v]) => update({ sentenceStartBoost: v })}
+          aria-label="Élan en début de phrase"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Désactivé</span><span>+10%</span><span>+20%</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          Accélère légèrement les premiers mots de chaque phrase pour un effet narratif plus dynamique.
+        </p>
+      </div>
+
       {/* Save as favorite */}
       <Button
         variant="outline"
