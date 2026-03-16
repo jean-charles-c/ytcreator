@@ -134,3 +134,30 @@ export function assembleTimeline(
     createdAt: new Date().toISOString(),
   };
 }
+
+/** Recalculate startTime for all segments after editing order or duration */
+export function recalcStartTimes(segments: ShotSegment[]): ShotSegment[] {
+  let t = 0;
+  return segments.map((seg) => {
+    const updated = { ...seg, startTime: Math.round(t * 100) / 100 };
+    t += seg.duration;
+    return updated;
+  });
+}
+
+/** Update a timeline after segment edits (reorder, duration, image) */
+export function updateTimelineSegments(timeline: Timeline, newSegments: ShotSegment[]): Timeline {
+  const recalced = recalcStartTimes(newSegments);
+  const last = recalced[recalced.length - 1];
+  const totalDuration = last ? last.startTime + last.duration : 0;
+  return {
+    ...timeline,
+    videoTrack: {
+      ...timeline.videoTrack,
+      segments: recalced,
+      totalDuration,
+    },
+    totalDuration: Math.max(totalDuration, timeline.audioTrack.durationEstimate),
+    segmentCount: recalced.length,
+  };
+}
