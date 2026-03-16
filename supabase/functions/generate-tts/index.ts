@@ -153,6 +153,7 @@ serve(async (req) => {
       pauseBetweenParagraphs = 0,
       pauseAfterSentences = 0,
       sentenceStartBoost = 0,
+      sentenceEndSlow = 0,
       mode = "preview",
       projectId,
     } = body;
