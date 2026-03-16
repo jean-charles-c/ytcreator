@@ -101,8 +101,8 @@ async function resolveVoiceName(
       ? voices.find((v) => v.name === requestedVoiceName)
       : undefined;
 
-    // Keep exact requested only when voiceType is not explicitly requested
-    if (!voiceType && exactRequested) return exactRequested.name;
+    // Always honor an explicitly requested voice if it exists
+    if (exactRequested) return exactRequested.name;
 
     const typeVoices = voices
       .filter((v) => v.name.toLowerCase().includes(`-${normalizedType}-`))
