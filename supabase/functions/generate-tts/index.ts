@@ -234,7 +234,7 @@ serve(async (req) => {
           if (startBoostPct > 0 && endSlowPct > 0) {
             const head = words.slice(0, mid).join("");
             const tail = words.slice(mid).join("");
-            return `<prosody rate="+${startBoostPct}%">${head}</prosody><prosody rate="-${endSlowPct}%">${tail}</prosody>`;
+            return `<prosody rate="${100 + startBoostPct}%">${head}</prosody><prosody rate="${Math.max(20, 100 - endSlowPct)}%">${tail}</prosody>`;
           }
           headIdx = mid;
           tailIdx = mid;
