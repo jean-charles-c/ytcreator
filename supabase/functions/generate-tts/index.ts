@@ -200,7 +200,9 @@ serve(async (req) => {
       // Boost the first N words of a sentence with <prosody rate="+X%">
       // Slow down the last N words with <prosody rate="-X%">
       function processSentence(sentence: string): string {
-        let result = sentence;
+        const trimmed = sentence.trim();
+        const endsWithExclamOrQuestion = /[!?]$/.test(trimmed);
+        const effectiveEndSlow = endsWithExclamOrQuestion ? 0 : endSlowPct;
         const words = sentence.split(/(\s+)/); // preserve whitespace tokens
         const actualWords = words.filter(w => w.trim());
         
