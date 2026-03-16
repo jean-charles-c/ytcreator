@@ -8,12 +8,14 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  StopCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Timeline } from "./timelineAssembly";
 import {
   exportTimelineToMp4,
+  abortExport,
   type ExportFps,
   type ExportProgress,
 } from "./videoExportEngine";
@@ -37,6 +39,13 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
 
   const isExporting = progress !== null && progress.phase !== "done" && progress.phase !== "error";
 
+  const handleAbort = useCallback(() => {
+    abortRef.current = true;
+    abortExport();
+    setProgress({ phase: "error", percent: 0, message: "Export annulé par l'utilisateur." });
+    toast.info("Export annulé.");
+  }, []);
+
   const handleExport = useCallback(async () => {
     abortRef.current = false;
     setExportBlob(null);
@@ -49,6 +58,7 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
       setExportDate(new Date().toLocaleString("fr-FR"));
       toast.success("Export MP4 terminé !");
     } catch (err: any) {
+      if (abortRef.current) return;
       console.error("Export error:", err);
       setProgress({ phase: "error", percent: 0, message: err?.message || "Erreur inconnue" });
       toast.error("Échec de l'export vidéo.");
