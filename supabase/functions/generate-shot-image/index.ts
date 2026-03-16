@@ -7,6 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const MODEL_COSTS: Record<string, number> = {
+  "google/gemini-2.5-flash-image": 1,
+  "google/gemini-3.1-flash-image-preview": 3,
+  "google/gemini-3-pro-image-preview": 5,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
@@ -38,6 +44,7 @@ serve(async (req) => {
     ];
     const selectedModel = ALLOWED_MODELS.includes(model) ? model : "google/gemini-2.5-flash-image";
     const selectedAspectRatio = ["16:9", "9:16", "1:1", "4:3", "3:2", "3:4", "2:3"].includes(aspect_ratio) ? aspect_ratio : "16:9";
+    const cost = MODEL_COSTS[selectedModel] ?? 1;
 
     // Fetch the shot
     const { data: shot, error: shotErr } = await supabase
@@ -63,7 +70,6 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Generate image using Nano Banana 2
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
@@ -74,12 +80,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: selectedModel,
-          messages: [
-            {
-              role: "user",
-              content: fullPrompt,
-            },
-          ],
+          messages: [{ role: "user", content: fullPrompt }],
           modalities: ["image", "text"],
         }),
       }
@@ -88,23 +89,15 @@ serve(async (req) => {
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        throw new Error("Rate limit exceeded, please try again later");
-      }
-      if (aiResponse.status === 402) {
-        throw new Error("Payment required, please add credits");
-      }
+      if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
+      if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
       throw new Error("AI gateway error");
     }
 
     const aiData = await aiResponse.json();
     const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageData) throw new Error("No image generated");
 
-    if (!imageData) {
-      throw new Error("No image generated");
-    }
-
-    // Extract base64 data
     const base64Match = imageData.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
     if (!base64Match) throw new Error("Invalid image data format");
 
@@ -112,37 +105,33 @@ serve(async (req) => {
     const base64Content = base64Match[2];
     const imageBytes = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
 
-    // Upload to storage
     const filePath = `${shot.project_id}/${shot.id}.${imageFormat === "jpeg" ? "jpg" : imageFormat}`;
-    
+
     const { error: uploadError } = await supabase.storage
       .from("shot-images")
       .upload(filePath, imageBytes, {
         contentType: `image/${imageFormat}`,
         upsert: true,
       });
+    if (uploadError) throw new Error("Failed to upload image");
 
-    if (uploadError) {
-      console.error("Upload error:", uploadError);
-      throw new Error("Failed to upload image");
-    }
-
-    // Get public URL
     const { data: publicUrlData } = supabase.storage
       .from("shot-images")
       .getPublicUrl(filePath);
 
     const imageUrl = publicUrlData.publicUrl + `?t=${Date.now()}`;
 
-    // Update shot with image_url
+    // Accumulate cost
+    const previousCost = typeof shot.generation_cost === "number" ? shot.generation_cost : 0;
+    const newTotalCost = previousCost + cost;
+
     const { error: updateErr } = await supabase
       .from("shots")
-      .update({ image_url: imageUrl })
+      .update({ image_url: imageUrl, generation_cost: newTotalCost })
       .eq("id", shot_id);
-
     if (updateErr) throw new Error("Failed to update shot");
 
-    return new Response(JSON.stringify({ image_url: imageUrl }), {
+    return new Response(JSON.stringify({ image_url: imageUrl, generation_cost: newTotalCost }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
