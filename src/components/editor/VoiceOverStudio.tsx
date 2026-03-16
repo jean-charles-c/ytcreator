@@ -353,7 +353,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               className="h-9 sm:h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground min-w-[44px]"
             >
               <ClipboardPaste className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Coller depuis ScriptCreator</span>
+              <span className="hidden sm:inline">Coller le script généré</span>
               <span className="sm:hidden">Coller</span>
             </Button>
           </div>
