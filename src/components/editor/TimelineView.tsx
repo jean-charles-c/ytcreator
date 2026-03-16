@@ -102,7 +102,7 @@ function EditableSegmentCard({
         <button onClick={onSeek} className="flex-1 min-w-0 py-0.5 text-left min-h-[44px] sm:min-h-0 flex flex-col justify-center">
           <div className="flex items-center gap-2">
               <span className={`text-[10px] font-semibold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-              Shot {segment.displayIndex ?? segment.shotOrder}
+              Shot {displayIndex}
             </span>
           </div>
           <p className="text-xs text-foreground leading-snug mt-0.5 line-clamp-1">
