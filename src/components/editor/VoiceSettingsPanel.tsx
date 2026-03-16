@@ -324,13 +324,13 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
           <span className="text-xs font-mono text-muted-foreground">{settings.sentenceEndSlow === 0 ? "Désactivé" : `-${settings.sentenceEndSlow}%`}</span>
         </div>
         <Slider
-          min={0} max={50} step={5}
+          min={0} max={100} step={5}
           value={[settings.sentenceEndSlow]}
           onValueChange={([v]) => update({ sentenceEndSlow: v })}
           aria-label="Ralentissement en fin de phrase"
         />
         <div className="flex justify-between text-[10px] text-muted-foreground/60">
-          <span>Désactivé</span><span>-25%</span><span>-50%</span>
+          <span>Désactivé</span><span>-50%</span><span>-100%</span>
         </div>
         <p className="text-[10px] text-muted-foreground/60">
           Ralentit les derniers mots de chaque phrase pour un effet posé et conclusif.
