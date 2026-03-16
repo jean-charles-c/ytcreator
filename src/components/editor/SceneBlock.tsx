@@ -153,8 +153,8 @@ export default function SceneBlock({
                 <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
               {!isLast && (
-                <button onClick={() => onMergeWithNext(scene.id)} className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" title="Fusionner avec la suivante">
-                  <Merge className="h-3.5 w-3.5" />
+                <button onClick={() => onMergeWithNext(scene.id)} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Fusionner avec la suivante">
+                  <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                 </button>
               )}
               <button
