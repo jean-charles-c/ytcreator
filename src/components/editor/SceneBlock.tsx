@@ -3,20 +3,35 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Film,
   Pencil,
   Check,
   X,
   Scissors,
   Merge,
-  RotateCcw,
   CheckCircle2,
   Loader2,
+  MapPin,
+  Users,
   Clapperboard,
+  ArrowRight,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Scene = Tables<"scenes">;
+
+const SCENE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  action: { label: "Action", color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  description: { label: "Description", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  dialogue: { label: "Dialogue", color: "bg-green-500/10 text-green-600 border-green-500/20" },
+  transition: { label: "Transition", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  exposition: { label: "Exposition", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+};
+
+const CONTINUITY_LABELS: Record<string, string> = {
+  new: "Nouveau fil",
+  continues: "Continue",
+  develops: "Développe",
+};
 
 interface SceneBlockProps {
   scene: Scene;
@@ -45,6 +60,7 @@ export default function SceneBlock({
   const [editTitle, setEditTitle] = useState(scene.title);
   const [editText, setEditText] = useState(scene.source_text);
   const [editVisual, setEditVisual] = useState(scene.visual_intention ?? "");
+  const [editNarrativeAction, setEditNarrativeAction] = useState(scene.narrative_action ?? "");
   const [saving, setSaving] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [splitPos, setSplitPos] = useState(Math.floor(scene.source_text.length / 2));
@@ -53,6 +69,7 @@ export default function SceneBlock({
     setEditTitle(scene.title);
     setEditText(scene.source_text);
     setEditVisual(scene.visual_intention ?? "");
+    setEditNarrativeAction(scene.narrative_action ?? "");
     setEditing(true);
   };
 
@@ -66,6 +83,7 @@ export default function SceneBlock({
         title: editTitle.trim(),
         source_text: editText.trim(),
         visual_intention: editVisual.trim() || null,
+        narrative_action: editNarrativeAction.trim() || null,
       })
       .eq("id", scene.id);
     setSaving(false);
@@ -73,7 +91,13 @@ export default function SceneBlock({
       toast.error("Erreur de sauvegarde");
       return;
     }
-    onUpdate({ ...scene, title: editTitle.trim(), source_text: editText.trim(), visual_intention: editVisual.trim() || null });
+    onUpdate({
+      ...scene,
+      title: editTitle.trim(),
+      source_text: editText.trim(),
+      visual_intention: editVisual.trim() || null,
+      narrative_action: editNarrativeAction.trim() || null,
+    });
     setEditing(false);
     toast.success("Scène mise à jour");
   };
@@ -89,15 +113,31 @@ export default function SceneBlock({
     setShowSplit(false);
   };
 
+  const sceneTypeInfo = SCENE_TYPE_LABELS[scene.scene_type ?? ""] ?? null;
+  const continuityLabel = CONTINUITY_LABELS[scene.continuity ?? ""] ?? null;
+  const hasCharacters = scene.characters && scene.characters !== "none";
+  const hasLocation = scene.location && scene.location !== "unspecified";
+
   const inputClass = "w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 
   return (
     <div
-      className={`rounded border bg-card p-5 animate-fade-in transition-colors ${scene.validated ? "border-primary/40" : "border-border"}`}
+      className={`rounded-lg border bg-card p-5 animate-fade-in transition-colors ${scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border"}`}
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      <div className="flex items-center gap-2 mb-3">
+      {/* ─── Header ─── */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
+        {sceneTypeInfo && (
+          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${sceneTypeInfo.color}`}>
+            {sceneTypeInfo.label}
+          </span>
+        )}
+        {continuityLabel && scene.continuity !== "new" && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            <ArrowRight className="h-2.5 w-2.5" /> {continuityLabel}
+          </span>
+        )}
         {scene.validated && (
           <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
             <CheckCircle2 className="h-2.5 w-2.5" /> Validée
@@ -133,7 +173,8 @@ export default function SceneBlock({
         <div className="space-y-3">
           <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Titre de la scène" />
           <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className={`${inputClass} min-h-[100px] resize-y`} placeholder="Texte source" />
-          <input type="text" value={editVisual} onChange={(e) => setEditVisual(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Intention visuelle (optionnel)" />
+          <input type="text" value={editNarrativeAction} onChange={(e) => setEditNarrativeAction(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Action narrative" />
+          <input type="text" value={editVisual} onChange={(e) => setEditVisual(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Intention visuelle (en français)" />
           <div className="flex gap-2">
             <Button size="sm" onClick={saveEdit} disabled={saving}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -147,10 +188,38 @@ export default function SceneBlock({
       ) : (
         <>
           <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-1">{scene.source_text}</p>
-          {(scene as any).source_text_fr && (
-            <p className="text-sm text-muted-foreground/70 leading-relaxed mb-3 italic border-l-2 border-primary/20 pl-3">🇫🇷 {(scene as any).source_text_fr}</p>
+
+          {/* Narrative action */}
+          {scene.narrative_action && scene.narrative_action !== "Non spécifié" && (
+            <div className="flex items-start gap-2 mb-2">
+              <Clapperboard className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+              <p className="text-sm font-medium text-foreground/80">{scene.narrative_action}</p>
+            </div>
           )}
+
+          {/* Source text */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-1">{scene.source_text}</p>
+          {scene.source_text_fr && (
+            <p className="text-sm text-muted-foreground/70 leading-relaxed mb-3 italic border-l-2 border-primary/20 pl-3">🇫🇷 {scene.source_text_fr}</p>
+          )}
+
+          {/* Characters + Location */}
+          {(hasCharacters || hasLocation) && (
+            <div className="flex flex-wrap gap-3 mb-3 mt-2">
+              {hasCharacters && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="h-3 w-3" /> {scene.characters}
+                </span>
+              )}
+              {hasLocation && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3" /> {scene.location}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Visual intention */}
           {scene.visual_intention && (
             <div className="rounded bg-secondary/50 border border-border p-3 space-y-1">
               <span className="text-[10px] font-medium text-primary uppercase tracking-wide">Sujet de la scène</span>
@@ -160,6 +229,7 @@ export default function SceneBlock({
         </>
       )}
 
+      {/* Split tool */}
       {showSplit && !editing && (
         <div className="mt-4 rounded border border-border bg-secondary/30 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">Déplacez le curseur pour choisir le point de scission :</p>
