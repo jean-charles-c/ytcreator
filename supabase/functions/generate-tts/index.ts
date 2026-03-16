@@ -247,7 +247,7 @@ serve(async (req) => {
     }
 
     // Convert text to SSML with pauses
-    const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+    const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences);
     const isSsml = ssmlText.startsWith("<speak>");
 
     // Google TTS has a 5000 byte limit per request — split if needed
