@@ -132,22 +132,22 @@ function EditableSegmentCard({
           </button>
         </div>
         {/* Duration */}
-        <div className="flex items-center gap-0.5 ml-2 sm:ml-0">
+        <div className="flex items-center gap-0.5 ml-2 sm:ml-0" title="Durée d'affichage du visuel">
           <button
             onClick={() => onDurationChange(-0.5)}
             disabled={segment.duration <= 0.5}
             className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-20 disabled:pointer-events-none transition-colors"
-            title="−0.5s"
+            title="Réduire la durée de 0.5s"
           >
             <Minus className="h-3.5 w-3.5 sm:h-2.5 sm:w-2.5" />
           </button>
-          <span className="text-[9px] font-mono text-muted-foreground w-8 text-center" title="Durée">
-            {formatTime(segment.duration)}
+          <span className="text-[9px] font-mono text-muted-foreground w-8 text-center" title="Durée d'affichage">
+            {segment.duration.toFixed(1)}s
           </span>
           <button
             onClick={() => onDurationChange(0.5)}
             className="h-8 w-8 sm:h-5 sm:w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="+0.5s"
+            title="Augmenter la durée de 0.5s"
           >
             <Plus className="h-3.5 w-3.5 sm:h-2.5 sm:w-2.5" />
           </button>
