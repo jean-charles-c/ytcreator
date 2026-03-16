@@ -159,10 +159,10 @@ export default function SceneBlock({
               )}
               <button
                 onClick={() => onToggleValidated(scene.id, !scene.validated)}
-                className={`p-2 rounded transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${scene.validated ? "text-primary hover:text-muted-foreground" : "text-muted-foreground hover:text-primary"} hover:bg-secondary`}
+                className={`p-2 sm:p-2.5 rounded transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${scene.validated ? "text-primary hover:text-muted-foreground" : "text-muted-foreground hover:text-primary"} hover:bg-secondary active:bg-secondary`}
                 title={scene.validated ? "Invalider" : "Valider"}
               >
-                <CheckCircle2 className="h-3.5 w-3.5" />
+                <CheckCircle2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
             </>
           )}
