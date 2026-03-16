@@ -380,13 +380,13 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
       {/* ═══ VideoPreviewPlayer ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-          {segments.map((seg) => {
+          {segments.map((seg, idx) => {
             const isActive = seg.id === activeSegment?.id;
             return seg.imageUrl ? (
               <img
                 key={seg.id}
                 src={seg.imageUrl}
-                alt={`Shot ${seg.shotOrder}`}
+                alt={`Shot ${idx + 1}`}
                 className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ease-in-out ${isActive ? "opacity-100 z-[1]" : "opacity-0 z-0"}`}
               />
             ) : isActive ? (
@@ -394,7 +394,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
                 <div className="w-16 h-16 rounded-xl border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
                   <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
                 </div>
-                <span className="text-xs text-muted-foreground/40">Shot {seg.shotOrder} — pas de visuel</span>
+                <span className="text-xs text-muted-foreground/40">Shot {idx + 1} — pas de visuel</span>
               </div>
             ) : null;
           })}
@@ -408,7 +408,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-8">
               <p className="text-white text-sm leading-snug line-clamp-2 drop-shadow">{activeSegment.sentence || activeSegment.description}</p>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-[10px] text-white/60 font-mono">Shot {activeSegment.shotOrder}</span>
+                <span className="text-[10px] text-white/60 font-mono">Shot {activeIndex + 1}</span>
                 <span className="text-[10px] text-white/40 truncate">{activeSegment.sceneTitle}</span>
               </div>
             </div>
