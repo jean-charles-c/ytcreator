@@ -1345,6 +1345,7 @@ export default function Editor() {
         {/* Storyboard View */}
         {!showSetup && activeTab === "storyboard" && (
           <>
+          <div className="container max-w-5xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-2">
               <div>
                 <div className="flex items-center gap-3 mb-1">
