@@ -427,19 +427,150 @@ Return data via the segment_narration tool call only.`
 };
 
 // ─── Chunked Processing for Long Texts ───────────────────────────
+//
+// Strategy for inter-chunk continuity:
+// 1. Chunks overlap: each chunk includes the last ~100 words of the
+//    previous chunk as "context prefix" so the AI sees the ongoing action.
+// 2. The AI is told to mark the first scene as continuity="continues"
+//    if the text starts mid-action.
+// 3. After all chunks are processed, a merge pass fuses adjacent scenes
+//    at chunk boundaries when they share the same narrative action.
 
 const splitIntoParagraphs = (text: string): string[] => {
   return text.split(/\n\n+/).filter(p => p.trim().length > 0);
 };
 
+/**
+ * Build overlapping chunks from paragraphs.
+ * Each chunk targets ~1000 words of NEW content.
+ * The overlap is the last paragraph(s) of the previous chunk (~100-150 words)
+ * so the AI has context of the ongoing action.
+ */
+const buildOverlappingChunks = (paragraphs: string[]): { text: string; overlapWordCount: number }[] => {
+  const TARGET_WORDS = 1000;
+  const OVERLAP_WORDS = 120;
+
+  const chunks: { text: string; overlapWordCount: number }[] = [];
+  let i = 0;
+
+  while (i < paragraphs.length) {
+    let chunkParagraphs: string[] = [];
+    let overlapParagraphs: string[] = [];
+    let overlapWordCount = 0;
+    let wordCount = 0;
+
+    // Add overlap from previous chunk's tail
+    if (chunks.length > 0 && i > 0) {
+      let oi = i - 1;
+      const overlapCandidates: string[] = [];
+      let ow = 0;
+      while (oi >= 0 && ow < OVERLAP_WORDS) {
+        overlapCandidates.unshift(paragraphs[oi]);
+        ow += paragraphs[oi].split(/\s+/).filter(Boolean).length;
+        oi--;
+      }
+      overlapParagraphs = overlapCandidates;
+      overlapWordCount = ow;
+    }
+
+    // Add new paragraphs until we hit the target
+    while (i < paragraphs.length && wordCount < TARGET_WORDS) {
+      const pWords = paragraphs[i].split(/\s+/).filter(Boolean).length;
+      chunkParagraphs.push(paragraphs[i]);
+      wordCount += pWords;
+      i++;
+    }
+
+    const fullText = [...overlapParagraphs, ...chunkParagraphs].join("\n\n");
+    chunks.push({ text: fullText.trim(), overlapWordCount });
+  }
+
+  return chunks;
+};
+
 const processChunk = async (
   apiKey: string,
   chunkText: string,
+  overlapWordCount: number,
+  isFirstChunk: boolean,
   scriptLanguage: string,
   needsFrenchTranslation: boolean
 ) => {
   const actions = await narrativeActionPass(apiKey, chunkText);
-  return sceneAssemblyPass(apiKey, chunkText, actions, scriptLanguage, needsFrenchTranslation);
+  const scenes = await sceneAssemblyPass(apiKey, chunkText, actions, scriptLanguage, needsFrenchTranslation);
+
+  // If there's overlap, remove scenes whose source_text is entirely within the overlap zone.
+  // The overlap is the first ~overlapWordCount words of chunkText.
+  if (!isFirstChunk && overlapWordCount > 0 && scenes.length > 0) {
+    const chunkWords = chunkText.split(/\s+/).filter(Boolean);
+    const overlapText = normalizeForCoverage(chunkWords.slice(0, overlapWordCount).join(" "));
+
+    // Drop leading scenes that fall entirely within the overlap
+    while (scenes.length > 1) {
+      const sceneNorm = normalizeForCoverage(scenes[0].source_text);
+      // If the scene text is fully contained in the overlap prefix, it's a duplicate
+      if (overlapText.includes(sceneNorm)) {
+        console.log(`Dropping overlap-duplicate scene: "${scenes[0].title}"`);
+        scenes.shift();
+      } else {
+        break;
+      }
+    }
+  }
+
+  return scenes;
+};
+
+/**
+ * Merge pass: fuse scenes at chunk boundaries when they describe the same action.
+ * Two adjacent scenes are merged if:
+ * - They have the same narrative_action (fuzzy match)
+ * - OR the second scene has continuity="continues"
+ * AND they are at a chunk boundary (indicated by boundaryIndices).
+ */
+const mergeChunkBoundaryScenes = (
+  allScenes: ReturnType<typeof validateSceneBlock>[],
+  boundaryIndices: number[]
+): ReturnType<typeof validateSceneBlock>[] => {
+  if (allScenes.length === 0 || boundaryIndices.length === 0) return allScenes;
+
+  const result = [...allScenes];
+  // Process boundaries in reverse order to preserve indices
+  for (let b = boundaryIndices.length - 1; b >= 0; b--) {
+    const idx = boundaryIndices[b];
+    if (idx <= 0 || idx >= result.length) continue;
+
+    const prev = result[idx - 1];
+    const curr = result[idx];
+
+    const shouldMerge =
+      curr.continuity === "continues" ||
+      normalizeForCoverage(prev.narrative_action) === normalizeForCoverage(curr.narrative_action);
+
+    if (shouldMerge) {
+      console.log(`Merging boundary scenes: "${prev.title}" + "${curr.title}"`);
+      const merged: ReturnType<typeof validateSceneBlock> = {
+        ...prev,
+        source_text: prev.source_text + " " + curr.source_text,
+        ...(prev.source_text_fr && curr.source_text_fr
+          ? { source_text_fr: prev.source_text_fr + " " + curr.source_text_fr }
+          : prev.source_text_fr ? { source_text_fr: prev.source_text_fr } : {}),
+        title: prev.title,
+        visual_intention: prev.visual_intention,
+        narrative_action: prev.narrative_action,
+        characters: prev.characters === curr.characters ? prev.characters
+          : prev.characters === "none" ? curr.characters
+          : curr.characters === "none" ? prev.characters
+          : `${prev.characters}, ${curr.characters}`,
+        location: prev.location === curr.location ? prev.location : prev.location,
+        scene_type: prev.scene_type,
+        continuity: prev.continuity,
+      };
+      result.splice(idx - 1, 2, merged);
+    }
+  }
+
+  return result;
 };
 
 // ─── Main Handler ─────────────────────────────────────────────────
@@ -490,34 +621,34 @@ serve(async (req) => {
     let allScenes: ReturnType<typeof validateSceneBlock>[] = [];
 
     if (wordCount > 1500) {
-      // ─── Chunked processing for long texts ───
-      console.log(`Long narration (${wordCount} words). Processing in chunks.`);
+      // ─── Chunked processing with overlap and boundary merging ───
+      console.log(`Long narration (${wordCount} words). Processing in overlapping chunks.`);
       const paragraphs = splitIntoParagraphs(narrationText);
+      const chunks = buildOverlappingChunks(paragraphs);
 
-      const chunks: string[] = [];
-      let currentChunk = "";
-      let currentWords = 0;
-      for (const p of paragraphs) {
-        const pWords = p.split(/\s+/).filter(Boolean).length;
-        if (currentWords + pWords > 700 && currentChunk) {
-          chunks.push(currentChunk.trim());
-          currentChunk = p;
-          currentWords = pWords;
-        } else {
-          currentChunk += "\n\n" + p;
-          currentWords += pWords;
-        }
-      }
-      if (currentChunk.trim()) chunks.push(currentChunk.trim());
+      console.log(`Split into ${chunks.length} overlapping chunks`);
 
-      console.log(`Split into ${chunks.length} chunks`);
+      const boundaryIndices: number[] = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        const chunkWords = chunks[i].split(/\s+/).filter(Boolean).length;
-        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words)`);
-        const chunkScenes = await processChunk(LOVABLE_API_KEY, chunks[i], scriptLanguage, needsFrenchTranslation);
+        const { text, overlapWordCount } = chunks[i];
+        const chunkWords = text.split(/\s+/).filter(Boolean).length;
+        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words, overlap: ${overlapWordCount})`);
+
+        if (i > 0) {
+          boundaryIndices.push(allScenes.length); // mark where this chunk's scenes start
+        }
+
+        const chunkScenes = await processChunk(
+          LOVABLE_API_KEY, text, overlapWordCount, i === 0,
+          scriptLanguage, needsFrenchTranslation
+        );
         allScenes.push(...chunkScenes);
       }
+
+      // Merge scenes at chunk boundaries that share the same narrative action
+      allScenes = mergeChunkBoundaryScenes(allScenes, boundaryIndices);
+      console.log(`After boundary merge: ${allScenes.length} SceneBlocks`);
     } else {
       // ─── Single-text two-pass pipeline ───
       const actions = await narrativeActionPass(LOVABLE_API_KEY, narrationText);
