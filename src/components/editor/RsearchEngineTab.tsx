@@ -16,6 +16,7 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
   const [content, setContent] = useState("");
   const [generating, setGenerating] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>();
+  const [progress, setProgress] = useState<{ current: number; total: number; section: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const exportRef = useRef<HTMLDivElement | null>(null);
