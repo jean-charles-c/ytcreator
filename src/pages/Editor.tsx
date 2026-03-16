@@ -1549,6 +1549,17 @@ export default function Editor() {
               </>
             )}
           </div>
+          <VisualGallery
+            open={galleryOpen}
+            onOpenChange={setGalleryOpen}
+            shots={shots}
+            scenes={scenes}
+            imageModels={IMAGE_MODELS}
+            imageModel={imageModel}
+            onImageModelChange={setImageModel}
+            onRegenerateShot={handleShotRegenerate}
+            onGenerateImage={handleGenerateShotImage}
+          />
         )}
 
         {/* Export tab */}
