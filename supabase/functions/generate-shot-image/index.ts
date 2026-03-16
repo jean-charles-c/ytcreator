@@ -28,8 +28,15 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { shot_id } = await req.json();
+    const { shot_id, model } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
+
+    const ALLOWED_MODELS = [
+      "google/gemini-2.5-flash-image",
+      "google/gemini-3.1-flash-image-preview",
+      "google/gemini-3-pro-image-preview",
+    ];
+    const selectedModel = ALLOWED_MODELS.includes(model) ? model : "google/gemini-2.5-flash-image";
 
     // Fetch the shot
     const { data: shot, error: shotErr } = await supabase
