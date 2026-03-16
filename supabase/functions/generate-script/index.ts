@@ -273,15 +273,27 @@ CONTENT RULES:
 
 ---
 
-LENGTH — NON-NEGOTIABLE:
-• HARD MAXIMUM: ${charMax.toLocaleString()} characters.
-• HARD MINIMUM: ${charMin.toLocaleString()} characters.
-• Ideal target: ${charTarget.toLocaleString()} characters.
-• The Escalation phase should be the longest — at least 40% of the total script.
-• BEFORE FINISHING: Count your total characters carefully.
-• If you are OVER ${charMax.toLocaleString()} characters, cut content until you are under.
-• If you are UNDER ${charMin.toLocaleString()} characters, expand with more concrete scenes and visual details.
-• A script that exceeds ${charMax.toLocaleString()} characters is a FAILED script.`;
+LENGTH — THIS IS THE MOST CRITICAL RULE OF ALL:
+
+Your script MUST be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters.
+Target: ${charTarget.toLocaleString()} characters. Aim to EXCEED the target slightly rather than fall short.
+
+A script UNDER ${charMin.toLocaleString()} characters is a FAILED script. This is worse than any other mistake.
+A script OVER ${charMax.toLocaleString()} characters is also a FAILED script.
+
+HOW TO HIT THE TARGET:
+• The Escalation phase (Phase 3) should be the longest — at least 40-50% of the total script.
+• The Setup phase (Phase 2) should be substantial — at least 20% of the total script.
+• Develop each discovery with rich, cinematic detail: describe the scene, the people, the objects, the atmosphere.
+• Use the 2-2-2-3-2-1-3-2-4-2 paragraph cycle multiple times. For a ${charTarget.toLocaleString()}-character script, you need approximately ${Math.round(charTarget / 130)} paragraphs total.
+• If you finish the narrative arc and are still under ${charMin.toLocaleString()} characters, go back and EXPAND: add more concrete scenes, more visual descriptions, more surprising details from the source material.
+
+SELF-CHECK BEFORE OUTPUTTING:
+1. Count your total characters. If under ${charMin.toLocaleString()}, you MUST add more content.
+2. If under target by more than 10%, add an entire new development cycle with fresh details from the source.
+3. Verify paragraph cycle compliance: 2-2-2-3-2-1-3-2-4-2.
+4. Only then output the script.`;
+
 }
 
 function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[], sourceText: string, charMin: number, charMax: number, charTarget: number): string {
