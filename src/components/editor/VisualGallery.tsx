@@ -143,7 +143,7 @@ export default function VisualGallery({
                     {/* Cost */}
                     {(shot.generation_cost as number) > 0 && (
                       <p className="text-[9px] text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded inline-block">
-                        {shot.generation_cost} crédit{(shot.generation_cost as number) > 1 ? "s" : ""}
+                        {(shot.generation_cost as number).toFixed(2)} $
                       </p>
                     )}
 
