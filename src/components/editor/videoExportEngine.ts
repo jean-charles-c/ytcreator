@@ -220,7 +220,10 @@ export async function exportTimelineToMp4(
   // ── Phase: Read output ──
   onProgress({ phase: "finalizing", percent: 96, message: "Finalisation…" });
   const outputRaw = await ffmpeg.readFile("output.mp4");
-  const outputData = outputRaw instanceof Uint8Array ? new Uint8Array(outputRaw.buffer.slice(0)) : outputRaw;
+  // Cast to satisfy strict TS — FFmpeg WASM returns Uint8Array for binary files
+  const outputBytes = typeof outputRaw === "string"
+    ? new TextEncoder().encode(outputRaw)
+    : new Uint8Array(outputRaw.buffer as ArrayBuffer, outputRaw.byteOffset, outputRaw.byteLength);
 
   // Cleanup
   for (let i = 0; i < segments.length; i++) {
