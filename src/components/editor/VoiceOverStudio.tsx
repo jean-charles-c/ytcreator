@@ -292,9 +292,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         </div>
       </div>
 
-      {/* Bottom row: Test rapide + Player + History — full width, 3 cols on desktop */}
+      {/* Bottom row: Test rapide + Player/History — full width */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-6">
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        {/* Test rapide — takes 2 cols on desktop */}
+        <div className="lg:col-span-2 rounded-lg border border-border bg-card p-4 space-y-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold font-display text-foreground">
             <AudioLines className="h-4 w-4 text-primary" />
             Test rapide
@@ -302,55 +303,58 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
           <VoicePreviewTest settings={settings} hideHeader />
         </div>
 
-        {playerState ? (
-          <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-sm font-semibold text-foreground">Lecteur audio</h3>
-              <span className="text-[10px] text-muted-foreground font-mono">
-                {formatDuration(playerState.durationEstimate)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handlePlayPause}
-                className="flex items-center justify-center h-11 w-11 sm:h-10 sm:w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-                aria-label={isPlaying ? "Pause" : "Lecture"}
-              >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-              </button>
-              <div className="flex-1">
-                <div className="h-2 sm:h-1.5 rounded-full bg-secondary overflow-hidden">
-                  <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
+        {/* Player + History stacked in 1 col */}
+        <div className="space-y-3">
+          {playerState ? (
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-xs font-semibold text-foreground">Lecteur</h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {formatDuration(playerState.durationEstimate)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePlayPause}
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                  aria-label={isPlaying ? "Pause" : "Lecture"}
+                >
+                  {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
+                </button>
+                <div className="flex-1">
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
+                  </div>
                 </div>
               </div>
+              <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
             </div>
-            <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 sm:p-4 flex flex-col items-center justify-center gap-2 min-h-[60px] sm:min-h-[80px]">
-            <Volume2 className="h-5 w-5 text-muted-foreground/30" />
-            <p className="text-xs text-muted-foreground/50 text-center">Lecteur audio</p>
-          </div>
-        )}
+          ) : (
+            <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 flex items-center justify-center gap-2 min-h-[50px]">
+              <Volume2 className="h-4 w-4 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground/50">Lecteur audio</p>
+            </div>
+          )}
 
-        <Accordion type="multiple" defaultValue={[]}>
-          <AccordionItem value="history" className="border rounded-lg border-border bg-card px-4">
-            <AccordionTrigger className="py-3 hover:no-underline gap-2">
-              <span className="flex items-center gap-2 text-sm font-semibold font-display">
-                <Clock className="h-4 w-4 text-primary" />
-                Historique des audios
-              </span>
-            </AccordionTrigger>
-            <AccordionContent>
-              <GeneratedAudioHistory
-                projectId={projectId}
-                refreshKey={historyRefreshKey}
-                onPlay={handlePlayFromHistory}
-                hideHeader
-              />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+          <Accordion type="multiple" defaultValue={[]}>
+            <AccordionItem value="history" className="border rounded-lg border-border bg-card px-3">
+              <AccordionTrigger className="py-2 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-xs font-semibold font-display">
+                  <Clock className="h-3.5 w-3.5 text-primary" />
+                  Historique
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <GeneratedAudioHistory
+                  projectId={projectId}
+                  refreshKey={historyRefreshKey}
+                  onPlay={handlePlayFromHistory}
+                  hideHeader
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
       </div>
     </div>
   );
