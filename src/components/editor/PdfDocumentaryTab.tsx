@@ -27,6 +27,77 @@ interface ScriptVersion {
   content: string;
 }
 
+const extractTextFromStreamPayload = (payload: unknown): string => {
+  if (!payload || typeof payload !== "object") return "";
+
+  const data = payload as {
+    error?: string;
+    choices?: Array<{
+      delta?: { content?: unknown };
+      message?: { content?: unknown };
+      text?: unknown;
+    }>;
+    output?: Array<{
+      content?: Array<{
+        type?: string;
+        text?: string;
+      }>;
+    }>;
+  };
+
+  if (typeof data.error === "string") {
+    throw new Error(data.error);
+  }
+
+  const normalizeContent = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (!Array.isArray(value)) return "";
+
+    return value
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (!part || typeof part !== "object") return "";
+
+        const typedPart = part as {
+          text?: string;
+          content?: string;
+        };
+
+        return typedPart.text ?? typedPart.content ?? "";
+      })
+      .join("");
+  };
+
+  const choice = data.choices?.[0];
+  const deltaText = normalizeContent(choice?.delta?.content);
+  if (deltaText) return deltaText;
+
+  const messageText = normalizeContent(choice?.message?.content);
+  if (messageText) return messageText;
+
+  if (typeof choice?.text === "string") return choice.text;
+
+  if (Array.isArray(data.output)) {
+    return data.output
+      .flatMap((item) => item.content ?? [])
+      .map((part) => part.text ?? "")
+      .join("");
+  }
+
+  return "";
+};
+
+const readSseEventData = (rawEvent: string): string | null => {
+  const dataLines = rawEvent
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trimStart());
+
+  if (dataLines.length === 0) return null;
+  return dataLines.join("\n").trim();
+};
+
 const LANGUAGES = [
   { value: "en", label: "English" },
   { value: "fr", label: "Français" },
@@ -184,30 +255,56 @@ export default function PdfDocumentaryTab({
       const decoder = new TextDecoder();
       let buffer = "";
       let full = "";
+      let done = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+      while (!done) {
+        const chunk = await reader.read();
+        done = chunk.done;
+        buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !done });
 
-        let nlIdx: number;
-        while ((nlIdx = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, nlIdx);
-          buffer = buffer.slice(nlIdx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-          const json = line.slice(6).trim();
-          if (json === "[DONE]") break;
+        let eventBoundaryIndex: number;
+        while ((eventBoundaryIndex = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, eventBoundaryIndex);
+          buffer = buffer.slice(eventBoundaryIndex + 2);
+
+          if (!rawEvent.trim()) continue;
+          if (rawEvent.split("\n").every((line) => line.trimStart().startsWith(":"))) continue;
+
+          const eventData = readSseEventData(rawEvent);
+          if (!eventData) continue;
+          if (eventData === "[DONE]") {
+            done = true;
+            break;
+          }
+
           try {
-            const parsed = JSON.parse(json);
-            const content = parsed.choices?.[0]?.delta?.content;
+            const parsed = JSON.parse(eventData);
+            const content = extractTextFromStreamPayload(parsed);
             if (content) {
               full += content;
               onScriptChange(full);
             }
-          } catch { /* partial */ }
+          } catch (error) {
+            console.error("Invalid SSE chunk:", eventData, error);
+          }
         }
+      }
+
+      if (buffer.trim()) {
+        const eventData = readSseEventData(buffer);
+        if (eventData && eventData !== "[DONE]") {
+          try {
+            const parsed = JSON.parse(eventData);
+            const content = extractTextFromStreamPayload(parsed);
+            if (content) full += content;
+          } catch (error) {
+            console.error("Invalid trailing SSE chunk:", buffer, error);
+          }
+        }
+      }
+
+      if (!full.trim()) {
+        throw new Error("Le flux AI n'a retourné aucun texte exploitable.");
       }
 
       onScriptChange(full);
@@ -226,7 +323,7 @@ export default function PdfDocumentaryTab({
       }
       onScriptReady?.(full);
       toast.success(`Script généré — ${full.length.toLocaleString()} caractères`);
-    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    } catch (e) { console.error(e); toast.error(e instanceof Error ? e.message : "Erreur inattendue"); }
     setGeneratingScript(false);
   }, [analysis, extractedText, scriptLanguage, script, targetChars, onDocStructureChange, onScriptChange, onScriptReady]);
 
