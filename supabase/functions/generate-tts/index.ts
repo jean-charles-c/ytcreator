@@ -207,10 +207,10 @@ serve(async (req) => {
         if (actualWords.length <= 2) {
           // Very short sentence — apply both if set
           if (startBoostPct > 0 && endSlowPct > 0) {
-            return `<prosody rate="+${startBoostPct}%">${sentence}</prosody>`;
+            return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
           }
-          if (startBoostPct > 0) return `<prosody rate="+${startBoostPct}%">${sentence}</prosody>`;
-          if (endSlowPct > 0) return `<prosody rate="-${endSlowPct}%">${sentence}</prosody>`;
+          if (startBoostPct > 0) return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
+          if (endSlowPct > 0) return `<prosody rate="${Math.max(20, 100 - endSlowPct)}%">${sentence}</prosody>`;
           return sentence;
         }
 
