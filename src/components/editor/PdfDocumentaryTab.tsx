@@ -145,18 +145,22 @@ export default function PdfDocumentaryTab({
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
   narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation,
 }: PdfDocumentaryTabProps) {
+  const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [targetChars, setTargetChars] = useState(15000);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [generatingScript, setGeneratingScript] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
+
+  // Derive generatingScript from background task state
+  const bgScriptTask = projectId ? getTask(projectId, "script") : undefined;
+  const generatingScript = bgScriptTask?.status === "running";
 
   useEffect(() => {
     if (!generatingScript && script && script.trim() !== "" && scriptVersions.length === 0) {
