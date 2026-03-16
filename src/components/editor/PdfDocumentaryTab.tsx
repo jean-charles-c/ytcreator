@@ -211,6 +211,20 @@ export default function PdfDocumentaryTab({
     setAnalyzing(false);
   }, [onAnalysisReady, onExtractedTextChange, onAnalysisChange, onDocStructureChange, onScriptChange, onPageCountChange]);
 
+  // Analyze text only (no PDF extraction needed, e.g. from RsearchEngine)
+  const runAnalyzeTextOnly = useCallback(async (text: string) => {
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-pdf", { body: { text } });
+      if (error) { toast.error("Erreur d'analyse"); console.error(error); setAnalyzing(false); return; }
+      if (data?.error) { toast.error(data.error); setAnalyzing(false); return; }
+      onAnalysisChange(data.analysis);
+      onAnalysisReady?.(data.analysis, text);
+      toast.success("Analyse narrative terminée");
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    setAnalyzing(false);
+  }, [onAnalysisReady, onAnalysisChange]);
+
   // Subscribe to background task progress for live streaming updates
   useEffect(() => {
     if (!projectId) return;
