@@ -18,13 +18,25 @@ interface TTSRequest {
   pitch?: number;
   volumeGainDb?: number;
   effectsProfileId?: string;
-  pauseBetweenParagraphs?: number; // ms
-  pauseAfterSentences?: number; // ms
-  sentenceStartBoost?: number; // %, 0 = disabled
-  sentenceEndSlow?: number; // %, 0 = disabled
+  pauseBetweenParagraphs?: number;
+  pauseAfterSentences?: number;
+  sentenceStartBoost?: number;
+  sentenceEndSlow?: number;
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
+  /** Optional: shot sentences for precise audio-visual sync */
+  shotSentences?: { id: string; text: string }[];
+}
+
+interface Timepoint {
+  markName: string;
+  timeSeconds: number;
+}
+
+interface TTSResponse {
+  audioContent: string;
+  timepoints?: Timepoint[];
 }
 
 async function callGoogleTTS(
@@ -32,15 +44,21 @@ async function callGoogleTTS(
   apiKey: string,
   voice: Record<string, unknown>,
   audioConfig: Record<string, unknown>,
-  useSsml = false
-): Promise<string> {
+  useSsml = false,
+  enableTimePointing = false
+): Promise<TTSResponse> {
   const input = useSsml ? { ssml: text } : { text };
+  const body: Record<string, unknown> = { input, voice, audioConfig };
+  if (enableTimePointing) {
+    body.enableTimePointing = ["SSML_MARK"];
+  }
+
   const response = await fetch(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input, voice, audioConfig }),
+      body: JSON.stringify(body),
     }
   );
 
@@ -51,9 +69,11 @@ async function callGoogleTTS(
   }
 
   const data = await response.json();
-  return data.audioContent; // base64 encoded
+  return {
+    audioContent: data.audioContent,
+    timepoints: data.timepoints ?? [],
+  };
 }
-
 
 interface GoogleVoice {
   name: string;
@@ -101,7 +121,6 @@ async function resolveVoiceName(
       ? voices.find((v) => v.name === requestedVoiceName)
       : undefined;
 
-    // Always honor an explicitly requested voice if it exists
     if (exactRequested) return exactRequested.name;
 
     const typeVoices = voices
@@ -126,6 +145,198 @@ async function resolveVoiceName(
     console.error("Voice resolve fallback:", error);
     return requestedVoiceName;
   }
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Build SSML with <mark> tags between shot sentences for precise timepointing.
+ * Returns SSML string with marks named "s_0", "s_1", etc.
+ */
+function buildMarkedSsml(
+  shotSentences: { id: string; text: string }[],
+  pauseAfterSentences: number,
+  sentenceStartBoost: number,
+  sentenceEndSlow: number
+): string {
+  const sentBreak = pauseAfterSentences > 0 ? `<break time="${pauseAfterSentences}ms"/>` : "";
+
+  const parts = shotSentences.map((shot, idx) => {
+    const mark = `<mark name="s_${idx}"/>`;
+    let processed = escapeXml(shot.text.trim());
+
+    // Apply prosody effects
+    if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
+      processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
+    }
+
+    return `${mark}${processed}`;
+  });
+
+  // Add end marker to measure total duration
+  const endMark = `<mark name="__end"/>`;
+  return `<speak>${parts.join(sentBreak + " ")}${endMark}</speak>`;
+}
+
+function processSentenceProsody(sentence: string, startBoostPct: number, endSlowPct: number): string {
+  const endsWithExclamOrQuestion = /[!?]\s*$/.test(sentence) || /\.\s*[?!]\s*$/.test(sentence);
+  const effectiveEndSlow = endsWithExclamOrQuestion ? 0 : endSlowPct;
+  const words = sentence.split(/(\s+)/);
+  const actualWords = words.filter(w => w.trim());
+
+  if (actualWords.length <= 2) {
+    if (startBoostPct > 0) return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
+    if (effectiveEndSlow > 0) return `<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${sentence}</prosody>`;
+    return sentence;
+  }
+
+  let headCount = 0, headIdx = 0;
+  for (let i = 0; i < words.length; i++) {
+    if (words[i].trim()) headCount++;
+    if (headCount >= 3) { headIdx = i + 1; break; }
+  }
+  if (headIdx === 0) headIdx = words.length;
+
+  let tailCount = 0, tailIdx = words.length;
+  for (let i = words.length - 1; i >= 0; i--) {
+    if (words[i].trim()) tailCount++;
+    if (tailCount >= 3) { tailIdx = i; break; }
+  }
+
+  if (tailIdx <= headIdx) {
+    const mid = Math.floor(words.length / 2);
+    if (startBoostPct > 0 && effectiveEndSlow > 0) {
+      const head = words.slice(0, mid).join("");
+      const tail = words.slice(mid).join("");
+      return `<prosody rate="${100 + startBoostPct}%">${head}</prosody><prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
+    }
+    headIdx = mid;
+    tailIdx = mid;
+  }
+
+  if (startBoostPct > 0 && effectiveEndSlow > 0) {
+    const head = words.slice(0, headIdx).join("");
+    const middle = words.slice(headIdx, tailIdx).join("");
+    const tail = words.slice(tailIdx).join("");
+    return `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${middle}<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
+  } else if (startBoostPct > 0) {
+    const head = words.slice(0, headIdx).join("");
+    const tail = words.slice(headIdx).join("");
+    return `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${tail}`;
+  } else if (effectiveEndSlow > 0) {
+    const head = words.slice(0, tailIdx).join("");
+    const tail = words.slice(tailIdx).join("");
+    return `${head}<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
+  }
+
+  return sentence;
+}
+
+function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number, endSlowPct: number): string {
+  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0) return rawText;
+
+  const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
+  const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
+  const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
+
+  const processedParagraphs = paragraphs.map((p) => {
+    const escaped = escapeXml(p.trim());
+    const sentences = escaped.split(/(?<=[.!?])\s+/);
+    const processed = sentences.map((s) => processSentenceProsody(s, startBoostPct, endSlowPct));
+    return sentPauseMs > 0 ? processed.join(`${sentBreak} `) : processed.join(" ");
+  });
+
+  const inner = processedParagraphs.join(paraBreak ? `${paraBreak}\n` : "\n");
+  return `<speak>${inner}</speak>`;
+}
+
+/**
+ * Split marked SSML into chunks of ~MAX_CHARS, keeping mark+sentence pairs together.
+ * Returns array of {ssml, markIndices} where markIndices tracks which s_N marks are in each chunk.
+ */
+function chunkMarkedSsml(
+  ssml: string,
+  maxChars: number
+): { ssml: string; markIndices: number[] }[] {
+  // Extract inner content between <speak> and </speak>
+  const inner = ssml.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
+
+  // Split by marks: each segment starts with <mark name="s_N"/> or <mark name="__end"/>
+  const markPattern = /(<mark name="[^"]+"\/>)/g;
+  const parts: string[] = [];
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = markPattern.exec(inner)) !== null) {
+    if (match.index > lastIdx) {
+      // Content before the first mark (shouldn't happen but safety)
+      parts.push(inner.slice(lastIdx, match.index));
+    }
+    lastIdx = match.index;
+  }
+  if (lastIdx < inner.length) {
+    parts.push(inner.slice(lastIdx));
+  }
+
+  // Now split into mark+content pairs
+  const segments: { mark: string; content: string; index: number }[] = [];
+  const segPattern = /<mark name="(s_(\d+)|__end)"\/>([^<]*(?:<(?!mark)[^<]*)*)/g;
+  let segMatch: RegExpExecArray | null;
+  const fullContent = inner;
+
+  // Simpler approach: split by mark tags
+  const markRegex = /<mark name="(s_\d+|__end)"\/>/g;
+  const allMarks: { name: string; pos: number }[] = [];
+  while ((segMatch = markRegex.exec(fullContent)) !== null) {
+    allMarks.push({ name: segMatch[1], pos: segMatch.index });
+  }
+
+  // Build segments: each is mark + text until next mark
+  const segmentPairs: { markName: string; text: string; idx: number }[] = [];
+  for (let i = 0; i < allMarks.length; i++) {
+    const markTag = `<mark name="${allMarks[i].name}"/>`;
+    const startAfterMark = allMarks[i].pos + markTag.length;
+    const endPos = i + 1 < allMarks.length ? allMarks[i].pos + markTag.length + (allMarks[i + 1].pos - startAfterMark) : fullContent.length;
+    const text = fullContent.slice(startAfterMark, i + 1 < allMarks.length ? allMarks[i + 1].pos : fullContent.length);
+    const idx = allMarks[i].name.startsWith("s_") ? parseInt(allMarks[i].name.replace("s_", "")) : -1;
+    segmentPairs.push({ markName: allMarks[i].name, text, idx });
+  }
+
+  // Now chunk: group segments into chunks under maxChars
+  const chunks: { ssml: string; markIndices: number[] }[] = [];
+  let currentParts: string[] = [];
+  let currentIndices: number[] = [];
+  let currentLen = "<speak></speak>".length;
+
+  for (const seg of segmentPairs) {
+    const segText = `<mark name="${seg.markName}"/>${seg.text}`;
+    if (currentLen + segText.length > maxChars && currentParts.length > 0) {
+      // Add chunk end marker for duration measurement
+      currentParts.push(`<mark name="__chunk_end"/>`);
+      chunks.push({
+        ssml: `<speak>${currentParts.join("")}</speak>`,
+        markIndices: currentIndices,
+      });
+      currentParts = [];
+      currentIndices = [];
+      currentLen = "<speak></speak>".length;
+    }
+    currentParts.push(segText);
+    if (seg.idx >= 0) currentIndices.push(seg.idx);
+    currentLen += segText.length;
+  }
+
+  if (currentParts.length > 0) {
+    // Don't need chunk_end on last chunk since __end is already there
+    chunks.push({
+      ssml: `<speak>${currentParts.join("")}</speak>`,
+      markIndices: currentIndices,
+    });
+  }
+
+  return chunks;
 }
 
 serve(async (req) => {
@@ -156,6 +367,7 @@ serve(async (req) => {
       sentenceEndSlow = 0,
       mode = "preview",
       projectId,
+      shotSentences,
     } = body;
 
     if (!text || text.trim().length === 0) {
@@ -185,101 +397,12 @@ serve(async (req) => {
       audioConfig.effectsProfileId = [effectsProfileId];
     }
 
-    // Convert text to SSML if pauses are configured
-    function escapeXml(s: string): string {
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number, endSlowPct: number): string {
-      if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0) return rawText;
-
-      const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
-      const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
-      const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
-
-      // Boost the first N words of a sentence with <prosody rate="+X%">
-      // Slow down the last N words with <prosody rate="-X%">
-      function processSentence(sentence: string): string {
-        const trimmed = sentence.trim();
-        const endsWithExclamOrQuestion = /[!?]\s*$/.test(trimmed) || /\.\s*[?!]\s*$/.test(trimmed);
-        const effectiveEndSlow = endsWithExclamOrQuestion ? 0 : endSlowPct;
-        const words = sentence.split(/(\s+)/); // preserve whitespace tokens
-        const actualWords = words.filter(w => w.trim());
-        
-        if (actualWords.length <= 2) {
-          if (startBoostPct > 0 && effectiveEndSlow > 0) {
-            return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
-          }
-          if (startBoostPct > 0) return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
-          if (effectiveEndSlow > 0) return `<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${sentence}</prosody>`;
-          return sentence;
-        }
-
-        // Find split indices for first 3 and last 3 words
-        let headCount = 0, headIdx = 0;
-        for (let i = 0; i < words.length; i++) {
-          if (words[i].trim()) headCount++;
-          if (headCount >= 3) { headIdx = i + 1; break; }
-        }
-        if (headIdx === 0) headIdx = words.length;
-
-        let tailCount = 0, tailIdx = words.length;
-        for (let i = words.length - 1; i >= 0; i--) {
-          if (words[i].trim()) tailCount++;
-          if (tailCount >= 3) { tailIdx = i; break; }
-        }
-
-        // Avoid overlap
-        if (tailIdx <= headIdx) {
-          const mid = Math.floor(words.length / 2);
-          if (startBoostPct > 0 && effectiveEndSlow > 0) {
-            const head = words.slice(0, mid).join("");
-            const tail = words.slice(mid).join("");
-            return `<prosody rate="${100 + startBoostPct}%">${head}</prosody><prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
-          }
-          headIdx = mid;
-          tailIdx = mid;
-        }
-
-        let result = sentence;
-        if (startBoostPct > 0 && effectiveEndSlow > 0) {
-          const head = words.slice(0, headIdx).join("");
-          const middle = words.slice(headIdx, tailIdx).join("");
-          const tail = words.slice(tailIdx).join("");
-          result = `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${middle}<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
-        } else if (startBoostPct > 0) {
-          const head = words.slice(0, headIdx).join("");
-          const tail = words.slice(headIdx).join("");
-          result = `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${tail}`;
-        } else if (effectiveEndSlow > 0) {
-          const head = words.slice(0, tailIdx).join("");
-          const tail = words.slice(tailIdx).join("");
-          result = `${head}<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
-        }
-
-        return result;
-      }
-
-      const processedParagraphs = paragraphs.map((p) => {
-        const escaped = escapeXml(p.trim());
-        const sentences = escaped.split(/(?<=[.!?])\s+/);
-        const processed = sentences.map((s) => processSentence(s));
-        const joined = sentPauseMs > 0
-          ? processed.join(`${sentBreak} `)
-          : processed.join(" ");
-        return joined;
-      });
-
-      const inner = processedParagraphs.join(paraBreak ? `${paraBreak}\n` : "\n");
-      return `<speak>${inner}</speak>`;
-    }
-
     if (mode === "preview") {
       const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
       const isSsml = ssmlText.startsWith("<speak>");
-      const audioContent = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
+      const result = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
-        JSON.stringify({ audioContent, usedVoiceName: resolvedVoiceName ?? null }),
+        JSON.stringify({ audioContent: result.audioContent, usedVoiceName: resolvedVoiceName ?? null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -292,15 +415,10 @@ serve(async (req) => {
       );
     }
 
-    // Get user from auth header
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Create admin client for storage operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Decode user from JWT
     const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader! } },
     });
@@ -312,57 +430,118 @@ serve(async (req) => {
       );
     }
 
-    // Convert text to SSML with pauses
-    const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
-    const isSsml = ssmlText.startsWith("<speak>");
-
-    // Google TTS has a 5000 byte limit per request — split if needed
+    const useMarkedMode = shotSentences && shotSentences.length > 0;
     const MAX_CHARS = 4800;
-    const chunks: string[] = [];
-    if (ssmlText.length <= MAX_CHARS) {
-      chunks.push(ssmlText);
+
+    let audioBuffers: Uint8Array[] = [];
+    let allTimepoints: { shotIndex: number; timeSeconds: number; shotId: string }[] = [];
+
+    if (useMarkedMode) {
+      // ── Marked mode: SSML with <mark> tags for precise shot timing ──
+      console.log(`Generating TTS with ${shotSentences!.length} shot marks`);
+      const markedSsml = buildMarkedSsml(
+        shotSentences!,
+        pauseAfterSentences,
+        sentenceStartBoost,
+        sentenceEndSlow
+      );
+
+      const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
+      console.log(`Split into ${chunks.length} chunks`);
+
+      let cumulativeOffset = 0;
+
+      for (let ci = 0; ci < chunks.length; ci++) {
+        const chunk = chunks[ci];
+        console.log(`Chunk ${ci + 1}: ${chunk.markIndices.length} marks, ${chunk.ssml.length} chars`);
+
+        const result = await callGoogleTTS(
+          chunk.ssml,
+          GOOGLE_TTS_API_KEY,
+          voice,
+          audioConfig,
+          true, // isSsml
+          true  // enableTimePointing
+        );
+
+        // Decode audio
+        const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+        audioBuffers.push(raw);
+
+        // Process timepoints
+        let chunkDuration = 0;
+        if (result.timepoints) {
+          for (const tp of result.timepoints) {
+            if (tp.markName === "__chunk_end" || tp.markName === "__end") {
+              chunkDuration = tp.timeSeconds;
+              continue;
+            }
+            if (tp.markName.startsWith("s_")) {
+              const idx = parseInt(tp.markName.replace("s_", ""));
+              allTimepoints.push({
+                shotIndex: idx,
+                timeSeconds: tp.timeSeconds + cumulativeOffset,
+                shotId: shotSentences![idx]?.id ?? "",
+              });
+            }
+          }
+        }
+
+        // If no end marker found, estimate from last timepoint + some buffer
+        if (chunkDuration === 0 && result.timepoints && result.timepoints.length > 0) {
+          const lastTp = result.timepoints[result.timepoints.length - 1];
+          chunkDuration = lastTp.timeSeconds + 2; // rough estimate
+        }
+
+        cumulativeOffset += chunkDuration;
+        console.log(`Chunk ${ci + 1} duration: ${chunkDuration.toFixed(2)}s, cumulative: ${cumulativeOffset.toFixed(2)}s`);
+      }
     } else {
-      // For SSML, split by paragraphs; for plain text, split at sentence boundaries
-      if (isSsml) {
-        // Strip <speak> wrapper, split on <break>, re-wrap each chunk
-        const inner = ssmlText.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
-        const parts = inner.split(/(<break[^/]*\/>)/);
-        let current = "<speak>";
-        for (const part of parts) {
-          if ((current + part + "</speak>").length > MAX_CHARS && current !== "<speak>") {
-            chunks.push(current + "</speak>");
-            current = "<speak>" + part;
-          } else {
-            current += part;
-          }
-        }
-        if (current !== "<speak>") chunks.push(current + "</speak>");
+      // ── Legacy mode: no marks, plain text/SSML ──
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
+      const isSsml = ssmlText.startsWith("<speak>");
+
+      const chunks: string[] = [];
+      if (ssmlText.length <= MAX_CHARS) {
+        chunks.push(ssmlText);
       } else {
-        const sentences = ssmlText.split(/(?<=[.!?])\s+/);
-        let current = "";
-        for (const sentence of sentences) {
-          if ((current + " " + sentence).length > MAX_CHARS && current.length > 0) {
-            chunks.push(current.trim());
-            current = sentence;
-          } else {
-            current = current ? current + " " + sentence : sentence;
+        if (isSsml) {
+          const inner = ssmlText.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
+          const parts = inner.split(/(<break[^/]*\/>)/);
+          let current = "<speak>";
+          for (const part of parts) {
+            if ((current + part + "</speak>").length > MAX_CHARS && current !== "<speak>") {
+              chunks.push(current + "</speak>");
+              current = "<speak>" + part;
+            } else {
+              current += part;
+            }
           }
+          if (current !== "<speak>") chunks.push(current + "</speak>");
+        } else {
+          const sentences = ssmlText.split(/(?<=[.!?])\s+/);
+          let current = "";
+          for (const sentence of sentences) {
+            if ((current + " " + sentence).length > MAX_CHARS && current.length > 0) {
+              chunks.push(current.trim());
+              current = sentence;
+            } else {
+              current = current ? current + " " + sentence : sentence;
+            }
+          }
+          if (current.trim()) chunks.push(current.trim());
         }
-        if (current.trim()) chunks.push(current.trim());
+      }
+
+      for (const chunk of chunks) {
+        const chunkIsSsml = chunk.startsWith("<speak>");
+        const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
+        const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+        audioBuffers.push(raw);
       }
     }
 
-    // Generate audio for all chunks
-    const audioBuffers: Uint8Array[] = [];
-    for (const chunk of chunks) {
-      const chunkIsSsml = chunk.startsWith("<speak>");
-      const b64 = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
-      // Decode base64 to binary
-      const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      audioBuffers.push(raw);
-    }
-
-    // Concatenate all MP3 buffers (MP3 is appendable)
+    // Concatenate all MP3 buffers
     const totalLength = audioBuffers.reduce((sum, b) => sum + b.length, 0);
     const combined = new Uint8Array(totalLength);
     let offset = 0;
@@ -392,16 +571,15 @@ serve(async (req) => {
       throw new Error(`Upload failed: ${uploadError.message}`);
     }
 
-    // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from("vo-audio")
       .getPublicUrl(filePath);
 
-    // Estimate duration: ~150 words/min at 1x speed, average 5 chars/word
+    // Estimate duration
     const wordCount = text.trim().split(/\s+/).length;
     const durationEstimate = (wordCount / 150) * 60 / speakingRate;
 
-    // Save to history table
+    // Save to history table (with timepoints if available)
     const { data: historyEntry, error: historyError } = await supabaseAdmin
       .from("vo_audio_history")
       .insert({
@@ -416,6 +594,7 @@ serve(async (req) => {
         style: `${body.voiceType || "Standard"}:${body.style || "neutral"}`,
         speaking_rate: speakingRate,
         text_length: text.length,
+        ...(allTimepoints.length > 0 ? { shot_timepoints: allTimepoints } : {}),
       })
       .select()
       .single();
@@ -433,8 +612,9 @@ serve(async (req) => {
         fileSize: combined.length,
         durationEstimate,
         historyId: historyEntry?.id ?? null,
-        chunks: chunks.length,
+        chunks: audioBuffers.length,
         usedVoiceName: resolvedVoiceName ?? null,
+        shotTimepoints: allTimepoints.length > 0 ? allTimepoints : null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
