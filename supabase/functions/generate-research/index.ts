@@ -6,81 +6,57 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const RESEARCH_SECTIONS = [
-  "Introduction",
-  "Contexte historique",
-  "Sources primaires",
-  "Preuves archéologiques ou empiriques",
-  "Interprétations scientifiques",
-  "Théories alternatives",
-  "Analyse critique",
-  "Interprétations les plus plausibles",
-  "Questions non résolues",
-  "Conclusion",
-  "Références et bibliographie",
-];
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  "Introduction": "Présente le sujet, son importance, les enjeux et la méthodologie de recherche. Pose les questions centrales.",
+  "Contexte historique": "Retrace l'évolution historique du sujet avec dates, personnages clés et événements marquants.",
+  "Sources primaires": "Identifie et analyse les sources directes : textes originaux, témoignages, documents d'archive.",
+  "Preuves archéologiques ou empiriques": "Présente les preuves matérielles, découvertes archéologiques, données expérimentales.",
+  "Interprétations scientifiques": "Analyse les théories scientifiques dominantes avec leurs fondements et méthodologies.",
+  "Théories alternatives": "Expose les hypothèses minoritaires ou controversées, en évaluant leur crédibilité.",
+  "Analyse critique": "Confronte les différentes interprétations, identifie les biais et les limites méthodologiques.",
+  "Interprétations les plus plausibles": "Synthétise les conclusions les mieux étayées par les preuves disponibles.",
+  "Questions non résolues": "Identifie les lacunes dans les connaissances actuelles et les pistes de recherche futures.",
+  "Conclusion": "Synthèse finale, implications et perspectives pour la recherche et la vulgarisation.",
+  "Références et bibliographie": "Liste structurée des sources citées dans le dossier. NE PAS INVENTER de références.",
+};
 
-function buildSystemPrompt(): string {
-  return `Tu es un chercheur académique expert produisant des dossiers de recherche extrêmement approfondis en français.
+const SECTIONS = Object.keys(SECTION_DESCRIPTIONS);
 
-RÈGLES ABSOLUES :
-- Tu rédiges ENTIÈREMENT en français.
-- Tu produis un document LONG et DÉTAILLÉ, visant l'équivalent de 20+ pages imprimées.
-- Tu structures le document avec EXACTEMENT ces 11 sections, chacune précédée d'un marqueur de section sur sa propre ligne :
-
-[SECTION:Introduction]
-[SECTION:Contexte historique]
-[SECTION:Sources primaires]
-[SECTION:Preuves archéologiques ou empiriques]
-[SECTION:Interprétations scientifiques]
-[SECTION:Théories alternatives]
-[SECTION:Analyse critique]
-[SECTION:Interprétations les plus plausibles]
-[SECTION:Questions non résolues]
-[SECTION:Conclusion]
-[SECTION:Références et bibliographie]
-
-EXIGENCES DE CONTENU :
-- Inclus des dates, noms de chercheurs, figures historiques, auteurs quand c'est pertinent.
-- Mentionne des publications, découvertes ou références RÉELLES. Si tu n'es pas sûr d'une référence, indique-le clairement avec "[référence à vérifier]".
-- Distingue CLAIREMENT les faits établis, les preuves, les hypothèses et les spéculations. Utilise des formulations comme "Il est établi que...", "Les preuves suggèrent...", "Selon l'hypothèse de...", "On peut spéculer que...".
-- Présente les théories concurrentes et leurs limites respectives.
-- Vise une analyse PROFONDE, pas un simple résumé.
-- NE FABRIQUE JAMAIS de références bibliographiques fictives. Si tu ne connais pas la référence exacte, décris la source de manière générale.
-
-STYLE :
-- Ton académique mais accessible.
-- Chaque section doit être substantielle (minimum 4-6 paragraphes développés par section principale).
-- Utilise des sous-sections avec des titres en gras (**titre**) au sein de chaque section.
-- La section Références doit lister les sources mentionnées dans le texte de manière honnête.
-
-FORMAT :
-- Utilise du Markdown pour la mise en forme (gras, italique, listes).
-- Chaque section commence par le marqueur [SECTION:NomDeLaSection] sur sa propre ligne.
-- N'utilise PAS de titres Markdown (#) pour les sections principales, utilise UNIQUEMENT les marqueurs [SECTION:...].`;
-}
-
-function buildUserPrompt(
+function buildSectionPrompt(
   topic: string,
+  sectionName: string,
+  sectionDesc: string,
   angle?: string,
   depth?: string,
-  instructions?: string
+  instructions?: string,
+  previousSections?: string
 ): string {
-  let prompt = `Rédige un dossier de recherche extrêmement approfondi sur le sujet suivant :
+  let prompt = `Tu es un chercheur académique expert. Tu rédiges la section "${sectionName}" d'un dossier de recherche en français sur :
 
 **Sujet** : ${topic}`;
-  if (angle) prompt += `
+  if (angle) prompt += `\n**Angle** : ${angle}`;
+  prompt += `\n**Profondeur** : ${depth || "very deep"}`;
+  if (instructions) prompt += `\n**Instructions** : ${instructions}`;
 
-**Angle de recherche** : ${angle}`;
   prompt += `
 
-**Niveau de profondeur** : ${depth || "very deep"} — produis un document visant 20+ pages, avec une analyse exhaustive.`;
-  if (instructions) prompt += `
+**Section à rédiger** : ${sectionName}
+**Description** : ${sectionDesc}
 
-**Instructions supplémentaires** : ${instructions}`;
-  prompt += `
+RÈGLES :
+- Rédige UNIQUEMENT cette section, de manière substantielle (minimum 4-6 paragraphes développés).
+- Ton académique mais accessible, entièrement en français.
+- Inclus des dates, noms de chercheurs, figures historiques quand pertinent.
+- Distingue CLAIREMENT faits établis, preuves, hypothèses et spéculations.
+- Utilise du Markdown (gras, italique, listes, sous-sections avec **titre**).
+- NE commence PAS par un marqueur [SECTION:...], écris directement le contenu.
+- NE FABRIQUE JAMAIS de références fictives. Si incertain, indique "[référence à vérifier]".
+- Vise la PROFONDEUR, pas la brièveté.`;
 
-Génère le dossier complet avec les 11 sections obligatoires. Chaque section doit être substantielle et détaillée. Privilégie la PROFONDEUR à la brièveté.`;
+  if (previousSections) {
+    prompt += `\n\nPour cohérence, voici un résumé des sections précédentes :\n${previousSections}`;
+  }
+
   return prompt;
 }
 
@@ -104,108 +80,110 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Send SSE stream-open comment immediately to prevent timeout
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        // Keep-alive comment
         controller.enqueue(encoder.encode(": stream-open\n\n"));
 
-        // Heartbeat
         const heartbeat = setInterval(() => {
           try {
             controller.enqueue(encoder.encode(": heartbeat\n\n"));
           } catch {
             clearInterval(heartbeat);
           }
-        }, 15000);
+        }, 10000);
 
         try {
-          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "openai/gpt-5",
-              messages: [
-                { role: "system", content: buildSystemPrompt() },
-                { role: "user", content: buildUserPrompt(topic, angle, depth, instructions) },
-              ],
-              stream: true,
-              max_completion_tokens: 24000,
-            }),
-          });
+          let previousSummaries = "";
 
-          if (!response.ok) {
-            const errText = await response.text();
-            console.error("AI gateway error:", response.status, errText);
+          for (let i = 0; i < SECTIONS.length; i++) {
+            const sectionName = SECTIONS[i];
+            const sectionDesc = SECTION_DESCRIPTIONS[sectionName];
 
-            if (response.status === 429) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Rate limit exceeded. Réessayez dans quelques instants." })}\n\n`));
-            } else if (response.status === 402) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Crédits insuffisants. Rechargez votre compte." })}\n\n`));
-            } else {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Erreur du service AI." })}\n\n`));
+            // Emit section marker
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text: `[SECTION:${sectionName}]\n` })}\n\n`)
+            );
+
+            // Emit progress info
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ progress: { current: i + 1, total: SECTIONS.length, section: sectionName } })}\n\n`)
+            );
+
+            const userPrompt = buildSectionPrompt(
+              topic, sectionName, sectionDesc, angle, depth, instructions,
+              previousSummaries || undefined
+            );
+
+            const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  { role: "user", content: userPrompt },
+                ],
+                stream: true,
+                max_completion_tokens: 4000,
+              }),
+            });
+
+            if (!response.ok) {
+              const errText = await response.text();
+              console.error(`AI error for section ${sectionName}:`, response.status, errText);
+
+              if (response.status === 429) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Rate limit. Réessayez dans quelques instants." })}\n\n`));
+              } else {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `Erreur AI pour la section ${sectionName}.` })}\n\n`));
+              }
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              clearInterval(heartbeat);
+              controller.close();
+              return;
             }
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-            clearInterval(heartbeat);
-            controller.close();
-            return;
-          }
 
-          const reader = response.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
+            // Stream section content
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let sectionContent = "";
 
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
 
-            let newlineIndex: number;
-            while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-              const line = buffer.slice(0, newlineIndex).trim();
-              buffer = buffer.slice(newlineIndex + 1);
+              let newlineIndex: number;
+              while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+                const line = buffer.slice(0, newlineIndex).trim();
+                buffer = buffer.slice(newlineIndex + 1);
 
-              if (!line || line.startsWith(":")) continue;
-              if (line.startsWith("data: ")) {
-                const jsonStr = line.slice(6).trim();
-                if (jsonStr === "[DONE]") {
-                  controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                  continue;
-                }
-                try {
-                  const parsed = JSON.parse(jsonStr);
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`));
-                  }
-                } catch {
-                  // partial JSON, skip
+                if (!line || line.startsWith(":")) continue;
+                if (line.startsWith("data: ")) {
+                  const jsonStr = line.slice(6).trim();
+                  if (jsonStr === "[DONE]") continue;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const content = parsed.choices?.[0]?.delta?.content;
+                    if (content) {
+                      sectionContent += content;
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`));
+                    }
+                  } catch { /* partial JSON */ }
                 }
               }
             }
-          }
 
-          // Flush remaining
-          if (buffer.trim()) {
-            for (const raw of buffer.split("\n")) {
-              const line = raw.trim();
-              if (!line || line.startsWith(":")) continue;
-              if (line.startsWith("data: ")) {
-                const jsonStr = line.slice(6).trim();
-                if (jsonStr === "[DONE]") continue;
-                try {
-                  const parsed = JSON.parse(jsonStr);
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`));
-                  }
-                } catch { /* ignore */ }
-              }
-            }
+            // Add trailing newlines between sections
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: "\n\n" })}\n\n`));
+
+            // Keep a short summary for context continuity (first 200 chars)
+            const summary = sectionContent.slice(0, 200).replace(/\n/g, " ");
+            previousSummaries += `\n- ${sectionName}: ${summary}...`;
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
