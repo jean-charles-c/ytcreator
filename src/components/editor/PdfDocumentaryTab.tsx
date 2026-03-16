@@ -282,7 +282,9 @@ export default function PdfDocumentaryTab({
             const content = extractTextFromStreamPayload(parsed);
             if (content) {
               full += content;
-              onScriptChange(full);
+              // Strip <plan> block for live display
+              const displayText = full.replace(/<plan>[\s\S]*?<\/plan>\s*/gi, "").replace(/<plan>[\s\S]*/gi, "");
+              onScriptChange(displayText);
             }
           } catch (error) {
             console.error("Invalid SSE chunk:", eventData, error);
