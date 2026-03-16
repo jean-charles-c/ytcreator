@@ -23,6 +23,7 @@ export interface VoiceSettings {
   effectsProfileId: string;
   pauseBetweenParagraphs: number; // ms, 0 = disabled
   pauseAfterSentences: number; // ms, 0 = disabled
+  sentenceStartBoost: number; // %, 0 = disabled, e.g. 10 = +10% speed on first words
 }
 
 // Style presets → pitch + speakingRate adjustments sent to Google TTS
