@@ -3,22 +3,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * ═══════════════════════════════════════════════════════════════════
- * SEGMENTATION PIPELINE — SceneBlock JSON Contract v2
+ * SEGMENTATION PIPELINE v3 — Two-Pass Narrative-Action-Based
  * ═══════════════════════════════════════════════════════════════════
  *
- * Each SceneBlock produced by the AI MUST conform to this schema:
+ * ARCHITECTURE:
+ * ─────────────
+ * Pass 1 — NarrativeActionPass:
+ *   The AI reads the FULL narration and identifies distinct narrative
+ *   actions / beats / visual moments. Each action is described with
+ *   a short label and the approximate text span it covers.
  *
- * {
- *   title:             string   — Short descriptive title (max 10 words)
- *   source_text:       string   — Faithful verbatim extract from the original narration
- *   source_text_fr?:   string   — French translation (required when script language ≠ "fr")
- *   visual_intention:  string   — Topic summary in FRENCH (what the scene is about)
- *   narrative_action:  string   — The core narrative action or beat of this scene
- *   characters:        string   — Characters/subjects present (comma-separated, or "none")
- *   location:          string   — Setting/place described (or "unspecified")
- *   scene_type:        string   — One of: "action" | "description" | "dialogue" | "transition" | "exposition"
- *   continuity:        string   — Link to previous scene: "new" (new thread), "continues" (same action), "develops" (same topic, new angle)
- * }
+ * Pass 2 — SceneAssemblyPass:
+ *   Using the identified actions, the AI groups the original sentences
+ *   into SceneBlocks. Each SceneBlock maps to ONE narrative action and
+ *   contains ALL sentences that belong to that continuous action.
  *
  * SEGMENTATION RULES (Narrative-Action-Based):
  * ─────────────────────────────────────────────
@@ -30,9 +28,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * R6: SAME SCENE if multiple sentences describe ONE continuous action
  * R7: NO micro-scenes — a single sentence is only a scene if it's an autonomous narrative beat
  *
- * A scene MAY contain 1, 2, 3, 5, or more sentences if they belong to the same continuous action.
- * The number of sentences is NOT a segmentation criterion.
- * Target: ~30-50% fewer scenes than the previous word-count-based pipeline.
+ * A scene MAY contain 1, 2, 3, 5, or more sentences if they belong
+ * to the same continuous action. The number of sentences is NOT a
+ * segmentation criterion. Target: ~30-50% fewer scenes than word-count-based pipeline.
+ *
+ * SceneBlock JSON Contract:
+ * ─────────────────────────
+ * {
+ *   title:             string   — Short descriptive title (max 10 words)
+ *   source_text:       string   — Faithful verbatim extract from the original narration
+ *   source_text_fr?:   string   — French translation (required when script language ≠ "fr")
+ *   visual_intention:  string   — Topic summary in FRENCH (what the scene is about)
+ *   narrative_action:  string   — The core narrative action or beat of this scene
+ *   characters:        string   — Characters/subjects present (comma-separated, or "none")
+ *   location:          string   — Setting/place described (or "unspecified")
+ *   scene_type:        string   — One of: "action" | "description" | "dialogue" | "transition" | "exposition"
+ *   continuity:        string   — "new" | "continues" | "develops"
+ * }
  *
  * COVERAGE: The CoverageValidation (isCompleteSegmentation) is unchanged.
  * ═══════════════════════════════════════════════════════════════════
@@ -41,10 +53,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const VALID_SCENE_TYPES = ["action", "description", "dialogue", "transition", "exposition"];
 const VALID_CONTINUITY = ["new", "continues", "develops"];
 
-/**
- * Validates and normalizes a raw SceneBlock from AI output.
- * Ensures every field exists with a sensible default so the JSON is always stable.
- */
 function validateSceneBlock(raw: Record<string, unknown>, index: number): {
   title: string;
   source_text: string;
@@ -81,6 +89,361 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── JSON Parsing Utilities ───────────────────────────────────────
+
+const repairAndParseJson = (raw: string): any => {
+  let cleaned = raw
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  const jsonStart = cleaned.search(/[\{\[]/);
+  if (jsonStart === -1) throw new Error("No JSON found in response");
+  cleaned = cleaned.substring(jsonStart);
+
+  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+  cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+  const lastComplete = cleaned.lastIndexOf("},");
+  if (lastComplete > 0) {
+    cleaned = cleaned.substring(0, lastComplete + 1);
+  }
+  const ob = (cleaned.match(/{/g) || []).length;
+  const cb = (cleaned.match(/}/g) || []).length;
+  const oq = (cleaned.match(/\[/g) || []).length;
+  const cq = (cleaned.match(/\]/g) || []).length;
+  for (let i = 0; i < ob - cb; i++) cleaned += "}";
+  for (let i = 0; i < oq - cq; i++) cleaned += "]";
+  cleaned = cleaned.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
+
+  return JSON.parse(cleaned);
+};
+
+const parseFromAiResponse = (aiData: any) => {
+  const message = aiData?.choices?.[0]?.message;
+  console.log("AI finish_reason:", aiData?.choices?.[0]?.finish_reason);
+
+  // Try tool_calls first
+  const toolCalls = message?.tool_calls;
+  if (toolCalls && toolCalls.length > 0) {
+    let allArgs = "";
+    for (const tc of toolCalls) {
+      allArgs += tc?.function?.arguments || "";
+    }
+    if (allArgs) {
+      try {
+        const parsed = repairAndParseJson(allArgs);
+        return parsed;
+      } catch (e) {
+        console.warn("Failed to parse tool_call arguments:", e);
+      }
+    }
+  }
+
+  // Try content fallback
+  const content = message?.content || "";
+  if (content) {
+    try {
+      return repairAndParseJson(content);
+    } catch (e) {
+      console.warn("Failed to parse content:", e);
+    }
+  }
+
+  // Try function_call
+  const functionCall = message?.function_call;
+  if (functionCall?.arguments) {
+    try {
+      return repairAndParseJson(functionCall.arguments);
+    } catch (e) {
+      console.warn("Failed to parse function_call:", e);
+    }
+  }
+
+  throw new Error("AI returned no usable data");
+};
+
+// ─── Coverage Validation (UNCHANGED) ─────────────────────────────
+
+const normalizeForCoverage = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isCompleteSegmentation = (
+  originalNarration: string,
+  segmentedScenes: { source_text: string }[]
+) => {
+  const original = normalizeForCoverage(originalNarration);
+  const segmented = normalizeForCoverage(
+    segmentedScenes.map((scene) => scene.source_text).join(" ")
+  );
+
+  if (!original || !segmented) return false;
+
+  const originalWords = original.split(" ");
+  const segmentedWords = segmented.split(" ");
+  const headSample = originalWords.slice(0, 20).join(" ");
+  const tailSample = originalWords.slice(-20).join(" ");
+  const coverageRatio = segmentedWords.length / originalWords.length;
+
+  return (
+    coverageRatio >= 0.9 &&
+    segmented.includes(headSample) &&
+    segmented.includes(tailSample)
+  );
+};
+
+// ─── AI Gateway Call ──────────────────────────────────────────────
+
+const callAiGateway = async (
+  apiKey: string,
+  messages: { role: string; content: string }[],
+  tools?: any[],
+  toolChoice?: any,
+  maxTokens = 16384,
+  temperature = 0.2
+) => {
+  const body: Record<string, unknown> = {
+    model: "google/gemini-2.5-flash",
+    max_tokens: maxTokens,
+    temperature,
+    messages,
+  };
+  if (tools) body.tools = tools;
+  if (toolChoice) body.tool_choice = toolChoice;
+
+  const aiResponse = await fetch(
+    "https://ai.gateway.lovable.dev/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!aiResponse.ok) {
+    const errText = await aiResponse.text();
+    console.error("AI error:", aiResponse.status, errText);
+    if (aiResponse.status === 429) throw new Error("RATE_LIMIT_EXCEEDED");
+    if (aiResponse.status === 402) throw new Error("PAYMENT_REQUIRED");
+    throw new Error("AI gateway error");
+  }
+
+  return aiResponse.json();
+};
+
+// ─── Pass 1: NarrativeActionPass ─────────────────────────────────
+
+const narrativeActionPass = async (apiKey: string, narrationText: string) => {
+  console.log("=== Pass 1: NarrativeActionPass ===");
+
+  const aiData = await callAiGateway(
+    apiKey,
+    [
+      {
+        role: "system",
+        content: `You are a narrative structure analyst. Your job is to read a narration and identify the distinct NARRATIVE ACTIONS (beats) in it.
+
+A narrative action is a coherent unit where:
+- The SAME action or event is being described
+- The SAME subject/character is the focus
+- The SAME location is the setting
+- The SAME time frame applies
+- The SAME narrative intent is at play (informing, arguing, describing, transitioning, etc.)
+
+RULES for identifying actions:
+- Create a NEW action when: a new physical/mental action begins, the subject/focus changes, the location changes, time shifts, or the narrative intent changes.
+- KEEP sentences in the SAME action if they describe one continuous event, even if there are many sentences.
+- Do NOT create micro-actions for individual sentences that are part of the same continuous event.
+- Aim for meaningful narrative beats, not sentence-by-sentence splitting.
+
+Return a numbered list of actions with:
+- action_id: sequential number
+- label: short description of what happens (max 10 words)
+- start_hint: first few words of where this action begins in the text
+- end_hint: last few words of where this action ends in the text`
+      },
+      {
+        role: "user",
+        content: narrationText,
+      },
+    ],
+    [
+      {
+        type: "function",
+        function: {
+          name: "identify_actions",
+          description: "Identifies the distinct narrative actions/beats in a narration.",
+          parameters: {
+            type: "object",
+            properties: {
+              actions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    action_id: { type: "number" },
+                    label: { type: "string" },
+                    start_hint: { type: "string" },
+                    end_hint: { type: "string" },
+                  },
+                  required: ["action_id", "label", "start_hint", "end_hint"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["actions"],
+            additionalProperties: false,
+          },
+        },
+      },
+    ],
+    { type: "function", function: { name: "identify_actions" } },
+    8192,
+    0.2
+  );
+
+  const parsed = parseFromAiResponse(aiData);
+  const actions = Array.isArray(parsed) ? parsed : parsed?.actions;
+
+  if (!Array.isArray(actions) || actions.length === 0) {
+    throw new Error("Pass 1 returned no actions");
+  }
+
+  console.log(`Pass 1 identified ${actions.length} narrative actions`);
+  return actions;
+};
+
+// ─── Pass 2: SceneAssemblyPass ───────────────────────────────────
+
+const sceneAssemblyPass = async (
+  apiKey: string,
+  narrationText: string,
+  actions: any[],
+  scriptLanguage: string,
+  needsFrenchTranslation: boolean
+) => {
+  console.log("=== Pass 2: SceneAssemblyPass ===");
+
+  const actionsDescription = actions
+    .map((a: any) => `Action ${a.action_id}: "${a.label}" (from: "${a.start_hint}" → to: "${a.end_hint}")`)
+    .join("\n");
+
+  const aiData = await callAiGateway(
+    apiKey,
+    [
+      {
+        role: "system",
+        content: `You are a documentary narration segmentation engine.
+The narration language is: ${scriptLanguage}.
+
+You have already identified the following narrative actions in this text:
+${actionsDescription}
+
+Now, construct SceneBlocks by assigning the ORIGINAL TEXT to each action.
+
+ABSOLUTE RULES:
+1. Cover the FULL narration from first word to last word. Do not skip any part.
+2. Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
+3. Preserve exact narrative order.
+4. Each SceneBlock corresponds to ONE narrative action. A scene can contain ANY number of sentences — as many as needed to cover the full action. Do NOT split a continuous action into multiple scenes.
+5. If two consecutive actions are very short and closely related, you MAY merge them into one scene. Use your judgment.
+6. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
+7. Generate narrative_action: what is the core narrative beat or event.
+8. Generate characters, location, scene_type, and continuity for each scene.
+${needsFrenchTranslation ? `9. **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "9. The narration is already in French. Do NOT include source_text_fr."}
+
+Return data via the segment_narration tool call only.`
+      },
+      {
+        role: "user",
+        content: narrationText,
+      },
+    ],
+    [
+      {
+        type: "function",
+        function: {
+          name: "segment_narration",
+          description: "Segments narration into SceneBlocks based on identified narrative actions.",
+          parameters: {
+            type: "object",
+            properties: {
+              scenes: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    source_text: { type: "string" },
+                    ...(needsFrenchTranslation ? { source_text_fr: { type: "string", description: "REQUIRED: French translation of source_text." } } : {}),
+                    visual_intention: { type: "string", description: "Topic summary in FRENCH" },
+                    narrative_action: { type: "string" },
+                    characters: { type: "string" },
+                    location: { type: "string" },
+                    scene_type: { type: "string", enum: VALID_SCENE_TYPES },
+                    continuity: { type: "string", enum: VALID_CONTINUITY },
+                  },
+                  required: [
+                    "title", "source_text",
+                    ...(needsFrenchTranslation ? ["source_text_fr"] : []),
+                    "visual_intention", "narrative_action",
+                    "characters", "location", "scene_type", "continuity",
+                  ],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["scenes"],
+            additionalProperties: false,
+          },
+        },
+      },
+    ],
+    { type: "function", function: { name: "segment_narration" } },
+    16384,
+    0.2
+  );
+
+  const parsed = parseFromAiResponse(aiData);
+  const scenes = Array.isArray(parsed) ? parsed : parsed?.scenes;
+
+  if (!Array.isArray(scenes) || scenes.length === 0) {
+    throw new Error("Pass 2 returned no scenes");
+  }
+
+  console.log(`Pass 2 assembled ${scenes.length} SceneBlocks from ${actions.length} actions`);
+  return scenes.map((raw: Record<string, unknown>, idx: number) =>
+    validateSceneBlock(raw, idx)
+  );
+};
+
+// ─── Chunked Processing for Long Texts ───────────────────────────
+
+const splitIntoParagraphs = (text: string): string[] => {
+  return text.split(/\n\n+/).filter(p => p.trim().length > 0);
+};
+
+const processChunk = async (
+  apiKey: string,
+  chunkText: string,
+  scriptLanguage: string,
+  needsFrenchTranslation: boolean
+) => {
+  const actions = await narrativeActionPass(apiKey, chunkText);
+  return sceneAssemblyPass(apiKey, chunkText, actions, scriptLanguage, needsFrenchTranslation);
+};
+
+// ─── Main Handler ─────────────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
@@ -94,7 +457,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify user
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -103,10 +465,9 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-     const { project_id } = await req.json();
+    const { project_id } = await req.json();
     if (!project_id) throw new Error("Missing project_id");
 
-    // Fetch project & verify ownership
     const { data: project, error: projErr } = await supabase
       .from("projects")
       .select("*")
@@ -123,261 +484,16 @@ serve(async (req) => {
     const scriptLanguage = project.script_language || "en";
     const needsFrenchTranslation = scriptLanguage !== "fr";
     const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
-    const targetSceneCount = Math.min(200, Math.max(10, Math.ceil(wordCount / 35)));
 
-    const normalizeForCoverage = (value: string) =>
-      value
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s]/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const isCompleteSegmentation = (
-      originalNarration: string,
-      segmentedScenes: { source_text: string }[]
-    ) => {
-      const original = normalizeForCoverage(originalNarration);
-      const segmented = normalizeForCoverage(
-        segmentedScenes.map((scene) => scene.source_text).join(" ")
-      );
-
-      if (!original || !segmented) return false;
-
-      const originalWords = original.split(" ");
-      const segmentedWords = segmented.split(" ");
-      const headSample = originalWords.slice(0, 20).join(" ");
-      const tailSample = originalWords.slice(-20).join(" ");
-      const coverageRatio = segmentedWords.length / originalWords.length;
-
-      return (
-        coverageRatio >= 0.9 &&
-        segmented.includes(headSample) &&
-        segmented.includes(tailSample)
-      );
-    };
-
-    const repairAndParseJson = (raw: string): any => {
-      let cleaned = raw
-        .replace(/```json\s*/gi, "")
-        .replace(/```\s*/g, "")
-        .trim();
-
-      const jsonStart = cleaned.search(/[\{\[]/);
-      if (jsonStart === -1) throw new Error("No JSON found in response");
-      cleaned = cleaned.substring(jsonStart);
-
-      try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
-
-      // Fix trailing commas & control chars
-      cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
-      try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
-
-      // Truncated JSON: remove last incomplete item and close brackets
-      const lastComplete = cleaned.lastIndexOf("},");
-      if (lastComplete > 0) {
-        cleaned = cleaned.substring(0, lastComplete + 1);
-      }
-      const ob = (cleaned.match(/{/g) || []).length;
-      const cb = (cleaned.match(/}/g) || []).length;
-      const oq = (cleaned.match(/\[/g) || []).length;
-      const cq = (cleaned.match(/\]/g) || []).length;
-      for (let i = 0; i < ob - cb; i++) cleaned += "}";
-      for (let i = 0; i < oq - cq; i++) cleaned += "]";
-      cleaned = cleaned.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
-
-      return JSON.parse(cleaned);
-    };
-
-    const parseScenesFromAi = (aiData: any) => {
-      // Debug: log response structure
-      const message = aiData?.choices?.[0]?.message;
-      console.log("AI finish_reason:", aiData?.choices?.[0]?.finish_reason);
-      console.log("AI message keys:", message ? Object.keys(message) : "no message");
-      console.log("AI tool_calls count:", message?.tool_calls?.length ?? 0);
-      console.log("AI content length:", message?.content?.length ?? 0);
-      console.log("AI content preview:", (message?.content || "").slice(0, 200));
-
-      // Try tool_calls first
-      const toolCalls = message?.tool_calls;
-      if (toolCalls && toolCalls.length > 0) {
-        // Some models split across multiple tool calls - concatenate all arguments
-        let allArgs = "";
-        for (const tc of toolCalls) {
-          const args = tc?.function?.arguments || "";
-          allArgs += args;
-        }
-        if (allArgs) {
-          console.log("Tool call args length:", allArgs.length);
-          console.log("Tool call args preview:", allArgs.slice(0, 200));
-          try {
-            const parsed = repairAndParseJson(allArgs);
-            if (Array.isArray(parsed)) return parsed;
-            if (Array.isArray(parsed?.scenes)) return parsed.scenes;
-          } catch (e) {
-            console.warn("Failed to parse tool_call arguments:", e);
-          }
-        }
-      }
-
-      // Try content fallback
-      const content = message?.content || "";
-      if (content) {
-        try {
-          const parsedContent = repairAndParseJson(content);
-          if (Array.isArray(parsedContent)) return parsedContent;
-          if (Array.isArray(parsedContent?.scenes)) return parsedContent.scenes;
-        } catch (e) {
-          console.warn("Failed to parse content:", e);
-        }
-      }
-
-      // Try function_call (some models use this instead of tool_calls)
-      const functionCall = message?.function_call;
-      if (functionCall?.arguments) {
-        try {
-          const parsed = repairAndParseJson(functionCall.arguments);
-          if (Array.isArray(parsed)) return parsed;
-          if (Array.isArray(parsed?.scenes)) return parsed.scenes;
-        } catch (e) {
-          console.warn("Failed to parse function_call:", e);
-        }
-      }
-
-      throw new Error("AI returned no scenes");
-    };
-
-    const requestSegmentation = async (text: string, targetCount: number, strictMode: boolean) => {
-      const aiResponse = await fetch(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            max_tokens: strictMode ? 16384 : 12288,
-            temperature: strictMode ? 0.1 : 0.3,
-            messages: [
-              {
-                role: "system",
-                content: `You are a documentary narration segmentation engine.
-The narration language is: ${scriptLanguage}.
-
-ABSOLUTE RULES — NEVER DEVIATE:
-1. Segment the FULL narration from first word to last word, without skipping any part.
-2. Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
-3. Preserve exact narrative order.
-4. **CRITICAL — SCENE LENGTH**: Each scene should contain 1 or 2 sentences. Use 3 sentences ONLY when they are inseparable (same action, same subject, no possible split). PREFER 1-sentence scenes for impactful statements, transitions, or topic changes. PREFER 2-sentence scenes as the default. 3-sentence scenes should be RARE (less than 20% of total scenes). NEVER more than 3 sentences per scene.
-5. A "sentence" ends with a period (.), question mark (?), or exclamation mark (!).
-6. Target approximately ${targetCount} scenes. Create MORE scenes rather than fewer — granularity is key.
-7. Create a new scene whenever the topic, subject, location, character focus, or action changes.
-8. Generate a short descriptive title for each scene (max 10 words).
-9. Generate visual_intention: a short summary of the specific topic/subject covered in this scene (NOT a visual description, but what the scene is about). IMPORTANT: visual_intention MUST ALWAYS be written in FRENCH, regardless of the narration language.
-${needsFrenchTranslation ? `10. **MANDATORY**: The narration is in "${scriptLanguage}" (NOT French). You MUST provide "source_text_fr" for EVERY scene: a faithful, complete French translation of source_text. This field is REQUIRED and must NEVER be omitted or left empty.` : "10. The narration is already in French. Do NOT include source_text_fr."}
-${strictMode ? `11. CRITICAL: This is a retry. You MUST cover the ENTIRE text from start to finish. The last scene must contain the final words of the narration.` : ""}
-
-SELF-CHECK: Before returning, verify that NO scene contains more than 3 sentences. If any scene has 4+ sentences, split it.${needsFrenchTranslation ? " Also verify that EVERY scene has a non-empty source_text_fr field." : ""}
-
-Return data via the segment_narration tool call only.`,
-              },
-              {
-                role: "user",
-                content: text,
-              },
-            ],
-            tools: [
-              {
-                type: "function",
-                function: {
-                  name: "segment_narration",
-                  description:
-                    "Segments a documentary narration into visual scenes.",
-                   parameters: {
-                    type: "object",
-                    properties: {
-                      scenes: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            title: { type: "string" },
-                            source_text: { type: "string" },
-                            ...(needsFrenchTranslation ? { source_text_fr: { type: "string", description: "REQUIRED: French translation of source_text. Must be provided for every scene." } } : {}),
-                            visual_intention: { type: "string", description: "Topic summary in FRENCH" },
-                            narrative_action: { type: "string", description: "The core narrative action or beat of this scene" },
-                            characters: { type: "string", description: "Characters/subjects present, comma-separated, or 'none'" },
-                            location: { type: "string", description: "Setting/place described, or 'unspecified'" },
-                            scene_type: { type: "string", enum: ["action", "description", "dialogue", "transition", "exposition"] },
-                            continuity: { type: "string", enum: ["new", "continues", "develops"] },
-                          },
-                          required: [
-                            "title",
-                            "source_text",
-                            ...(needsFrenchTranslation ? ["source_text_fr"] : []),
-                            "visual_intention",
-                            "narrative_action",
-                            "characters",
-                            "location",
-                            "scene_type",
-                            "continuity",
-                          ],
-                          additionalProperties: false,
-                        },
-                      },
-                    },
-                          additionalProperties: false,
-                        },
-                      },
-                    },
-                    required: ["scenes"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-            ],
-            tool_choice: {
-              type: "function",
-              function: { name: "segment_narration" },
-            },
-          }),
-        }
-      );
-
-      if (!aiResponse.ok) {
-        const errText = await aiResponse.text();
-        console.error("AI error:", aiResponse.status, errText);
-        if (aiResponse.status === 429) throw new Error("RATE_LIMIT_EXCEEDED");
-        if (aiResponse.status === 402) throw new Error("PAYMENT_REQUIRED");
-        throw new Error("AI gateway error");
-      }
-
-      const aiData = await aiResponse.json();
-      const parsedScenes = parseScenesFromAi(aiData);
-
-      if (!Array.isArray(parsedScenes) || parsedScenes.length === 0) {
-        throw new Error("AI returned no scenes");
-      }
-
-      // Validate and normalize each scene through the contract
-      return parsedScenes.map((raw: Record<string, unknown>, idx: number) =>
-        validateSceneBlock(raw, idx)
-      );
-    };
-
-    // For very long texts (>1500 words), split into chunks and process separately
-    const splitIntoParagraphs = (text: string): string[] => {
-      return text.split(/\n\n+/).filter(p => p.trim().length > 0);
-    };
+    console.log(`Starting two-pass segmentation: ${wordCount} words, language: ${scriptLanguage}`);
 
     let allScenes: ReturnType<typeof validateSceneBlock>[] = [];
 
     if (wordCount > 1500) {
-      console.log(`Long narration detected (${wordCount} words). Processing in chunks.`);
+      // ─── Chunked processing for long texts ───
+      console.log(`Long narration (${wordCount} words). Processing in chunks.`);
       const paragraphs = splitIntoParagraphs(narrationText);
-      
-      // Group paragraphs into chunks of ~700 words each
+
       const chunks: string[] = [];
       let currentChunk = "";
       let currentWords = 0;
@@ -398,32 +514,33 @@ Return data via the segment_narration tool call only.`,
 
       for (let i = 0; i < chunks.length; i++) {
         const chunkWords = chunks[i].split(/\s+/).filter(Boolean).length;
-        const chunkTarget = Math.max(4, Math.ceil(chunkWords / 35));
-        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words, target ${chunkTarget} scenes)`);
-        
-        let chunkScenes = await requestSegmentation(chunks[i], chunkTarget, false);
+        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunkWords} words)`);
+        const chunkScenes = await processChunk(LOVABLE_API_KEY, chunks[i], scriptLanguage, needsFrenchTranslation);
         allScenes.push(...chunkScenes);
       }
     } else {
-      allScenes = await requestSegmentation(narrationText, targetSceneCount, false);
+      // ─── Single-text two-pass pipeline ───
+      const actions = await narrativeActionPass(LOVABLE_API_KEY, narrationText);
+      allScenes = await sceneAssemblyPass(LOVABLE_API_KEY, narrationText, actions, scriptLanguage, needsFrenchTranslation);
 
+      // Coverage retry with stricter instructions
       if (!isCompleteSegmentation(narrationText, allScenes)) {
-        console.warn("Incomplete segmentation detected. Retrying with stricter instructions.");
-        allScenes = await requestSegmentation(narrationText, targetSceneCount, true);
+        console.warn("Incomplete segmentation. Retrying Pass 2 with strict mode.");
+        allScenes = await sceneAssemblyPass(LOVABLE_API_KEY, narrationText, actions, scriptLanguage, needsFrenchTranslation);
       }
     }
 
-    const scenes = allScenes;
-
-    if (scenes.length === 0) {
+    if (allScenes.length === 0) {
       throw new Error("Aucune scène générée. Veuillez réessayer.");
     }
 
-    // Delete existing scenes for this project
+    console.log(`Final result: ${allScenes.length} SceneBlocks (from ${wordCount} words)`);
+
+    // Delete existing scenes
     await supabase.from("scenes").delete().eq("project_id", project_id);
 
-    // Insert new scenes with all enriched fields
-    const sceneRows = scenes.map((s, i) => ({
+    // Insert new scenes
+    const sceneRows = allScenes.map((s, i) => ({
       project_id,
       scene_order: i + 1,
       title: s.title,
@@ -443,10 +560,9 @@ Return data via the segment_narration tool call only.`,
       throw new Error("Failed to save scenes");
     }
 
-    // Update project status and scene count
     await supabase
       .from("projects")
-      .update({ status: "segmented", scene_count: scenes.length })
+      .update({ status: "segmented", scene_count: allScenes.length })
       .eq("id", project_id);
 
     return new Response(JSON.stringify({ scenes: sceneRows }), {
