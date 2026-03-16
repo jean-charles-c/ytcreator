@@ -678,20 +678,6 @@ export default function PdfDocumentaryTab({
                   <Button variant="outline" size="sm" onClick={copyScriptToClipboard} className="h-8 text-xs">
                     <Copy className="h-3 w-3" /> Copier
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    const clean = cleanScriptForExport(script);
-                    const blob = new Blob([clean], { type: "text/markdown;charset=utf-8" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url; a.download = "script_narratif.md"; a.click();
-                    URL.revokeObjectURL(url);
-                    toast.success("Script exporté en Markdown");
-                  }} className="h-8 text-xs">
-                    <Download className="h-3 w-3" /> .md
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={exportVoiceOverBlocks} className="h-8 text-xs">
-                    <Mic className="h-3 w-3" /> VO Blocks
-                  </Button>
                   <Button variant="hero" size="sm" onClick={() => {
                     const clean = cleanScriptForExport(script);
                     onSendToNarration?.(clean);
