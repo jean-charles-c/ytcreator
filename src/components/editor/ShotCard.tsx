@@ -184,7 +184,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-2 gap-2">
+      <div className="flex items-center justify-between mb-2 gap-2">
           <div className="flex flex-col gap-1 min-w-0">
             <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
             {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
@@ -193,6 +193,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
             </span>
           </div>
           <div className="flex gap-1 shrink-0">
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Uploader une image">
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            </button>
             <button onClick={handleGenerateImage} disabled={generatingImage} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
               {generatingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
             </button>
