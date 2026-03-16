@@ -725,6 +725,13 @@ export default function Editor() {
   // --- Image generation handlers ---
   const [generatingAllImages, setGeneratingAllImages] = useState(false);
   const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
+  const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
+
+  const IMAGE_MODELS = [
+    { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "$" },
+    { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "$$" },
+    { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "$$$" },
+  ];
 
   const generateShotImage = async (shotId: string): Promise<string | null> => {
     try {
@@ -738,7 +745,7 @@ export default function Editor() {
             Authorization: `Bearer ${session?.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ shot_id: shotId }),
+          body: JSON.stringify({ shot_id: shotId, model: imageModel }),
         }
       );
       const data = await response.json();
