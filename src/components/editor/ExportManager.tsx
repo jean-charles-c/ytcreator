@@ -89,15 +89,17 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
       <div className="p-4 space-y-4">
         {/* FPS selector */}
         {!isExporting && !exportBlob && (
-          <div className="flex items-center gap-3">
-            <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground shrink-0">Framerate :</span>
-            <div className="flex gap-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground shrink-0">Framerate :</span>
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
               {FPS_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFps(opt.value)}
-                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                  className={`text-xs px-3 py-2 sm:px-2.5 sm:py-1 rounded-md border transition-colors min-h-[44px] sm:min-h-0 ${
                     fps === opt.value
                       ? "border-primary bg-primary/10 text-primary font-medium"
                       : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
