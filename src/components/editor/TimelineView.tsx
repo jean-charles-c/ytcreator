@@ -399,29 +399,29 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
         </div>
 
         <div className="px-3 py-2 space-y-2">
-          <div className="relative h-2 rounded-full bg-secondary cursor-pointer group" onMouseDown={handleScrubStart}>
+          <div className="relative h-6 sm:h-2 rounded-full bg-secondary cursor-pointer group touch-none" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
             <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-75" style={{ width: `${progressPct}%` }} />
-            <div className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-primary border-2 border-primary-foreground shadow-md transition-[left] duration-75 group-hover:scale-110" style={{ left: `calc(${progressPct}% - 7px)` }} />
+            <div className="absolute top-1/2 -translate-y-1/2 h-5 w-5 sm:h-3.5 sm:w-3.5 rounded-full bg-primary border-2 border-primary-foreground shadow-md transition-[left] duration-75 group-hover:scale-110" style={{ left: `calc(${progressPct}% - 10px)` }} />
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={skipPrev} className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted transition-colors" aria-label="Précédent"><SkipBack className="h-4 w-4 text-foreground" /></button>
-            <button onClick={togglePlay} className="h-9 w-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" aria-label={isPlaying ? "Pause" : "Lecture"}>
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button onClick={skipPrev} className="h-11 w-11 sm:h-8 sm:w-8 flex items-center justify-center rounded hover:bg-muted transition-colors" aria-label="Précédent"><SkipBack className="h-5 w-5 sm:h-4 sm:w-4 text-foreground" /></button>
+            <button onClick={togglePlay} className="h-12 w-12 sm:h-9 sm:w-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" aria-label={isPlaying ? "Pause" : "Lecture"}>
+              {isPlaying ? <Pause className="h-5 w-5 sm:h-4 sm:w-4" /> : <Play className="h-5 w-5 sm:h-4 sm:w-4 ml-0.5" />}
             </button>
-            <button onClick={skipNext} className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted transition-colors" aria-label="Suivant"><SkipForward className="h-4 w-4 text-foreground" /></button>
+            <button onClick={skipNext} className="h-11 w-11 sm:h-8 sm:w-8 flex items-center justify-center rounded hover:bg-muted transition-colors" aria-label="Suivant"><SkipForward className="h-5 w-5 sm:h-4 sm:w-4 text-foreground" /></button>
             <span className="text-[11px] font-mono text-muted-foreground ml-2">{formatTime(currentTime)} / {formatTime(audioDuration)}</span>
-            <span className="text-[10px] text-muted-foreground ml-auto">{segments.length} segments</span>
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{segments.length} segments</span>
           </div>
         </div>
       </div>
 
       {/* ═══ Mini-timeline ═══ */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
+      <div className="space-y-1 overflow-x-auto">
+        <div className="flex items-center justify-between min-w-[300px]">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Film className="h-3 w-3" /> Piste vidéo</span>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Volume2 className="h-3 w-3" /> Audio</span>
         </div>
-        <div className="relative h-10 rounded-md overflow-hidden border border-border cursor-pointer" onMouseDown={handleScrubStart}>
+        <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none min-w-[300px]" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
           <div className="flex h-full">
             {segments.map((seg) => {
               const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
