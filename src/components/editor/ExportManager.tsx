@@ -126,7 +126,7 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
 
         {/* Export button */}
         {!isExporting && !exportBlob && (
-          <Button onClick={handleExport} className="w-full gap-2">
+          <Button onClick={handleExport} className="w-full gap-2 min-h-[48px] sm:min-h-[36px]">
             <Film className="h-4 w-4" />
             Exporter en MP4
           </Button>
