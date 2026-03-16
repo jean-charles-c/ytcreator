@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
-import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -150,7 +149,6 @@ export default function PdfDocumentaryTab({
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [targetChars, setTargetChars] = useState(15000);
-  const [narrativeStyle, setNarrativeStyle] = useState(DEFAULT_NARRATIVE_STYLE_ID);
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -256,11 +254,10 @@ export default function PdfDocumentaryTab({
       extractedText,
       scriptLanguage,
       targetChars,
-      narrativeStyle,
       existingScript: script,
       isRegenerate,
     });
-  }, [analysis, extractedText, scriptLanguage, script, targetChars, narrativeStyle, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -500,16 +497,6 @@ export default function PdfDocumentaryTab({
                 className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">Style :</label>
-              <select
-                value={narrativeStyle}
-                onChange={(e) => setNarrativeStyle(e.target.value)}
-                className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
