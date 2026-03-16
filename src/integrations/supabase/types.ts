@@ -272,6 +272,7 @@ export type Database = {
           description: string
           guardrails: string | null
           id: string
+          image_url: string | null
           project_id: string
           prompt_export: string | null
           scene_id: string
@@ -286,6 +287,7 @@ export type Database = {
           description: string
           guardrails?: string | null
           id?: string
+          image_url?: string | null
           project_id: string
           prompt_export?: string | null
           scene_id: string
@@ -300,6 +302,7 @@ export type Database = {
           description?: string
           guardrails?: string | null
           id?: string
+          image_url?: string | null
           project_id?: string
           prompt_export?: string | null
           scene_id?: string

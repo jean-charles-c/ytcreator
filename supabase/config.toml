@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.generate-research]
 verify_jwt = false
+
+[functions.generate-shot-image]
+verify_jwt = false

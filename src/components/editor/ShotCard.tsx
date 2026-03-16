@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2 } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -35,17 +35,21 @@ interface ShotCardProps {
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
+  onGenerateImage?: (shotId: string) => Promise<void>;
 }
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDelete, onRegenerate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDelete, onRegenerate, onGenerateImage }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const imageUrl = (shot as any).image_url;
 
   const startEdit = () => {
     setEditType(shot.shot_type);
@@ -91,6 +95,17 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
     }
   };
 
+  const handleGenerateImage = async () => {
+    if (onGenerateImage) {
+      setGeneratingImage(true);
+      try {
+        await onGenerateImage(shot.id);
+      } finally {
+        setGeneratingImage(false);
+      }
+    }
+  };
+
   const handleDelete = async () => {
     if (!onDelete || deleting) return;
 
@@ -129,12 +144,22 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   return (
     <>
       <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
+        {/* Generated image */}
+        {imageUrl && (
+          <div className="mb-3 rounded overflow-hidden border border-border">
+            <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-cover" loading="lazy" />
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-2">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
             {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
           </div>
           <div className="flex gap-1">
+            <button onClick={handleGenerateImage} disabled={generatingImage} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
+              {generatingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+            </button>
             <button onClick={handleRegenerate} disabled={regenerating} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Regénérer ce shot">
               {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             </button>

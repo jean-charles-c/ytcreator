@@ -20,6 +20,7 @@ import {
   Youtube,
   Mic,
   Search,
+  ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -721,6 +722,110 @@ export default function Editor() {
     }
   };
 
+  // --- Image generation handlers ---
+  const [generatingAllImages, setGeneratingAllImages] = useState(false);
+  const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
+
+  const generateShotImage = async (shotId: string): Promise<string | null> => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ shot_id: shotId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
+      if (data.image_url) {
+        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url } as any : s)));
+        return data.image_url;
+      }
+      return null;
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erreur de génération d'image");
+      return null;
+    }
+  };
+
+  const handleGenerateShotImage = async (shotId: string) => {
+    const url = await generateShotImage(shotId);
+    if (url) toast.success("Visuel généré");
+  };
+
+  const handleGenerateAllImages = async () => {
+    if (!projectId || generatingAllImages) return;
+    setGeneratingAllImages(true);
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    let count = 0;
+    for (const scene of sortedScenes) {
+      const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
+      for (const shot of sceneShots) {
+        const url = await generateShotImage(shot.id);
+        if (url) count++;
+      }
+    }
+    setGeneratingAllImages(false);
+    toast.success(`${count} visuel(s) généré(s)`);
+  };
+
+  const handleGenerateSceneImages = async (sceneId: string) => {
+    if (generatingSceneImages) return;
+    setGeneratingSceneImages(sceneId);
+    const sceneShots = shots.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
+    let count = 0;
+    for (const shot of sceneShots) {
+      const url = await generateShotImage(shot.id);
+      if (url) count++;
+    }
+    setGeneratingSceneImages(null);
+    toast.success(`${count} visuel(s) généré(s)`);
+  };
+
+  const downloadAllImages = useCallback(async () => {
+    const zip = new JSZip();
+    let shotIndex = 1;
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    let count = 0;
+    for (const scene of sortedScenes) {
+      const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
+      for (const shot of sceneShots) {
+        const url = (shot as any).image_url;
+        if (url) {
+          try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const ext = blob.type.includes("png") ? "png" : "jpg";
+              zip.file(`SHOT ${shotIndex}.${ext}`, blob);
+              count++;
+            }
+          } catch { /* skip */ }
+        }
+        shotIndex++;
+      }
+    }
+    if (count === 0) {
+      toast.error("Aucun visuel à exporter");
+      return;
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}_visuels.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${count} visuel(s) exporté(s)`);
+  }, [scenes, shots, title]);
+
   // --- Export helpers ---
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
@@ -1237,9 +1342,15 @@ export default function Editor() {
                 </Button>
               )}
               {!generatingStoryboard && scenes.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px] shrink-0">
-                  <Play className="h-4 w-4" /> Re-générer tous les shots
-                </Button>
+                <div className="flex gap-2 shrink-0 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                    <Play className="h-4 w-4" /> Re-générer tous les shots
+                  </Button>
+                  <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages} className="min-h-[40px]">
+                    {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                    Créer tous les visuels
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -1326,15 +1437,26 @@ export default function Editor() {
                                 <CheckCircle2 className="h-2.5 w-2.5" /> Validée
                               </span>
                             )}
-                            <button
-                              onClick={() => runStoryboard(scene.id)}
-                              disabled={isRegenerating}
-                              className="sm:ml-auto flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                              title="Régénérer les shots de cette scène"
-                            >
-                              {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                              <span>Régénérer</span>
-                            </button>
+                            <div className="sm:ml-auto flex items-center gap-1">
+                              <button
+                                onClick={() => handleGenerateSceneImages(scene.id)}
+                                disabled={generatingSceneImages === scene.id}
+                                className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                title="Générer les visuels de cette scène"
+                              >
+                                {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                <span>Visuels</span>
+                              </button>
+                              <button
+                                onClick={() => runStoryboard(scene.id)}
+                                disabled={isRegenerating}
+                                className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                title="Régénérer les shots de cette scène"
+                              >
+                                {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                <span>Régénérer</span>
+                              </button>
+                            </div>
                           </div>
                           <div className="rounded border border-border bg-card p-4 mb-4">
                             <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
@@ -1353,7 +1475,7 @@ export default function Editor() {
                           ) : (
                             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                               {sceneShots.map((shot, shotIdx) => (
-                                <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} />
+                                <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} />
                               ))}
                             </div>
                           )}
@@ -1384,6 +1506,7 @@ export default function Editor() {
                 { label: "Visual Prompts", desc: "Prompts formatés pour Grok Image", generate: generateVisualPrompts, disabled: scenes.length === 0 },
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping, disabled: scenes.length === 0 },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation, disabled: scenes.length === 0 },
+                { label: "Visuels (.zip)", desc: "Télécharger tous les visuels générés", generate: downloadAllImages, disabled: !shots.some((s: any) => s.image_url) },
               ].map((exp, i) => (
                 <div key={exp.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
