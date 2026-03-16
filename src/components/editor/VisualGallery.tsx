@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, RefreshCw, ImageIcon, X } from "lucide-react";
+import { Loader2, RefreshCw, ImageIcon, X, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -23,7 +22,14 @@ interface VisualGalleryProps {
   onImageModelChange: (model: string) => void;
   onRegenerateShot: (shotId: string) => Promise<void>;
   onGenerateImage: (shotId: string) => Promise<void>;
+  totalCost: number;
 }
+
+const MODEL_LABELS: Record<string, string> = {
+  "google/gemini-2.5-flash-image": "Nano Banana",
+  "google/gemini-3.1-flash-image-preview": "Nano Banana 2",
+  "google/gemini-3-pro-image-preview": "Nano Banana Pro",
+};
 
 export default function VisualGallery({
   open,
@@ -35,26 +41,27 @@ export default function VisualGallery({
   onImageModelChange,
   onRegenerateShot,
   onGenerateImage,
+  totalCost,
 }: VisualGalleryProps) {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
 
-  // Build ordered shots with global index
-  const orderedShots: { shot: Shot; globalIndex: number; modelUsed: string }[] = [];
+  const orderedShots: { shot: Shot; globalIndex: number }[] = [];
   let idx = 1;
   for (const scene of sortedScenes) {
     const sceneShots = shots
       .filter((s) => s.scene_id === scene.id)
       .sort((a, b) => a.shot_order - b.shot_order);
     for (const shot of sceneShots) {
-      orderedShots.push({ shot, globalIndex: idx, modelUsed: "" });
+      orderedShots.push({ shot, globalIndex: idx });
       idx++;
     }
   }
 
-  const shotsWithImages = orderedShots.filter((s) => (s.shot as any).image_url);
+  const shotsWithImages = orderedShots.filter((s) => s.shot.image_url);
 
   const handleRegenShot = async (shotId: string) => {
     setRegeneratingId(shotId);
@@ -66,6 +73,8 @@ export default function VisualGallery({
     try { await onGenerateImage(shotId); } finally { setGeneratingImageId(null); }
   };
 
+  const lightboxShot = lightboxIndex !== null ? shotsWithImages[lightboxIndex] : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -75,20 +84,25 @@ export default function VisualGallery({
           </DialogTitle>
         </DialogHeader>
 
-        {/* AI model selector */}
-        <div className="flex items-center gap-2 pb-3 border-b border-border shrink-0">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">Modèle IA pour regénération :</span>
-          <select
-            value={imageModel}
-            onChange={(e) => onImageModelChange(e.target.value)}
-            className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {imageModels.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label} — {m.price}
-              </option>
-            ))}
-          </select>
+        {/* AI model selector + total cost */}
+        <div className="flex items-center gap-3 pb-3 border-b border-border shrink-0 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Modèle IA :</span>
+            <select
+              value={imageModel}
+              onChange={(e) => onImageModelChange(e.target.value)}
+              className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {imageModels.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label} — {m.price}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ml-auto text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+            Coût total : {totalCost} crédit{totalCost !== 1 ? "s" : ""} IA
+          </div>
         </div>
 
         {/* Gallery grid */}
@@ -100,12 +114,15 @@ export default function VisualGallery({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-1">
-              {shotsWithImages.map(({ shot, globalIndex }) => (
+              {shotsWithImages.map(({ shot, globalIndex }, arrIdx) => (
                 <div key={shot.id} className="rounded border border-border bg-card overflow-hidden group">
-                  {/* Image */}
-                  <div className="relative aspect-video bg-secondary">
+                  {/* Image — clickable for lightbox */}
+                  <div
+                    className="relative aspect-video bg-secondary cursor-pointer"
+                    onClick={() => setLightboxIndex(arrIdx)}
+                  >
                     <img
-                      src={(shot as any).image_url}
+                      src={shot.image_url!}
                       alt={`Shot ${globalIndex}`}
                       className="w-full h-full object-cover"
                       loading="lazy"
@@ -123,15 +140,22 @@ export default function VisualGallery({
                       </span>
                     </div>
 
-                    {/* French sentence */}
-                    {(shot as any).source_sentence_fr && (
-                      <p className="text-[10px] text-muted-foreground leading-snug italic line-clamp-3">
-                        🇫🇷 "{(shot as any).source_sentence_fr}"
+                    {/* Cost */}
+                    {(shot.generation_cost as number) > 0 && (
+                      <p className="text-[9px] text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded inline-block">
+                        {shot.generation_cost} crédit{(shot.generation_cost as number) > 1 ? "s" : ""}
                       </p>
                     )}
-                    {!(shot as any).source_sentence_fr && (shot as any).source_sentence && (
+
+                    {/* French sentence */}
+                    {shot.source_sentence_fr && (
                       <p className="text-[10px] text-muted-foreground leading-snug italic line-clamp-3">
-                        "{(shot as any).source_sentence}"
+                        🇫🇷 "{shot.source_sentence_fr}"
+                      </p>
+                    )}
+                    {!shot.source_sentence_fr && shot.source_sentence && (
+                      <p className="text-[10px] text-muted-foreground leading-snug italic line-clamp-3">
+                        "{shot.source_sentence}"
                       </p>
                     )}
 
@@ -162,6 +186,58 @@ export default function VisualGallery({
             </div>
           )}
         </div>
+
+        {/* Lightbox overlay */}
+        {lightboxShot && (
+          <div
+            className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+            onClick={() => setLightboxIndex(null)}
+          >
+            <button
+              className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+              onClick={() => setLightboxIndex(null)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Nav prev */}
+            {lightboxIndex! > 0 && (
+              <button
+                className="absolute left-4 text-white/80 hover:text-white p-2"
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex! - 1); }}
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </button>
+            )}
+
+            {/* Nav next */}
+            {lightboxIndex! < shotsWithImages.length - 1 && (
+              <button
+                className="absolute right-4 text-white/80 hover:text-white p-2"
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex! + 1); }}
+              >
+                <ChevronRight className="h-8 w-8" />
+              </button>
+            )}
+
+            <div className="max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={lightboxShot.shot.image_url!}
+                alt={`Shot ${lightboxShot.globalIndex}`}
+                className="max-w-full max-h-[75vh] object-contain rounded"
+              />
+              <div className="text-white text-center space-y-1">
+                <p className="font-display font-semibold">SHOT {lightboxShot.globalIndex} — {lightboxShot.shot.shot_type}</p>
+                {(lightboxShot.shot.generation_cost as number) > 0 && (
+                  <p className="text-xs text-white/70">{lightboxShot.shot.generation_cost} crédit{(lightboxShot.shot.generation_cost as number) > 1 ? "s" : ""} IA</p>
+                )}
+                {lightboxShot.shot.source_sentence_fr && (
+                  <p className="text-sm text-white/80 italic max-w-2xl">🇫🇷 "{lightboxShot.shot.source_sentence_fr}"</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

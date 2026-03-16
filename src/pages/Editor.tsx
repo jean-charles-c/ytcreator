@@ -762,7 +762,7 @@ export default function Editor() {
       const data = await response.json();
       if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
       if (data.image_url) {
-        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url } as any : s)));
+        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url, generation_cost: data.generation_cost ?? s.generation_cost } : s)));
         return data.image_url;
       }
       return null;
@@ -1358,6 +1358,11 @@ export default function Editor() {
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
+                {shots.some((s) => s.generation_cost > 0) && (
+                  <p className="text-xs font-medium text-primary mt-1">
+                    Coût total IA : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)} crédit{shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0) !== 1 ? "s" : ""}
+                  </p>
+                )}
               </div>
               {generatingStoryboard && (
                 <Button variant="destructive" size="sm" onClick={stopStoryboard} className="min-h-[40px] shrink-0">
@@ -1560,6 +1565,7 @@ export default function Editor() {
             onImageModelChange={setImageModel}
             onRegenerateShot={handleShotRegenerate}
             onGenerateImage={handleGenerateShotImage}
+            totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
           />
           </>
         )}

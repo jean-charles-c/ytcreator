@@ -1,0 +1,1 @@
+ALTER TABLE public.shots ADD COLUMN IF NOT EXISTS generation_cost numeric NOT NULL DEFAULT 0;
