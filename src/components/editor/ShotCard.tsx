@@ -155,6 +155,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
             {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
+            {(shot.generation_cost as number) > 0 && (
+              <span className="text-[9px] text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded w-fit">
+                {shot.generation_cost} crédit{(shot.generation_cost as number) > 1 ? "s" : ""} IA
+              </span>
+            )}
           </div>
           <div className="flex gap-1">
             <button onClick={handleGenerateImage} disabled={generatingImage} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
