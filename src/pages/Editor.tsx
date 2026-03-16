@@ -722,6 +722,110 @@ export default function Editor() {
     }
   };
 
+  // --- Image generation handlers ---
+  const [generatingAllImages, setGeneratingAllImages] = useState(false);
+  const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
+
+  const generateShotImage = async (shotId: string): Promise<string | null> => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ shot_id: shotId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
+      if (data.image_url) {
+        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url } as any : s)));
+        return data.image_url;
+      }
+      return null;
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erreur de génération d'image");
+      return null;
+    }
+  };
+
+  const handleGenerateShotImage = async (shotId: string) => {
+    const url = await generateShotImage(shotId);
+    if (url) toast.success("Visuel généré");
+  };
+
+  const handleGenerateAllImages = async () => {
+    if (!projectId || generatingAllImages) return;
+    setGeneratingAllImages(true);
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    let count = 0;
+    for (const scene of sortedScenes) {
+      const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
+      for (const shot of sceneShots) {
+        const url = await generateShotImage(shot.id);
+        if (url) count++;
+      }
+    }
+    setGeneratingAllImages(false);
+    toast.success(`${count} visuel(s) généré(s)`);
+  };
+
+  const handleGenerateSceneImages = async (sceneId: string) => {
+    if (generatingSceneImages) return;
+    setGeneratingSceneImages(sceneId);
+    const sceneShots = shots.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
+    let count = 0;
+    for (const shot of sceneShots) {
+      const url = await generateShotImage(shot.id);
+      if (url) count++;
+    }
+    setGeneratingSceneImages(null);
+    toast.success(`${count} visuel(s) généré(s)`);
+  };
+
+  const downloadAllImages = useCallback(async () => {
+    const zip = new JSZip();
+    let shotIndex = 1;
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    let count = 0;
+    for (const scene of sortedScenes) {
+      const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
+      for (const shot of sceneShots) {
+        const url = (shot as any).image_url;
+        if (url) {
+          try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const ext = blob.type.includes("png") ? "png" : "jpg";
+              zip.file(`SHOT ${shotIndex}.${ext}`, blob);
+              count++;
+            }
+          } catch { /* skip */ }
+        }
+        shotIndex++;
+      }
+    }
+    if (count === 0) {
+      toast.error("Aucun visuel à exporter");
+      return;
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}_visuels.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${count} visuel(s) exporté(s)`);
+  }, [scenes, shots, title]);
+
   // --- Export helpers ---
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
