@@ -1358,6 +1358,11 @@ export default function Editor() {
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
+                {shots.some((s) => s.generation_cost > 0) && (
+                  <p className="text-xs font-medium text-primary mt-1">
+                    Coût total IA : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)} crédit{shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0) !== 1 ? "s" : ""}
+                  </p>
+                )}
               </div>
               {generatingStoryboard && (
                 <Button variant="destructive" size="sm" onClick={stopStoryboard} className="min-h-[40px] shrink-0">
