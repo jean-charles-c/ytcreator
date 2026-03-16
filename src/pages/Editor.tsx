@@ -31,6 +31,7 @@ import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
 import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
+import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 
 type Tab = "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "export";
 type Scene = Tables<"scenes">;
