@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
@@ -89,6 +90,7 @@ export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { startSegmentation: bgStartSegmentation, startStoryboard: bgStartStoryboard, getTask, subscribe, stopTask } = useBackgroundTasks();
   const isNew = id === "new";
 
   const [title, setTitle] = useState("");
@@ -103,12 +105,13 @@ export default function Editor() {
 
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
-  const [segmenting, setSegmenting] = useState(false);
-  const [generatingStoryboard, setGeneratingStoryboard] = useState(false);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const segAbortRef = useRef<AbortController | null>(null);
   const storyAbortRef = useRef<AbortController | null>(null);
+
+  // Derive loading states from background tasks
+  const segmenting = projectId ? getTask(projectId, "segmentation")?.status === "running" : false;
+  const generatingStoryboard = projectId ? getTask(projectId, "storyboard")?.status === "running" : false;
 
   // Versioning for segmentation
   const [sceneVersions, setSceneVersions] = useState<{ id: number; scenes: Scene[] }[]>([]);
@@ -418,101 +421,80 @@ export default function Editor() {
     }
   }, [user, projectId, title, subject, scriptLanguage, narration, navigate]);
 
-  // Segment narration
+  // Subscribe to background tasks for segmentation & storyboard
+  useEffect(() => {
+    if (!projectId) return;
+    const unsubs: (() => void)[] = [];
+
+    unsubs.push(subscribe(projectId, "segmentation", async (task) => {
+      if (task.status === "done") {
+        const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
+        if (sceneData) {
+          if (scenes.length > 0) {
+            setSceneVersions((prev) => {
+              const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+              if (prev.length === 0) {
+                const newId = nextId + 1;
+                setCurrentSceneVersionId(newId);
+                return [{ id: nextId, scenes: [...scenes] }, { id: newId, scenes: sceneData }];
+              }
+              setCurrentSceneVersionId(nextId);
+              return [...prev, { id: nextId, scenes: sceneData }];
+            });
+          } else {
+            setSceneVersions([{ id: 1, scenes: sceneData }]);
+            setCurrentSceneVersionId(1);
+          }
+          setScenes(sceneData);
+        }
+        setShots([]);
+      }
+    }));
+
+    unsubs.push(subscribe(projectId, "storyboard", async (task) => {
+      if (task.status === "done" || task.completedScenes !== undefined) {
+        // Re-fetch shots from DB
+        const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("scene_id", { ascending: true }).order("shot_order", { ascending: true });
+        if (shotData) {
+          setShots(shotData);
+          if (task.status === "done") {
+            setShotVersions((prev) => {
+              const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+              setCurrentShotVersionId(nextId);
+              return [...prev, { id: nextId, shots: shotData }];
+            });
+          }
+        }
+        setRegeneratingSceneId(null);
+      }
+    }));
+
+    return () => unsubs.forEach((fn) => fn());
+  }, [projectId, subscribe, scenes]);
+
+  // Segment narration (delegates to background)
   const runSegmentation = useCallback(async () => {
     if (!projectId) return;
     if (narration.trim()) {
       await supabase.from("projects").update({ narration: narration.trim() }).eq("id", projectId);
     }
-    const abortController = new AbortController();
-    segAbortRef.current = abortController;
-    setSegmenting(true);
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
-    try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/segment-narration`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ project_id: projectId }),
-          signal: abortController.signal,
-        }
-      );
-      const data = await response.json();
-      if (!response.ok || data?.error) { toast.error(data?.error || "Erreur de segmentation"); setSegmenting(false); segAbortRef.current = null; return; }
-      const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
-      if (sceneData) {
-        // Save current scenes as a version before replacing (if any exist)
-        if (scenes.length > 0) {
-          setSceneVersions((prev) => {
-            const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
-            // If we haven't saved the initial version yet, save it first
-            if (prev.length === 0) {
-              const newId = nextId + 1;
-              setCurrentSceneVersionId(newId);
-              return [{ id: nextId, scenes: [...scenes] }, { id: newId, scenes: sceneData }];
-            }
-            setCurrentSceneVersionId(nextId);
-            return [...prev, { id: nextId, scenes: sceneData }];
-          });
-        } else {
-          setSceneVersions([{ id: 1, scenes: sceneData }]);
-          setCurrentSceneVersionId(1);
-        }
-        setScenes(sceneData);
-      }
-      setShots([]);
-      toast.success(`${sceneData?.length ?? 0} scènes générées`);
-    } catch (e: any) {
-      if (e?.name === "AbortError") {
-        toast.info("Segmentation annulée");
-      } else {
-        console.error(e); toast.error("Erreur inattendue");
-      }
-    }
-    setSegmenting(false);
-    segAbortRef.current = null;
-  }, [projectId, narration, scenes]);
+    bgStartSegmentation({ projectId });
+  }, [projectId, narration, bgStartSegmentation]);
 
   const stopSegmentation = useCallback(() => {
-    segAbortRef.current?.abort();
-    segAbortRef.current = null;
-  }, []);
+    if (projectId) stopTask(projectId, "segmentation");
+  }, [projectId, stopTask]);
 
   // Generate storyboard (all or single scene)
   const runStoryboard = useCallback(async (sceneId?: string) => {
     if (!projectId) return;
     if (sceneId) {
+      // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
-    } else {
-      // Save current shots as version before full regeneration
-      if (shots.length > 0) {
-        setShotVersions((prev) => {
-          const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
-          if (prev.length === 0) {
-            return [{ id: nextId, shots: [...shots] }];
-          }
-          return [...prev, { id: nextId, shots: [...shots] }];
-        });
-      }
-      setPreviewShotVersionId(null);
-      setGeneratingStoryboard(true);
-      setActiveTab("storyboard");
-      const abortController = new AbortController();
-      storyAbortRef.current = abortController;
-    }
-
-    const callStoryboard = async (body: Record<string, string>) => {
-      const session = (await supabase.auth.getSession()).data.session;
-      const timeoutId = setTimeout(() => storyAbortRef.current?.abort(), 145000);
-
       try {
+        const session = (await supabase.auth.getSession()).data.session;
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
           {
@@ -523,107 +505,45 @@ export default function Editor() {
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
               "x-supabase-client-platform": "web",
             },
-            body: JSON.stringify(body),
-            signal: storyAbortRef.current?.signal,
+            body: JSON.stringify({ project_id: projectId, scene_id: sceneId }),
           }
         );
-
         const data = await response.json();
-        if (!response.ok || data?.error) {
-          throw new Error(data?.error || "Erreur de génération");
-        }
-
-        return data;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    };
-
-    try {
-      if (sceneId) {
-        const data = await callStoryboard({ project_id: projectId, scene_id: sceneId });
-        const { data: shotData } = await supabase
-          .from("shots")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("shot_order", { ascending: true });
+        if (!response.ok || data?.error) throw new Error(data?.error || "Erreur de génération");
+        const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
         if (shotData) setShots(shotData);
         toast.success(`${data?.shots_count ?? 0} shots générés`);
-      } else {
-        const sceneIds = scenes.map((s) => s.id);
-        if (sceneIds.length === 0) {
-          toast.error("Aucune scène à traiter");
-          return;
-        }
-
-        await supabase.from("shots").delete().eq("project_id", projectId);
-        setShots([]);
-
-        const BATCH_SIZE = 4;
-        let totalShots = 0;
-        const failedSceneIds: string[] = [];
-
-        for (let i = 0; i < sceneIds.length; i += BATCH_SIZE) {
-          const batch = sceneIds.slice(i, i + BATCH_SIZE);
-          for (const sid of batch) {
-            try {
-              const data = await callStoryboard({ project_id: projectId, scene_id: sid });
-              totalShots += data?.shots_count ?? 0;
-              // Fetch shots progressively after each scene
-              const { data: shotData } = await supabase
-                .from("shots")
-                .select("*")
-                .eq("project_id", projectId)
-                .order("scene_id", { ascending: true })
-                .order("shot_order", { ascending: true });
-              if (shotData) setShots(shotData);
-            } catch (sceneError) {
-              console.error(`Storyboard scene failed: ${sid}`, sceneError);
-              failedSceneIds.push(sid);
-            }
-          }
-        }
-
-        // Fetch final shots from DB and save as current version
-        const { data: finalShotData } = await supabase
-          .from("shots")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("scene_id", { ascending: true })
-          .order("shot_order", { ascending: true });
-        if (finalShotData) {
-          setShots(finalShotData);
-          setShotVersions((prev) => {
-            const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
-            setCurrentShotVersionId(nextId);
-            return [...prev, { id: nextId, shots: finalShotData }];
-          });
-        }
-
-        if (failedSceneIds.length > 0) {
-          toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
-        } else {
-          toast.success(`${totalShots} shots générés sur ${sceneIds.length} scènes`);
-        }
-      }
-    } catch (e: any) {
-      if (e?.name === "AbortError") {
-        toast.info("Génération des shots annulée");
-      } else {
+      } catch (e: any) {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
       }
+      setRegeneratingSceneId(null);
+    } else {
+      // Full storyboard — delegate to background
+      if (shots.length > 0) {
+        setShotVersions((prev) => {
+          const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+          if (prev.length === 0) return [{ id: nextId, shots: [...shots] }];
+          return [...prev, { id: nextId, shots: [...shots] }];
+        });
+      }
+      setPreviewShotVersionId(null);
+      setActiveTab("storyboard");
+      const sceneIds = scenes.map((s) => s.id);
+      if (sceneIds.length === 0) {
+        toast.error("Aucune scène à traiter");
+        return;
+      }
+      setShots([]);
+      bgStartStoryboard({ projectId, sceneIds });
     }
-
-    setGeneratingStoryboard(false);
-    setRegeneratingSceneId(null);
-    storyAbortRef.current = null;
-  }, [projectId, scenes]);
+  }, [projectId, scenes, shots, bgStartStoryboard]);
 
   const stopStoryboard = useCallback(() => {
+    if (projectId) stopTask(projectId, "storyboard");
     storyAbortRef.current?.abort();
     storyAbortRef.current = null;
-  }, []);
+  }, [projectId, stopTask]);
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
