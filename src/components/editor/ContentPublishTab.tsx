@@ -400,17 +400,28 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
                 />
               </div>
               <CollapsibleContent>
-                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
                   {!hasPrompts ? (
                     <p className="text-sm text-muted-foreground italic py-4">
                       Aucun prompt visuel. Générez les VisualPrompts d'abord.
                     </p>
                   ) : (
-                    <CopyableBlock text={promptsMd} label="Visual Prompts">
-                      <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
-                        {promptsMd}
-                      </pre>
-                    </CopyableBlock>
+                    <>
+                      <SubCollapsible icon={ScrollText} title="Prompts numérotés">
+                        <CopyableBlock text={promptsNumbered} label="Prompts numérotés">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {promptsNumbered}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+                      <SubCollapsible icon={ScrollText} title="Prompts seuls">
+                        <CopyableBlock text={promptsRaw} label="Prompts seuls">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {promptsRaw}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+                    </>
                   )}
                 </div>
               </CollapsibleContent>
