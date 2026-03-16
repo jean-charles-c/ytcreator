@@ -72,6 +72,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             volumeGainDb: DEFAULT_SETTINGS.volumeGainDb,
             effectsProfileId: DEFAULT_SETTINGS.effectsProfileId,
             pauseBetweenParagraphs: DEFAULT_SETTINGS.pauseBetweenParagraphs,
+            pauseAfterSentences: DEFAULT_SETTINGS.pauseAfterSentences,
           });
           setHasFavorite(true);
         }
