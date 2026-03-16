@@ -23,11 +23,29 @@ function encodeSseData(data: string): Uint8Array {
 }
 
 function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
+  const wordTarget = Math.round(charTarget / 5.5);
+  const wordMin = Math.round(charMin / 5.5);
+  const wordMax = Math.round(charMax / 5.5);
+  const paragraphEstimate = Math.round(charTarget / 130);
+
   return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
 
 YOUR MISSION: Transform the narrative elements provided into a single, immersive voice-over script for a YouTube documentary. The script must sound natural when read aloud — as if someone is telling a fascinating story to a friend.
+
+---
+
+## STEP 1 — MANDATORY PLANNING (do NOT skip)
+
+Before writing ANY narration, you MUST first output an internal plan (inside a <plan> tag that will be stripped). This plan must include:
+- Target: ${charTarget.toLocaleString()} characters / ~${wordTarget.toLocaleString()} words / ~${paragraphEstimate} paragraphs
+- Minimum: ${charMin.toLocaleString()} characters / ~${wordMin.toLocaleString()} words
+- Maximum: ${charMax.toLocaleString()} characters / ~${wordMax.toLocaleString()} words
+- How many paragraphs you will write for each phase (Hook, Setup, Escalation, Revelation, Conclusion)
+- A brief outline of what each phase will cover
+
+After </plan>, write ONLY the raw narration text.
 
 ---
 
@@ -82,11 +100,12 @@ BAD vs GOOD examples:
 
 OUTPUT FORMAT — STRICT RULES:
 
-1. Return ONLY raw narration text — a single continuous block of text.
-2. NEVER include section titles, headers, labels, markers, separators, or comments.
-3. NO "---", "###", "**", "HOOK", "ACT", "INTRODUCTION", "CONCLUSION" or similar markers.
-4. NO meta-commentary like "In this video..." or "Let's explore...".
-5. The text must be immediately usable as voice-over narration — nothing to remove.
+1. First output <plan>...</plan> with your planning (this will be stripped automatically).
+2. After </plan>, return ONLY raw narration text — a single continuous block of text.
+3. NEVER include section titles, headers, labels, markers, separators, or comments.
+4. NO "---", "###", "**", "HOOK", "ACT", "INTRODUCTION", "CONCLUSION" or similar markers.
+5. NO meta-commentary like "In this video..." or "Let's explore...".
+6. The text must be immediately usable as voice-over narration — nothing to remove.
 
 ---
 
@@ -106,25 +125,26 @@ PHASE 1 — HOOK (minimum 2 sentences, spread across the first paragraphs of the
 
 After the hook, transition IMMEDIATELY into the narrative — no pause, no meta-commentary.
 
-PHASE 2 — SETUP (≈15-20 sentences):
+PHASE 2 — SETUP (~20% of total = ~${Math.round(wordTarget * 0.2)} words):
 • Establish the world with concrete details: time, place, objects, people.
 • Introduce the MAIN CONTRADICTION with clear, factual language.
 • Plant the first INTRIGUING DISCOVERIES as specific, tangible clues.
 • Help the viewer build a mental picture of the setting.
 
-PHASE 3 — ESCALATION (≈25-35 sentences):
+PHASE 3 — ESCALATION (~45% of total = ~${Math.round(wordTarget * 0.45)} words — THIS IS THE LONGEST SECTION):
 • This is the longest section — the investigation unfolds here.
 • Deploy each NARRATIVE TENSION one by one as escalating reveals.
 • Show evidence concretely: who found it, where, what it looked like.
 • Alternate between: new evidence → what it means → why it's surprising → deeper mystery.
 • The viewer must feel the mystery is getting bigger, not smaller.
+• EXPAND this section generously. Add cinematic details, describe scenes vividly, explore implications.
 
-PHASE 4 — REVELATION (≈10-15 sentences):
+PHASE 4 — REVELATION (~15% of total = ~${Math.round(wordTarget * 0.15)} words):
 • Bring the threads together into a powerful turning point.
 • Present the key insight as a concrete discovery or realization.
 • Show the "aha moment" through specific facts, not abstract statements.
 
-PHASE 5 — CONCLUSION (≈5-8 sentences):
+PHASE 5 — CONCLUSION (~5-8% of total):
 • Leave the viewer with a resonant final thought.
 • Do NOT summarize the video.
 • End with a concrete image or fact that lingers — not a philosophical statement.
@@ -230,14 +250,6 @@ STRICT RULES:
 • Separate paragraphs with empty lines.
 • The last cycle may be incomplete if the character target is reached mid-cycle.
 
-FINAL SELF-CHECK — MANDATORY BEFORE OUTPUT:
-1. Count the sentences in each paragraph.
-2. Verify they follow: 2, 2, 2, 3, 2, 1, 3, 2, 4, 2, 2, 2, 2, 3, 2, 1, 3, 2, 4, 2, ...
-3. If paragraph 4 or 14 or 24 does NOT have exactly 3 sentences → FIX IT.
-4. If paragraph 6 or 16 or 26 does NOT have exactly 1 sentence → FIX IT.
-5. If paragraph 9 or 19 or 29 does NOT have exactly 4 sentences → FIX IT.
-6. If ALL paragraphs have 2 sentences → the script is WRONG. Rewrite it.
-
 ---
 
 PACING & ENGAGEMENT:
@@ -297,21 +309,28 @@ CONTENT RULES:
 
 LENGTH — THIS IS THE MOST CRITICAL RULE OF ALL:
 
-Your script MUST be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters.
-Target: ${charTarget.toLocaleString()} characters. Aim to EXCEED the target slightly rather than fall short.
+Your script MUST be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (approximately ${wordMin.toLocaleString()} to ${wordMax.toLocaleString()} words).
+Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString()} words). Aim to EXCEED the target slightly rather than fall short.
 
-A script UNDER ${charMin.toLocaleString()} characters is a FAILED script. This is worse than any other mistake.
-A script OVER ${charMax.toLocaleString()} characters is also a FAILED script.
+⚠️ A script UNDER ${charMin.toLocaleString()} characters is an AUTOMATIC FAILURE. This is the worst possible mistake.
+⚠️ A script OVER ${charMax.toLocaleString()} characters is also a failure but less severe.
 
-HOW TO HIT THE TARGET:
-• The Escalation phase (Phase 3) should be the longest — at least 40-50% of the total script.
-• The Setup phase (Phase 2) should be substantial — at least 20% of the total script.
-• Develop each discovery with rich, cinematic detail: describe the scene, the people, the objects, the atmosphere.
-• Use the 2-2-2-3-2-1-3-2-4-2 paragraph cycle multiple times. For a ${charTarget.toLocaleString()}-character script, you need approximately ${Math.round(charTarget / 130)} paragraphs total.
-• If you finish the narrative arc and are still under ${charMin.toLocaleString()} characters, go back and EXPAND: add more concrete scenes, more visual descriptions, more surprising details from the source material.
+HOW TO HIT THE TARGET — CONCRETE STRATEGY:
+• You need approximately ${paragraphEstimate} paragraphs total following the 2-2-2-3-2-1-3-2-4-2 cycle.
+• That means approximately ${Math.round(paragraphEstimate / 10)} complete cycles of 10 paragraphs.
+• The Escalation phase (Phase 3) should contain at least ${Math.round(paragraphEstimate * 0.45)} paragraphs.
+• The Setup phase (Phase 2) should contain at least ${Math.round(paragraphEstimate * 0.2)} paragraphs.
+• Average ~${Math.round(charTarget / paragraphEstimate)} characters per paragraph.
+
+WHEN YOU THINK YOU'RE DONE — KEEP WRITING:
+• LLMs systematically underestimate text length. You are almost certainly too short.
+• After finishing your first draft mentally, ADD 30% more content to the Escalation phase.
+• Develop scenes cinematically: describe what the place looks like, what the people are doing, what objects are present.
+• For each discovery, add: who found it, when, where exactly, what it looked like, why it was surprising.
+• If a fact is interesting, explore its IMPLICATIONS in the next paragraph.
 
 SELF-CHECK BEFORE OUTPUTTING:
-1. Count your total characters. If under ${charMin.toLocaleString()}, you MUST add more content.
+1. Estimate your word count. If under ~${wordMin.toLocaleString()} words, you MUST add more content.
 2. If under target by more than 10%, add an entire new development cycle with fresh details from the source.
 3. Verify paragraph cycle compliance: 2-2-2-3-2-1-3-2-4-2.
 4. Only then output the script.`;

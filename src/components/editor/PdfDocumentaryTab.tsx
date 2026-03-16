@@ -282,7 +282,9 @@ export default function PdfDocumentaryTab({
             const content = extractTextFromStreamPayload(parsed);
             if (content) {
               full += content;
-              onScriptChange(full);
+              // Strip <plan> block for live display
+              const displayText = full.replace(/<plan>[\s\S]*?<\/plan>\s*/gi, "").replace(/<plan>[\s\S]*/gi, "");
+              onScriptChange(displayText);
             }
           } catch (error) {
             console.error("Invalid SSE chunk:", eventData, error);
@@ -302,6 +304,9 @@ export default function PdfDocumentaryTab({
           }
         }
       }
+
+      // Strip <plan>...</plan> block used for internal LLM planning
+      full = full.replace(/<plan>[\s\S]*?<\/plan>\s*/gi, "").trim();
 
       if (!full.trim()) {
         throw new Error("Le flux AI n'a retourné aucun texte exploitable.");
