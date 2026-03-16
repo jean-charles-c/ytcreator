@@ -525,7 +525,8 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
               {group.segments.map(({ seg, globalIndex }, localIdx) => (
                   <div key={seg.id} data-seg-index={globalIndex}>
                     <EditableSegmentCard
-                      segment={{ ...seg, displayIndex: localIdx + 1 } as ShotSegment & { displayIndex: number }}
+                      segment={seg}
+                      displayIndex={localIdx + 1}
                       index={globalIndex}
                       total={segments.length}
                       isActive={seg.id === activeSegment?.id}
