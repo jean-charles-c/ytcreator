@@ -1353,14 +1353,30 @@ export default function Editor() {
                 </Button>
               )}
               {!generatingStoryboard && scenes.length > 0 && (
-                <div className="flex gap-2 shrink-0 flex-wrap">
-                  <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
-                    <Play className="h-4 w-4" /> Re-générer tous les shots
-                  </Button>
-                  <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages} className="min-h-[40px]">
-                    {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                    Créer tous les visuels
-                  </Button>
+                <div className="flex flex-col gap-2 shrink-0">
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                      <Play className="h-4 w-4" /> Re-générer tous les shots
+                    </Button>
+                    <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages} className="min-h-[40px]">
+                      {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                      Créer tous les visuels
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Modèle IA :</span>
+                    <select
+                      value={imageModel}
+                      onChange={(e) => setImageModel(e.target.value)}
+                      className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {IMAGE_MODELS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label} — {m.price}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
