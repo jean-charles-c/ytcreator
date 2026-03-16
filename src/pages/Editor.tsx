@@ -33,11 +33,12 @@ import ContentPublishTab from "@/components/editor/ContentPublishTab";
 import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 
-type Tab = "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "export";
+type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
+  { key: "rsearch", label: "RsearchEngine", icon: Search },
   { key: "script-creator", label: "ScriptCreator", icon: FileText },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "VisualPrompts", icon: Clapperboard },
