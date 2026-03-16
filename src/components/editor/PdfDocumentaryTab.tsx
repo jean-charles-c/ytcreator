@@ -503,6 +503,16 @@ export default function PdfDocumentaryTab({
               </select>
             </div>
             <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Style :</label>
+              <select
+                value={narrativeStyle}
+                onChange={(e) => setNarrativeStyle(e.target.value)}
+                className="h-9 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground whitespace-nowrap">Objectif :</label>
               <input
                 type="number"
