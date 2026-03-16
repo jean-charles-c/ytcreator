@@ -176,9 +176,15 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
       </div>
 
       {!hasContent && !generating && (
-        <div className="max-w-lg">
-          <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
-          <ResearchHistory projectId={projectId} onLoad={handleLoadFromHistory} />
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0">
+            <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
+          </div>
+          <ResearchHistory
+            projectId={projectId}
+            onLoad={handleLoadFromHistory}
+            className="lg:sticky lg:top-6"
+          />
         </div>
       )}
 

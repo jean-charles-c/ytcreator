@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Clock, Trash2, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface ResearchDossier {
   id: string;
@@ -17,9 +18,10 @@ interface ResearchDossier {
 interface ResearchHistoryProps {
   projectId: string | null;
   onLoad: (dossier: ResearchDossier) => void;
+  className?: string;
 }
 
-export default function ResearchHistory({ projectId, onLoad }: ResearchHistoryProps) {
+export default function ResearchHistory({ projectId, onLoad, className }: ResearchHistoryProps) {
   const { user } = useAuth();
   const [dossiers, setDossiers] = useState<ResearchDossier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,67 +60,66 @@ export default function ResearchHistory({ projectId, onLoad }: ResearchHistoryPr
     setDeletingId(null);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-        <Loader2 className="h-4 w-4 animate-spin" /> Chargement de l'historique…
-      </div>
-    );
-  }
-
-  if (dossiers.length === 0) return null;
+  if (!loading && dossiers.length === 0) return null;
 
   return (
-    <div className="mt-8">
+    <div className={cn("rounded-xl border border-border bg-card p-4 sm:p-5", className)}>
       <div className="flex items-center gap-2 mb-3">
         <Clock className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-medium text-foreground">Recherches précédentes</h3>
       </div>
-      <div className="space-y-2">
-        {dossiers.map((d) => (
-          <div
-            key={d.id}
-            className="flex items-center gap-3 p-3 rounded border border-border bg-card hover:bg-secondary/50 transition-colors"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{d.topic}</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(d.created_at).toLocaleDateString("fr-FR", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                {d.angle && ` · ${d.angle}`}
-              </p>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+          <Loader2 className="h-4 w-4 animate-spin" /> Chargement de l'historique…
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {dossiers.map((d) => (
+            <div
+              key={d.id}
+              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background hover:bg-secondary/50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{d.topic}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(d.created_at).toLocaleDateString("fr-FR", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {d.angle && ` · ${d.angle}`}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 h-8 w-8"
+                onClick={() => onLoad(d)}
+                title="Charger ce dossier"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() => handleDelete(d.id)}
+                disabled={deletingId === d.id}
+                title="Supprimer"
+              >
+                {deletingId === d.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 h-8 w-8"
-              onClick={() => onLoad(d)}
-              title="Charger ce dossier"
-            >
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 h-8 w-8 text-destructive hover:text-destructive"
-              onClick={() => handleDelete(d.id)}
-              disabled={deletingId === d.id}
-              title="Supprimer"
-            >
-              {deletingId === d.id ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

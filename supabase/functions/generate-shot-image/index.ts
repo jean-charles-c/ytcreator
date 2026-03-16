@@ -73,18 +73,45 @@ const decodeGeneratedImage = async (imageData: string) => {
 const enforceExactAspectRatio = async (imageBytes: Uint8Array, aspectRatio: string) => {
   const target = ASPECT_RATIO_DIMENSIONS[aspectRatio] || ASPECT_RATIO_DIMENSIONS["16:9"];
   const decoded = await Image.decode(imageBytes);
-  const normalized = decoded.width === target.width && decoded.height === target.height
-    ? decoded
-    : decoded.cover(target.width, target.height);
+  const originalWidth = decoded.width;
+  const originalHeight = decoded.height;
+  const sourceAspectRatio = originalWidth / originalHeight;
+  const targetAspectRatio = target.width / target.height;
 
-  const bytes = await normalized.encode(1);
+  if (Math.abs(sourceAspectRatio - targetAspectRatio) > 0.0001) {
+    if (sourceAspectRatio > targetAspectRatio) {
+      const cropWidth = Math.max(1, Math.round(originalHeight * targetAspectRatio));
+      const cropX = Math.max(0, Math.floor((originalWidth - cropWidth) / 2));
+      decoded.crop(cropX, 0, cropWidth, originalHeight);
+    } else {
+      const cropHeight = Math.max(1, Math.round(originalWidth / targetAspectRatio));
+      const cropY = Math.max(0, Math.floor((originalHeight - cropHeight) / 2));
+      decoded.crop(0, cropY, originalWidth, cropHeight);
+    }
+  }
+
+  if (decoded.width !== target.width || decoded.height !== target.height) {
+    decoded.resize(target.width, target.height);
+  }
+
+  console.log("Normalized generated image", {
+    aspectRatio,
+    originalWidth,
+    originalHeight,
+    outputWidth: decoded.width,
+    outputHeight: decoded.height,
+    targetWidth: target.width,
+    targetHeight: target.height,
+  });
+
+  const bytes = await decoded.encode(1);
 
   return {
     bytes,
     mimeType: "image/png",
     extension: "png",
-    width: normalized.width,
-    height: normalized.height,
+    width: decoded.width,
+    height: decoded.height,
   };
 };
 
