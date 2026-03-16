@@ -46,6 +46,7 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
       setGenerating(true);
       setContent("");
       setCurrentSection(undefined);
+      setProgress(null);
       sectionRefs.current = {};
 
       const controller = new AbortController();
