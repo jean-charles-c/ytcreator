@@ -727,11 +727,21 @@ export default function Editor() {
   const [generatingAllImages, setGeneratingAllImages] = useState(false);
   const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
+  const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   const IMAGE_MODELS = [
     { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "$" },
     { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "$$" },
     { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "$$$" },
+  ];
+
+  const ASPECT_RATIOS = [
+    { value: "16:9", label: "16:9 (Paysage)" },
+    { value: "9:16", label: "9:16 (Portrait)" },
+    { value: "1:1", label: "1:1 (Carré)" },
+    { value: "4:3", label: "4:3 (Standard)" },
+    { value: "3:2", label: "3:2 (Photo)" },
   ];
 
   const generateShotImage = async (shotId: string): Promise<string | null> => {
