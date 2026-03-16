@@ -441,7 +441,7 @@ serve(async (req) => {
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
             messages: [
-              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget) },
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle) },
               { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
             ],
             stream: true,
