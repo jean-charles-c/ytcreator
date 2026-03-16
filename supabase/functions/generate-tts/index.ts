@@ -21,6 +21,7 @@ interface TTSRequest {
   pauseBetweenParagraphs?: number; // ms
   pauseAfterSentences?: number; // ms
   sentenceStartBoost?: number; // %, 0 = disabled
+  sentenceEndSlow?: number; // %, 0 = disabled
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
