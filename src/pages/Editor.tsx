@@ -1360,7 +1360,7 @@ export default function Editor() {
                 <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
                 {shots.some((s) => s.generation_cost > 0) && (
                   <p className="text-xs font-medium text-primary mt-1">
-                    Coût total IA : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)} crédit{shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0) !== 1 ? "s" : ""}
+                    Coût total Cloud + AI : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0).toFixed(2)} $
                   </p>
                 )}
               </div>

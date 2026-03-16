@@ -229,7 +229,7 @@ export default function VisualGallery({
               <div className="text-white text-center space-y-1">
                 <p className="font-display font-semibold">SHOT {lightboxShot.globalIndex} — {lightboxShot.shot.shot_type}</p>
                 {(lightboxShot.shot.generation_cost as number) > 0 && (
-                  <p className="text-xs text-white/70">{lightboxShot.shot.generation_cost} crédit{(lightboxShot.shot.generation_cost as number) > 1 ? "s" : ""} IA</p>
+                  <p className="text-xs text-white/70">{(lightboxShot.shot.generation_cost as number).toFixed(2)} $</p>
                 )}
                 {lightboxShot.shot.source_sentence_fr && (
                   <p className="text-sm text-white/80 italic max-w-2xl">🇫🇷 "{lightboxShot.shot.source_sentence_fr}"</p>
