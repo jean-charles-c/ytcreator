@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -54,6 +54,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
@@ -111,6 +113,42 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
     try { await onDelete(shot.id); setDeleteDialogOpen(false); } finally { setDeleting(false); }
   };
 
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner une image.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${shot.project_id}/${shot.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("shot-images")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("shot-images").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase
+        .from("shots")
+        .update({ image_url: publicUrl })
+        .eq("id", shot.id);
+      if (updateError) throw updateError;
+
+      onUpdate({ ...shot, image_url: publicUrl });
+      toast.success("Image uploadée !");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast.error("Erreur lors de l'upload.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 
   if (editing) {
@@ -146,7 +184,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-2 gap-2">
+      <div className="flex items-center justify-between mb-2 gap-2">
           <div className="flex flex-col gap-1 min-w-0">
             <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
             {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
@@ -155,6 +193,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
             </span>
           </div>
           <div className="flex gap-1 shrink-0">
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Uploader une image">
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            </button>
             <button onClick={handleGenerateImage} disabled={generatingImage} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
               {generatingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
             </button>
