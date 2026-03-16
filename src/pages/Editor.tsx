@@ -1342,9 +1342,15 @@ export default function Editor() {
                 </Button>
               )}
               {!generatingStoryboard && scenes.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px] shrink-0">
-                  <Play className="h-4 w-4" /> Re-générer tous les shots
-                </Button>
+                <div className="flex gap-2 shrink-0 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                    <Play className="h-4 w-4" /> Re-générer tous les shots
+                  </Button>
+                  <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages} className="min-h-[40px]">
+                    {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                    Créer tous les visuels
+                  </Button>
+                </div>
               )}
             </div>
 
