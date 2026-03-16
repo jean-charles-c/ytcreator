@@ -647,21 +647,44 @@ export default function Editor() {
     const next = scenes[idx + 1];
     const mergedText = `${current.source_text} ${next.source_text}`;
     const mergedTitle = current.title;
-    await supabase.from("scenes").update({ source_text: mergedText, title: mergedTitle }).eq("id", current.id);
-    await supabase.from("shots").delete().eq("scene_id", next.id);
-    await supabase.from("scenes").delete().eq("id", next.id);
-    // Reorder remaining
-    const newScenes = scenes.filter((s) => s.id !== next.id).map((s, i) => ({ ...s, scene_order: i + 1 }));
-    for (const s of newScenes) {
-      if (s.id === current.id) {
-        await supabase.from("scenes").update({ source_text: mergedText, scene_order: s.scene_order }).eq("id", s.id);
-      } else {
-        await supabase.from("scenes").update({ scene_order: s.scene_order }).eq("id", s.id);
-      }
+    const mergedVisual = [current.visual_intention, next.visual_intention].filter(Boolean).join(" / ") || null;
+
+    try {
+      // 1. Update current scene with merged content
+      const { error: updateError } = await supabase
+        .from("scenes")
+        .update({ source_text: mergedText, title: mergedTitle, visual_intention: mergedVisual })
+        .eq("id", current.id);
+      if (updateError) throw updateError;
+
+      // 2. Delete shots of the next scene, then delete the next scene
+      await supabase.from("shots").delete().eq("scene_id", next.id);
+      const { error: deleteError } = await supabase.from("scenes").delete().eq("id", next.id);
+      if (deleteError) throw deleteError;
+
+      // 3. Reorder remaining scenes
+      const newScenes = scenes
+        .filter((s) => s.id !== next.id)
+        .map((s, i) => ({
+          ...s,
+          scene_order: i + 1,
+          source_text: s.id === current.id ? mergedText : s.source_text,
+          visual_intention: s.id === current.id ? mergedVisual : s.visual_intention,
+        }));
+
+      // Batch reorder updates
+      const reorderPromises = newScenes.map((s) =>
+        supabase.from("scenes").update({ scene_order: s.scene_order }).eq("id", s.id)
+      );
+      await Promise.all(reorderPromises);
+
+      setScenes(newScenes);
+      setShots((prev) => prev.filter((s) => s.scene_id !== next.id));
+      toast.success("Scènes fusionnées");
+    } catch (err: any) {
+      console.error("Merge error:", err);
+      toast.error("Erreur lors de la fusion : " + (err.message || "inconnue"));
     }
-    setScenes(newScenes.map((s) => s.id === current.id ? { ...s, source_text: mergedText } : s));
-    setShots((prev) => prev.filter((s) => s.scene_id !== next.id));
-    toast.success("Scènes fusionnées");
   };
 
   const handleSplit = async (sceneId: string, text1: string, text2: string) => {
