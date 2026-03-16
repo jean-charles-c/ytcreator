@@ -449,7 +449,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Film className="h-3 w-3" /> Piste vidéo</span>
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setZoomLevel((z) => Math.max(1, z / 2))}
+              onClick={() => setZoomLevel((z) => Math.max(1, z <= 2 ? 1 : z - 2))}
               disabled={zoomLevel <= 1}
               className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
               title="Dézoomer"
