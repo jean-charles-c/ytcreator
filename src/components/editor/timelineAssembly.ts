@@ -76,9 +76,6 @@ export function assembleTimeline(
     return a.shot_order - b.shot_order;
   });
 
-  // Build a scene lookup
-  const sceneMap = new Map<string, Scene>();
-  scenes.forEach((s) => sceneMap.set(s.id, s));
 
   const audioDuration = audioFile.duration_estimate ?? 0;
   const DEFAULT_SEGMENT_DURATION = 4; // seconds
