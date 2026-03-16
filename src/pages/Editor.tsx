@@ -1194,6 +1194,7 @@ export default function Editor() {
             projectId={projectId}
             projectTitle={title}
             scenes={scenes.map((s) => ({ source_text: s.source_text, title: s.title }))}
+            shots={shots.map((s) => ({ id: s.id, source_sentence: s.source_sentence, source_sentence_fr: s.source_sentence_fr, description: s.description }))}
           />
         )}
 
