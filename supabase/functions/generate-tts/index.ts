@@ -21,6 +21,7 @@ interface TTSRequest {
   pauseBetweenParagraphs?: number; // ms
   pauseAfterSentences?: number; // ms
   sentenceStartBoost?: number; // %, 0 = disabled
+  sentenceEndSlow?: number; // %, 0 = disabled
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
@@ -152,6 +153,7 @@ serve(async (req) => {
       pauseBetweenParagraphs = 0,
       pauseAfterSentences = 0,
       sentenceStartBoost = 0,
+      sentenceEndSlow = 0,
       mode = "preview",
       projectId,
     } = body;
@@ -188,41 +190,81 @@ serve(async (req) => {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number): string {
-      if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0) return rawText;
+    function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number, endSlowPct: number): string {
+      if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0) return rawText;
 
       const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
       const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
       const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
 
       // Boost the first N words of a sentence with <prosody rate="+X%">
-      function boostSentenceStart(sentence: string): string {
-        if (startBoostPct <= 0) return sentence;
+      // Slow down the last N words with <prosody rate="-X%">
+      function processSentence(sentence: string): string {
+        let result = sentence;
         const words = sentence.split(/(\s+)/); // preserve whitespace tokens
-        // Take first 3-4 actual words
-        let wordCount = 0;
-        let splitIdx = 0;
+        const actualWords = words.filter(w => w.trim());
+        
+        if (actualWords.length <= 2) {
+          // Very short sentence — apply both if set
+          if (startBoostPct > 0 && endSlowPct > 0) {
+            return `<prosody rate="+${startBoostPct}%">${sentence}</prosody>`;
+          }
+          if (startBoostPct > 0) return `<prosody rate="+${startBoostPct}%">${sentence}</prosody>`;
+          if (endSlowPct > 0) return `<prosody rate="-${endSlowPct}%">${sentence}</prosody>`;
+          return sentence;
+        }
+
+        // Find split indices for first 3 and last 3 words
+        let headCount = 0, headIdx = 0;
         for (let i = 0; i < words.length; i++) {
-          if (words[i].trim()) wordCount++;
-          if (wordCount >= 3) { splitIdx = i + 1; break; }
+          if (words[i].trim()) headCount++;
+          if (headCount >= 3) { headIdx = i + 1; break; }
         }
-        if (splitIdx === 0 || splitIdx >= words.length) {
-          // Sentence too short, boost entirely
-          return `<prosody rate="+${startBoostPct}%">${sentence}</prosody>`;
+        if (headIdx === 0) headIdx = words.length;
+
+        let tailCount = 0, tailIdx = words.length;
+        for (let i = words.length - 1; i >= 0; i--) {
+          if (words[i].trim()) tailCount++;
+          if (tailCount >= 3) { tailIdx = i; break; }
         }
-        const head = words.slice(0, splitIdx).join("");
-        const tail = words.slice(splitIdx).join("");
-        return `<prosody rate="+${startBoostPct}%">${head}</prosody>${tail}`;
+
+        // Avoid overlap
+        if (tailIdx <= headIdx) {
+          const mid = Math.floor(words.length / 2);
+          if (startBoostPct > 0 && endSlowPct > 0) {
+            const head = words.slice(0, mid).join("");
+            const tail = words.slice(mid).join("");
+            return `<prosody rate="+${startBoostPct}%">${head}</prosody><prosody rate="-${endSlowPct}%">${tail}</prosody>`;
+          }
+          headIdx = mid;
+          tailIdx = mid;
+        }
+
+        if (startBoostPct > 0 && endSlowPct > 0) {
+          const head = words.slice(0, headIdx).join("");
+          const middle = words.slice(headIdx, tailIdx).join("");
+          const tail = words.slice(tailIdx).join("");
+          result = `<prosody rate="+${startBoostPct}%">${head}</prosody>${middle}<prosody rate="-${endSlowPct}%">${tail}</prosody>`;
+        } else if (startBoostPct > 0) {
+          const head = words.slice(0, headIdx).join("");
+          const tail = words.slice(headIdx).join("");
+          result = `<prosody rate="+${startBoostPct}%">${head}</prosody>${tail}`;
+        } else if (endSlowPct > 0) {
+          const head = words.slice(0, tailIdx).join("");
+          const tail = words.slice(tailIdx).join("");
+          result = `${head}<prosody rate="-${endSlowPct}%">${tail}</prosody>`;
+        }
+
+        return result;
       }
 
       const processedParagraphs = paragraphs.map((p) => {
         const escaped = escapeXml(p.trim());
-        // Split into sentences, apply boost, then add breaks
         const sentences = escaped.split(/(?<=[.!?])\s+/);
-        const boosted = sentences.map((s) => boostSentenceStart(s));
+        const processed = sentences.map((s) => processSentence(s));
         const joined = sentPauseMs > 0
-          ? boosted.join(`${sentBreak} `)
-          : boosted.join(" ");
+          ? processed.join(`${sentBreak} `)
+          : processed.join(" ");
         return joined;
       });
 
@@ -231,7 +273,7 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
       const isSsml = ssmlText.startsWith("<speak>");
       const audioContent = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
@@ -269,7 +311,7 @@ serve(async (req) => {
     }
 
     // Convert text to SSML with pauses
-    const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost);
+    const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
     const isSsml = ssmlText.startsWith("<speak>");
 
     // Google TTS has a 5000 byte limit per request — split if needed

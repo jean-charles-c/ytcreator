@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   pauseBetweenParagraphs: 500,
   pauseAfterSentences: 0,
   sentenceStartBoost: 0,
+  sentenceEndSlow: 0,
 };
 
 interface PlayerState {
@@ -75,6 +76,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             pauseBetweenParagraphs: DEFAULT_SETTINGS.pauseBetweenParagraphs,
             pauseAfterSentences: DEFAULT_SETTINGS.pauseAfterSentences,
             sentenceStartBoost: DEFAULT_SETTINGS.sentenceStartBoost,
+            sentenceEndSlow: DEFAULT_SETTINGS.sentenceEndSlow,
           });
           setHasFavorite(true);
         }
@@ -144,6 +146,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             pauseBetweenParagraphs: settings.pauseBetweenParagraphs,
             pauseAfterSentences: settings.pauseAfterSentences,
             sentenceStartBoost: settings.sentenceStartBoost,
+            sentenceEndSlow: settings.sentenceEndSlow,
             style: settings.style,
             mode: "full",
             projectId,
