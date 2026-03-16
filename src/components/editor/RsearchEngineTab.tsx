@@ -16,6 +16,7 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
   const [content, setContent] = useState("");
   const [generating, setGenerating] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>();
+  const [progress, setProgress] = useState<{ current: number; total: number; section: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -45,6 +46,7 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
       setGenerating(true);
       setContent("");
       setCurrentSection(undefined);
+      setProgress(null);
       sectionRefs.current = {};
 
       const controller = new AbortController();
@@ -95,6 +97,9 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
                 toast.error(parsed.error);
                 setGenerating(false);
                 return;
+              }
+              if (parsed.progress) {
+                setProgress(parsed.progress);
               }
               if (parsed.text) {
                 accumulated += parsed.text;
@@ -209,7 +214,11 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
             {generating && (
               <div className="flex items-center gap-2 mb-4 p-3 rounded border border-primary/20 bg-primary/5">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Génération du dossier en cours... Cela peut prendre quelques minutes.</p>
+                <p className="text-sm text-muted-foreground">
+                  {progress
+                    ? `Section ${progress.current}/${progress.total} : ${progress.section}…`
+                    : "Connexion au service de recherche…"}
+                </p>
               </div>
             )}
 
