@@ -71,12 +71,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             voiceType,
             style: tone,
             speakingRate: data.speaking_rate,
-            volumeGainDb: DEFAULT_SETTINGS.volumeGainDb,
-            effectsProfileId: DEFAULT_SETTINGS.effectsProfileId,
-            pauseBetweenParagraphs: DEFAULT_SETTINGS.pauseBetweenParagraphs,
-            pauseAfterSentences: DEFAULT_SETTINGS.pauseAfterSentences,
-            sentenceStartBoost: DEFAULT_SETTINGS.sentenceStartBoost,
-            sentenceEndSlow: DEFAULT_SETTINGS.sentenceEndSlow,
+            volumeGainDb: data.volume_gain_db ?? DEFAULT_SETTINGS.volumeGainDb,
+            effectsProfileId: data.effects_profile_id ?? DEFAULT_SETTINGS.effectsProfileId,
+            pauseBetweenParagraphs: data.pause_between_paragraphs ?? DEFAULT_SETTINGS.pauseBetweenParagraphs,
+            pauseAfterSentences: data.pause_after_sentences ?? DEFAULT_SETTINGS.pauseAfterSentences,
+            sentenceStartBoost: data.sentence_start_boost ?? DEFAULT_SETTINGS.sentenceStartBoost,
+            sentenceEndSlow: data.sentence_end_slow ?? DEFAULT_SETTINGS.sentenceEndSlow,
           });
           setHasFavorite(true);
         }

@@ -126,6 +126,12 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
             voice_gender: settings.voiceGender,
             style: `${settings.voiceType}:${settings.style}`,
             speaking_rate: settings.speakingRate,
+            volume_gain_db: settings.volumeGainDb,
+            effects_profile_id: settings.effectsProfileId,
+            pause_between_paragraphs: settings.pauseBetweenParagraphs,
+            pause_after_sentences: settings.pauseAfterSentences,
+            sentence_start_boost: settings.sentenceStartBoost,
+            sentence_end_slow: settings.sentenceEndSlow,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id" }
