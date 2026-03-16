@@ -41,7 +41,13 @@ function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, 
   const wordMax = Math.round(charMax / 5.5);
   const paragraphEstimate = Math.round(charTarget / 130);
 
-  return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
+  const styleInstruction = NARRATIVE_STYLE_INSTRUCTIONS[narrativeStyle] || NARRATIVE_STYLE_INSTRUCTIONS["documentary"];
+
+  return `You are an expert YouTube documentary narrator.
+
+NARRATIVE STYLE: ${styleInstruction}
+
+Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
 
