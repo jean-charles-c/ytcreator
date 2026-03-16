@@ -360,12 +360,10 @@ Return data via the segment_narration tool call only.`,
         throw new Error("AI returned no scenes");
       }
 
-      return parsedScenes as {
-        title: string;
-        source_text: string;
-        source_text_fr?: string;
-        visual_intention: string;
-      }[];
+      // Validate and normalize each scene through the contract
+      return parsedScenes.map((raw: Record<string, unknown>, idx: number) =>
+        validateSceneBlock(raw, idx)
+      );
     };
 
     // For very long texts (>1500 words), split into chunks and process separately
@@ -373,7 +371,7 @@ Return data via the segment_narration tool call only.`,
       return text.split(/\n\n+/).filter(p => p.trim().length > 0);
     };
 
-    let allScenes: { title: string; source_text: string; source_text_fr?: string; visual_intention: string }[] = [];
+    let allScenes: ReturnType<typeof validateSceneBlock>[] = [];
 
     if (wordCount > 1500) {
       console.log(`Long narration detected (${wordCount} words). Processing in chunks.`);
