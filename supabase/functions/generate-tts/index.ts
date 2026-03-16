@@ -151,6 +151,7 @@ serve(async (req) => {
       effectsProfileId,
       pauseBetweenParagraphs = 0,
       pauseAfterSentences = 0,
+      sentenceStartBoost = 0,
       mode = "preview",
       projectId,
     } = body;
