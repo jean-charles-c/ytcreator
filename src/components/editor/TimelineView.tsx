@@ -45,6 +45,7 @@ function EditableSegmentCard({
   index,
   total,
   isActive,
+  displayIndex,
   onSeek,
   onMoveUp,
   onMoveDown,
@@ -55,6 +56,7 @@ function EditableSegmentCard({
   index: number;
   total: number;
   isActive: boolean;
+  displayIndex: number;
   onSeek: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -99,8 +101,8 @@ function EditableSegmentCard({
         {/* Info */}
         <button onClick={onSeek} className="flex-1 min-w-0 py-0.5 text-left min-h-[44px] sm:min-h-0 flex flex-col justify-center">
           <div className="flex items-center gap-2">
-            <span className={`text-[10px] font-semibold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-              Shot {segment.shotOrder}
+              <span className={`text-[10px] font-semibold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+              Shot {displayIndex}
             </span>
           </div>
           <p className="text-xs text-foreground leading-snug mt-0.5 line-clamp-1">
@@ -206,7 +208,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const rafRef = useRef<number>(0);
   const listRef = useRef<HTMLDivElement | null>(null);
   const miniTimelineRef = useRef<HTMLDivElement | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1); // 1x to 8x
+  const [zoomLevel, setZoomLevel] = useState(1); // 1x to 30x
 
   const activeIndex = useMemo(() => findSegmentAt(segments, currentTime), [segments, currentTime]);
   const activeSegment = segments[activeIndex] ?? null;
@@ -449,7 +451,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Film className="h-3 w-3" /> Piste vidéo</span>
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setZoomLevel((z) => Math.max(1, z / 2))}
+              onClick={() => setZoomLevel((z) => Math.max(1, z <= 2 ? 1 : z - 2))}
               disabled={zoomLevel <= 1}
               className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
               title="Dézoomer"
@@ -458,8 +460,8 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             </button>
             <span className="text-[10px] font-mono text-muted-foreground w-8 text-center">{zoomLevel}×</span>
             <button
-              onClick={() => setZoomLevel((z) => Math.min(8, z * 2))}
-              disabled={zoomLevel >= 8}
+              onClick={() => setZoomLevel((z) => Math.min(30, z < 2 ? 2 : z + 2))}
+              disabled={zoomLevel >= 30}
               className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
               title="Zoomer"
             >
@@ -520,10 +522,11 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
                 <span className="text-[10px] text-muted-foreground truncate">— {group.sceneTitle}</span>
               </div>
               <div className="px-1 py-1 space-y-0.5">
-                {group.segments.map(({ seg, globalIndex }) => (
+              {group.segments.map(({ seg, globalIndex }, localIdx) => (
                   <div key={seg.id} data-seg-index={globalIndex}>
                     <EditableSegmentCard
                       segment={seg}
+                      displayIndex={localIdx + 1}
                       index={globalIndex}
                       total={segments.length}
                       isActive={seg.id === activeSegment?.id}
