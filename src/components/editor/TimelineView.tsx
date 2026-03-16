@@ -347,7 +347,6 @@ export default function TimelineView({ timeline }: TimelineViewProps) {
         {/* Video segments bar */}
         <div
           className="relative h-10 rounded-md overflow-hidden border border-border cursor-pointer"
-          ref={timelineBarRef}
           onMouseDown={handleScrubStart}
         >
           <div className="flex h-full">
