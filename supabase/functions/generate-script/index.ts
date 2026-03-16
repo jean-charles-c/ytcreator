@@ -22,13 +22,29 @@ function encodeSseData(data: string): Uint8Array {
   return sseEncoder.encode(`data: ${data}\n\n`);
 }
 
-function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number): string {
+function buildSystemPrompt(langLabel: string, charMin: number, charMax: number, charTarget: number, narrativeStyleId: string): string {
   const wordTarget = Math.round(charTarget / 5.5);
   const wordMin = Math.round(charMin / 5.5);
   const wordMax = Math.round(charMax / 5.5);
   const paragraphEstimate = Math.round(charTarget / 130);
 
+  const styleInstructions: Record<string, string> = {
+    storytelling: "Write as a master storyteller. Use a classic narrative arc with characters, conflict, and resolution. Make the viewer feel like they're being told an epic tale around a campfire.",
+    pedagogical: "Write as an expert teacher. Prioritize clarity and understanding. Break down complex ideas step by step. Use analogies and examples to make concepts accessible.",
+    conversational: "Write as if talking to a friend over coffee. Use a warm, natural, informal tone. Include rhetorical asides and casual transitions.",
+    dramatic: "Write with maximum dramatic tension. Build suspense progressively. Use cliffhangers, dramatic pauses, and revelations. Make the viewer feel the stakes.",
+    punchy: "Write with rapid-fire energy. Ultra-short sentences. Quick cuts between ideas. High impact, zero filler. Every word punches.",
+    humorous: "Write with wit and humor. Use unexpected analogies, playful comparisons, and light irony. Keep it entertaining while informative.",
+    documentary: "Write as an immersive documentary narrator. Rich visual descriptions, cinematic pacing, atmospheric details. The viewer should feel transported to the scene.",
+    journalistic: "Write as an investigative journalist. Lead with the most important facts. Use precise data, quotes, and sources. Maintain objectivity while keeping engagement.",
+    motivational: "Write with inspiring energy. Use powerful declarations, calls to action, and uplifting language. Make the viewer feel empowered and motivated.",
+    analytical: "Write as a sharp analyst. Present structured arguments, compare perspectives, and draw insightful conclusions. Prioritize depth and critical thinking.",
+  };
+  const styleDirective = styleInstructions[narrativeStyleId] || styleInstructions["documentary"];
+
   return `You are an expert YouTube documentary narrator. Your style is CLEAR, DIRECT, and VISUAL — like the best YouTube explainer channels.
+
+NARRATIVE STYLE DIRECTIVE: ${styleDirective}
 
 MANDATORY LANGUAGE: Write the ENTIRE script in ${langLabel}. Every single word must be in ${langLabel}.
 
@@ -422,7 +438,7 @@ serve(async (req) => {
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
             messages: [
-              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget) },
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle) },
               { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
             ],
             stream: true,
