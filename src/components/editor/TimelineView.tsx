@@ -371,18 +371,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
 
   // progressPct already defined above
 
-  const sceneGroups = useMemo(() => {
-    const groups: { sceneId: string; sceneTitle: string; sceneOrder: number; segments: { seg: ShotSegment; globalIndex: number }[] }[] = [];
-    segments.forEach((seg, gi) => {
-      const last = groups[groups.length - 1];
-      if (last && last.sceneId === seg.sceneId) {
-        last.segments.push({ seg, globalIndex: gi });
-      } else {
-        groups.push({ sceneId: seg.sceneId, sceneTitle: seg.sceneTitle, sceneOrder: seg.sceneOrder, segments: [{ seg, globalIndex: gi }] });
-      }
-    });
-    return groups;
-  }, [segments]);
+  // sceneGroups removed — flat shot-based list
 
   return (
     <div className="space-y-4">

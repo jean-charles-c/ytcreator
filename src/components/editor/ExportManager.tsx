@@ -147,7 +147,11 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="text-sm text-foreground">{progress.message}</span>
+              <span className="text-sm text-foreground flex-1">{progress.message}</span>
+              <Button variant="destructive" size="sm" onClick={handleAbort} className="gap-1.5 shrink-0">
+                <StopCircle className="h-3.5 w-3.5" />
+                Stopper
+              </Button>
             </div>
             <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
               <div
