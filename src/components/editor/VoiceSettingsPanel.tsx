@@ -95,6 +95,7 @@ interface VoiceSettingsPanelProps {
   onChange: (settings: VoiceSettings) => void;
   hasFavorite?: boolean;
   hideHeader?: boolean;
+  onActiveProfileChange?: (profileName: string | null) => void;
 }
 
 const LANGUAGES = [
@@ -129,7 +130,7 @@ const EFFECTS_PROFILES = [
 
 const GENDER_LABELS: Record<string, string> = { MALE: "♂", FEMALE: "♀", NEUTRAL: "◎" };
 
-export default function VoiceSettingsPanel({ settings, onChange, hideHeader }: VoiceSettingsPanelProps) {
+export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onActiveProfileChange }: VoiceSettingsPanelProps) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
@@ -176,6 +177,12 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader }: V
   useEffect(() => {
     loadProfiles();
   }, []);
+
+  // Notify parent of active profile name changes
+  useEffect(() => {
+    const activeName = profiles.find((p) => p.id === activeProfileId)?.profile_name ?? null;
+    onActiveProfileChange?.(activeName);
+  }, [activeProfileId, profiles, onActiveProfileChange]);
 
   const loadProfiles = async () => {
     try {
