@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -48,8 +48,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const imageUrl = (shot as any).image_url;
+  const cost = shot.generation_cost as number;
 
   const startEdit = () => {
     setEditType(shot.shot_type);
@@ -87,35 +89,21 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   const handleRegenerate = async () => {
     if (onRegenerate) {
       setRegenerating(true);
-      try {
-        await onRegenerate(shot.id);
-      } finally {
-        setRegenerating(false);
-      }
+      try { await onRegenerate(shot.id); } finally { setRegenerating(false); }
     }
   };
 
   const handleGenerateImage = async () => {
     if (onGenerateImage) {
       setGeneratingImage(true);
-      try {
-        await onGenerateImage(shot.id);
-      } finally {
-        setGeneratingImage(false);
-      }
+      try { await onGenerateImage(shot.id); } finally { setGeneratingImage(false); }
     }
   };
 
   const handleDelete = async () => {
     if (!onDelete || deleting) return;
-
     setDeleting(true);
-    try {
-      await onDelete(shot.id);
-      setDeleteDialogOpen(false);
-    } finally {
-      setDeleting(false);
-    }
+    try { await onDelete(shot.id); setDeleteDialogOpen(false); } finally { setDeleting(false); }
   };
 
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
@@ -144,9 +132,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   return (
     <>
       <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
-        {/* Generated image */}
+        {/* Generated image — clickable for lightbox */}
         {imageUrl && (
-          <div className="mb-3 rounded overflow-hidden border border-border">
+          <div
+            className="mb-3 rounded overflow-hidden border border-border cursor-pointer"
+            onClick={() => setLightboxOpen(true)}
+          >
             <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-cover" loading="lazy" />
           </div>
         )}
@@ -155,9 +146,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
             {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
-            {(shot.generation_cost as number) > 0 && (
+            {cost > 0 && (
               <span className="text-[9px] text-accent-foreground bg-accent/30 px-1.5 py-0.5 rounded w-fit">
-                {shot.generation_cost} crédit{(shot.generation_cost as number) > 1 ? "s" : ""} IA
+                {cost.toFixed(2)} $
               </span>
             )}
           </div>
@@ -200,6 +191,34 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
           </details>
         )}
       </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && imageUrl && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div className="max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={imageUrl}
+              alt={`Shot ${globalIndex ?? ""}`}
+              className="max-w-full max-h-[75vh] object-contain rounded"
+            />
+            <div className="text-white text-center space-y-1">
+              <p className="font-display font-semibold">SHOT {globalIndex} — {shot.shot_type}</p>
+              {cost > 0 && (
+                <p className="text-xs text-white/70">{cost.toFixed(2)} $</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

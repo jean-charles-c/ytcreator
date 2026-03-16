@@ -8,9 +8,9 @@ const corsHeaders = {
 };
 
 const MODEL_COSTS: Record<string, number> = {
-  "google/gemini-2.5-flash-image": 1,
-  "google/gemini-3.1-flash-image-preview": 3,
-  "google/gemini-3-pro-image-preview": 5,
+  "google/gemini-2.5-flash-image": 0.02,
+  "google/gemini-3.1-flash-image-preview": 0.06,
+  "google/gemini-3-pro-image-preview": 0.10,
 };
 
 serve(async (req) => {
@@ -65,7 +65,17 @@ serve(async (req) => {
 
     const prompt = shot.prompt_export || shot.description;
     if (!prompt) throw new Error("No prompt available for this shot");
-    const fullPrompt = `Generate an image in ${selectedAspectRatio} aspect ratio. ${prompt}`;
+    const ASPECT_RATIO_DIMENSIONS: Record<string, string> = {
+      "16:9": "1920x1080",
+      "9:16": "1080x1920",
+      "1:1": "1024x1024",
+      "4:3": "1440x1080",
+      "3:2": "1620x1080",
+      "3:4": "1080x1440",
+      "2:3": "1080x1620",
+    };
+    const dimensions = ASPECT_RATIO_DIMENSIONS[selectedAspectRatio] || "1920x1080";
+    const fullPrompt = `Generate an image with exact ${selectedAspectRatio} aspect ratio (${dimensions} pixels). The image MUST be wider than tall for landscape ratios or taller than wide for portrait ratios. ${prompt}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
