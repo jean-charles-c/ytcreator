@@ -149,6 +149,7 @@ serve(async (req) => {
       volumeGainDb = 0,
       effectsProfileId,
       pauseBetweenParagraphs = 0,
+      pauseAfterSentences = 0,
       mode = "preview",
       projectId,
     } = body;
