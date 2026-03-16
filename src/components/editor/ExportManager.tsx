@@ -89,15 +89,17 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
       <div className="p-4 space-y-4">
         {/* FPS selector */}
         {!isExporting && !exportBlob && (
-          <div className="flex items-center gap-3">
-            <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground shrink-0">Framerate :</span>
-            <div className="flex gap-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground shrink-0">Framerate :</span>
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
               {FPS_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFps(opt.value)}
-                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                  className={`text-xs px-3 py-2 sm:px-2.5 sm:py-1 rounded-md border transition-colors min-h-[44px] sm:min-h-0 ${
                     fps === opt.value
                       ? "border-primary bg-primary/10 text-primary font-medium"
                       : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
@@ -124,7 +126,7 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
 
         {/* Export button */}
         {!isExporting && !exportBlob && (
-          <Button onClick={handleExport} className="w-full gap-2">
+          <Button onClick={handleExport} className="w-full gap-2 min-h-[48px] sm:min-h-[36px]">
             <Film className="h-4 w-4" />
             Exporter en MP4
           </Button>
@@ -176,14 +178,14 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleDownload} className="flex-1 gap-2">
+              <Button onClick={handleDownload} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
                 <Download className="h-4 w-4" />
                 Télécharger
               </Button>
-              <Button variant="outline" onClick={handleReExport} className="gap-1.5" title="Relancer l'export">
+              <Button variant="outline" onClick={handleReExport} className="gap-1.5 min-h-[48px] sm:min-h-[36px]" title="Relancer l'export">
                 <RefreshCw className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="outline" onClick={handleDelete} className="gap-1.5 text-destructive hover:text-destructive" title="Supprimer l'export">
+              <Button variant="outline" onClick={handleDelete} className="gap-1.5 text-destructive hover:text-destructive min-h-[48px] sm:min-h-[36px]" title="Supprimer l'export">
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
