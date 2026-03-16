@@ -653,11 +653,12 @@ export default function Editor() {
     const mergedText = `${current.source_text} ${next.source_text}`.trim();
     const mergedTitle = current.title;
     const mergedVisual = [current.visual_intention, next.visual_intention].filter(Boolean).join(" / ") || null;
+    const mergedTextFr = [current.source_text_fr, next.source_text_fr].filter(Boolean).join(" ").trim() || null;
 
     try {
       const { data: updatedScene, error: updateError } = await supabase
         .from("scenes")
-        .update({ source_text: mergedText, title: mergedTitle, visual_intention: mergedVisual })
+        .update({ source_text: mergedText, title: mergedTitle, visual_intention: mergedVisual, source_text_fr: mergedTextFr })
         .eq("id", current.id)
         .select("id")
         .single();
