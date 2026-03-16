@@ -544,10 +544,6 @@ export default function Editor() {
     storyAbortRef.current?.abort();
     storyAbortRef.current = null;
   }, [projectId, stopTask]);
-  const stopStoryboard = useCallback(() => {
-    storyAbortRef.current?.abort();
-    storyAbortRef.current = null;
-  }, []);
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
