@@ -303,6 +303,9 @@ export default function PdfDocumentaryTab({
         }
       }
 
+      // Strip <plan>...</plan> block used for internal LLM planning
+      full = full.replace(/<plan>[\s\S]*?<\/plan>\s*/gi, "").trim();
+
       if (!full.trim()) {
         throw new Error("Le flux AI n'a retourné aucun texte exploitable.");
       }
