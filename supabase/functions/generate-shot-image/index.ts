@@ -58,6 +58,7 @@ serve(async (req) => {
 
     const prompt = shot.prompt_export || shot.description;
     if (!prompt) throw new Error("No prompt available for this shot");
+    const fullPrompt = `Generate an image in ${selectedAspectRatio} aspect ratio. ${prompt}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
