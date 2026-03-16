@@ -14,6 +14,8 @@ import {
   Replace,
   Minus,
   Plus,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
