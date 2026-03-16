@@ -322,12 +322,25 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             </div>
           )}
 
-          {/* History */}
-          <GeneratedAudioHistory
-            projectId={projectId}
-            refreshKey={historyRefreshKey}
-            onPlay={handlePlayFromHistory}
-          />
+          {/* History — collapsible, open by default */}
+          <Accordion type="multiple" defaultValue={["history"]}>
+            <AccordionItem value="history" className="border rounded-lg border-border bg-card px-4">
+              <AccordionTrigger className="py-3 hover:no-underline gap-2">
+                <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Historique des audios
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <GeneratedAudioHistory
+                  projectId={projectId}
+                  refreshKey={historyRefreshKey}
+                  onPlay={handlePlayFromHistory}
+                  hideHeader
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {/* Left column — Script (shown SECOND on mobile, FIRST on desktop) */}
