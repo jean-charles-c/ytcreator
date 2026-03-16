@@ -14,6 +14,8 @@ import {
   Replace,
   Minus,
   Plus,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
@@ -203,6 +205,8 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const [audioDuration, setAudioDuration] = useState(audioTrack.durationEstimate || timeline.totalDuration);
   const rafRef = useRef<number>(0);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const miniTimelineRef = useRef<HTMLDivElement | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1); // 1x to 8x
 
   const activeIndex = useMemo(() => findSegmentAt(segments, currentTime), [segments, currentTime]);
   const activeSegment = segments[activeIndex] ?? null;
@@ -285,6 +289,19 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     }
   }, [activeIndex]);
 
+  // progressPct (needed early for mini-timeline auto-scroll)
+  const progressPct = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+
+  // Auto-scroll mini-timeline to keep playhead visible when zoomed
+  useEffect(() => {
+    if (!miniTimelineRef.current || zoomLevel <= 1) return;
+    const container = miniTimelineRef.current;
+    const scrollWidth = container.scrollWidth;
+    const clientWidth = container.clientWidth;
+    const targetScroll = (progressPct / 100) * scrollWidth - clientWidth / 2;
+    container.scrollTo({ left: Math.max(0, targetScroll), behavior: "smooth" });
+  }, [activeIndex, zoomLevel, progressPct]);
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -351,7 +368,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     };
   }, [isScrubbing, scrubFromPointer]);
 
-  const progressPct = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+  // progressPct already defined above
 
   const sceneGroups = useMemo(() => {
     const groups: { sceneId: string; sceneTitle: string; sceneOrder: number; segments: { seg: ShotSegment; globalIndex: number }[] }[] = [];
@@ -425,36 +442,65 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
         </div>
       </div>
 
-      {/* ═══ Mini-timeline ═══ */}
-      <div className="space-y-1 overflow-x-auto">
-        <div className="flex items-center justify-between min-w-[300px]">
+      {/* ═══ Mini-timeline with zoom ═══ */}
+      <div className="space-y-1">
+        {/* Zoom controls */}
+        <div className="flex items-center justify-between">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Film className="h-3 w-3" /> Piste vidéo</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Volume2 className="h-3 w-3" /> Audio</span>
-        </div>
-        <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none min-w-[300px]" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
-          <div className="flex h-full">
-            {segments.map((seg) => {
-              const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
-              const active = seg.id === activeSegment?.id;
-              return (
-                <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${seg.shotOrder}`}>
-                  {seg.imageUrl ? <img src={seg.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-[7px] text-muted-foreground">{seg.shotOrder}</span></div>}
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setZoomLevel((z) => Math.max(1, z / 2))}
+              disabled={zoomLevel <= 1}
+              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+              title="Dézoomer"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[10px] font-mono text-muted-foreground w-8 text-center">{zoomLevel}×</span>
+            <button
+              onClick={() => setZoomLevel((z) => Math.min(8, z * 2))}
+              disabled={zoomLevel >= 8}
+              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+              title="Zoomer"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 ml-3"><Volume2 className="h-3 w-3" /> Audio</span>
           </div>
-          <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none transition-[left] duration-75" style={{ left: `${progressPct}%` }}>
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500" />
-          </div>
         </div>
-        <div className="relative h-8 sm:h-6 rounded-md overflow-hidden border border-border bg-emerald-400/5 min-w-[300px]">
-          <div className="absolute inset-0 flex items-center px-1">
-            {waveformHeights.map((h, i) => <div key={i} className="flex-1 mx-px" style={{ height: `${h}%`, minHeight: "12%" }}><div className="w-full h-full rounded-sm bg-emerald-400/30" /></div>)}
+
+        {/* Scrollable zoomed tracks */}
+        <div ref={miniTimelineRef} className="overflow-x-auto">
+          <div style={{ width: `${100 * zoomLevel}%`, minWidth: "300px" }}>
+            {/* Video track */}
+            <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
+              <div className="flex h-full">
+                {segments.map((seg) => {
+                  const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
+                  const active = seg.id === activeSegment?.id;
+                  return (
+                    <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${seg.shotOrder}`}>
+                      {seg.imageUrl ? <img src={seg.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-[7px] text-muted-foreground">{seg.shotOrder}</span></div>}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="absolute top-0 bottom-0 w-0.5 bg-destructive z-10 pointer-events-none transition-[left] duration-75" style={{ left: `${progressPct}%` }}>
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-destructive" />
+              </div>
+            </div>
+            {/* Audio track */}
+            <div className="relative h-8 sm:h-6 rounded-md overflow-hidden border border-border bg-accent/10 mt-1">
+              <div className="absolute inset-0 flex items-center px-1">
+                {waveformHeights.map((h, i) => <div key={i} className="flex-1 mx-px" style={{ height: `${h}%`, minHeight: "12%" }}><div className="w-full h-full rounded-sm bg-accent/30" /></div>)}
+              </div>
+              <div className="absolute top-0 bottom-0 w-0.5 bg-destructive z-10 pointer-events-none transition-[left] duration-75" style={{ left: `${progressPct}%` }} />
+            </div>
+            {/* Time markers */}
+            <div className="flex justify-between text-[9px] font-mono text-muted-foreground px-0.5 mt-0.5">
+              <span>0:00</span><span className="hidden sm:inline">{formatTime(audioDuration / 4)}</span><span>{formatTime(audioDuration / 2)}</span><span className="hidden sm:inline">{formatTime((audioDuration * 3) / 4)}</span><span>{formatTime(audioDuration)}</span>
+            </div>
           </div>
-          <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none transition-[left] duration-75" style={{ left: `${progressPct}%` }} />
-        </div>
-        <div className="flex justify-between text-[9px] font-mono text-muted-foreground px-0.5 min-w-[300px]">
-          <span>0:00</span><span className="hidden sm:inline">{formatTime(audioDuration / 4)}</span><span>{formatTime(audioDuration / 2)}</span><span className="hidden sm:inline">{formatTime((audioDuration * 3) / 4)}</span><span>{formatTime(audioDuration)}</span>
         </div>
       </div>
 

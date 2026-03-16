@@ -211,7 +211,6 @@ export async function exportTimelineToMp4(
     "-s", `${opts.width}x${opts.height}`,
     "-c:a", "aac",
     "-b:a", "192k",
-    "-shortest",
     "-movflags", "+faststart",
     "-y",
     "output.mp4",
