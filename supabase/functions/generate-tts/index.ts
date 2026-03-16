@@ -19,6 +19,7 @@ interface TTSRequest {
   volumeGainDb?: number;
   effectsProfileId?: string;
   pauseBetweenParagraphs?: number; // ms
+  pauseAfterSentences?: number; // ms
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
@@ -148,6 +149,7 @@ serve(async (req) => {
       volumeGainDb = 0,
       effectsProfileId,
       pauseBetweenParagraphs = 0,
+      pauseAfterSentences = 0,
       mode = "preview",
       projectId,
     } = body;
@@ -179,19 +181,35 @@ serve(async (req) => {
       audioConfig.effectsProfileId = [effectsProfileId];
     }
 
-    // Convert text to SSML if pause is configured
-    function textToSsml(rawText: string, pauseMs: number): string {
-      if (pauseMs <= 0) return rawText;
-      // Split on double newlines (paragraph/scene breaks)
+    // Convert text to SSML if pauses are configured
+    function escapeXml(s: string): string {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number): string {
+      if (paraPauseMs <= 0 && sentPauseMs <= 0) return rawText;
+
       const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
-      if (paragraphs.length <= 1) return rawText;
-      const breakTag = `<break time="${pauseMs}ms"/>`;
-      const inner = paragraphs.map((p) => p.trim().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")).join(`${breakTag}\n`);
+      const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
+      const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
+
+      const processedParagraphs = paragraphs.map((p) => {
+        const escaped = escapeXml(p.trim());
+        if (sentPauseMs <= 0) return escaped;
+        // Insert break after sentence-ending punctuation (. ! ?)
+        return escaped.replace(/([.!?])\s+/g, `$1${sentBreak} `);
+      });
+
+      if (processedParagraphs.length <= 1 && !paraBreak) {
+        return `<speak>${processedParagraphs[0] || ""}</speak>`;
+      }
+
+      const inner = processedParagraphs.join(paraBreak ? `${paraBreak}\n` : "\n");
       return `<speak>${inner}</speak>`;
     }
 
     if (mode === "preview") {
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences);
       const isSsml = ssmlText.startsWith("<speak>");
       const audioContent = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
@@ -229,7 +247,7 @@ serve(async (req) => {
     }
 
     // Convert text to SSML with pauses
-    const ssmlText = textToSsml(text, pauseBetweenParagraphs);
+    const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences);
     const isSsml = ssmlText.startsWith("<speak>");
 
     // Google TTS has a 5000 byte limit per request — split if needed

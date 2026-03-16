@@ -22,6 +22,7 @@ export interface VoiceSettings {
   volumeGainDb: number;
   effectsProfileId: string;
   pauseBetweenParagraphs: number; // ms, 0 = disabled
+  pauseAfterSentences: number; // ms, 0 = disabled
 }
 
 // Style presets → pitch + speakingRate adjustments sent to Google TTS
@@ -252,6 +253,23 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Pause after sentences */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Pause en fin de phrase</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.pauseAfterSentences === 0 ? "Aucune" : `${settings.pauseAfterSentences} ms`}</span>
+        </div>
+        <Slider
+          min={0} max={1000} step={50}
+          value={[settings.pauseAfterSentences]}
+          onValueChange={([v]) => update({ pauseAfterSentences: v })}
+          aria-label="Pause en fin de phrase"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Aucune</span><span>500ms</span><span>1s</span>
+        </div>
       </div>
 
       {/* Pause between paragraphs */}
