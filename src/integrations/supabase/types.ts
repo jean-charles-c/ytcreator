@@ -22,6 +22,7 @@ export type Database = {
           language_code: string
           pause_after_sentences: number
           pause_between_paragraphs: number
+          profile_name: string
           sentence_end_slow: number
           sentence_start_boost: number
           speaking_rate: number
@@ -29,6 +30,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           voice_gender: string
+          voice_name: string
           volume_gain_db: number
         }
         Insert: {
@@ -38,6 +40,7 @@ export type Database = {
           language_code?: string
           pause_after_sentences?: number
           pause_between_paragraphs?: number
+          profile_name?: string
           sentence_end_slow?: number
           sentence_start_boost?: number
           speaking_rate?: number
@@ -45,6 +48,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           voice_gender?: string
+          voice_name?: string
           volume_gain_db?: number
         }
         Update: {
@@ -54,6 +58,7 @@ export type Database = {
           language_code?: string
           pause_after_sentences?: number
           pause_between_paragraphs?: number
+          profile_name?: string
           sentence_end_slow?: number
           sentence_start_boost?: number
           speaking_rate?: number
@@ -61,6 +66,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           voice_gender?: string
+          voice_name?: string
           volume_gain_db?: number
         }
         Relationships: []
