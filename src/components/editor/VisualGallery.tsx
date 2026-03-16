@@ -101,7 +101,7 @@ export default function VisualGallery({
             </select>
           </div>
           <div className="ml-auto text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-            Coût total : {totalCost} crédit{totalCost !== 1 ? "s" : ""} IA
+            Coût total : {totalCost.toFixed(2)} $
           </div>
         </div>
 
