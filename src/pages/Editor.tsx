@@ -765,11 +765,14 @@ export default function Editor() {
     setGeneratingAllImages(true);
     const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
     let count = 0;
+    let shotIdx = 0;
     for (const scene of sortedScenes) {
       const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
       for (const shot of sceneShots) {
+        if (shotIdx > 0) await new Promise((r) => setTimeout(r, 8000));
         const url = await generateShotImage(shot.id);
         if (url) count++;
+        shotIdx++;
       }
     }
     setGeneratingAllImages(false);
