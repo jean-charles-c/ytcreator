@@ -1197,7 +1197,15 @@ export default function Editor() {
           />
         )}
 
-        {/* Segmentation View */}
+        {/* VidéoEdit tab */}
+        {!showSetup && activeTab === "videoedit" && (
+          <VideoEditTab
+            projectId={projectId}
+            scenes={scenes}
+            shots={shots}
+          />
+        )}
+
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
