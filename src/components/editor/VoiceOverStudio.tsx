@@ -222,11 +222,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         Transformez votre script en fichier audio voice-over.
       </p>
 
-      {/* Mobile: settings first, then script. Desktop: script left, settings right */}
+      {/* Top: Script left + Settings right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-
-        {/* Right column on desktop — shown FIRST on mobile for quick config */}
-        <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
+        {/* Settings — shown FIRST on mobile */}
+        <div className="space-y-3 order-1 lg:order-2">
           <Accordion type="multiple" defaultValue={[]}>
             <AccordionItem value="settings" className="border rounded-lg border-border bg-card px-4">
               <AccordionTrigger className="py-3 hover:no-underline gap-2">
@@ -239,80 +238,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader />
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="preview" className="border rounded-lg border-border bg-card px-4 mt-3">
-              <AccordionTrigger className="py-3 hover:no-underline gap-2">
-                <span className="flex items-center gap-2 text-sm font-semibold font-display">
-                  <AudioLines className="h-4 w-4 text-primary" />
-                  Test rapide
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <VoicePreviewTest settings={settings} hideHeader />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          {/* Audio player */}
-          {playerState ? (
-            <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-sm font-semibold text-foreground">Lecteur audio</h3>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {formatDuration(playerState.durationEstimate)}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handlePlayPause}
-                  className="flex items-center justify-center h-11 w-11 sm:h-10 sm:w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-                  aria-label={isPlaying ? "Pause" : "Lecture"}
-                >
-                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-                </button>
-                <div className="flex-1">
-                  <div className="h-2 sm:h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
-                  </div>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 sm:p-4 flex flex-col items-center justify-center gap-2 min-h-[60px] sm:min-h-[80px]">
-              <Volume2 className="h-5 w-5 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/50 text-center">Lecteur audio</p>
-            </div>
-          )}
-
-          {/* History — collapsible, closed by default */}
-          <Accordion type="multiple" defaultValue={[]}>
-            <AccordionItem value="history" className="border rounded-lg border-border bg-card px-4">
-              <AccordionTrigger className="py-3 hover:no-underline gap-2">
-                <span className="flex items-center gap-2 text-sm font-semibold font-display">
-                  <Clock className="h-4 w-4 text-primary" />
-                  Historique des audios
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <GeneratedAudioHistory
-                  projectId={projectId}
-                  refreshKey={historyRefreshKey}
-                  onPlay={handlePlayFromHistory}
-                  hideHeader
-                />
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
         </div>
 
-        {/* Left column — Script (shown SECOND on mobile, FIRST on desktop) */}
-        <div className="lg:col-span-2 space-y-3 sm:space-y-4 order-2 lg:order-1">
+        {/* Script — shown SECOND on mobile, FIRST on desktop */}
+        <div className="lg:col-span-2 space-y-3 order-2 lg:order-1">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-3">
             <Input
               value={customFileName}
               onChange={(e) => setCustomFileName(e.target.value)}
               placeholder={`${projectTitle || "vo"}_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`}
-              className="h-10 sm:h-10 text-sm flex-1"
+              className="h-10 text-sm flex-1"
               aria-label="Nom du fichier audio"
             />
             <Button
@@ -345,7 +281,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             value={voScript}
             onChange={(e) => setVoScript(e.target.value)}
             placeholder="Collez ou saisissez votre texte narratif ici..."
-            className="min-h-[200px] sm:min-h-[350px] lg:min-h-[450px] text-sm leading-relaxed resize-y font-body"
+            className="min-h-[200px] sm:min-h-[250px] lg:min-h-[220px] text-sm leading-relaxed resize-y font-body"
             aria-label="Script narratif pour la voix off"
           />
           <div className="flex items-center gap-2">
@@ -354,6 +290,67 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Bottom row: Test rapide + Player + History — full width, 3 cols on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-6">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold font-display text-foreground">
+            <AudioLines className="h-4 w-4 text-primary" />
+            Test rapide
+          </h3>
+          <VoicePreviewTest settings={settings} hideHeader />
+        </div>
+
+        {playerState ? (
+          <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-sm font-semibold text-foreground">Lecteur audio</h3>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {formatDuration(playerState.durationEstimate)}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePlayPause}
+                className="flex items-center justify-center h-11 w-11 sm:h-10 sm:w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                aria-label={isPlaying ? "Pause" : "Lecture"}
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+              </button>
+              <div className="flex-1">
+                <div className="h-2 sm:h-1.5 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 sm:p-4 flex flex-col items-center justify-center gap-2 min-h-[60px] sm:min-h-[80px]">
+            <Volume2 className="h-5 w-5 text-muted-foreground/30" />
+            <p className="text-xs text-muted-foreground/50 text-center">Lecteur audio</p>
+          </div>
+        )}
+
+        <Accordion type="multiple" defaultValue={[]}>
+          <AccordionItem value="history" className="border rounded-lg border-border bg-card px-4">
+            <AccordionTrigger className="py-3 hover:no-underline gap-2">
+              <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                <Clock className="h-4 w-4 text-primary" />
+                Historique des audios
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <GeneratedAudioHistory
+                projectId={projectId}
+                refreshKey={historyRefreshKey}
+                onPlay={handlePlayFromHistory}
+                hideHeader
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </div>
   );

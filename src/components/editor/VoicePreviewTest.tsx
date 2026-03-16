@@ -24,7 +24,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
     }
 
     // Limit preview to 200 chars
-    const previewText = text.slice(0, 200);
+    const previewText = text.slice(0, 1000);
 
     setLoading(true);
     try {
@@ -106,14 +106,13 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
       <Textarea
         value={testText}
         onChange={(e) => setTestText(e.target.value)}
-        placeholder="Saisissez un court texte pour tester la voix (max 200 car.)..."
-        className="min-h-[80px] text-sm resize-none"
-        maxLength={200}
+        placeholder="Saisissez un texte pour tester la voix..."
+        className="min-h-[120px] text-sm resize-y"
         aria-label="Texte de test vocal"
       />
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <span className="text-[10px] text-muted-foreground">
-          {testText.length}/200 caractères
+          {testText.length} caractères
         </span>
         <div className="flex gap-2 w-full sm:w-auto">
           {playing && (
