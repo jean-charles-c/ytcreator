@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   volumeGainDb: 0,
   effectsProfileId: "none",
   pauseBetweenParagraphs: 500,
+  pauseAfterSentences: 0,
 };
 
 interface PlayerState {
