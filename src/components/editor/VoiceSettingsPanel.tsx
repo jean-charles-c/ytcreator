@@ -22,6 +22,7 @@ export interface VoiceSettings {
   volumeGainDb: number;
   effectsProfileId: string;
   pauseBetweenParagraphs: number; // ms, 0 = disabled
+  pauseAfterSentences: number; // ms, 0 = disabled
 }
 
 // Style presets → pitch + speakingRate adjustments sent to Google TTS
