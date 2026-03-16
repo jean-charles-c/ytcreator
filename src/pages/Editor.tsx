@@ -1225,20 +1225,23 @@ export default function Editor() {
               <>
                 {/* Full narration with French translation */}
                 {scriptLanguage !== "fr" && (
-                  <div className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5">
-                    <h3 className="font-display text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group">
+                    <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
                       🇫🇷 Traduction française du narratif
-                    </h3>
-                    {scenes.some((s) => s.source_text_fr) ? (
-                      <div className="max-h-[300px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
-                        <p className="text-sm text-muted-foreground leading-relaxed italic font-body">
-                          {scenes.map((s) => s.source_text_fr || "").filter(Boolean).join(" ")}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">Aucune traduction disponible. Relancez la segmentation pour générer les traductions françaises.</p>
-                    )}
-                  </div>
+                      <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
+                    </summary>
+                    <div className="mt-3">
+                      {scenes.some((s) => s.source_text_fr) ? (
+                        <div className="max-h-[300px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
+                          <p className="text-sm text-muted-foreground leading-relaxed italic font-body">
+                            {scenes.map((s) => s.source_text_fr || "").filter(Boolean).join(" ")}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Aucune traduction disponible. Relancez la segmentation pour générer les traductions françaises.</p>
+                      )}
+                    </div>
+                  </details>
                 )}
                 <div className="space-y-4">
                   {scenes.map((scene, i) => (
