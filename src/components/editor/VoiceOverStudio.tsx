@@ -223,9 +223,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         Transformez votre script en fichier audio voice-over.
       </p>
 
-      {/* Top: Script left + Settings right */}
+      {/* Main grid: Left (script + bottom tools) | Right (settings) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Settings — shown FIRST on mobile */}
+        {/* RIGHT column: Voice settings only — shown FIRST on mobile */}
         <div className="space-y-3 order-1 lg:order-2">
           <Accordion type="multiple" defaultValue={[]}>
             <AccordionItem value="settings" className="border rounded-lg border-border bg-card px-4">
@@ -236,127 +236,142 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 </span>
               </AccordionTrigger>
               <AccordionContent>
-                <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader />
+                <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader onActiveProfileChange={setActiveProfileName} />
               </AccordionContent>
             </AccordionItem>
           </Accordion>
         </div>
 
-        {/* Script — shown SECOND on mobile, FIRST on desktop */}
-        <div className="lg:col-span-2 space-y-3 order-2 lg:order-1">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-3">
-            <Input
-              value={customFileName}
-              onChange={(e) => setCustomFileName(e.target.value)}
-              placeholder={`${projectTitle || "vo"}_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`}
-              className="h-10 text-sm flex-1"
-              aria-label="Nom du fichier audio"
-            />
-            <Button
-              variant="hero"
-              disabled={!voScript.trim() || generating}
-              className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto shrink-0"
-              onClick={handleGenerate}
-            >
-              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-              {generating ? "Génération..." : "Générer la voix off"}
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
-              Script narratif
-            </label>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePasteFromScript}
-              className="h-9 sm:h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground min-w-[44px]"
-            >
-              <ClipboardPaste className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Coller le script généré</span>
-              <span className="sm:hidden">Coller</span>
-            </Button>
-          </div>
-          <Textarea
-            id="vo-script"
-            value={voScript}
-            onChange={(e) => setVoScript(e.target.value)}
-            placeholder="Collez ou saisissez votre texte narratif ici..."
-            className="min-h-[200px] sm:min-h-[250px] lg:min-h-[220px] text-sm leading-relaxed resize-y font-body"
-            aria-label="Script narratif pour la voix off"
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {voScript.length.toLocaleString()} caractères
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom row: Test rapide + Player/History — full width */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-6">
-        {/* Test rapide — takes 2 cols on desktop */}
-        <div className="lg:col-span-2 rounded-lg border border-border bg-card p-4 space-y-3">
-          <h3 className="flex items-center gap-2 text-sm font-semibold font-display text-foreground">
-            <AudioLines className="h-4 w-4 text-primary" />
-            Test rapide
-          </h3>
-          <VoicePreviewTest settings={settings} hideHeader />
-        </div>
-
-        {/* Player + History stacked in 1 col */}
-        <div className="space-y-3">
-          {playerState ? (
-            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-xs font-semibold text-foreground">Lecteur</h3>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {formatDuration(playerState.durationEstimate)}
-                </span>
-              </div>
+        {/* LEFT column (2/3): Script + bottom row */}
+        <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
+          {/* Script block */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-3">
+              <Input
+                value={customFileName}
+                onChange={(e) => setCustomFileName(e.target.value)}
+                placeholder={`${projectTitle || "vo"}_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`}
+                className="h-10 text-sm flex-1"
+                aria-label="Nom du fichier audio"
+              />
+              <Button
+                variant="hero"
+                disabled={!voScript.trim() || generating}
+                className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto shrink-0"
+                onClick={handleGenerate}
+              >
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                {generating ? "Génération..." : "Générer la voix off"}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
+                Script narratif
+              </label>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePlayPause}
-                  className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-                  aria-label={isPlaying ? "Pause" : "Lecture"}
+                {activeProfileName && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
+                    <User className="h-3 w-3" />
+                    {activeProfileName}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePasteFromScript}
+                  className="h-9 sm:h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground min-w-[44px]"
                 >
-                  {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
-                </button>
-                <div className="flex-1">
-                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
-                  </div>
-                </div>
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Coller le script généré</span>
+                  <span className="sm:hidden">Coller</span>
+                </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
             </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 flex items-center justify-center gap-2 min-h-[50px]">
-              <Volume2 className="h-4 w-4 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/50">Lecteur audio</p>
+            <Textarea
+              id="vo-script"
+              value={voScript}
+              onChange={(e) => setVoScript(e.target.value)}
+              placeholder="Collez ou saisissez votre texte narratif ici..."
+              className="min-h-[200px] sm:min-h-[250px] lg:min-h-[220px] text-sm leading-relaxed resize-y font-body"
+              aria-label="Script narratif pour la voix off"
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {voScript.length.toLocaleString()} caractères
+              </span>
             </div>
-          )}
+          </div>
 
-          <Accordion type="multiple" defaultValue={[]}>
-            <AccordionItem value="history" className="border rounded-lg border-border bg-card px-3">
-              <AccordionTrigger className="py-2 hover:no-underline gap-2">
-                <span className="flex items-center gap-2 text-xs font-semibold font-display">
-                  <Clock className="h-3.5 w-3.5 text-primary" />
-                  Historique
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <GeneratedAudioHistory
-                  projectId={projectId}
-                  refreshKey={historyRefreshKey}
-                  onPlay={handlePlayFromHistory}
-                  hideHeader
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          {/* Bottom row under script: Test rapide | Player | History — 3 columns */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Test rapide */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <h3 className="flex items-center gap-2 text-xs font-semibold font-display text-foreground">
+                <AudioLines className="h-3.5 w-3.5 text-primary" />
+                Test rapide
+              </h3>
+              <VoicePreviewTest settings={settings} hideHeader />
+            </div>
+
+            {/* Player */}
+            <div>
+              {playerState ? (
+                <div className="rounded-lg border border-border bg-card p-3 space-y-2 h-full">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-xs font-semibold text-foreground">Lecteur</h3>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {formatDuration(playerState.durationEstimate)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePlayPause}
+                      className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                      aria-label={isPlaying ? "Pause" : "Lecture"}
+                    >
+                      {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 ml-0.5" />}
+                    </button>
+                    <div className="flex-1">
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 flex items-center justify-center gap-2 h-full min-h-[80px]">
+                  <Volume2 className="h-4 w-4 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground/50">Lecteur audio</p>
+                </div>
+              )}
+            </div>
+
+            {/* History */}
+            <div>
+              <Accordion type="multiple" defaultValue={[]}>
+                <AccordionItem value="history" className="border rounded-lg border-border bg-card px-3">
+                  <AccordionTrigger className="py-2 hover:no-underline gap-2">
+                    <span className="flex items-center gap-2 text-xs font-semibold font-display">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      Historique
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <GeneratedAudioHistory
+                      projectId={projectId}
+                      refreshKey={historyRefreshKey}
+                      onPlay={handlePlayFromHistory}
+                      hideHeader
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
