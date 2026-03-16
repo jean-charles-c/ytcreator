@@ -62,12 +62,20 @@ export function assembleTimeline(
   shots: Shot[],
   audioFile: AudioFile
 ): Timeline {
-  // Sort shots by shot_order (global sequential numbering)
-  const sortedShots = [...shots].sort((a, b) => a.shot_order - b.shot_order);
-
   // Build a scene lookup
   const sceneMap = new Map<string, Scene>();
   scenes.forEach((s) => sceneMap.set(s.id, s));
+
+  // Sort shots chronologically: by scene order first, then shot_order within each scene
+  const sortedShots = [...shots].sort((a, b) => {
+    const sceneA = sceneMap.get(a.scene_id);
+    const sceneB = sceneMap.get(b.scene_id);
+    const orderA = sceneA?.scene_order ?? 0;
+    const orderB = sceneB?.scene_order ?? 0;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.shot_order - b.shot_order;
+  });
+
 
   const audioDuration = audioFile.duration_estimate ?? 0;
   const DEFAULT_SEGMENT_DURATION = 4; // seconds

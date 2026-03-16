@@ -271,8 +271,18 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
 
   useEffect(() => {
     if (!listRef.current) return;
-    const el = listRef.current.querySelector(`[data-seg-index="${activeIndex}"]`);
-    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const el = listRef.current.querySelector(`[data-seg-index="${activeIndex}"]`) as HTMLElement | null;
+    if (!el) return;
+    const container = listRef.current;
+    const elTop = el.offsetTop;
+    const elBottom = elTop + el.offsetHeight;
+    const scrollTop = container.scrollTop;
+    const viewBottom = scrollTop + container.clientHeight;
+    if (elTop < scrollTop) {
+      container.scrollTo({ top: elTop, behavior: "smooth" });
+    } else if (elBottom > viewBottom) {
+      container.scrollTo({ top: elBottom - container.clientHeight, behavior: "smooth" });
+    }
   }, [activeIndex]);
 
   const togglePlay = useCallback(() => {
