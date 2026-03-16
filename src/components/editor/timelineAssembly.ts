@@ -1,0 +1,136 @@
+import type { Tables } from "@/integrations/supabase/types";
+
+type Shot = Tables<"shots">;
+type Scene = Tables<"scenes">;
+type AudioFile = Tables<"vo_audio_history">;
+
+// ── Data types ─────────────────────────────────────────────────────
+
+export interface ShotSegment {
+  id: string;
+  shotOrder: number;
+  sceneId: string;
+  sceneTitle: string;
+  sceneOrder: number;
+  sentence: string;
+  sentenceFr: string | null;
+  imageUrl: string | null;
+  shotType: string;
+  description: string;
+  /** Duration in seconds for this segment on the video track */
+  duration: number;
+  /** Start time in seconds on the timeline */
+  startTime: number;
+}
+
+export interface TimelineTrack {
+  type: "video" | "audio";
+  label: string;
+  segments: ShotSegment[];
+  /** Total duration in seconds */
+  totalDuration: number;
+}
+
+export interface AudioTrackInfo {
+  audioId: string;
+  fileName: string;
+  filePath: string;
+  durationEstimate: number;
+  audioUrl: string;
+}
+
+export interface Timeline {
+  videoTrack: TimelineTrack;
+  audioTrack: AudioTrackInfo;
+  totalDuration: number;
+  segmentCount: number;
+  createdAt: string;
+}
+
+// ── Assembly logic ─────────────────────────────────────────────────
+
+/**
+ * Generates a Timeline from existing assets.
+ *
+ * Duration strategy:
+ * - If audio duration is known, distribute evenly across segments
+ *   weighted by sentence character count.
+ * - If no audio duration, use a default of 4 seconds per segment.
+ */
+export function assembleTimeline(
+  scenes: Scene[],
+  shots: Shot[],
+  audioFile: AudioFile
+): Timeline {
+  // Sort shots by shot_order (global sequential numbering)
+  const sortedShots = [...shots].sort((a, b) => a.shot_order - b.shot_order);
+
+  // Build a scene lookup
+  const sceneMap = new Map<string, Scene>();
+  scenes.forEach((s) => sceneMap.set(s.id, s));
+
+  const audioDuration = audioFile.duration_estimate ?? 0;
+  const DEFAULT_SEGMENT_DURATION = 4; // seconds
+
+  // Calculate total character weight for proportional duration
+  const totalChars = sortedShots.reduce((sum, shot) => {
+    const sentence = shot.source_sentence || shot.source_sentence_fr || shot.description;
+    return sum + Math.max(sentence.length, 10); // min 10 chars to avoid zero-duration
+  }, 0);
+
+  const useProportional = audioDuration > 0 && totalChars > 0;
+
+  let currentTime = 0;
+
+  const segments: ShotSegment[] = sortedShots.map((shot) => {
+    const scene = sceneMap.get(shot.scene_id);
+    const sentence = shot.source_sentence || shot.source_sentence_fr || shot.description;
+    const charWeight = Math.max(sentence.length, 10);
+
+    const duration = useProportional
+      ? (charWeight / totalChars) * audioDuration
+      : DEFAULT_SEGMENT_DURATION;
+
+    const segment: ShotSegment = {
+      id: shot.id,
+      shotOrder: shot.shot_order,
+      sceneId: shot.scene_id,
+      sceneTitle: scene?.title ?? `Scène ${shot.scene_id.slice(0, 6)}`,
+      sceneOrder: scene?.scene_order ?? 0,
+      sentence: shot.source_sentence ?? "",
+      sentenceFr: shot.source_sentence_fr ?? null,
+      imageUrl: shot.image_url,
+      shotType: shot.shot_type,
+      description: shot.description,
+      duration: Math.round(duration * 100) / 100,
+      startTime: Math.round(currentTime * 100) / 100,
+    };
+
+    currentTime += duration;
+
+    return segment;
+  });
+
+  const totalDuration = useProportional ? audioDuration : currentTime;
+
+  const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vo-audio/${audioFile.file_path}`;
+
+  return {
+    videoTrack: {
+      type: "video",
+      label: "Piste vidéo",
+      segments,
+      totalDuration,
+    },
+    audioTrack: {
+      audioId: audioFile.id,
+      fileName: audioFile.file_name,
+      filePath: audioFile.file_path,
+      durationEstimate: audioDuration,
+      audioUrl,
+    },
+    totalDuration,
+    segmentCount: segments.length,
+    createdAt: new Date().toISOString(),
+  };
+}
