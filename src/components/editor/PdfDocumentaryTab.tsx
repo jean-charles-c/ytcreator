@@ -27,6 +27,77 @@ interface ScriptVersion {
   content: string;
 }
 
+const extractTextFromStreamPayload = (payload: unknown): string => {
+  if (!payload || typeof payload !== "object") return "";
+
+  const data = payload as {
+    error?: string;
+    choices?: Array<{
+      delta?: { content?: unknown };
+      message?: { content?: unknown };
+      text?: unknown;
+    }>;
+    output?: Array<{
+      content?: Array<{
+        type?: string;
+        text?: string;
+      }>;
+    }>;
+  };
+
+  if (typeof data.error === "string") {
+    throw new Error(data.error);
+  }
+
+  const normalizeContent = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (!Array.isArray(value)) return "";
+
+    return value
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (!part || typeof part !== "object") return "";
+
+        const typedPart = part as {
+          text?: string;
+          content?: string;
+        };
+
+        return typedPart.text ?? typedPart.content ?? "";
+      })
+      .join("");
+  };
+
+  const choice = data.choices?.[0];
+  const deltaText = normalizeContent(choice?.delta?.content);
+  if (deltaText) return deltaText;
+
+  const messageText = normalizeContent(choice?.message?.content);
+  if (messageText) return messageText;
+
+  if (typeof choice?.text === "string") return choice.text;
+
+  if (Array.isArray(data.output)) {
+    return data.output
+      .flatMap((item) => item.content ?? [])
+      .map((part) => part.text ?? "")
+      .join("");
+  }
+
+  return "";
+};
+
+const readSseEventData = (rawEvent: string): string | null => {
+  const dataLines = rawEvent
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trimStart());
+
+  if (dataLines.length === 0) return null;
+  return dataLines.join("\n").trim();
+};
+
 const LANGUAGES = [
   { value: "en", label: "English" },
   { value: "fr", label: "Français" },
