@@ -458,8 +458,8 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             </button>
             <span className="text-[10px] font-mono text-muted-foreground w-8 text-center">{zoomLevel}×</span>
             <button
-              onClick={() => setZoomLevel((z) => Math.min(8, z * 2))}
-              disabled={zoomLevel >= 8}
+              onClick={() => setZoomLevel((z) => Math.min(30, z < 2 ? 2 : z + 2))}
+              disabled={zoomLevel >= 30}
               className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
               title="Zoomer"
             >
