@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Film,
@@ -14,8 +14,13 @@ import {
   Pause,
   Clock,
   FileAudio,
+  Wand2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { assembleTimeline, type Timeline } from "./timelineAssembly";
+import TimelineView from "./TimelineView";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
