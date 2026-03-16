@@ -45,6 +45,7 @@ function EditableSegmentCard({
   index,
   total,
   isActive,
+  displayIndex,
   onSeek,
   onMoveUp,
   onMoveDown,
@@ -55,6 +56,7 @@ function EditableSegmentCard({
   index: number;
   total: number;
   isActive: boolean;
+  displayIndex: number;
   onSeek: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
