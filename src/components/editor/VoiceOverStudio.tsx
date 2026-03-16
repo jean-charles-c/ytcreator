@@ -124,6 +124,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
+            // Pass shot sentences for precise audio-visual sync
+            shotSentences: shots && shots.length > 0
+              ? shots.map((s) => ({
+                  id: s.id,
+                  text: s.source_sentence || s.source_sentence_fr || s.description,
+                }))
+              : undefined,
           }),
         }
       );
