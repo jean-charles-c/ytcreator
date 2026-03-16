@@ -179,7 +179,7 @@ serve(async (req) => {
       "Generate one single cinematic image.",
       `Mandatory aspect ratio: ${selectedAspectRatio}.`,
       `Mandatory output canvas: exactly ${target.width}x${target.height} pixels.`,
-      `The final image must fully fill a ${selectedAspectRatio} frame and must not be square unless the ratio is 1:1.",
+      `The final image must fully fill a ${selectedAspectRatio} frame and must not be square unless the ratio is 1:1.`,
       "Compose the framing to work natively in that canvas without letterboxing or white borders.",
       prompt,
     ].join("\n");
