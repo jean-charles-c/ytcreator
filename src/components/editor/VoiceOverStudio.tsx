@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   pauseBetweenParagraphs: 500,
   pauseAfterSentences: 0,
   sentenceStartBoost: 0,
+  sentenceEndSlow: 0,
 };
 
 interface PlayerState {
