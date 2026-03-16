@@ -289,6 +289,16 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     }
   }, [activeIndex]);
 
+  // Auto-scroll mini-timeline to keep playhead visible when zoomed
+  useEffect(() => {
+    if (!miniTimelineRef.current || zoomLevel <= 1) return;
+    const container = miniTimelineRef.current;
+    const scrollWidth = container.scrollWidth;
+    const clientWidth = container.clientWidth;
+    const targetScroll = (progressPct / 100) * scrollWidth - clientWidth / 2;
+    container.scrollTo({ left: Math.max(0, targetScroll), behavior: "smooth" });
+  }, [activeIndex, zoomLevel, progressPct]);
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
