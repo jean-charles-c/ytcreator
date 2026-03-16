@@ -731,9 +731,9 @@ export default function Editor() {
   const [galleryOpen, setGalleryOpen] = useState(false);
 
   const IMAGE_MODELS = [
-    { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "$" },
-    { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "$$" },
-    { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "$$$" },
+    { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "0.02 $" },
+    { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "0.06 $" },
+    { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "0.10 $" },
   ];
 
   const ASPECT_RATIOS = [
