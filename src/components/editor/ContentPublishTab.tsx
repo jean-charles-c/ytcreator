@@ -252,7 +252,7 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
     return { promptsNumbered: numbered.trim(), promptsRaw: raw.trim() };
   }, [scenes, shots]);
 
-  const hasPrompts = promptsMd.length > 0;
+  const hasPrompts = promptsNumbered.length > 0;
   const hasContent = hasScript || hasSeo || hasPrompts;
 
   const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
