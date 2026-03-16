@@ -207,12 +207,11 @@ serve(async (req) => {
         const actualWords = words.filter(w => w.trim());
         
         if (actualWords.length <= 2) {
-          // Very short sentence — apply both if set
-          if (startBoostPct > 0 && endSlowPct > 0) {
+          if (startBoostPct > 0 && effectiveEndSlow > 0) {
             return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
           }
           if (startBoostPct > 0) return `<prosody rate="${100 + startBoostPct}%">${sentence}</prosody>`;
-          if (endSlowPct > 0) return `<prosody rate="${Math.max(20, 100 - endSlowPct)}%">${sentence}</prosody>`;
+          if (effectiveEndSlow > 0) return `<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${sentence}</prosody>`;
           return sentence;
         }
 
@@ -233,28 +232,29 @@ serve(async (req) => {
         // Avoid overlap
         if (tailIdx <= headIdx) {
           const mid = Math.floor(words.length / 2);
-          if (startBoostPct > 0 && endSlowPct > 0) {
+          if (startBoostPct > 0 && effectiveEndSlow > 0) {
             const head = words.slice(0, mid).join("");
             const tail = words.slice(mid).join("");
-            return `<prosody rate="${100 + startBoostPct}%">${head}</prosody><prosody rate="${Math.max(20, 100 - endSlowPct)}%">${tail}</prosody>`;
+            return `<prosody rate="${100 + startBoostPct}%">${head}</prosody><prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
           }
           headIdx = mid;
           tailIdx = mid;
         }
 
-        if (startBoostPct > 0 && endSlowPct > 0) {
+        let result = sentence;
+        if (startBoostPct > 0 && effectiveEndSlow > 0) {
           const head = words.slice(0, headIdx).join("");
           const middle = words.slice(headIdx, tailIdx).join("");
           const tail = words.slice(tailIdx).join("");
-          result = `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${middle}<prosody rate="${Math.max(20, 100 - endSlowPct)}%">${tail}</prosody>`;
+          result = `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${middle}<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
         } else if (startBoostPct > 0) {
           const head = words.slice(0, headIdx).join("");
           const tail = words.slice(headIdx).join("");
           result = `<prosody rate="${100 + startBoostPct}%">${head}</prosody>${tail}`;
-        } else if (endSlowPct > 0) {
+        } else if (effectiveEndSlow > 0) {
           const head = words.slice(0, tailIdx).join("");
           const tail = words.slice(tailIdx).join("");
-          result = `${head}<prosody rate="${Math.max(20, 100 - endSlowPct)}%">${tail}</prosody>`;
+          result = `${head}<prosody rate="${Math.max(20, 100 - effectiveEndSlow)}%">${tail}</prosody>`;
         }
 
         return result;
