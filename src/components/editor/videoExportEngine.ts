@@ -219,7 +219,8 @@ export async function exportTimelineToMp4(
 
   // ── Phase: Read output ──
   onProgress({ phase: "finalizing", percent: 96, message: "Finalisation…" });
-  const outputData = await ffmpeg.readFile("output.mp4") as Uint8Array;
+  const outputRaw = await ffmpeg.readFile("output.mp4");
+  const outputData = outputRaw instanceof Uint8Array ? new Uint8Array(outputRaw.buffer.slice(0)) : outputRaw;
 
   // Cleanup
   for (let i = 0; i < segments.length; i++) {
