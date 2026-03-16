@@ -211,6 +211,20 @@ export default function PdfDocumentaryTab({
     setAnalyzing(false);
   }, [onAnalysisReady, onExtractedTextChange, onAnalysisChange, onDocStructureChange, onScriptChange, onPageCountChange]);
 
+  // Analyze text only (no PDF extraction needed, e.g. from RsearchEngine)
+  const runAnalyzeTextOnly = useCallback(async (text: string) => {
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-pdf", { body: { text } });
+      if (error) { toast.error("Erreur d'analyse"); console.error(error); setAnalyzing(false); return; }
+      if (data?.error) { toast.error(data.error); setAnalyzing(false); return; }
+      onAnalysisChange(data.analysis);
+      onAnalysisReady?.(data.analysis, text);
+      toast.success("Analyse narrative terminée");
+    } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
+    setAnalyzing(false);
+  }, [onAnalysisReady, onAnalysisChange]);
+
   // Subscribe to background task progress for live streaming updates
   useEffect(() => {
     if (!projectId) return;
@@ -489,6 +503,11 @@ export default function PdfDocumentaryTab({
         {!extractedText && !analyzing && !hasResults && (
           <Button variant="hero" disabled={!file || !projectId || parsing} onClick={() => file && extractAndAnalyze(file)} className="min-h-[44px]">
             {parsing ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraction en cours...</> : <><Sparkles className="h-4 w-4" /> Analyser le document</>}
+          </Button>
+        )}
+        {extractedText && !analysis && !analyzing && !hasResults && !file && (
+          <Button variant="hero" disabled={!projectId} onClick={() => runAnalyzeTextOnly(extractedText)} className="min-h-[44px]">
+            <Sparkles className="h-4 w-4" /> Lancer l'analyse
           </Button>
         )}
         {analysis && !script && !generatingScript && (

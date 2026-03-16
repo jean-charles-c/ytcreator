@@ -981,6 +981,9 @@ export default function Editor() {
               projectTitle={title}
               onSendToScriptCreator={(text) => {
                 setNarration(text);
+                setPdfExtractedText(text);
+                setPdfAnalysis(null);
+                setGeneratedScript(null);
                 setActiveTab("script-creator");
               }}
             />
