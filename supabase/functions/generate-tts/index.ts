@@ -201,7 +201,7 @@ serve(async (req) => {
       // Slow down the last N words with <prosody rate="-X%">
       function processSentence(sentence: string): string {
         const trimmed = sentence.trim();
-        const endsWithExclamOrQuestion = /[!?]$/.test(trimmed);
+        const endsWithExclamOrQuestion = /[!?]\s*$/.test(trimmed) || /\.\s*[?!]\s*$/.test(trimmed);
         const effectiveEndSlow = endsWithExclamOrQuestion ? 0 : endSlowPct;
         const words = sentence.split(/(\s+)/); // preserve whitespace tokens
         const actualWords = words.filter(w => w.trim());
