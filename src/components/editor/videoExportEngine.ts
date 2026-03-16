@@ -233,7 +233,7 @@ export async function exportTimelineToMp4(
   await ffmpeg.deleteFile("audio.mp3").catch(() => {});
   await ffmpeg.deleteFile("output.mp4").catch(() => {});
 
-  const blob = new Blob([outputData], { type: "video/mp4" });
+  const blob = new Blob([outputBytes], { type: "video/mp4" });
 
   onProgress({ phase: "done", percent: 100, message: "Export terminé !" });
 
