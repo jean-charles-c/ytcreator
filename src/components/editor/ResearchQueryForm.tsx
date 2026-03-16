@@ -47,8 +47,13 @@ export default function ResearchQueryForm({ onSubmit, generating }: ResearchQuer
         />
       </div>
 
-      {/* Submit button right after topic */}
-      <Button type="submit" variant="hero" disabled={generating || !topic.trim()} className="w-full min-h-[44px]">
+      <Button
+        type="submit"
+        variant="hero"
+        size="lg"
+        disabled={generating || !topic.trim()}
+        className="w-full min-h-[52px] shadow-sm shadow-primary/20"
+      >
         {generating ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...

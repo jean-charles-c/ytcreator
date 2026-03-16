@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Image } from "jsr:@matmen/imagescript";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,12 +11,87 @@ const corsHeaders = {
 const MODEL_COSTS: Record<string, number> = {
   "google/gemini-2.5-flash-image": 0.02,
   "google/gemini-3.1-flash-image-preview": 0.06,
-  "google/gemini-3-pro-image-preview": 0.10,
+  "google/gemini-3-pro-image-preview": 0.1,
+};
+
+const ALLOWED_MODELS = [
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3.1-flash-image-preview",
+  "google/gemini-3-pro-image-preview",
+];
+
+const ASPECT_RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {
+  "16:9": { width: 1920, height: 1080 },
+  "9:16": { width: 1080, height: 1920 },
+  "1:1": { width: 1024, height: 1024 },
+  "4:3": { width: 1440, height: 1080 },
+  "3:2": { width: 1620, height: 1080 },
+  "3:4": { width: 1080, height: 1440 },
+  "2:3": { width: 1080, height: 1620 },
+};
+
+const getExtensionFromMime = (mimeType: string) => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpg";
+};
+
+const extractUsdCost = (payload: any, fallback: number) => {
+  const candidates = [
+    payload?.usage?.cost_usd,
+    payload?.usage?.total_cost_usd,
+    payload?.usage?.usd,
+    payload?.usageMetadata?.costUsd,
+    payload?.usage_metadata?.cost_usd,
+    payload?.cost_usd,
+  ];
+
+  const exact = candidates.find((value) => typeof value === "number" && Number.isFinite(value));
+  return typeof exact === "number" ? exact : fallback;
+};
+
+const decodeGeneratedImage = async (imageData: string) => {
+  const base64Match = imageData.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
+
+  if (base64Match) {
+    const mimeType = `image/${base64Match[1] === "jpg" ? "jpeg" : base64Match[1]}`;
+    const extension = getExtensionFromMime(mimeType);
+    const base64Content = base64Match[2];
+    const bytes = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
+    return { bytes, mimeType, extension };
+  }
+
+  const remoteResponse = await fetch(imageData);
+  if (!remoteResponse.ok) throw new Error("Unable to download generated image");
+
+  const mimeType = remoteResponse.headers.get("content-type")?.split(";")[0] || "image/png";
+  const extension = getExtensionFromMime(mimeType);
+  const bytes = new Uint8Array(await remoteResponse.arrayBuffer());
+  return { bytes, mimeType, extension };
+};
+
+const enforceExactAspectRatio = async (imageBytes: Uint8Array, aspectRatio: string) => {
+  const target = ASPECT_RATIO_DIMENSIONS[aspectRatio] || ASPECT_RATIO_DIMENSIONS["16:9"];
+  const decoded = await Image.decode(imageBytes);
+  const normalized = decoded.width === target.width && decoded.height === target.height
+    ? decoded
+    : decoded.cover(target.width, target.height);
+
+  const bytes = await normalized.encode(1);
+
+  return {
+    bytes,
+    mimeType: "image/png",
+    extension: "png",
+    width: normalized.width,
+    height: normalized.height,
+  };
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS")
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -23,78 +99,79 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseUser.auth.getUser();
+
     if (userError || !user) throw new Error("Unauthorized");
 
     const { shot_id, model, aspect_ratio } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
 
-    const ALLOWED_MODELS = [
-      "google/gemini-2.5-flash-image",
-      "google/gemini-3.1-flash-image-preview",
-      "google/gemini-3-pro-image-preview",
-    ];
-    const selectedModel = ALLOWED_MODELS.includes(model) ? model : "google/gemini-2.5-flash-image";
-    const selectedAspectRatio = ["16:9", "9:16", "1:1", "4:3", "3:2", "3:4", "2:3"].includes(aspect_ratio) ? aspect_ratio : "16:9";
-    const cost = MODEL_COSTS[selectedModel] ?? 1;
+    const selectedModel = ALLOWED_MODELS.includes(model)
+      ? model
+      : "google/gemini-2.5-flash-image";
+    const selectedAspectRatio = Object.keys(ASPECT_RATIO_DIMENSIONS).includes(aspect_ratio)
+      ? aspect_ratio
+      : "16:9";
 
-    // Fetch the shot
+    const target = ASPECT_RATIO_DIMENSIONS[selectedAspectRatio];
+    const fallbackCost = MODEL_COSTS[selectedModel] ?? 0;
+
     const { data: shot, error: shotErr } = await supabase
       .from("shots")
       .select("*")
       .eq("id", shot_id)
       .single();
+
     if (shotErr || !shot) throw new Error("Shot not found");
 
-    // Verify ownership
     const { data: project } = await supabase
       .from("projects")
       .select("id")
       .eq("id", shot.project_id)
       .eq("user_id", user.id)
       .single();
+
     if (!project) throw new Error("Unauthorized");
 
     const prompt = shot.prompt_export || shot.description;
     if (!prompt) throw new Error("No prompt available for this shot");
-    const ASPECT_RATIO_DIMENSIONS: Record<string, string> = {
-      "16:9": "1920x1080",
-      "9:16": "1080x1920",
-      "1:1": "1024x1024",
-      "4:3": "1440x1080",
-      "3:2": "1620x1080",
-      "3:4": "1080x1440",
-      "2:3": "1080x1620",
-    };
-    const dimensions = ASPECT_RATIO_DIMENSIONS[selectedAspectRatio] || "1920x1080";
-    const fullPrompt = `Generate an image with exact ${selectedAspectRatio} aspect ratio (${dimensions} pixels). The image MUST be wider than tall for landscape ratios or taller than wide for portrait ratios. ${prompt}`;
+
+    const fullPrompt = [
+      "Generate one single cinematic image.",
+      `Mandatory aspect ratio: ${selectedAspectRatio}.`,
+      `Mandatory output canvas: exactly ${target.width}x${target.height} pixels.`,
+      `The final image must fully fill a ${selectedAspectRatio} frame and must not be square unless the ratio is 1:1.",
+      "Compose the framing to work natively in that canvas without letterboxing or white borders.",
+      prompt,
+    ].join("\n");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const aiResponse = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [{ role: "user", content: fullPrompt }],
-          modalities: ["image", "text"],
-        }),
-      }
-    );
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: [{ role: "user", content: fullPrompt }],
+        modalities: ["image", "text"],
+      }),
+    });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
@@ -108,47 +185,53 @@ serve(async (req) => {
     const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     if (!imageData) throw new Error("No image generated");
 
-    const base64Match = imageData.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
-    if (!base64Match) throw new Error("Invalid image data format");
+    const rawImage = await decodeGeneratedImage(imageData);
+    const normalizedImage = await enforceExactAspectRatio(rawImage.bytes, selectedAspectRatio);
 
-    const imageFormat = base64Match[1] === "jpg" ? "jpeg" : base64Match[1];
-    const base64Content = base64Match[2];
-    const imageBytes = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
-
-    const filePath = `${shot.project_id}/${shot.id}.${imageFormat === "jpeg" ? "jpg" : imageFormat}`;
+    const filePath = `${shot.project_id}/${shot.id}.${normalizedImage.extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from("shot-images")
-      .upload(filePath, imageBytes, {
-        contentType: `image/${imageFormat}`,
+      .upload(filePath, normalizedImage.bytes, {
+        contentType: normalizedImage.mimeType,
         upsert: true,
       });
+
     if (uploadError) throw new Error("Failed to upload image");
 
     const { data: publicUrlData } = supabase.storage
       .from("shot-images")
       .getPublicUrl(filePath);
 
-    const imageUrl = publicUrlData.publicUrl + `?t=${Date.now()}`;
-
-    // Accumulate cost
-    const previousCost = typeof shot.generation_cost === "number" ? shot.generation_cost : 0;
-    const newTotalCost = previousCost + cost;
+    const imageUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    const exactOrFallbackCost = extractUsdCost(aiData, fallbackCost);
+    const previousCost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
+    const newTotalCost = Number((previousCost + exactOrFallbackCost).toFixed(4));
 
     const { error: updateErr } = await supabase
       .from("shots")
       .update({ image_url: imageUrl, generation_cost: newTotalCost })
       .eq("id", shot_id);
+
     if (updateErr) throw new Error("Failed to update shot");
 
-    return new Response(JSON.stringify({ image_url: imageUrl, generation_cost: newTotalCost }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        image_url: imageUrl,
+        generation_cost: newTotalCost,
+        last_generation_cost: Number(exactOrFallbackCost.toFixed(4)),
+        requested_aspect_ratio: selectedAspectRatio,
+        actual_dimensions: `${normalizedImage.width}x${normalizedImage.height}`,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     console.error("generate-shot-image error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
