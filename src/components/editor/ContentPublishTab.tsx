@@ -232,9 +232,10 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const hasScript = !!generatedScript;
   const hasSeo = !!(titles || description || tags);
 
-  const promptsMd = useMemo(() => {
-    if (scenes.length === 0 || shots.length === 0) return "";
-    let md = "";
+  const { promptsNumbered, promptsRaw } = useMemo(() => {
+    if (scenes.length === 0 || shots.length === 0) return { promptsNumbered: "", promptsRaw: "" };
+    let numbered = "";
+    let raw = "";
     let shotIndex = 1;
     const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
     sortedScenes.forEach((scene) => {
@@ -243,14 +244,15 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
         .sort((a, b) => a.shot_order - b.shot_order);
       sceneShots.forEach((shot) => {
         const prompt = shot.prompt_export || shot.description;
-        md += `SHOT ${shotIndex}: ${prompt}\n\n`;
+        numbered += `SHOT ${shotIndex}: ${prompt}\n\n`;
+        raw += `${prompt}\n\n`;
         shotIndex++;
       });
     });
-    return md.trim();
+    return { promptsNumbered: numbered.trim(), promptsRaw: raw.trim() };
   }, [scenes, shots]);
 
-  const hasPrompts = promptsMd.length > 0;
+  const hasPrompts = promptsNumbered.length > 0;
   const hasContent = hasScript || hasSeo || hasPrompts;
 
   const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
@@ -398,17 +400,28 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
                 />
               </div>
               <CollapsibleContent>
-                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
                   {!hasPrompts ? (
                     <p className="text-sm text-muted-foreground italic py-4">
                       Aucun prompt visuel. Générez les VisualPrompts d'abord.
                     </p>
                   ) : (
-                    <CopyableBlock text={promptsMd} label="Visual Prompts">
-                      <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
-                        {promptsMd}
-                      </pre>
-                    </CopyableBlock>
+                    <>
+                      <SubCollapsible icon={ScrollText} title="Prompts numérotés">
+                        <CopyableBlock text={promptsNumbered} label="Prompts numérotés">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {promptsNumbered}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+                      <SubCollapsible icon={ScrollText} title="Prompts seuls">
+                        <CopyableBlock text={promptsRaw} label="Prompts seuls">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {promptsRaw}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+                    </>
                   )}
                 </div>
               </CollapsibleContent>
