@@ -289,6 +289,9 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     }
   }, [activeIndex]);
 
+  // progressPct (needed early for mini-timeline auto-scroll)
+  const progressPct = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+
   // Auto-scroll mini-timeline to keep playhead visible when zoomed
   useEffect(() => {
     if (!miniTimelineRef.current || zoomLevel <= 1) return;
