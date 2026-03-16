@@ -255,6 +255,7 @@ export default function PdfDocumentaryTab({
       extractedText,
       scriptLanguage,
       targetChars,
+      narrativeStyle: narrativeStyleId,
       existingScript: script,
       isRegenerate,
     });
