@@ -42,52 +42,6 @@ interface PlayerState {
 export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
-  const [hasFavorite, setHasFavorite] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [customFileName, setCustomFileName] = useState("");
-  const [playerState, setPlayerState] = useState<PlayerState | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Load favorite voice profile on mount
-  useEffect(() => {
-    const loadFavorite = async () => {
-      try {
-        const { data, error } = await (supabase as any)
-          .from("favorite_voice_profile")
-          .select("*")
-          .maybeSingle();
-
-        if (!error && data) {
-          // Parse compound style format "VoiceType:tonality" or legacy values
-          const rawStyle = data.style || "";
-          const parts = rawStyle.split(":");
-          const voiceType = ["Standard", "Wavenet", "Neural2"].includes(parts[0]) ? parts[0] : "Standard";
-          const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
-          setSettings({
-            languageCode: data.language_code,
-            voiceGender: data.voice_gender,
-            voiceType,
-            voiceName: "",
-            style: tone,
-            speakingRate: data.speaking_rate,
-            volumeGainDb: data.volume_gain_db ?? DEFAULT_SETTINGS.volumeGainDb,
-            effectsProfileId: data.effects_profile_id ?? DEFAULT_SETTINGS.effectsProfileId,
-            pauseBetweenParagraphs: data.pause_between_paragraphs ?? DEFAULT_SETTINGS.pauseBetweenParagraphs,
-            pauseAfterSentences: data.pause_after_sentences ?? DEFAULT_SETTINGS.pauseAfterSentences,
-            sentenceStartBoost: data.sentence_start_boost ?? DEFAULT_SETTINGS.sentenceStartBoost,
-            sentenceEndSlow: data.sentence_end_slow ?? DEFAULT_SETTINGS.sentenceEndSlow,
-          });
-          setHasFavorite(true);
-        }
-      } catch (e) {
-        console.error("Load favorite voice error:", e);
-      }
-    };
-    loadFavorite();
-  }, []);
 
   const handlePasteFromScript = () => {
     // Priority: use generated script with scene structure
