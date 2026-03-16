@@ -214,7 +214,11 @@ export default function RsearchEngineTab({ projectId, projectTitle }: RsearchEng
             {generating && (
               <div className="flex items-center gap-2 mb-4 p-3 rounded border border-primary/20 bg-primary/5">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Génération du dossier en cours... Cela peut prendre quelques minutes.</p>
+                <p className="text-sm text-muted-foreground">
+                  {progress
+                    ? `Section ${progress.current}/${progress.total} : ${progress.section}…`
+                    : "Connexion au service de recherche…"}
+                </p>
               </div>
             )}
 
