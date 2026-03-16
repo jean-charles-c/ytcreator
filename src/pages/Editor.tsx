@@ -1437,15 +1437,26 @@ export default function Editor() {
                                 <CheckCircle2 className="h-2.5 w-2.5" /> Validée
                               </span>
                             )}
-                            <button
-                              onClick={() => runStoryboard(scene.id)}
-                              disabled={isRegenerating}
-                              className="sm:ml-auto flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                              title="Régénérer les shots de cette scène"
-                            >
-                              {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                              <span>Régénérer</span>
-                            </button>
+                            <div className="sm:ml-auto flex items-center gap-1">
+                              <button
+                                onClick={() => handleGenerateSceneImages(scene.id)}
+                                disabled={generatingSceneImages === scene.id}
+                                className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                title="Générer les visuels de cette scène"
+                              >
+                                {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                <span>Visuels</span>
+                              </button>
+                              <button
+                                onClick={() => runStoryboard(scene.id)}
+                                disabled={isRegenerating}
+                                className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                title="Régénérer les shots de cette scène"
+                              >
+                                {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                <span>Régénérer</span>
+                              </button>
+                            </div>
                           </div>
                           <div className="rounded border border-border bg-card p-4 mb-4">
                             <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
