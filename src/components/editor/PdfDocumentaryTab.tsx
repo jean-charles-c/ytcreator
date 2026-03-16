@@ -699,7 +699,31 @@ export default function PdfDocumentaryTab({
                   }} className="h-8 text-xs">
                     <ArrowRight className="h-3 w-3" /> ScriptInput
                   </Button>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={scriptLanguage}
+                      onChange={(e) => onLanguageChange?.(e.target.value)}
+                      className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                    <select
+                      value={narrativeStyleId}
+                      onChange={(e) => { setNarrativeStyleId(e.target.value); if (e.target.value !== "custom") setCustomStyleLabel(""); }}
+                      className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                      <option value="custom">+ Personnalisé</option>
+                    </select>
+                    {narrativeStyleId === "custom" && (
+                      <input
+                        type="text"
+                        placeholder="Style personnalisé…"
+                        value={customStyleLabel}
+                        onChange={(e) => setCustomStyleLabel(e.target.value)}
+                        className="h-8 w-36 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    )}
                     <input
                       type="number"
                       min={5000}
