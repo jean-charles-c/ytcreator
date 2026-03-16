@@ -371,8 +371,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
           </div>
         </div>
       </div>
+    </div>
   );
-}
 }
 
 function formatSize(bytes: number): string {
