@@ -48,6 +48,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [activeProfileName, setActiveProfileName] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handlePasteFromScript = () => {
