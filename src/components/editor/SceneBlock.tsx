@@ -122,7 +122,7 @@ export default function SceneBlock({
 
   return (
     <div
-      className={`rounded-lg border bg-card p-5 animate-fade-in transition-colors ${scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border"}`}
+      className={`rounded-lg border bg-card p-3 sm:p-5 animate-fade-in transition-colors ${scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border"}`}
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {/* ─── Header ─── */}
