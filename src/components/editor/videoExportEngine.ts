@@ -19,6 +19,12 @@ export interface ExportProgress {
 const DEFAULT_OPTIONS: ExportOptions = { fps: 25, width: 1920, height: 1080 };
 
 let ffmpegInstance: FFmpeg | null = null;
+let abortFlag = false;
+
+/** Call to abort an in-progress export */
+export function abortExport() {
+  abortFlag = true;
+}
 
 async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpeg> {
   if (ffmpegInstance && ffmpegInstance.loaded) return ffmpegInstance;
