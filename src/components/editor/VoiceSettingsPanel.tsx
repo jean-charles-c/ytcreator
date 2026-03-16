@@ -153,7 +153,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hasFavorite, hi
 
   // Filter voices for current type + gender
   const filteredVoices = availableVoices.filter((v) => {
-    const matchType = v.type.toLowerCase() === settings.voiceType.toLowerCase();
+    const matchType = (v.type || "").toLowerCase() === settings.voiceType.toLowerCase();
     const matchGender = v.gender === settings.voiceGender;
     return matchType && matchGender;
   });
