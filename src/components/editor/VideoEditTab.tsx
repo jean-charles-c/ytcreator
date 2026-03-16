@@ -475,13 +475,35 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
         </div>
       )}
 
-      {/* Placeholder for future timeline assembly */}
-      {allValid && (
-        <div className="mt-8 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 flex flex-col items-center gap-3">
-          <Film className="h-8 w-8 text-primary/40" />
-          <p className="text-sm text-muted-foreground text-center">
-            Tous les assets sont prêts. La génération de timeline sera disponible à l'étape suivante.
-          </p>
+      {/* Assemble button + Timeline */}
+      {selectedAudioId && shots.length > 0 && (
+        <div className="mt-8 space-y-6">
+          {!timeline && (
+            <div className="flex justify-center">
+              <Button
+                variant="hero"
+                onClick={handleAssembleTimeline}
+                className="min-h-[48px] gap-2"
+              >
+                <Wand2 className="h-4 w-4" />
+                Assembler la timeline
+              </Button>
+            </div>
+          )}
+          {timeline && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Timeline générée le {new Date(timeline.createdAt).toLocaleString("fr-FR")}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleAssembleTimeline} className="h-7 text-xs gap-1.5">
+                  <Wand2 className="h-3 w-3" />
+                  Régénérer
+                </Button>
+              </div>
+              <TimelineView timeline={timeline} />
+            </>
+          )}
         </div>
       )}
     </div>
