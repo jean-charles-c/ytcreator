@@ -88,22 +88,30 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   }, []);
 
   const handlePasteFromScript = () => {
-    // Build text from scenes if available, with blank lines between
-    if (scenes && scenes.length > 0) {
-      const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
-      if (sceneTexts.length > 0) {
-        setVoScript(sceneTexts.join("\n\n"));
-        toast.success("Script collé depuis les scènes");
-        return;
+    // Priority: use generated script with scene structure
+    if (generatedScript?.trim()) {
+      // If we have scenes, build structured text with scene breaks
+      if (scenes && scenes.length > 0) {
+        const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
+        if (sceneTexts.length > 0) {
+          setVoScript(sceneTexts.join("\n\n"));
+          toast.success("Script généré collé (structure par scènes)");
+          return;
+        }
       }
+      // Fallback: use the generated script directly
+      setVoScript(generatedScript);
+      toast.success("Script généré collé");
+      return;
     }
+    // Last resort: narration
     const source = narration;
     if (!source?.trim()) {
-      toast.error("Aucun texte disponible dans ScriptCreator. Saisissez d'abord votre narration dans l'onglet ScriptCreator.");
+      toast.error("Aucun script généré disponible. Générez d'abord un script dans l'onglet ScriptCreator.");
       return;
     }
     setVoScript(source);
-    toast.success("Script collé depuis ScriptCreator");
+    toast.success("Narration collée");
   };
 
   const handleGenerate = async () => {
