@@ -17,7 +17,7 @@ export default function PdfExportButton({ contentRef, fileName = "dossier-recher
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const opt = {
-        margin: [15, 15, 15, 15],
+        margin: [15, 15, 15, 15] as [number, number, number, number],
         filename: `${fileName}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, letterRendering: true },
