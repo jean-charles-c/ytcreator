@@ -256,10 +256,11 @@ export default function PdfDocumentaryTab({
       extractedText,
       scriptLanguage,
       targetChars,
+      narrativeStyle,
       existingScript: script,
       isRegenerate,
     });
-  }, [analysis, extractedText, scriptLanguage, script, targetChars, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, narrativeStyle, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
