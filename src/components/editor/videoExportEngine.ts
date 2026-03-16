@@ -173,6 +173,7 @@ export async function exportTimelineToMp4(
   const concatLines: string[] = [];
 
   for (let i = 0; i < segments.length; i++) {
+    if (abortFlag) throw new Error("Export annulé");
     const seg = segments[i];
     const fileName = `img_${String(i).padStart(4, "0")}.jpg`;
 
