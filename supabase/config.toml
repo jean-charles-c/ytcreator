@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.list-voices]
 verify_jwt = false
+
+[functions.generate-tts]
+verify_jwt = false
+
+[functions.regenerate-shot]
+verify_jwt = false
+
+[functions.generate-research]
+verify_jwt = false
