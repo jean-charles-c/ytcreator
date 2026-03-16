@@ -144,10 +144,15 @@ export type Database = {
       }
       scenes: {
         Row: {
+          characters: string | null
+          continuity: string | null
           created_at: string
           id: string
+          location: string | null
+          narrative_action: string | null
           project_id: string
           scene_order: number
+          scene_type: string | null
           source_text: string
           source_text_fr: string | null
           title: string
@@ -156,10 +161,15 @@ export type Database = {
           visual_intention: string | null
         }
         Insert: {
+          characters?: string | null
+          continuity?: string | null
           created_at?: string
           id?: string
+          location?: string | null
+          narrative_action?: string | null
           project_id: string
           scene_order: number
+          scene_type?: string | null
           source_text: string
           source_text_fr?: string | null
           title: string
@@ -168,10 +178,15 @@ export type Database = {
           visual_intention?: string | null
         }
         Update: {
+          characters?: string | null
+          continuity?: string | null
           created_at?: string
           id?: string
+          location?: string | null
+          narrative_action?: string | null
           project_id?: string
           scene_order?: number
+          scene_type?: string | null
           source_text?: string
           source_text_fr?: string | null
           title?: string
