@@ -391,7 +391,7 @@ serve(async (req) => {
       }, 15000);
 
       try {
-        const { analysis, structure, text, language, targetChars } = await req.json();
+        const { analysis, structure, text, language, targetChars, narrativeStyle } = await req.json();
         if (!analysis) {
           controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
           controller.close();
@@ -409,6 +409,8 @@ serve(async (req) => {
         const charTarget = targetChars ? Number(targetChars) : 15000;
         const charMin = Math.round(charTarget * 0.9);
         const charMax = Math.round(charTarget * 1.1);
+        const activeStyle = narrativeStyle || "documentary";
+        console.log(`[generate-script] narrativeStyle=${activeStyle}, lang=${scriptLang}, target=${charTarget}`);
 
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",

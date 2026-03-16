@@ -36,6 +36,7 @@ export interface ScriptGenParams {
   extractedText: string;
   scriptLanguage: string;
   targetChars: number;
+  narrativeStyle?: string;
   existingScript?: string | null;
   isRegenerate?: boolean;
 }
@@ -187,6 +188,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               text: params.extractedText,
               language: params.scriptLanguage,
               targetChars: params.targetChars,
+              narrativeStyle: params.narrativeStyle,
             }),
             signal: ac.signal,
           }
