@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Film,
@@ -10,11 +10,16 @@ import {
   XCircle,
   AlertTriangle,
   Loader2,
+  Play,
+  Pause,
+  Clock,
+  FileAudio,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
+type AudioFile = Tables<"vo_audio_history">;
 
 interface AssetCheck {
   label: string;
@@ -62,9 +67,172 @@ const STATUS_CONFIG = {
   },
 };
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ── AudioSelector ──────────────────────────────────────────────────
+function AudioSelector({
+  audioFiles,
+  selectedAudioId,
+  onSelect,
+}: {
+  audioFiles: AudioFile[];
+  selectedAudioId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const handlePreview = (file: AudioFile) => {
+    // Stop current
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    if (previewId === file.id && isPlaying) {
+      setIsPlaying(false);
+      setPreviewId(null);
+      return;
+    }
+
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vo-audio/${file.file_path}`;
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    audio.onended = () => {
+      setIsPlaying(false);
+      setPreviewId(null);
+    };
+    audio.play();
+    setPreviewId(file.id);
+    setIsPlaying(true);
+  };
+
+  if (audioFiles.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+        <FileAudio className="h-3.5 w-3.5" />
+        AudioSelector — Choisir l'audio de référence
+      </h3>
+      <div className="space-y-2">
+        {audioFiles.map((file) => {
+          const isSelected = selectedAudioId === file.id;
+          return (
+            <button
+              key={file.id}
+              onClick={() => onSelect(file.id)}
+              className={`w-full text-left rounded-lg border p-3 sm:p-4 transition-all ${
+                isSelected
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  : "border-border bg-card hover:border-primary/30 hover:bg-card/80"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {/* Preview button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePreview(file);
+                  }}
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 text-foreground transition-colors shrink-0"
+                  aria-label={previewId === file.id && isPlaying ? "Pause" : "Écouter"}
+                >
+                  {previewId === file.id && isPlaying ? (
+                    <Pause className="h-3.5 w-3.5" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5 ml-0.5" />
+                  )}
+                </button>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {file.file_name}
+                    </span>
+                    {isSelected && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                        <CheckCircle2 className="h-2.5 w-2.5" />
+                        Sélectionné
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                    {file.duration_estimate ? (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDuration(file.duration_estimate)}
+                      </span>
+                    ) : null}
+                    {file.file_size ? (
+                      <span>{formatSize(file.file_size)}</span>
+                    ) : null}
+                    <span>{file.voice_gender === "FEMALE" ? "♀" : "♂"} {file.language_code}</span>
+                    {file.style && file.style !== "neutral" && (
+                      <span className="capitalize">{file.style}</span>
+                    )}
+                    {file.created_at && (
+                      <span>{formatDate(file.created_at)}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Selection indicator */}
+                <div
+                  className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary"
+                      : "border-muted-foreground/30"
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="h-2 w-2 rounded-full bg-primary-foreground" />
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── VideoEditTab ───────────────────────────────────────────────────
 export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabProps) {
-  const [audioFiles, setAudioFiles] = useState<Tables<"vo_audio_history">[]>([]);
+  const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(true);
+  const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
 
   // Fetch available audio files for this project
   useEffect(() => {
@@ -81,6 +249,10 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
       setAudioFiles(data ?? []);
+      // Auto-select the most recent audio if none selected
+      if (data && data.length > 0 && !selectedAudioId) {
+        setSelectedAudioId(data[0].id);
+      }
       setLoadingAudio(false);
     };
 
@@ -151,11 +323,19 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     {
       label: "Audio narration",
       icon: Volume2,
-      status: loadingAudio ? "loading" : audioFiles.length > 0 ? "valid" : "missing",
+      status: loadingAudio
+        ? "loading"
+        : selectedAudioId
+        ? "valid"
+        : audioFiles.length > 0
+        ? "warning"
+        : "missing",
       detail: loadingAudio
         ? "Vérification…"
+        : selectedAudioId
+        ? `Audio sélectionné : ${audioFiles.find((a) => a.id === selectedAudioId)?.file_name ?? "—"}`
         : audioFiles.length > 0
-        ? `${audioFiles.length} fichier${audioFiles.length > 1 ? "s" : ""} audio disponible${audioFiles.length > 1 ? "s" : ""}`
+        ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné`
         : "Aucun audio généré",
       count: audioFiles.length,
     },
@@ -263,6 +443,17 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
           );
         })}
       </div>
+
+      {/* AudioSelector */}
+      {!loadingAudio && audioFiles.length > 0 && (
+        <div className="mt-8">
+          <AudioSelector
+            audioFiles={audioFiles}
+            selectedAudioId={selectedAudioId}
+            onSelect={setSelectedAudioId}
+          />
+        </div>
+      )}
 
       {/* Placeholder for future timeline assembly */}
       {allValid && (
