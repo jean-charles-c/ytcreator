@@ -234,7 +234,7 @@ export default function SceneBlock({
         <div className="mt-4 rounded border border-border bg-secondary/30 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">Déplacez le curseur pour choisir le point de scission :</p>
           <input type="range" min={10} max={scene.source_text.length - 10} value={splitPos} onChange={(e) => setSplitPos(Number(e.target.value))} className="w-full" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded border border-border bg-card p-2">
               <p className="text-[10px] text-muted-foreground font-medium mb-1">Partie 1</p>
               <p className="text-xs text-foreground">{scene.source_text.slice(0, splitPos).trim()}</p>
