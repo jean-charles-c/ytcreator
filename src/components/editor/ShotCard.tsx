@@ -113,6 +113,42 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
     try { await onDelete(shot.id); setDeleteDialogOpen(false); } finally { setDeleting(false); }
   };
 
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner une image.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${shot.project_id}/${shot.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("shot-images")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("shot-images").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase
+        .from("shots")
+        .update({ image_url: publicUrl })
+        .eq("id", shot.id);
+      if (updateError) throw updateError;
+
+      onUpdate({ ...shot, image_url: publicUrl });
+      toast.success("Image uploadée !");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast.error("Erreur lors de l'upload.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const inputClass = "w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 
   if (editing) {
