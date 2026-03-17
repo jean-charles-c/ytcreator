@@ -79,12 +79,12 @@ function generateXml(
         <masterclipid>${masterClipId}</masterclipid>
         <name>${name}</name>
         <enabled>TRUE</enabled>
-        <duration>${dur}</duration>
+        <duration>${fileDuration}</duration>
         <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
         <start>${startFrame}</start>
         <end>${endFrame}</end>
-        <in>0</in>
-        <out>${dur}</out>
+        <in>${inPoint}</in>
+        <out>${outPoint}</out>
         <stillframe>TRUE</stillframe>
         <stillframeoffset>0</stillframeoffset>
         <anamorphic>FALSE</anamorphic>
