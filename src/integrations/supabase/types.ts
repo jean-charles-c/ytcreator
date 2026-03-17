@@ -17,11 +17,16 @@ export type Database = {
       favorite_voice_profile: {
         Row: {
           created_at: string | null
+          dynamic_pause_enabled: boolean
+          dynamic_pause_variation: number
           effects_profile_id: string
           id: string
           language_code: string
+          narration_profile: string
+          pause_after_comma: number
           pause_after_sentences: number
           pause_between_paragraphs: number
+          pitch: number
           profile_name: string
           sentence_end_slow: number
           sentence_start_boost: number
@@ -35,11 +40,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          dynamic_pause_enabled?: boolean
+          dynamic_pause_variation?: number
           effects_profile_id?: string
           id?: string
           language_code?: string
+          narration_profile?: string
+          pause_after_comma?: number
           pause_after_sentences?: number
           pause_between_paragraphs?: number
+          pitch?: number
           profile_name?: string
           sentence_end_slow?: number
           sentence_start_boost?: number
@@ -53,11 +63,16 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          dynamic_pause_enabled?: boolean
+          dynamic_pause_variation?: number
           effects_profile_id?: string
           id?: string
           language_code?: string
+          narration_profile?: string
+          pause_after_comma?: number
           pause_after_sentences?: number
           pause_between_paragraphs?: number
+          pitch?: number
           profile_name?: string
           sentence_end_slow?: number
           sentence_start_boost?: number
