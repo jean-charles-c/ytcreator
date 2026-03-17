@@ -199,44 +199,46 @@ export default function SectionCard({
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
-      <CollapsibleTrigger className="w-full rounded-t-lg border border-border bg-card px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between hover:bg-secondary/30 transition-colors group data-[state=closed]:rounded-b-lg">
-        <div className="flex items-center gap-2.5">
-          <span className="text-base leading-none" role="img" aria-label={section.label}>
+      <CollapsibleTrigger className="w-full rounded-t-lg border border-border bg-card px-3 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between hover:bg-secondary/30 transition-colors group data-[state=closed]:rounded-b-lg min-h-[48px]">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-base leading-none shrink-0" role="img" aria-label={section.label}>
             {section.icon}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="font-display text-sm font-semibold text-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 min-w-0">
+            <span className="font-display text-sm font-semibold text-foreground truncate">
               {section.label}
             </span>
-            <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
-              {charCount > 0 ? `${charCount.toLocaleString()} car. · ${wordCount} mots` : "vide"}
-            </span>
-            {history && history.length > 0 && (
-              <span className="text-[10px] text-muted-foreground font-mono">
-                · {history.length} ver.
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+                {charCount > 0 ? `${charCount.toLocaleString()} car.` : "vide"}
               </span>
-            )}
-            {translation && (
-              <span className="text-[10px] text-primary font-mono">· FR</span>
-            )}
-            {regenerating && (
-              <span className="flex items-center gap-1 text-[10px] text-primary">
-                <Loader2 className="h-3 w-3 animate-spin" /> Régénération…
-              </span>
-            )}
-            {translating && (
-              <span className="flex items-center gap-1 text-[10px] text-primary">
-                <Loader2 className="h-3 w-3 animate-spin" /> Traduction…
-              </span>
-            )}
+              {history && history.length > 0 && (
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  · {history.length} ver.
+                </span>
+              )}
+              {translation && (
+                <span className="text-[10px] text-primary font-mono">· FR</span>
+              )}
+              {regenerating && (
+                <span className="flex items-center gap-1 text-[10px] text-primary">
+                  <Loader2 className="h-3 w-3 animate-spin" /> <span className="hidden sm:inline">Régénération…</span>
+                </span>
+              )}
+              {translating && (
+                <span className="flex items-center gap-1 text-[10px] text-primary">
+                  <Loader2 className="h-3 w-3 animate-spin" /> <span className="hidden sm:inline">Traduction…</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180" : ""}`} />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="rounded-b-lg border border-t-0 border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-center justify-end gap-2 mb-2 flex-wrap">
-            {/* Translate toggle — only for non-French scripts */}
+        <div className="rounded-b-lg border border-t-0 border-border bg-card px-3 py-3 sm:px-5 sm:py-4">
+          {/* Action buttons — stack on mobile */}
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 mb-2 flex-wrap">
             {!isFrenchScript && onTranslate && section.content.trim() && (
               <Button
                 variant="outline"
@@ -250,10 +252,11 @@ export default function SectionCard({
                     onTranslate(section.key);
                   }
                 }}
-                className={`h-7 text-[11px] gap-1.5 ${showFr ? "border-primary/40 bg-primary/5" : ""}`}
+                className={`min-h-[36px] sm:h-7 text-[11px] gap-1 sm:gap-1.5 px-2 sm:px-3 ${showFr ? "border-primary/40 bg-primary/5" : ""}`}
               >
                 {translating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
-                {translation ? (showFr ? "Masquer FR" : "Voir FR") : "Traduire FR"}
+                <span className="hidden sm:inline">{translation ? (showFr ? "Masquer FR" : "Voir FR") : "Traduire FR"}</span>
+                <span className="sm:hidden">FR</span>
               </Button>
             )}
             {history && history.length > 0 && onRestore && (
@@ -261,10 +264,11 @@ export default function SectionCard({
                 variant="outline"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); setHistoryOpen(!historyOpen); }}
-                className="h-7 text-[11px] gap-1.5"
+                className="min-h-[36px] sm:h-7 text-[11px] gap-1 sm:gap-1.5 px-2 sm:px-3"
               >
                 <History className="h-3 w-3" />
-                Historique ({history.length})
+                <span className="hidden sm:inline">Historique ({history.length})</span>
+                <span className="sm:hidden">{history.length}</span>
               </Button>
             )}
             {onRegenerate && (
@@ -273,50 +277,50 @@ export default function SectionCard({
                 size="sm"
                 disabled={regenerating}
                 onClick={(e) => { e.stopPropagation(); onRegenerate(section.key); }}
-                className="h-7 text-[11px] gap-1.5"
+                className="min-h-[36px] sm:h-7 text-[11px] gap-1 sm:gap-1.5 px-2 sm:px-3"
               >
                 {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                Régénérer
+                <span className="hidden sm:inline">Régénérer</span>
               </Button>
             )}
           </div>
 
           {/* History panel */}
           {historyOpen && history && history.length > 0 && onRestore && (
-            <div className="mb-3 rounded border border-border bg-background p-3 space-y-2 max-h-[250px] overflow-y-auto">
+            <div className="mb-3 rounded border border-border bg-background p-2 sm:p-3 space-y-2 max-h-[200px] sm:max-h-[250px] overflow-y-auto">
               <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
                 <Clock className="h-3 w-3" /> Versions précédentes
               </p>
               {history.map((entry, i) => (
-                <div key={i} className="rounded border border-border bg-card p-2.5 group">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-muted-foreground">
-                      {entry.label || `V${history.length - i}`} — {formatTimestamp(entry.timestamp)} — {entry.content.length.toLocaleString()} car.
+                <div key={i} className="rounded border border-border bg-card p-2 sm:p-2.5">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {entry.label || `V${history.length - i}`} — {formatTimestamp(entry.timestamp)}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => { onRestore(section.key, entry.content); setHistoryOpen(false); }}
-                      className="h-5 text-[9px] px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="min-h-[28px] h-auto text-[10px] px-2 shrink-0"
                     >
                       <RotateCcw className="h-2.5 w-2.5" /> Restaurer
                     </Button>
                   </div>
                   <p className="text-[10px] text-muted-foreground/70 leading-relaxed line-clamp-2">
-                    {entry.content.slice(0, 200)}{entry.content.length > 200 ? "…" : ""}
+                    {entry.content.slice(0, 150)}{entry.content.length > 150 ? "…" : ""}
                   </p>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Translation panel — non-destructive, read-only */}
+          {/* Translation panel */}
           {showFr && translation && (
-            <div className="mb-3 rounded border border-primary/20 bg-primary/5 p-3">
+            <div className="mb-3 rounded border border-primary/20 bg-primary/5 p-2 sm:p-3">
               <p className="text-[10px] font-medium text-primary mb-2 flex items-center gap-1.5">
                 <Languages className="h-3 w-3" /> Traduction française
               </p>
-              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-body">
+              <p className="text-[13px] sm:text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-body">
                 {translation}
               </p>
             </div>
@@ -327,7 +331,7 @@ export default function SectionCard({
             value={section.content}
             onChange={(e) => onContentChange?.(section.key, e.target.value)}
             placeholder="Saisissez le contenu de cette section…"
-            className="w-full min-h-[120px] bg-transparent text-sm text-foreground leading-relaxed resize-y font-body border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/40"
+            className="w-full min-h-[100px] sm:min-h-[120px] bg-transparent text-[13px] sm:text-sm text-foreground leading-relaxed resize-y font-body border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/40"
             aria-label={`Édition section ${section.label}`}
             disabled={regenerating}
           />
