@@ -127,11 +127,22 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             projectId,
             customFileName: customFileName.trim() || undefined,
             // Pass shot sentences for precise audio-visual sync
+            // IMPORTANT: sort shots by scene_order + shot_order to match timeline assembly
             shotSentences: shots && shots.length > 0
-              ? shots.map((s) => ({
-                  id: s.id,
-                  text: s.source_sentence || s.source_sentence_fr || s.description,
-                }))
+              ? (() => {
+                  const sceneOrderMap = new Map<string, number>();
+                  scenesForSort?.forEach((s) => sceneOrderMap.set(s.id, s.scene_order));
+                  const sorted = [...shots].sort((a, b) => {
+                    const orderA = sceneOrderMap.get(a.scene_id) ?? 0;
+                    const orderB = sceneOrderMap.get(b.scene_id) ?? 0;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.shot_order - b.shot_order;
+                  });
+                  return sorted.map((s) => ({
+                    id: s.id,
+                    text: s.source_sentence || s.source_sentence_fr || s.description,
+                  }));
+                })()
               : undefined,
           }),
         }
