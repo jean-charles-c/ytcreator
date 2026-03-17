@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { ChevronDown, RotateCcw, Loader2, History, Clock } from "lucide-react";
+import { ChevronDown, RotateCcw, Loader2, History, Clock, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -21,19 +21,12 @@ export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] 
   { key: "conclusion", label: "Conclusion", icon: "🎬" },
 ];
 
-/**
- * Parse a monolithic script into narrative sections.
- * Attempts to split by markdown-style headers (## Hook, ## Act 1, etc.)
- * or by paragraph count as fallback.
- */
 export function parseScriptIntoSections(script: string): NarrativeSection[] {
   if (!script || !script.trim()) {
     return NARRATIVE_SECTIONS.map((s) => ({ ...s, content: "" }));
   }
 
   const cleaned = script.trim();
-
-  // Try header-based split first
   const headerPattern = /^#{1,3}\s*(Hook|Introduction|Act\s*1[^]*?|Act\s*2[^]*?|Act\s*3[^]*?|Climax|Révélation|Conclusion|Setup|Escalade)[^\n]*/gim;
   const headerMatches = [...cleaned.matchAll(headerPattern)];
 
@@ -62,7 +55,6 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
     }));
   }
 
-  // Fallback: split by paragraphs proportionally
   const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
   const total = paragraphs.length;
   const ratios = [0.10, 0.10, 0.20, 0.25, 0.15, 0.10, 0.10];
@@ -122,13 +114,27 @@ interface SectionCardProps {
   regenerating?: boolean;
   history?: SectionHistoryEntry[];
   onRestore?: (key: string, content: string) => void;
+  translation?: string | null;
+  translating?: boolean;
+  onTranslate?: (key: string) => void;
+  showTranslation?: boolean;
+  scriptLanguage?: string;
 }
 
-export default function SectionCard({ section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating, history, onRestore }: SectionCardProps) {
+export default function SectionCard({
+  section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating,
+  history, onRestore, translation, translating, onTranslate, showTranslation, scriptLanguage,
+}: SectionCardProps) {
   const wordCount = section.content ? section.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showFr, setShowFr] = useState(false);
+
+  // Auto-show translation when it arrives
+  useEffect(() => {
+    if (translation && showTranslation) setShowFr(true);
+  }, [translation, showTranslation]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -142,6 +148,8 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
     const d = new Date(ts);
     return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" });
   };
+
+  const isFrenchScript = scriptLanguage === "fr";
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -162,9 +170,17 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
                 · {history.length} ver.
               </span>
             )}
+            {translation && (
+              <span className="text-[10px] text-primary font-mono">· FR</span>
+            )}
             {regenerating && (
               <span className="flex items-center gap-1 text-[10px] text-primary">
                 <Loader2 className="h-3 w-3 animate-spin" /> Régénération…
+              </span>
+            )}
+            {translating && (
+              <span className="flex items-center gap-1 text-[10px] text-primary">
+                <Loader2 className="h-3 w-3 animate-spin" /> Traduction…
               </span>
             )}
           </div>
@@ -173,7 +189,27 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="rounded-b-lg border border-t-0 border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-center justify-end gap-2 mb-2">
+          <div className="flex items-center justify-end gap-2 mb-2 flex-wrap">
+            {/* Translate toggle — only for non-French scripts */}
+            {!isFrenchScript && onTranslate && section.content.trim() && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={translating}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (translation) {
+                    setShowFr(!showFr);
+                  } else {
+                    onTranslate(section.key);
+                  }
+                }}
+                className={`h-7 text-[11px] gap-1.5 ${showFr ? "border-primary/40 bg-primary/5" : ""}`}
+              >
+                {translating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                {translation ? (showFr ? "Masquer FR" : "Voir FR") : "Traduire FR"}
+              </Button>
+            )}
             {history && history.length > 0 && onRestore && (
               <Button
                 variant="outline"
@@ -225,6 +261,18 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
                   </p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Translation panel — non-destructive, read-only */}
+          {showFr && translation && (
+            <div className="mb-3 rounded border border-primary/20 bg-primary/5 p-3">
+              <p className="text-[10px] font-medium text-primary mb-2 flex items-center gap-1.5">
+                <Languages className="h-3 w-3" /> Traduction française
+              </p>
+              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-body">
+                {translation}
+              </p>
             </div>
           )}
 
