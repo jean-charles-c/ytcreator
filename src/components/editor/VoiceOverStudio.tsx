@@ -183,7 +183,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       audioRef.current.pause();
       audioRef.current = null;
     }
-    setPlayerState({ audioUrl, fileName, durationEstimate: duration });
+    setPlayerState({ audioUrl, fileName, durationEstimate: duration, realDuration: null });
     setIsPlaying(false);
     setAudioProgress(0);
 
