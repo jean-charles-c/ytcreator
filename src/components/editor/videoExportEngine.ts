@@ -16,7 +16,7 @@ export interface ExportProgress {
   message: string;
 }
 
-const DEFAULT_OPTIONS: ExportOptions = { fps: 25, width: 1920, height: 1080 };
+const DEFAULT_OPTIONS: ExportOptions = { fps: 24, width: 1920, height: 1080 };
 
 let ffmpegInstance: FFmpeg | null = null;
 let abortFlag = false;

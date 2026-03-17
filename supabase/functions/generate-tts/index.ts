@@ -435,6 +435,7 @@ serve(async (req) => {
 
     let audioBuffers: Uint8Array[] = [];
     let allTimepoints: { shotIndex: number; timeSeconds: number; shotId: string }[] = [];
+    let cumulativeOffset = 0;
 
     if (useMarkedMode) {
       // ── Marked mode: SSML with <mark> tags for precise shot timing ──
@@ -447,13 +448,13 @@ serve(async (req) => {
       );
 
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
-      console.log(`Split into ${chunks.length} chunks`);
+      console.log(`Split into ${chunks.length} chunks, total shots: ${shotSentences!.length}`);
 
-      let cumulativeOffset = 0;
+      // cumulativeOffset is declared at outer scope
 
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
-        console.log(`Chunk ${ci + 1}: ${chunk.markIndices.length} marks, ${chunk.ssml.length} chars`);
+        console.log(`Chunk ${ci + 1}: marks=[${chunk.markIndices.join(",")}], ${chunk.ssml.length} chars`);
 
         const result = await callGoogleTTS(
           chunk.ssml,
@@ -470,8 +471,10 @@ serve(async (req) => {
 
         // Process timepoints
         let chunkDuration = 0;
+        const chunkTimepoints: { name: string; time: number }[] = [];
         if (result.timepoints) {
           for (const tp of result.timepoints) {
+            chunkTimepoints.push({ name: tp.markName, time: tp.timeSeconds });
             if (tp.markName === "__chunk_end" || tp.markName === "__end") {
               chunkDuration = tp.timeSeconds;
               continue;
@@ -480,22 +483,33 @@ serve(async (req) => {
               const idx = parseInt(tp.markName.replace("s_", ""));
               allTimepoints.push({
                 shotIndex: idx,
-                timeSeconds: tp.timeSeconds + cumulativeOffset,
+                timeSeconds: Math.round((tp.timeSeconds + cumulativeOffset) * 1000) / 1000,
                 shotId: shotSentences![idx]?.id ?? "",
               });
             }
           }
         }
 
-        // If no end marker found, estimate from last timepoint + some buffer
-        if (chunkDuration === 0 && result.timepoints && result.timepoints.length > 0) {
-          const lastTp = result.timepoints[result.timepoints.length - 1];
-          chunkDuration = lastTp.timeSeconds + 2; // rough estimate
+        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints)}`);
+
+        // If no end marker found, estimate from audio byte size (MP3 ~16kbps)
+        if (chunkDuration === 0) {
+          // Use last timepoint + 2s as fallback
+          if (result.timepoints && result.timepoints.length > 0) {
+            const lastTp = result.timepoints[result.timepoints.length - 1];
+            chunkDuration = lastTp.timeSeconds + 2;
+          } else {
+            // Very rough: MP3 at ~128kbps = 16KB/s
+            chunkDuration = raw.length / 16000;
+          }
         }
 
         cumulativeOffset += chunkDuration;
-        console.log(`Chunk ${ci + 1} duration: ${chunkDuration.toFixed(2)}s, cumulative: ${cumulativeOffset.toFixed(2)}s`);
+        console.log(`Chunk ${ci + 1} duration: ${chunkDuration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
       }
+
+      console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
+      console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
     } else {
       // ── Legacy mode: no marks, plain text/SSML ──
       const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
@@ -575,9 +589,11 @@ serve(async (req) => {
       .from("vo-audio")
       .getPublicUrl(filePath);
 
-    // Estimate duration
+    // Estimate duration: use cumulative offset from timepoints if available, else word count
     const wordCount = text.trim().split(/\s+/).length;
-    const durationEstimate = (wordCount / 150) * 60 / speakingRate;
+    const durationEstimate = allTimepoints.length > 0
+      ? cumulativeOffset
+      : (wordCount / 150) * 60 / speakingRate;
 
     // Save to history table (with timepoints if available)
     const { data: historyEntry, error: historyError } = await supabaseAdmin

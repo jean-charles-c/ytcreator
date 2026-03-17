@@ -264,10 +264,14 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
     };
   }, [audioTrack.audioUrl]);
 
+  // RAF-based time update during playback
   useEffect(() => {
     if (!isPlaying) { cancelAnimationFrame(rafRef.current); return; }
     const tick = () => {
-      if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+      if (audioRef.current) {
+        const t = audioRef.current.currentTime;
+        setCurrentTime(t);
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
