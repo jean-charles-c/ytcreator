@@ -35,31 +35,50 @@ function generateXml(
 ): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
-  const totalFrames = Math.ceil(totalDuration * fps);
+
+  // Build non-overlapping frame ranges ensuring each shot gets at least 1 frame
+  const MIN_FRAMES = 1;
+  const clipFrames: { start: number; end: number }[] = [];
+  let cursor = 0;
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const idealStart = Math.round(seg.startTime * fps);
+    const start = Math.max(idealStart, cursor);
+    const idealEnd = Math.round((seg.startTime + seg.duration) * fps);
+    const end = Math.max(idealEnd, start + MIN_FRAMES);
+    clipFrames.push({ start, end });
+    cursor = end;
+  }
+
+  const totalFrames = clipFrames.length > 0 ? clipFrames[clipFrames.length - 1].end : Math.ceil(totalDuration * fps);
 
   const clipItems = segments.map((seg, i) => {
-    const startFrame = Math.round(seg.startTime * fps);
-    const endFrame = Math.round((seg.startTime + seg.duration) * fps);
+    const { start: startFrame, end: endFrame } = clipFrames[i];
+    const dur = endFrame - startFrame;
     const name = `Shot ${seg.shotOrder} — ${escapeXml(seg.sceneTitle)}`;
     const description = escapeXml(seg.description);
     const sentence = escapeXml(seg.sentence || seg.sentenceFr || "");
     const localPath = imageFileNames.get(i) ?? "";
 
+    // For still images, file duration = very long so FCP treats it as a freeze frame
+    const fileDuration = dur;
+
     return `
       <clipitem id="clip-${i + 1}">
         <name>${name}</name>
-        <duration>${endFrame - startFrame}</duration>
+        <duration>${dur}</duration>
         <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
         <start>${startFrame}</start>
         <end>${endFrame}</end>
         <in>0</in>
-        <out>${endFrame - startFrame}</out>
+        <out>${dur}</out>
         <file id="file-${i + 1}">
           <name>${name}</name>
           <pathurl>${escapeXml(localPath)}</pathurl>
           <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-          <duration>${endFrame - startFrame}</duration>
-          <media><video><duration>${endFrame - startFrame}</duration></video></media>
+          <duration>${fileDuration}</duration>
+          <media><video><duration>${fileDuration}</duration></video></media>
         </file>
         <comments>
           <mastercomment1>${sentence}</mastercomment1>
@@ -69,7 +88,10 @@ function generateXml(
       </clipitem>`;
   }).join("\n");
 
-  const audioEndFrame = Math.round((audioTrack.durationEstimate || totalDuration) * fps);
+  const audioEndFrame = Math.max(
+    Math.round((audioTrack.durationEstimate || totalDuration) * fps),
+    totalFrames
+  );
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xmeml>
