@@ -181,7 +181,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       // Refresh history
       setHistoryRefreshKey((k) => k + 1);
 
-      toast.success(`Voix off générée — ${data.chunks} bloc(s), ${formatSize(data.fileSize)} • ${data.usedVoiceName ?? "auto"}`);
+      const syncInfo = data.shotTimepoints ? ` • Sync précis (${data.shotTimepoints.length} marqueurs)` : "";
+      toast.success(`Voix off générée — ${data.chunks} bloc(s), ${formatSize(data.fileSize)} • ${data.usedVoiceName ?? "auto"}${syncInfo}`);
     } catch (e: any) {
       console.error("Full TTS generation error:", e);
       toast.error(e?.message || "Erreur de génération");
