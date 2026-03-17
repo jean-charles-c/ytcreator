@@ -36,7 +36,6 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
   onProgress({ phase: "loading", percent: 0, message: "Chargement du moteur vidéo…" });
 
   const ffmpeg = new FFmpeg();
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
 
   ffmpeg.on("progress", ({ progress }) => {
     onProgress({
@@ -47,12 +46,17 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
   });
 
   try {
-    const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
-    const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
-    await ffmpeg.load({ coreURL, wasmURL });
+    const loadPromise = ffmpeg.load({ coreURL, wasmURL, workerURL });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      window.setTimeout(() => {
+        reject(new Error("Le chargement du moteur vidéo a expiré."));
+      }, 20000);
+    });
+
+    await Promise.race([loadPromise, timeoutPromise]);
   } catch (err) {
     console.error("FFmpeg load failed:", err);
-    throw new Error("Impossible de charger le moteur vidéo. Vérifiez votre connexion internet et réessayez.");
+    throw new Error("Impossible de charger le moteur vidéo. Réessayez dans quelques secondes.");
   }
 
   ffmpegInstance = ffmpeg;
