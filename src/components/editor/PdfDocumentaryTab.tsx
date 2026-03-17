@@ -176,6 +176,26 @@ export default function PdfDocumentaryTab({
     }
   }, [script, generatingScript, scriptVersions.length]);
 
+  // Re-parse sections when script changes externally (generation, version restore)
+  useEffect(() => {
+    const scriptStr = script || "";
+    if (scriptStr !== sectionsInitRef.current) {
+      sectionsInitRef.current = scriptStr;
+      setSections(parseScriptIntoSections(scriptStr));
+    }
+  }, [script]);
+
+  // Handle section content edit — reassemble and propagate immediately
+  const handleSectionContentChange = useCallback((key: string, content: string) => {
+    setSections((prev) => {
+      const next = prev.map((s) => s.key === key ? { ...s, content } : s);
+      const reassembled = reassembleSections(next);
+      sectionsInitRef.current = reassembled;
+      onScriptChange(reassembled);
+      return next;
+    });
+  }, [onScriptChange]);
+
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
     setParsing(true);
