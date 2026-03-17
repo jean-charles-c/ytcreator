@@ -1,9 +1,17 @@
 import { createContext, useContext, useRef, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  exportTimelineToMp4,
+  abortExport,
+  type ExportFps,
+  type ExportProgress,
+} from "@/components/editor/videoExportEngine";
+import { exportTimelineToXml } from "@/components/editor/xmlExportEngine";
+import type { Timeline } from "@/components/editor/timelineAssembly";
 
 // ─── Types ──────────────────────────────────────────────────────────
-export type TaskType = "script" | "segmentation" | "storyboard";
+export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml";
 export type TaskStatus = "running" | "done" | "error";
 
 export interface BackgroundTask {
@@ -16,6 +24,8 @@ export interface BackgroundTask {
   /** Storyboard progress */
   completedScenes?: number;
   totalScenes?: number;
+  /** Export progress */
+  exportProgress?: ExportProgress;
 }
 
 type Listener = (task: BackgroundTask) => void;
