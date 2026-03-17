@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle } from "lucide-react";
+import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -47,6 +47,10 @@ export interface NarrativeScriptBlockProps {
   onRegenerate: () => void;
   canRegenerate: boolean;
 
+  /* AI Analysis */
+  analyzingScript?: boolean;
+  onAnalyzeScript?: () => void;
+
   /* Toolbar extras (language, style, chars) */
   toolbarSlot?: React.ReactNode;
 }
@@ -93,6 +97,8 @@ export default function NarrativeScriptBlock({
   showVersionPreviewId,
   onRegenerate,
   canRegenerate,
+  analyzingScript,
+  onAnalyzeScript,
   toolbarSlot,
 }: NarrativeScriptBlockProps) {
   const scriptEndRef = useRef<HTMLDivElement>(null);
@@ -173,6 +179,18 @@ export default function NarrativeScriptBlock({
                   >
                     <RotateCcw className="h-3 w-3" /> Régénérer
                   </Button>
+                  {onAnalyzeScript && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onAnalyzeScript}
+                      disabled={analyzingScript || generatingScript}
+                      className="h-8 text-xs"
+                    >
+                      {analyzingScript ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      {analyzingScript ? "Analyse…" : "Analyser la structure"}
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -240,6 +258,14 @@ export default function NarrativeScriptBlock({
                       </div>
                     );
                   })()}
+                </div>
+              )}
+
+              {/* Analyzing indicator */}
+              {analyzingScript && (
+                <div className="flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5 mb-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Analyse narrative en cours — identification des 7 sections…</p>
                 </div>
               )}
 
