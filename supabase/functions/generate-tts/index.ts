@@ -432,8 +432,10 @@ function textToSsml(
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
     const processed = sentences.map((s) => {
-      let result = applyEmphasis(s, emphasisBoost);
-      result = processSentenceProsody(result, startBoostPct, endSlowPct);
+      // Prosody first (splits by whitespace, needs clean text)
+      let result = processSentenceProsody(s, startBoostPct, endSlowPct);
+      // Emphasis second (tag-aware)
+      result = applyEmphasis(result, emphasisBoost);
       if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
       return result;
     });
