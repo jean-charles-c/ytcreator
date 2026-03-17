@@ -310,12 +310,13 @@ function buildMarkedSsml(
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
-    // Emphasis heuristics
-    processed = applyEmphasis(processed, emphasisBoost);
-
+    // Prosody MUST run first on clean escaped text (splits by whitespace)
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
     }
+
+    // Emphasis runs second — it's tag-aware (splits by <tag> boundaries)
+    processed = applyEmphasis(processed, emphasisBoost);
     if (commaPauseMs > 0) {
       processed = injectCommaPauses(processed, commaPauseMs);
     }
