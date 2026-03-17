@@ -173,14 +173,24 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       console.warn("Failed to parse AI response for shot regeneration", e);
     }
 
+    const updatePayload: Record<string, any> = {
+      shot_type: newShot.shot_type,
+      description: newShot.description,
+      prompt_export: newShot.prompt_export,
+    };
+    // If only shot in scene, ensure source_sentence matches full scene text
+    if (isOnlyShot) {
+      updatePayload.source_sentence = scene.source_text;
+      if (scene.source_text_fr) {
+        updatePayload.source_sentence_fr = scene.source_text_fr;
+      }
+    } else if (newShot.source_sentence_fr) {
+      updatePayload.source_sentence_fr = newShot.source_sentence_fr;
+    }
+
     const { error: updateErr } = await supabase
       .from("shots")
-      .update({
-        shot_type: newShot.shot_type,
-        description: newShot.description,
-        prompt_export: newShot.prompt_export,
-        ...(newShot.source_sentence_fr ? { source_sentence_fr: newShot.source_sentence_fr } : {}),
-      })
+      .update(updatePayload)
       .eq("id", shot_id);
 
     if (updateErr) throw new Error("Failed to update shot");
