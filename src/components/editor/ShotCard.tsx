@@ -32,10 +32,12 @@ interface ShotCardProps {
   shot: Shot;
   globalIndex?: number;
   sceneLabel?: string;
+  isLastInScene?: boolean;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
   onGenerateImage?: (shotId: string) => Promise<void>;
+  onMergeWithNext?: (shotId: string) => Promise<void>;
 }
 
 const formatUsd = (value: number | string | null | undefined) => {
