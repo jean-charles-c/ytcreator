@@ -62,8 +62,9 @@ Before writing ANY narration, you MUST first output an internal plan (inside a <
 - Target: ${charTarget.toLocaleString()} characters / ~${wordTarget.toLocaleString()} words / ~${paragraphEstimate} paragraphs
 - Minimum: ${charMin.toLocaleString()} characters / ~${wordMin.toLocaleString()} words
 - Maximum: ${charMax.toLocaleString()} characters / ~${wordMax.toLocaleString()} words
-- How many paragraphs you will write for each phase (Hook, Setup, Escalation, Revelation, Conclusion)
-- A brief outline of what each phase will cover
+- How many paragraphs you will write for each of the 7 sections (Hook, Introduction, Act 1, Act 2, Act 3, Climax, Conclusion)
+- Word budget per section following the prescribed percentages (8%, 12%, 15%, 25%, 20%, 12%, 8%)
+- A brief outline of what each section will cover
 
 After </plan>, write ONLY the raw narration text.
 
