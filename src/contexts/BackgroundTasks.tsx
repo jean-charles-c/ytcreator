@@ -7,7 +7,7 @@ import {
   type ExportFps,
   type ExportProgress,
 } from "@/components/editor/videoExportEngine";
-import { exportTimelineToXml } from "@/components/editor/xmlExportEngine";
+import { exportTimelineToXmlZip } from "@/components/editor/xmlExportEngine";
 import type { Timeline } from "@/components/editor/timelineAssembly";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -514,16 +514,22 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const xml = exportTimelineToXml(params.timeline, params.fps);
+        const blob = await exportTimelineToXmlZip(params.timeline, params.fps, (p) => {
+          if (ac.signal.aborted) return;
+          updateTask(key, {
+            exportProgress: {
+              phase: p.phase as any,
+              percent: p.percent,
+              message: p.message,
+            },
+          });
+        });
         if (ac.signal.aborted) return;
 
-        updateTask(key, { exportProgress: { phase: "encoding", percent: 50, message: "Upload du XML…" } });
-
-        const blob = new Blob([xml], { type: "application/xml" });
-        const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.xml`;
+        const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.zip`;
         const { error: uploadError } = await supabase.storage
           .from("video-exports")
-          .upload(fileName, blob, { contentType: "application/xml" });
+          .upload(fileName, blob, { contentType: "application/zip" });
 
         if (uploadError) throw new Error(`Upload échoué: ${uploadError.message}`);
 

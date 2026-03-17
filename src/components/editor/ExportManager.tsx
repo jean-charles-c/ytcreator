@@ -125,7 +125,8 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
       const url = URL.createObjectURL(data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${entry.type}`;
+      const ext = entry.type === "xml" ? "zip" : entry.type;
+      a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -254,8 +255,8 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
             </Button>
             <Button onClick={handleExportXml} variant="outline" className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
               <FileCode2 className="h-4 w-4" />
-              Exporter XML
-              <span className="text-[10px] opacity-70 ml-1">FCP</span>
+              Exporter XML + Médias
+              <span className="text-[10px] opacity-70 ml-1">ZIP</span>
             </Button>
           </div>
         )}
@@ -293,7 +294,7 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">
-                    {entry.type === "xml" ? "XML (FCP)" : "MP4"} prêt
+                    {entry.type === "xml" ? "XML + Médias (ZIP)" : "MP4"} prêt
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {entry.sizeMb} MB • {entry.fps} fps • {entry.date}
