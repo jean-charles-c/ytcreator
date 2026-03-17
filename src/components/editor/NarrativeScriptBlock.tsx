@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle } from "lucide-react";
+import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
