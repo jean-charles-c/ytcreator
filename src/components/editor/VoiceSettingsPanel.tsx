@@ -110,10 +110,15 @@ interface VoiceProfile {
   voice_name: string;
   style: string;
   speaking_rate: number;
+  pitch: number;
   volume_gain_db: number;
   effects_profile_id: string;
   pause_between_paragraphs: number;
   pause_after_sentences: number;
+  pause_after_comma: number;
+  narration_profile: string;
+  dynamic_pause_enabled: boolean;
+  dynamic_pause_variation: number;
   sentence_start_boost: number;
   sentence_end_slow: number;
 }
@@ -236,7 +241,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
   const applyProfile = (p: VoiceProfile) => {
     const rawStyle = p.style || "";
     const parts = rawStyle.split(":");
-    const voiceType = ["Standard", "Wavenet", "Neural2"].includes(parts[0]) ? parts[0] : "Standard";
+    const voiceType = ["Standard", "Wavenet", "Neural2", "Studio", "Chirp3-HD", "Chirp-HD", "Polyglot"].includes(parts[0]) ? parts[0] : "Standard";
     const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
     onChange({
       languageCode: p.language_code,
@@ -244,16 +249,16 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
       voiceType,
       voiceName: p.voice_name || "",
       style: tone,
-      narrationProfile: "standard",
+      narrationProfile: (p.narration_profile as VoiceSettings["narrationProfile"]) || "standard",
       speakingRate: p.speaking_rate,
-      pitch: 0,
+      pitch: p.pitch ?? 0,
       volumeGainDb: p.volume_gain_db ?? 0,
       effectsProfileId: p.effects_profile_id ?? "none",
       pauseBetweenParagraphs: p.pause_between_paragraphs ?? 500,
       pauseAfterSentences: p.pause_after_sentences ?? 0,
-      pauseAfterComma: 0,
-      dynamicPauseEnabled: false,
-      dynamicPauseVariation: 300,
+      pauseAfterComma: p.pause_after_comma ?? 0,
+      dynamicPauseEnabled: p.dynamic_pause_enabled ?? false,
+      dynamicPauseVariation: p.dynamic_pause_variation ?? 300,
       sentenceStartBoost: p.sentence_start_boost ?? 0,
       sentenceEndSlow: p.sentence_end_slow ?? 0,
     });
@@ -278,10 +283,15 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
           voice_name: settings.voiceName,
           style: `${settings.voiceType}:${settings.style}`,
           speaking_rate: settings.speakingRate,
+          pitch: settings.pitch,
           volume_gain_db: settings.volumeGainDb,
           effects_profile_id: settings.effectsProfileId,
           pause_between_paragraphs: settings.pauseBetweenParagraphs,
           pause_after_sentences: settings.pauseAfterSentences,
+          pause_after_comma: settings.pauseAfterComma,
+          narration_profile: settings.narrationProfile,
+          dynamic_pause_enabled: settings.dynamicPauseEnabled,
+          dynamic_pause_variation: settings.dynamicPauseVariation,
           sentence_start_boost: settings.sentenceStartBoost,
           sentence_end_slow: settings.sentenceEndSlow,
         })
@@ -314,10 +324,15 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
           voice_name: settings.voiceName,
           style: `${settings.voiceType}:${settings.style}`,
           speaking_rate: settings.speakingRate,
+          pitch: settings.pitch,
           volume_gain_db: settings.volumeGainDb,
           effects_profile_id: settings.effectsProfileId,
           pause_between_paragraphs: settings.pauseBetweenParagraphs,
           pause_after_sentences: settings.pauseAfterSentences,
+          pause_after_comma: settings.pauseAfterComma,
+          narration_profile: settings.narrationProfile,
+          dynamic_pause_enabled: settings.dynamicPauseEnabled,
+          dynamic_pause_variation: settings.dynamicPauseVariation,
           sentence_start_boost: settings.sentenceStartBoost,
           sentence_end_slow: settings.sentenceEndSlow,
           updated_at: new Date().toISOString(),
@@ -332,10 +347,15 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         voice_name: settings.voiceName,
         style: `${settings.voiceType}:${settings.style}`,
         speaking_rate: settings.speakingRate,
+        pitch: settings.pitch,
         volume_gain_db: settings.volumeGainDb,
         effects_profile_id: settings.effectsProfileId,
         pause_between_paragraphs: settings.pauseBetweenParagraphs,
         pause_after_sentences: settings.pauseAfterSentences,
+        pause_after_comma: settings.pauseAfterComma,
+        narration_profile: settings.narrationProfile,
+        dynamic_pause_enabled: settings.dynamicPauseEnabled,
+        dynamic_pause_variation: settings.dynamicPauseVariation,
         sentence_start_boost: settings.sentenceStartBoost,
         sentence_end_slow: settings.sentenceEndSlow,
       } : p));
