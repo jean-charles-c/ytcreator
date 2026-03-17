@@ -20,12 +20,14 @@ interface TTSRequest {
   effectsProfileId?: string;
   pauseBetweenParagraphs?: number;
   pauseAfterSentences?: number;
+  pauseAfterComma?: number;
+  dynamicPauseEnabled?: boolean;
+  dynamicPauseVariation?: number;
   sentenceStartBoost?: number;
   sentenceEndSlow?: number;
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
-  /** Optional: shot sentences for precise audio-visual sync */
   shotSentences?: { id: string; text: string }[];
 }
 
