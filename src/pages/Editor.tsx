@@ -269,7 +269,17 @@ export default function Editor() {
       setShowSetup(false);
 
       if (scenesRes.data) setScenes(scenesRes.data);
-      if (shotsRes.data) setShots(shotsRes.data);
+      if (shotsRes.data && scenesRes.data) {
+        const { reordered, updates } = reorderShotsByReadingPosition(shotsRes.data, scenesRes.data);
+        setShots(reordered);
+        // Persist corrected order to DB in background
+        if (updates.length > 0) {
+          console.log(`Reordering ${updates.length} shots to match reading order`);
+          Promise.all(updates.map((u) => supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id)));
+        }
+      } else if (shotsRes.data) {
+        setShots(shotsRes.data);
+      }
 
       const scriptCreatorState = scriptCreatorRes?.data;
       if (scriptCreatorState) {
