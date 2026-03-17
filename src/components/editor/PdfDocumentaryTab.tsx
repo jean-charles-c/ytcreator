@@ -165,7 +165,7 @@ export default function PdfDocumentaryTab({
   const [translatingSections, setTranslatingSections] = useState<Set<string>>(new Set());
   const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const scriptEndRef = useRef<HTMLDivElement>(null);
+  
 
   // Derive generatingScript from background task state
   const bgScriptTask = projectId ? getTask(projectId, "script") : undefined;
