@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { ChevronDown, RotateCcw, Loader2 } from "lucide-react";
+import { ChevronDown, RotateCcw, Loader2, History, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
