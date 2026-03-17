@@ -394,7 +394,7 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb, sampleRateHertz: 44100 };
     if (effectsProfileId) {
       audioConfig.effectsProfileId = [effectsProfileId];
     }
@@ -571,14 +571,14 @@ serve(async (req) => {
     const sanitized = body.customFileName
       ? body.customFileName.replace(/[^a-zA-Z0-9_\-\s]/g, "").replace(/\s+/g, "_").slice(0, 80)
       : null;
-    const fileName = sanitized ? `${sanitized}.m4a` : `vo_${timestamp}.m4a`;
+    const fileName = sanitized ? `${sanitized}.mp3` : `vo_${timestamp}.mp3`;
     const filePath = `${user.id}/${projectId}/${fileName}`;
 
     // Upload to storage
     const { error: uploadError } = await supabaseAdmin.storage
       .from("vo-audio")
       .upload(filePath, combined, {
-        contentType: "audio/mp4",
+        contentType: "audio/mpeg",
         upsert: false,
       });
 
