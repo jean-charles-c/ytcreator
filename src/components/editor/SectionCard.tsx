@@ -105,19 +105,11 @@ const GREETING_PATTERNS = [
   /^(Hey everyone|Salut à tous|Hello everyone|Bonjour à tous)[^\n.!?]*[.!?]?\s*/gim,
 ];
 
-/**
- * Sanitize narrative sections:
- * 1. Remove greeting/channel-name patterns (especially after Hook)
- * 2. Ensure no section is completely empty (flag it)
- * 3. Clean up stray markdown artifacts
- */
 export function sanitizeNarrativeSections(sections: NarrativeSection[]): { sections: NarrativeSection[]; warnings: string[] } {
   const warnings: string[] = [];
 
   const sanitized = sections.map((s) => {
     let content = s.content;
-
-    // Strip greeting/channel patterns from all sections (especially introduction)
     for (const pattern of GREETING_PATTERNS) {
       const before = content;
       content = content.replace(pattern, "");
@@ -125,17 +117,11 @@ export function sanitizeNarrativeSections(sections: NarrativeSection[]): { secti
         warnings.push(`Formule d'accueil retirée de "${s.label}"`);
       }
     }
-
-    // Strip stray markdown headers that leaked into content
     content = content.replace(/^#{1,3}\s+.+$/gm, "").trim();
-
-    // Collapse excessive blank lines
     content = content.replace(/\n{3,}/g, "\n\n").trim();
-
     return { ...s, content };
   });
 
-  // Check for empty sections
   const emptySections = sanitized.filter((s) => !s.content.trim());
   if (emptySections.length > 0) {
     warnings.push(`Section(s) vide(s) : ${emptySections.map((s) => s.label).join(", ")}`);
@@ -149,6 +135,20 @@ export interface SectionHistoryEntry {
   timestamp: string;
   label?: string;
 }
+
+/* ── Visual hierarchy per section type ─────────────── */
+
+const SECTION_ACCENTS: Record<string, { border: string; bg: string; badge: string }> = {
+  hook:         { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+  introduction: { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
+  act1:         { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
+  act2:         { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
+  act3:         { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
+  climax:       { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  conclusion:   { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
+};
+
+const DEFAULT_ACCENT = { border: "border-l-border", bg: "", badge: "bg-muted text-muted-foreground" };
 
 interface SectionCardProps {
   section: NarrativeSection;
@@ -171,13 +171,14 @@ export default function SectionCard({
   section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating,
   history, onRestore, translation, translating, onTranslate, showTranslation, scriptLanguage,
 }: SectionCardProps) {
-  const wordCount = section.content ? section.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showFr, setShowFr] = useState(false);
 
-  // Auto-show translation when it arrives
+  const accent = SECTION_ACCENTS[section.key] || DEFAULT_ACCENT;
+  const isEmpty = !section.content.trim();
+
   useEffect(() => {
     if (translation && showTranslation) setShowFr(true);
   }, [translation, showTranslation]);
@@ -199,45 +200,84 @@ export default function SectionCard({
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
-      <CollapsibleTrigger className="w-full rounded-t-lg border border-border bg-card px-3 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between hover:bg-secondary/30 transition-colors group data-[state=closed]:rounded-b-lg min-h-[48px]">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+      {/* ── Trigger / Header ─────────────────────────── */}
+      <CollapsibleTrigger
+        className={`
+          w-full rounded-t-lg border border-border bg-card
+          border-l-[3px] ${accent.border}
+          px-3 py-3 sm:px-5 sm:py-3.5
+          flex items-center justify-between
+          hover:bg-secondary/30 transition-colors group
+          data-[state=closed]:rounded-b-lg
+          min-h-[48px]
+        `}
+      >
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {/* Icon */}
           <span className="text-base leading-none shrink-0" role="img" aria-label={section.label}>
             {section.icon}
           </span>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 min-w-0">
+
+          {/* Title + metadata */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2.5 min-w-0">
             <span className="font-display text-sm font-semibold text-foreground truncate">
               {section.label}
             </span>
+
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
-                {charCount > 0 ? `${charCount.toLocaleString()} car.` : "vide"}
+              {/* Section number badge */}
+              <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${accent.badge}`}>
+                {index + 1}/7
               </span>
+
+              {/* Char count or empty indicator */}
+              {isEmpty ? (
+                <span className="text-[10px] text-muted-foreground/50 font-mono italic">vide</span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+                  {charCount.toLocaleString()} car.
+                </span>
+              )}
+
+              {/* History count */}
               {history && history.length > 0 && (
                 <span className="text-[10px] text-muted-foreground font-mono">
                   · {history.length} ver.
                 </span>
               )}
+
+              {/* Translation indicator */}
               {translation && (
                 <span className="text-[10px] text-primary font-mono">· FR</span>
               )}
+
+              {/* Loading indicators */}
               {regenerating && (
                 <span className="flex items-center gap-1 text-[10px] text-primary">
-                  <Loader2 className="h-3 w-3 animate-spin" /> <span className="hidden sm:inline">Régénération…</span>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="hidden sm:inline">Régénération…</span>
                 </span>
               )}
               {translating && (
                 <span className="flex items-center gap-1 text-[10px] text-primary">
-                  <Loader2 className="h-3 w-3 animate-spin" /> <span className="hidden sm:inline">Traduction…</span>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="hidden sm:inline">Traduction…</span>
                 </span>
               )}
             </div>
           </div>
         </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180" : ""}`} />
+
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180" : ""}`}
+        />
       </CollapsibleTrigger>
+
+      {/* ── Content panel ────────────────────────────── */}
       <CollapsibleContent>
-        <div className="rounded-b-lg border border-t-0 border-border bg-card px-3 py-3 sm:px-5 sm:py-4">
-          {/* Action buttons — stack on mobile */}
+        <div className={`rounded-b-lg border border-t-0 border-border border-l-[3px] ${accent.border} bg-card px-3 py-3 sm:px-5 sm:py-4`}>
+
+          {/* Action buttons */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2 mb-2 flex-wrap">
             {!isFrenchScript && onTranslate && section.content.trim() && (
               <Button
@@ -326,6 +366,7 @@ export default function SectionCard({
             </div>
           )}
 
+          {/* Editor textarea */}
           <textarea
             ref={textareaRef}
             value={section.content}
