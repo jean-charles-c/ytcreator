@@ -26,10 +26,7 @@ interface DocSection {
   narrative_description: string;
 }
 
-interface ScriptVersion {
-  id: number;
-  content: string;
-}
+// ScriptVersion is now imported from NarrativeScriptBlock
 
 const extractTextFromStreamPayload = (payload: unknown): string => {
   if (!payload || typeof payload !== "object") return "";
