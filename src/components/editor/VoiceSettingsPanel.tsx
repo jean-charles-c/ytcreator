@@ -67,8 +67,19 @@ export function getVoiceName(lang: string, gender: string, voiceType: string): s
   return `${lang}-${voiceType}-${letter}`;
 }
 
-export function getAvailableVoiceTypes(lang: string) {
-  return VOICE_TYPES.filter(t => t.value !== "Neural2" || NEURAL2_LANGS.has(lang));
+export function getAvailableVoiceTypes(lang: string, availableVoices?: VoiceInfo[]) {
+  // If we have live voice data, only show types that actually exist for this language
+  if (availableVoices && availableVoices.length > 0) {
+    const typesInData = new Set(availableVoices.map((v) => v.type));
+    return VOICE_TYPES.filter((t) => typesInData.has(t.value));
+  }
+  // Fallback: show standard types, filter Neural2 by known langs
+  return VOICE_TYPES.filter(t => {
+    if (t.value === "Neural2") return NEURAL2_LANGS.has(lang);
+    // Hide newer types without data
+    if (["Studio", "Chirp3-HD", "Chirp-HD", "Polyglot"].includes(t.value)) return false;
+    return true;
+  });
 }
 
 interface VoiceInfo {
