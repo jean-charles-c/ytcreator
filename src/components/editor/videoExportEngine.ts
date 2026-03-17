@@ -1,5 +1,4 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import ffmpegWorkerURL from "@ffmpeg/ffmpeg/dist/esm/worker.js?url";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
 
@@ -19,6 +18,8 @@ export interface ExportProgress {
 
 const DEFAULT_OPTIONS: ExportOptions = { fps: 24, width: 1920, height: 1080 };
 const LOAD_TIMEOUT_MS = 20000;
+const FFMPEG_CORE_BASE_URL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+const FFMPEG_CLASS_WORKER_URL = "https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/worker.js";
 
 let ffmpegInstance: FFmpeg | null = null;
 let abortFlag = false;
@@ -43,20 +44,19 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
     });
   });
 
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
   let loadTimeoutId: number | null = null;
 
   try {
     onProgress({ phase: "loading", percent: 5, message: "Téléchargement du moteur vidéo…" });
-    const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
+    const coreURL = await toBlobURL(`${FFMPEG_CORE_BASE_URL}/ffmpeg-core.js`, "text/javascript");
     onProgress({ phase: "loading", percent: 15, message: "Téléchargement du WASM…" });
-    const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
+    const wasmURL = await toBlobURL(`${FFMPEG_CORE_BASE_URL}/ffmpeg-core.wasm`, "application/wasm");
     onProgress({ phase: "loading", percent: 25, message: "Initialisation du moteur…" });
 
     const loadPromise = ffmpeg.load({
       coreURL,
       wasmURL,
-      classWorkerURL: ffmpegWorkerURL,
+      classWorkerURL: FFMPEG_CLASS_WORKER_URL,
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
