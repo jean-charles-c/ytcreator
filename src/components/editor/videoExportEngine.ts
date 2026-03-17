@@ -32,7 +32,7 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
   onProgress({ phase: "loading", percent: 0, message: "Chargement du moteur vidéo…" });
 
   const ffmpeg = new FFmpeg();
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm";
 
   ffmpeg.on("progress", ({ progress }) => {
     onProgress({
