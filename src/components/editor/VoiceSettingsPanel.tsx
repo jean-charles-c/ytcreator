@@ -496,15 +496,15 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
             <button
               key={np.value}
               onClick={() => update({ narrationProfile: np.value })}
-              className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-center transition-colors ${
+              className={`flex flex-col items-center gap-1 rounded-lg px-2 py-3 sm:py-2 text-center transition-colors min-h-[48px] sm:min-h-0 ${
                 settings.narrationProfile === np.value
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-muted-foreground hover:bg-secondary/80"
               }`}
               title={np.desc}
             >
-              <span className="text-base leading-none">{np.icon}</span>
-              <span className="text-[10px] font-medium leading-tight">{np.label}</span>
+              <span className="text-lg sm:text-base leading-none">{np.icon}</span>
+              <span className="text-[11px] sm:text-[10px] font-medium leading-tight">{np.label}</span>
             </button>
           ))}
         </div>
