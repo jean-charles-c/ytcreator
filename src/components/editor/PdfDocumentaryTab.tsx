@@ -822,7 +822,7 @@ export default function PdfDocumentaryTab({
               )}
               {/* SectionCards — modular narrative view */}
               <div className="space-y-2">
-                {parseScriptIntoSections(script!).map((section, idx) => (
+                {sections.map((section, idx) => (
                   <SectionCard
                     key={section.key}
                     section={section}
@@ -836,6 +836,7 @@ export default function PdfDocumentaryTab({
                         return next;
                       });
                     }}
+                    onContentChange={handleSectionContentChange}
                   />
                 ))}
               </div>
