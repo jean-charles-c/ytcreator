@@ -41,6 +41,53 @@ type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "seo" 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
+/**
+ * Reorder shots within each scene so shot_order follows
+ * the reading order of source_sentence in the scene's source_text.
+ * Returns shots with corrected shot_order + list of DB updates needed.
+ */
+function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reordered: Shot[]; updates: { id: string; shot_order: number }[] } {
+  const sceneMap = new Map<string, Scene>();
+  scenes.forEach((s) => sceneMap.set(s.id, s));
+
+  const updates: { id: string; shot_order: number }[] = [];
+  const reordered: Shot[] = [...shots];
+
+  // Group shots by scene
+  const byScene = new Map<string, Shot[]>();
+  for (const shot of reordered) {
+    const arr = byScene.get(shot.scene_id) || [];
+    arr.push(shot);
+    byScene.set(shot.scene_id, arr);
+  }
+
+  for (const [sceneId, sceneShots] of byScene) {
+    const scene = sceneMap.get(sceneId);
+    if (!scene) continue;
+    const sceneTextLower = (scene.source_text || "").toLowerCase();
+
+    // Sort by position of source_sentence in scene text
+    sceneShots.sort((a, b) => {
+      const sentA = (a.source_sentence || "").trim().toLowerCase();
+      const sentB = (b.source_sentence || "").trim().toLowerCase();
+      const posA = sentA ? sceneTextLower.indexOf(sentA) : 9999;
+      const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
+      return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
+    });
+
+    // Assign correct shot_order
+    sceneShots.forEach((shot, idx) => {
+      const correctOrder = idx + 1;
+      if (shot.shot_order !== correctOrder) {
+        shot.shot_order = correctOrder;
+        updates.push({ id: shot.id, shot_order: correctOrder });
+      }
+    });
+  }
+
+  return { reordered, updates };
+}
+
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "rsearch", label: "RsearchEngine", icon: Search },
   { key: "script-creator", label: "ScriptCreator", icon: FileText },
