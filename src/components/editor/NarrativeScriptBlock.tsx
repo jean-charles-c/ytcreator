@@ -261,6 +261,14 @@ export default function NarrativeScriptBlock({
                 </div>
               )}
 
+              {/* Analyzing indicator */}
+              {analyzingScript && (
+                <div className="flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5 mb-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Analyse narrative en cours — identification des 7 sections…</p>
+                </div>
+              )}
+
               {/* SectionCards — modular narrative view */}
               <div className="space-y-2">
                 {sections.map((section, idx) => (
