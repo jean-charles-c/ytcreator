@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Download,
   Trash2,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import type { Timeline } from "./timelineAssembly";
 import {
   exportTimelineToMp4,
@@ -23,11 +24,13 @@ import {
 
 interface ExportManagerProps {
   timeline: Timeline;
+  projectId: string;
 }
 
-interface ExportEntry {
+export interface ExportEntry {
   id: string;
-  blob: Blob;
+  storagePath: string;
+  publicUrl: string;
   date: string;
   fps: ExportFps;
   sizeMb: string;
@@ -39,13 +42,51 @@ const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
   { value: 30, label: "30 fps (NTSC)" },
 ];
 
-export default function ExportManager({ timeline }: ExportManagerProps) {
+export default function ExportManager({ timeline, projectId }: ExportManagerProps) {
   const [fps, setFps] = useState<ExportFps>(24);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [exports, setExports] = useState<ExportEntry[]>([]);
+  const [loadingExports, setLoadingExports] = useState(true);
   const abortRef = useRef(false);
 
   const isExporting = progress !== null && progress.phase !== "done" && progress.phase !== "error";
+
+  // ── Load persisted exports from DB on mount ──
+  useEffect(() => {
+    if (!projectId) return;
+    const load = async () => {
+      setLoadingExports(true);
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      if (data?.timeline_state) {
+        const state = data.timeline_state as any;
+        if (Array.isArray(state.exports)) {
+          setExports(state.exports);
+        }
+      }
+      setLoadingExports(false);
+    };
+    load();
+  }, [projectId]);
+
+  // ── Save exports metadata to DB ──
+  const saveExportsToDB = useCallback(async (entries: ExportEntry[]) => {
+    if (!projectId) return;
+    // Read current timeline_state and merge exports into it
+    const { data } = await supabase
+      .from("project_scriptcreator_state")
+      .select("timeline_state")
+      .eq("project_id", projectId)
+      .single();
+    const currentState = (data?.timeline_state as any) ?? {};
+    await supabase
+      .from("project_scriptcreator_state")
+      .update({ timeline_state: { ...currentState, exports: entries } as any })
+      .eq("project_id", projectId);
+  }, [projectId]);
 
   const handleAbort = useCallback(() => {
     abortRef.current = true;
@@ -61,14 +102,31 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
       const blob = await exportTimelineToMp4(timeline, setProgress, { fps });
       if (abortRef.current) return;
 
+      // Upload to storage
+      const fileName = `${projectId}/${Date.now()}_${fps}fps.mp4`;
+      const { error: uploadError } = await supabase.storage
+        .from("video-exports")
+        .upload(fileName, blob, { contentType: "video/mp4" });
+
+      if (uploadError) {
+        throw new Error(`Upload échoué: ${uploadError.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("video-exports")
+        .getPublicUrl(fileName);
+
       const entry: ExportEntry = {
         id: crypto.randomUUID(),
-        blob,
+        storagePath: fileName,
+        publicUrl: urlData.publicUrl,
         date: new Date().toLocaleString("fr-FR"),
         fps,
         sizeMb: (blob.size / (1024 * 1024)).toFixed(1),
       };
-      setExports((prev) => [entry, ...prev]);
+      const newExports = [entry, ...exports];
+      setExports(newExports);
+      await saveExportsToDB(newExports);
       toast.success("Export MP4 terminé !");
     } catch (err: any) {
       if (abortRef.current) return;
@@ -76,21 +134,27 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
       setProgress({ phase: "error", percent: 0, message: err?.message || "Erreur inconnue" });
       toast.error("Échec de l'export vidéo.");
     }
-  }, [timeline, fps]);
+  }, [timeline, fps, projectId, exports, saveExportsToDB]);
 
   const handleDownload = useCallback((entry: ExportEntry) => {
-    const url = URL.createObjectURL(entry.blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `export_${entry.fps}fps_${Date.now()}.mp4`;
+    a.href = entry.publicUrl;
+    a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.mp4`;
+    a.target = "_blank";
     a.click();
-    URL.revokeObjectURL(url);
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setExports((prev) => prev.filter((e) => e.id !== id));
+  const handleDelete = useCallback(async (id: string) => {
+    const entry = exports.find((e) => e.id === id);
+    if (entry) {
+      // Delete from storage
+      await supabase.storage.from("video-exports").remove([entry.storagePath]);
+    }
+    const newExports = exports.filter((e) => e.id !== id);
+    setExports(newExports);
+    await saveExportsToDB(newExports);
     toast.info("Export supprimé.");
-  }, []);
+  }, [exports, saveExportsToDB]);
 
   const progressPct = progress?.percent ?? 0;
 
@@ -188,6 +252,12 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
         )}
 
         {/* ── Export history ── */}
+        {loadingExports && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Chargement des exports…
+          </div>
+        )}
         {exports.length > 0 && (
           <div className="space-y-2 pt-2 border-t border-border">
             <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">

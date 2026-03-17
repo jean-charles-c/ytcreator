@@ -15,9 +15,11 @@ import {
   Clock,
   FileAudio,
   Wand2,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import type { Tables } from "@/integrations/supabase/types";
 import { assembleTimeline, type Timeline } from "./timelineAssembly";
 import TimelineView from "./TimelineView";
@@ -118,7 +120,6 @@ function AudioSelector({
   }, []);
 
   const handlePreview = (file: AudioFile) => {
-    // Stop current
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -164,7 +165,6 @@ function AudioSelector({
               }`}
             >
               <div className="flex items-center gap-3">
-                {/* Preview button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -179,8 +179,6 @@ function AudioSelector({
                     <Play className="h-3.5 w-3.5 ml-0.5" />
                   )}
                 </button>
-
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground truncate">
@@ -200,30 +198,20 @@ function AudioSelector({
                         {formatDuration(file.duration_estimate)}
                       </span>
                     ) : null}
-                    {file.file_size ? (
-                      <span>{formatSize(file.file_size)}</span>
-                    ) : null}
+                    {file.file_size ? <span>{formatSize(file.file_size)}</span> : null}
                     <span>{file.voice_gender === "FEMALE" ? "♀" : "♂"} {file.language_code}</span>
                     {file.style && file.style !== "neutral" && (
                       <span className="capitalize">{file.style}</span>
                     )}
-                    {file.created_at && (
-                      <span>{formatDate(file.created_at)}</span>
-                    )}
+                    {file.created_at && <span>{formatDate(file.created_at)}</span>}
                   </div>
                 </div>
-
-                {/* Selection indicator */}
                 <div
                   className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground/30"
+                    isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
                   }`}
                 >
-                  {isSelected && (
-                    <div className="h-2 w-2 rounded-full bg-primary-foreground" />
-                  )}
+                  {isSelected && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
                 </div>
               </div>
             </button>
@@ -231,6 +219,38 @@ function AudioSelector({
         })}
       </div>
     </div>
+  );
+}
+
+// ── Collapsible Section ────────────────────────────────────────────
+function CollapsibleSection({
+  title,
+  icon: Icon,
+  defaultOpen = false,
+  badge,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  defaultOpen?: boolean;
+  badge?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
+          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-90" : ""}`} />
+          <Icon className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium text-foreground">{title}</span>
+          {badge && <span className="text-[10px] text-muted-foreground ml-auto">{badge}</span>}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pt-3">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -247,9 +267,16 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     if (!projectId) return;
     setSavingTimeline(true);
     try {
+      // Preserve exports in timeline_state
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const currentState = (data?.timeline_state as any) ?? {};
       await supabase
         .from("project_scriptcreator_state")
-        .update({ timeline_state: tl as any })
+        .update({ timeline_state: { ...tl, exports: currentState.exports } as any })
         .eq("project_id", projectId);
     } catch (e) {
       console.error("Failed to save timeline:", e);
@@ -290,7 +317,6 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
       toast.error("Aucun shot disponible pour générer la timeline.");
       return;
     }
-    // Use shot_timepoints from the audio file if available
     const timepoints = (audioFile as any).shot_timepoints ?? null;
     const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
     setTimeline(assembled);
@@ -298,6 +324,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     const syncMode = timepoints ? "sync précis" : "sync proportionnel";
     toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s (${syncMode})`);
   }, [selectedAudioId, audioFiles, scenes, shots, saveTimelineToDb]);
+
   useEffect(() => {
     if (!projectId) {
       setLoadingAudio(false);
@@ -312,7 +339,6 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
       setAudioFiles(data ?? []);
-      // Auto-select the most recent audio if none selected
       if (data && data.length > 0 && !selectedAudioId) {
         setSelectedAudioId(data[0].id);
       }
@@ -331,75 +357,37 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
       label: "Segmentation narrative",
       icon: Layers,
       status: scenes.length > 0 ? "valid" : "missing",
-      detail:
-        scenes.length > 0
-          ? `${scenes.length} scène${scenes.length > 1 ? "s" : ""} détectée${scenes.length > 1 ? "s" : ""}`
-          : "Aucune scène segmentée",
+      detail: scenes.length > 0 ? `${scenes.length} scène${scenes.length > 1 ? "s" : ""} détectée${scenes.length > 1 ? "s" : ""}` : "Aucune scène segmentée",
       count: scenes.length,
     },
     {
       label: "Liste des shots",
       icon: Clapperboard,
       status: shots.length > 0 ? "valid" : "missing",
-      detail:
-        shots.length > 0
-          ? `${shots.length} shot${shots.length > 1 ? "s" : ""} généré${shots.length > 1 ? "s" : ""}`
-          : "Aucun shot généré",
+      detail: shots.length > 0 ? `${shots.length} shot${shots.length > 1 ? "s" : ""} généré${shots.length > 1 ? "s" : ""}` : "Aucun shot généré",
       count: shots.length,
     },
     {
       label: "Phrase associée par shot",
       icon: Film,
-      status:
-        shots.length === 0
-          ? "missing"
-          : shotsWithSentence.length === shots.length
-          ? "valid"
-          : shotsWithSentence.length > 0
-          ? "warning"
-          : "missing",
-      detail:
-        shots.length === 0
-          ? "Aucun shot disponible"
-          : `${shotsWithSentence.length}/${shots.length} shots avec phrase associée`,
+      status: shots.length === 0 ? "missing" : shotsWithSentence.length === shots.length ? "valid" : shotsWithSentence.length > 0 ? "warning" : "missing",
+      detail: shots.length === 0 ? "Aucun shot disponible" : `${shotsWithSentence.length}/${shots.length} shots avec phrase associée`,
       count: shotsWithSentence.length,
       total: shots.length,
     },
     {
       label: "Visuel par shot",
       icon: ImageIcon,
-      status:
-        shots.length === 0
-          ? "missing"
-          : shotsWithImage.length === shots.length
-          ? "valid"
-          : shotsWithImage.length > 0
-          ? "warning"
-          : "missing",
-      detail:
-        shots.length === 0
-          ? "Aucun shot disponible"
-          : `${shotsWithImage.length}/${shots.length} shots avec visuel`,
+      status: shots.length === 0 ? "missing" : shotsWithImage.length === shots.length ? "valid" : shotsWithImage.length > 0 ? "warning" : "missing",
+      detail: shots.length === 0 ? "Aucun shot disponible" : `${shotsWithImage.length}/${shots.length} shots avec visuel`,
       count: shotsWithImage.length,
       total: shots.length,
     },
     {
       label: "Audio narration",
       icon: Volume2,
-      status: loadingAudio
-        ? "loading"
-        : selectedAudioId
-        ? "valid"
-        : audioFiles.length > 0
-        ? "warning"
-        : "missing",
-      detail: loadingAudio
-        ? "Vérification…"
-        : selectedAudioId
-        ? `Audio sélectionné : ${audioFiles.find((a) => a.id === selectedAudioId)?.file_name ?? "—"}`
-        : audioFiles.length > 0
-        ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné`
-        : "Aucun audio généré",
+      status: loadingAudio ? "loading" : selectedAudioId ? "valid" : audioFiles.length > 0 ? "warning" : "missing",
+      detail: loadingAudio ? "Vérification…" : selectedAudioId ? `Audio sélectionné : ${audioFiles.find((a) => a.id === selectedAudioId)?.file_name ?? "—"}` : audioFiles.length > 0 ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné` : "Aucun audio généré",
       count: audioFiles.length,
     },
   ];
@@ -421,135 +409,123 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
         Assemblez vos assets en pré-montage vidéo. Vérifiez la complétude avant de générer la timeline.
       </p>
 
-      {/* Global status summary */}
-      <div
-        className={`rounded-lg border p-4 mb-6 flex items-center gap-3 ${
-          allValid
-            ? "border-emerald-400/30 bg-emerald-400/5"
-            : hasBlocking
-            ? "border-red-400/30 bg-red-400/5"
-            : "border-amber-400/30 bg-amber-400/5"
-        }`}
-      >
-        {allValid ? (
-          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-        ) : hasBlocking ? (
-          <XCircle className="h-5 w-5 text-red-400 shrink-0" />
-        ) : (
-          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
-        )}
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            {allValid
-              ? "Tous les assets sont prêts"
-              : hasBlocking
-              ? "Des assets sont manquants"
-              : "Certains assets sont incomplets"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {validCount}/{checks.length} vérifications passées
-          </p>
-        </div>
-      </div>
-
-      {/* AssetStatusPanel */}
       <div className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-          AssetStatusPanel
-        </h3>
-        {checks.map((check, i) => {
-          const cfg = STATUS_CONFIG[check.status];
-          const StatusIcon = cfg.icon;
+        {/* ── Collapsible: Status summary ── */}
+        <CollapsibleSection
+          title={allValid ? "Tous les assets sont prêts" : hasBlocking ? "Des assets sont manquants" : "Certains assets sont incomplets"}
+          icon={allValid ? CheckCircle2 : hasBlocking ? XCircle : AlertTriangle}
+          badge={`${validCount}/${checks.length}`}
+        >
+          {/* Global status banner */}
+          <div
+            className={`rounded-lg border p-4 mb-4 flex items-center gap-3 ${
+              allValid ? "border-emerald-400/30 bg-emerald-400/5" : hasBlocking ? "border-red-400/30 bg-red-400/5" : "border-amber-400/30 bg-amber-400/5"
+            }`}
+          >
+            {allValid ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+            ) : hasBlocking ? (
+              <XCircle className="h-5 w-5 text-red-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
+            )}
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {allValid ? "Tous les assets sont prêts" : hasBlocking ? "Des assets sont manquants" : "Certains assets sont incomplets"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{validCount}/{checks.length} vérifications passées</p>
+            </div>
+          </div>
 
-          return (
-            <div
-              key={i}
-              className={`flex items-center gap-3 rounded-lg border p-3 sm:p-4 transition-colors ${cfg.border} ${cfg.bg}`}
-            >
-              <div className={`flex items-center justify-center h-9 w-9 rounded-md ${cfg.bg} shrink-0`}>
-                <check.icon className={`h-4 w-4 ${cfg.color}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">{check.label}</span>
-                  <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${cfg.bg} ${cfg.color}`}
-                  >
-                    <StatusIcon className={`h-2.5 w-2.5 ${check.status === "loading" ? "animate-spin" : ""}`} />
-                    {cfg.label}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">{check.detail}</p>
-              </div>
-
-              {/* Progress bar for partial checks */}
-              {check.total !== undefined && check.total > 0 && (
-                <div className="hidden sm:flex items-center gap-2 shrink-0">
-                  <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        check.status === "valid"
-                          ? "bg-emerald-400"
-                          : check.status === "warning"
-                          ? "bg-amber-400"
-                          : "bg-red-400"
-                      }`}
-                      style={{ width: `${(check.count! / check.total) * 100}%` }}
-                    />
+          {/* AssetStatusPanel */}
+          <div className="space-y-3">
+            {checks.map((check, i) => {
+              const cfg = STATUS_CONFIG[check.status];
+              const StatusIcon = cfg.icon;
+              return (
+                <div key={i} className={`flex items-center gap-3 rounded-lg border p-3 sm:p-4 transition-colors ${cfg.border} ${cfg.bg}`}>
+                  <div className={`flex items-center justify-center h-9 w-9 rounded-md ${cfg.bg} shrink-0`}>
+                    <check.icon className={`h-4 w-4 ${cfg.color}`} />
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
-                    {check.count}/{check.total}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">{check.label}</span>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${cfg.bg} ${cfg.color}`}>
+                        <StatusIcon className={`h-2.5 w-2.5 ${check.status === "loading" ? "animate-spin" : ""}`} />
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{check.detail}</p>
+                  </div>
+                  {check.total !== undefined && check.total > 0 && (
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
+                      <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${check.status === "valid" ? "bg-emerald-400" : check.status === "warning" ? "bg-amber-400" : "bg-red-400"}`}
+                          style={{ width: `${(check.count! / check.total) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{check.count}/{check.total}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
 
-      {/* AudioSelector */}
-      {!loadingAudio && audioFiles.length > 0 && (
-        <div className="mt-8">
-          <AudioSelector
-            audioFiles={audioFiles}
-            selectedAudioId={selectedAudioId}
-            onSelect={setSelectedAudioId}
-          />
-        </div>
-      )}
+        {/* ── Collapsible: Audio Selector ── */}
+        {!loadingAudio && audioFiles.length > 0 && (
+          <CollapsibleSection
+            title="Audio de référence"
+            icon={Volume2}
+            badge={selectedAudioId ? "Sélectionné" : `${audioFiles.length} disponible(s)`}
+          >
+            <AudioSelector
+              audioFiles={audioFiles}
+              selectedAudioId={selectedAudioId}
+              onSelect={setSelectedAudioId}
+            />
+          </CollapsibleSection>
+        )}
 
-      {/* Assemble button + Timeline */}
-      {selectedAudioId && shots.length > 0 && (
-        <div className="mt-8 space-y-6">
-          {!timeline && (
-            <div className="flex justify-center">
-              <Button
-                variant="hero"
-                onClick={handleAssembleTimeline}
-                className="min-h-[48px] gap-2"
-              >
-                <Wand2 className="h-4 w-4" />
-                Assembler la timeline
-              </Button>
-            </div>
-          )}
-          {timeline && (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  Timeline générée le {new Date(timeline.createdAt).toLocaleString("fr-FR")}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleAssembleTimeline} className="h-7 text-xs gap-1.5">
-                  <Wand2 className="h-3 w-3" />
-                  Régénérer
+        {/* ── Assemble button + Timeline ── */}
+        {selectedAudioId && shots.length > 0 && (
+          <div className="space-y-3 pt-3">
+            {!timeline && (
+              <div className="flex justify-center">
+                <Button variant="hero" onClick={handleAssembleTimeline} className="min-h-[48px] gap-2">
+                  <Wand2 className="h-4 w-4" />
+                  Assembler la timeline
                 </Button>
               </div>
-              <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} />
-              <ExportManager timeline={timeline} />
-            </>
-          )}
-        </div>
-      )}
+            )}
+            {timeline && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Timeline générée le {new Date(timeline.createdAt).toLocaleString("fr-FR")}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={handleAssembleTimeline} className="h-7 text-xs gap-1.5">
+                    <Wand2 className="h-3 w-3" />
+                    Régénérer
+                  </Button>
+                </div>
+
+                {/* Collapsible: Preview + Timeline */}
+                <CollapsibleSection title="Prévisualisation & Timeline" icon={Film} badge={`${timeline.segmentCount} segments`}>
+                  <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} />
+                </CollapsibleSection>
+
+                {/* Collapsible: Export Manager */}
+                <CollapsibleSection title="Export Manager" icon={Film}>
+                  <ExportManager timeline={timeline} projectId={projectId!} />
+                </CollapsibleSection>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
