@@ -45,7 +45,7 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
   });
 
   try {
-    const loadPromise = ffmpeg.load({ coreURL, wasmURL, workerURL });
+    const loadPromise = ffmpeg.load({ coreURL, wasmURL });
     const timeoutPromise = new Promise<never>((_, reject) => {
       window.setTimeout(() => {
         reject(new Error("Le chargement du moteur vidéo a expiré."));
