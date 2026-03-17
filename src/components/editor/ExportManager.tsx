@@ -255,8 +255,8 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
             </Button>
             <Button onClick={handleExportXml} variant="outline" className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
               <FileCode2 className="h-4 w-4" />
-              Exporter XML
-              <span className="text-[10px] opacity-70 ml-1">FCP</span>
+              Exporter XML + Médias
+              <span className="text-[10px] opacity-70 ml-1">ZIP</span>
             </Button>
           </div>
         )}
