@@ -197,6 +197,55 @@ export default function PdfDocumentaryTab({
     });
   }, [onScriptChange]);
 
+  const handleRegenerateSection = useCallback(async (sectionKey: string) => {
+    setRegeneratingSection(sectionKey);
+    try {
+      const currentSection = sections.find((s) => s.key === sectionKey);
+      if (!currentSection) return;
+
+      const otherSections = sections
+        .filter((s) => s.key !== sectionKey)
+        .map((s) => ({ key: s.key, label: s.label, content: s.content }));
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/regenerate-section`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            sectionKey,
+            sectionLabel: currentSection.label,
+            currentContent: currentSection.content,
+            otherSections,
+            language: scriptLanguage,
+            narrativeStyle: narrativeStyleId,
+            sourceText: extractedText?.slice(0, 10000) || "",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error || `Erreur ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.content) {
+        handleSectionContentChange(sectionKey, data.content);
+        toast.success(`Section "${currentSection.label}" régénérée`);
+      }
+    } catch (e: any) {
+      console.error("Section regeneration error:", e);
+      toast.error(e?.message || "Erreur de régénération");
+    } finally {
+      setRegeneratingSection(null);
+    }
+  }, [sections, scriptLanguage, narrativeStyleId, extractedText, handleSectionContentChange]);
+
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
     setParsing(true);
