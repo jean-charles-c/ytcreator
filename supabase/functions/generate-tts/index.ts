@@ -163,25 +163,36 @@ function buildMarkedSsml(
   shotSentences: { id: string; text: string }[],
   pauseAfterSentences: number,
   sentenceStartBoost: number,
-  sentenceEndSlow: number
+  sentenceEndSlow: number,
+  commaPauseMs = 0,
+  dynamicPauseEnabled = false,
+  dynamicPauseVariation = 0
 ): string {
-  const sentBreak = pauseAfterSentences > 0 ? `<break time="${pauseAfterSentences}ms"/>` : "";
-
   const parts = shotSentences.map((shot, idx) => {
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
-    // Apply prosody effects
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
+    }
+    if (commaPauseMs > 0) {
+      processed = injectCommaPauses(processed, commaPauseMs);
     }
 
     return `${mark}${processed}`;
   });
 
-  // Add end marker to measure total duration
+  // Join with sentence pauses (with optional jitter)
+  const joined = parts.map((p, i) => {
+    if (i < parts.length - 1 && pauseAfterSentences > 0) {
+      const pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
+      return `${p}<break time="${pause}ms"/>`;
+    }
+    return p;
+  }).join(" ");
+
   const endMark = `<mark name="__end"/>`;
-  return `<speak>${parts.join(sentBreak + " ")}${endMark}</speak>`;
+  return `<speak>${joined}${endMark}</speak>`;
 }
 
 function processSentenceProsody(sentence: string, startBoostPct: number, endSlowPct: number): string {
