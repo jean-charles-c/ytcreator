@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Download,
   Trash2,
@@ -44,6 +44,10 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   const [fps, setFps] = useState<ExportFps>(24);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
+
+  // Always use the freshest timeline via ref to avoid stale closures
+  const timelineRef = useRef(timeline);
+  timelineRef.current = timeline;
 
   const { startExportMp4, startExportXml, getTask, stopTask, subscribe } = useBackgroundTasks();
 
@@ -98,12 +102,12 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   };
 
   const handleExportMp4 = useCallback(() => {
-    startExportMp4({ projectId, timeline, fps });
-  }, [projectId, timeline, fps, startExportMp4]);
+    startExportMp4({ projectId, timeline: timelineRef.current, fps });
+  }, [projectId, fps, startExportMp4]);
 
   const handleExportXml = useCallback(() => {
-    startExportXml({ projectId, timeline, fps });
-  }, [projectId, timeline, fps, startExportXml]);
+    startExportXml({ projectId, timeline: timelineRef.current, fps });
+  }, [projectId, fps, startExportXml]);
 
   const handleAbortMp4 = useCallback(() => {
     stopTask(projectId, "export-mp4");

@@ -538,7 +538,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           .from("video-exports")
           .getPublicUrl(fileName);
 
-        // Save to DB
+        // Save export entry to DB (preserve existing timeline data)
         const { data: stateData } = await supabase
           .from("project_scriptcreator_state")
           .select("timeline_state")
@@ -557,6 +557,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           sizeMb: (blob.size / (1024 * 1024)).toFixed(2),
         };
         const newExports = [entry, ...existingExports];
+        // Only update the exports array, preserve rest of timeline_state
         await supabase
           .from("project_scriptcreator_state")
           .update({ timeline_state: { ...currentState, exports: newExports } as any })
