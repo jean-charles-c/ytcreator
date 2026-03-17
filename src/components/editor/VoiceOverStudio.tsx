@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   voiceType: "Standard",
   voiceName: "",
   style: "neutral",
+  narrationProfile: "standard",
   speakingRate: 1.0,
   pitch: 0,
   volumeGainDb: 0,
