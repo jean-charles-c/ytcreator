@@ -435,6 +435,7 @@ serve(async (req) => {
 
     let audioBuffers: Uint8Array[] = [];
     let allTimepoints: { shotIndex: number; timeSeconds: number; shotId: string }[] = [];
+    let cumulativeOffset = 0;
 
     if (useMarkedMode) {
       // ── Marked mode: SSML with <mark> tags for precise shot timing ──
