@@ -154,6 +154,7 @@ export default function PdfDocumentaryTab({
   const [narrativeStyleId, setNarrativeStyleId] = useState(DEFAULT_NARRATIVE_STYLE_ID);
   const [customStyleLabel, setCustomStyleLabel] = useState("");
   const [parsing, setParsing] = useState(false);
+  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [scriptOpen, setScriptOpen] = useState(false);
