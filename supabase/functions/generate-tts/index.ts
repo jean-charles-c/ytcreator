@@ -378,14 +378,19 @@ function textToSsml(
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
     const processed = sentences.map((s) => {
-      let result = processSentenceProsody(s, startBoostPct, endSlowPct);
+      let result = applyEmphasis(s);
+      result = processSentenceProsody(result, startBoostPct, endSlowPct);
       if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
       return result;
     });
     if (sentPauseMs > 0) {
       return processed.map((s, i) => {
         if (i < processed.length - 1) {
-          const pause = jitterPause(sentPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+          let pause = jitterPause(sentPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+          // Prosodic continuity: reduce pause between linked sentences
+          if (shouldReducePause(sentences[i], sentences[i + 1] || "")) {
+            pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+          }
           return `${s}<break time="${pause}ms"/>`;
         }
         return s;
