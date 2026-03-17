@@ -97,6 +97,8 @@ export default function NarrativeScriptBlock({
   showVersionPreviewId,
   onRegenerate,
   canRegenerate,
+  analyzingScript,
+  onAnalyzeScript,
   toolbarSlot,
 }: NarrativeScriptBlockProps) {
   const scriptEndRef = useRef<HTMLDivElement>(null);
