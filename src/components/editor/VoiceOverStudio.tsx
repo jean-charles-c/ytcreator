@@ -16,7 +16,9 @@ interface VoiceOverStudioProps {
   projectId: string | null;
   projectTitle?: string;
   scenes?: { source_text: string; title: string }[];
-  shots?: { id: string; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
+  shots?: { id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
+  /** Scenes with scene_order for sorting shots correctly */
+  scenesForSort?: { id: string; scene_order: number }[];
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
