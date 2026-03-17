@@ -667,7 +667,8 @@ serve(async (req) => {
         sentenceEndSlow,
         pauseAfterComma,
         dynamicPauseEnabled,
-        dynamicPauseVariation
+        dynamicPauseVariation,
+        mod.emphasisBoost
       );
 
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
