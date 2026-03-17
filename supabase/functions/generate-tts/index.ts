@@ -112,18 +112,18 @@ async function resolveVoiceName(
   voiceType: string | undefined,
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL"
 ): Promise<string | undefined> {
+  // If user explicitly selected a voice name, always respect it
+  if (requestedVoiceName && requestedVoiceName.trim().length > 0) {
+    console.log(`Using user-requested voice: ${requestedVoiceName}`);
+    return requestedVoiceName;
+  }
+
+  // No explicit voice name — resolve from type + gender
   try {
     const voices = await listGoogleVoices(apiKey, languageCode);
-    if (voices.length === 0) return requestedVoiceName;
+    if (voices.length === 0) return undefined;
 
-    const inferredType = requestedVoiceName?.match(/-(Standard|Wavenet|Neural2)-/i)?.[1];
-    const normalizedType = (voiceType || inferredType || "Standard").toLowerCase();
-
-    const exactRequested = requestedVoiceName
-      ? voices.find((v) => v.name === requestedVoiceName)
-      : undefined;
-
-    if (exactRequested) return exactRequested.name;
+    const normalizedType = (voiceType || "Standard").toLowerCase();
 
     const typeVoices = voices
       .filter((v) => v.name.toLowerCase().includes(`-${normalizedType}-`))
@@ -145,7 +145,7 @@ async function resolveVoiceName(
     return (byGender[0] || voices[0])?.name;
   } catch (error) {
     console.error("Voice resolve fallback:", error);
-    return requestedVoiceName;
+    return undefined;
   }
 }
 
