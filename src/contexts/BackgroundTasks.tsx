@@ -7,7 +7,7 @@ import {
   type ExportFps,
   type ExportProgress,
 } from "@/components/editor/videoExportEngine";
-import { exportTimelineToXml } from "@/components/editor/xmlExportEngine";
+import { exportTimelineToXmlZip } from "@/components/editor/xmlExportEngine";
 import type { Timeline } from "@/components/editor/timelineAssembly";
 
 // ─── Types ──────────────────────────────────────────────────────────
