@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
-import SectionCard, { parseScriptIntoSections, reassembleSections, type NarrativeSection } from "./SectionCard";
+import SectionCard, { parseScriptIntoSections, reassembleSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -162,6 +162,7 @@ export default function PdfDocumentaryTab({
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(["hook"]));
   const [sections, setSections] = useState<NarrativeSection[]>(() => parseScriptIntoSections(script || ""));
+  const [sectionHistory, setSectionHistory] = useState<Record<string, SectionHistoryEntry[]>>({});
   const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
@@ -186,6 +187,18 @@ export default function PdfDocumentaryTab({
     }
   }, [script]);
 
+  // Save current content of a section to its history
+  const pushSectionHistory = useCallback((key: string, content: string, label?: string) => {
+    if (!content.trim()) return;
+    setSectionHistory((prev) => {
+      const existing = prev[key] || [];
+      // Don't duplicate if same content as last entry
+      if (existing.length > 0 && existing[0].content === content) return prev;
+      const entry: SectionHistoryEntry = { content, timestamp: new Date().toISOString(), label };
+      return { ...prev, [key]: [entry, ...existing].slice(0, 20) }; // Keep max 20
+    });
+  }, []);
+
   // Handle section content edit — reassemble and propagate immediately
   const handleSectionContentChange = useCallback((key: string, content: string) => {
     setSections((prev) => {
@@ -197,10 +210,26 @@ export default function PdfDocumentaryTab({
     });
   }, [onScriptChange]);
 
+  // Restore a section from history
+  const handleRestoreSection = useCallback((key: string, content: string) => {
+    // Save current before restoring
+    const current = sections.find((s) => s.key === key);
+    if (current && current.content.trim()) {
+      pushSectionHistory(key, current.content, "Avant restauration");
+    }
+    handleSectionContentChange(key, content);
+    toast.success("Version restaurée");
+  }, [sections, pushSectionHistory, handleSectionContentChange]);
+
   const handleRegenerateSection = useCallback(async (sectionKey: string) => {
+    // Save current content to history before regeneration
+    const currentSection = sections.find((s) => s.key === sectionKey);
+    if (currentSection && currentSection.content.trim()) {
+      pushSectionHistory(sectionKey, currentSection.content, "Avant régénération");
+    }
+
     setRegeneratingSection(sectionKey);
     try {
-      const currentSection = sections.find((s) => s.key === sectionKey);
       if (!currentSection) return;
 
       const otherSections = sections
@@ -244,7 +273,7 @@ export default function PdfDocumentaryTab({
     } finally {
       setRegeneratingSection(null);
     }
-  }, [sections, scriptLanguage, narrativeStyleId, extractedText, handleSectionContentChange]);
+  }, [sections, scriptLanguage, narrativeStyleId, extractedText, handleSectionContentChange, pushSectionHistory]);
 
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
@@ -889,6 +918,8 @@ export default function PdfDocumentaryTab({
                     onContentChange={handleSectionContentChange}
                     onRegenerate={handleRegenerateSection}
                     regenerating={regeneratingSection === section.key}
+                    history={sectionHistory[section.key] || []}
+                    onRestore={handleRestoreSection}
                   />
                 ))}
               </div>
