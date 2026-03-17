@@ -44,6 +44,10 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
 
+  // Always use the freshest timeline via ref to avoid stale closures
+  const timelineRef = useRef(timeline);
+  timelineRef.current = timeline;
+
   const { startExportMp4, startExportXml, getTask, stopTask, subscribe } = useBackgroundTasks();
 
   const mp4Task = getTask(projectId, "export-mp4");
