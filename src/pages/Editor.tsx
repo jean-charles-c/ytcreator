@@ -921,7 +921,7 @@ export default function Editor() {
     }
   };
 
-
+  const handleShotRegenerate = async (shotId: string) => {
     try {
       const session = (await supabase.auth.getSession()).data.session;
       const response = await fetch(
