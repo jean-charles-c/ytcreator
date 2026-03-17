@@ -45,7 +45,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDelete, onRegenerate, onGenerateImage }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
