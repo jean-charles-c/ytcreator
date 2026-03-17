@@ -31,7 +31,8 @@ function generateXml(
   timeline: Timeline,
   fps: ExportFps,
   imageFileNames: Map<number, string>,
-  audioFileName: string
+  audioFileName: string,
+  exportUid: string
 ): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
@@ -62,12 +63,12 @@ function generateXml(
     const description = escapeXml(seg.description);
     const sentence = escapeXml(seg.sentence || seg.sentenceFr || "");
     const localPath = imageFileNames.get(i) ?? "";
-    const masterClipId = `masterclip-img-${globalIndex}`;
-    const fileId = `file-img-${globalIndex}`;
+    const masterClipId = `masterclip-${exportUid}-img-${globalIndex}`;
+    const fileId = `file-${exportUid}-img-${globalIndex}`;
     const fileDuration = dur;
 
     return `
-      <clipitem id="clip-${globalIndex}">
+      <clipitem id="clip-${exportUid}-${globalIndex}">
         <masterclipid>${masterClipId}</masterclipid>
         <name>${name}</name>
         <enabled>TRUE</enabled>
@@ -142,7 +143,7 @@ ${clipItems}
           </video>
           <audio>
             <track>
-              <clipitem id="audio-clip-1">
+              <clipitem id="audio-clip-${exportUid}-1">
                 <name>${escapeXml(audioTrack.fileName)}</name>
                 <duration>${audioEndFrame}</duration>
                 <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
@@ -150,7 +151,7 @@ ${clipItems}
                 <end>${audioEndFrame}</end>
                 <in>0</in>
                 <out>${audioEndFrame}</out>
-                <file id="audio-file-1">
+                <file id="audio-file-${exportUid}-1">
                   <name>${escapeXml(audioTrack.fileName)}</name>
                   <pathurl>${escapeXml(audioFileName)}</pathurl>
                   <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
@@ -219,7 +220,8 @@ export async function exportTimelineToXmlZip(
 
   // ── Generate XML with relative paths ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
-  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`);
+  const exportUid = crypto.randomUUID().slice(0, 8);
+  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid);
   zip.file("timeline.xml", xml);
 
   // ── Generate ZIP ──
