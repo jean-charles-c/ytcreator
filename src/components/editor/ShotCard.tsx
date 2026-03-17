@@ -116,6 +116,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     try { await onDelete(shot.id); setDeleteDialogOpen(false); } finally { setDeleting(false); }
   };
 
+  const handleMerge = async () => {
+    if (!onMergeWithNext || merging) return;
+    setMerging(true);
+    try { await onMergeWithNext(shot.id); } finally { setMerging(false); }
+  };
+
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
