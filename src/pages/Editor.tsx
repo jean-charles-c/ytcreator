@@ -850,6 +850,77 @@ export default function Editor() {
     }
   };
 
+  const handleShotMergeWithNext = async (shotId: string) => {
+    try {
+      const shotIndex = shots.findIndex((s) => s.id === shotId);
+      if (shotIndex === -1) return;
+      const shot = shots[shotIndex];
+
+      // Find adjacent shots in the same scene, sorted by shot_order
+      const sceneShots = shots
+        .filter((s) => s.scene_id === shot.scene_id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      const posInScene = sceneShots.findIndex((s) => s.id === shotId);
+      if (posInScene === -1 || posInScene >= sceneShots.length - 1) {
+        toast.warning("Ce shot est le dernier de sa scène, pas de shot suivant à fusionner.");
+        return;
+      }
+
+      const nextShot = sceneShots[posInScene + 1];
+
+      // Combine source sentences
+      const mergedSentence = [shot.source_sentence, nextShot.source_sentence].filter(Boolean).join(" ");
+      const mergedSentenceFr = [shot.source_sentence_fr, nextShot.source_sentence_fr].filter(Boolean).join(" ") || null;
+
+      // Update the surviving shot
+      const { error: updateError } = await supabase
+        .from("shots")
+        .update({
+          source_sentence: mergedSentence,
+          source_sentence_fr: mergedSentenceFr,
+        })
+        .eq("id", shot.id);
+      if (updateError) { toast.error("Erreur lors de la fusion"); return; }
+
+      // Delete the absorbed shot
+      const { error: deleteError } = await supabase.from("shots").delete().eq("id", nextShot.id);
+      if (deleteError) { toast.error("Erreur lors de la suppression du shot fusionné"); return; }
+
+      // Reorder remaining shots in the scene
+      const remainingSceneShots = sceneShots
+        .filter((s) => s.id !== nextShot.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      for (let i = 0; i < remainingSceneShots.length; i++) {
+        if (remainingSceneShots[i].shot_order !== i + 1) {
+          await supabase.from("shots").update({ shot_order: i + 1 }).eq("id", remainingSceneShots[i].id);
+        }
+      }
+
+      // Update local state
+      setShots((prev) => {
+        const updated = prev
+          .filter((s) => s.id !== nextShot.id)
+          .map((s) => {
+            if (s.id === shot.id) {
+              return { ...s, source_sentence: mergedSentence, source_sentence_fr: mergedSentenceFr };
+            }
+            return s;
+          });
+        // Fix shot_order locally
+        const sceneId = shot.scene_id;
+        const sceneGroup = updated.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
+        const orderMap = new Map<string, number>();
+        sceneGroup.forEach((s, i) => orderMap.set(s.id, i + 1));
+        return updated.map((s) => orderMap.has(s.id) ? { ...s, shot_order: orderMap.get(s.id)! } : s);
+      });
+
+      toast.success("Shots fusionnés — phrases combinées");
+    } catch (e) {
+      console.error("Merge exception:", e);
+      toast.error("Erreur lors de la fusion");
+    }
+  };
+
   const handleShotRegenerate = async (shotId: string) => {
     try {
       const session = (await supabase.auth.getSession()).data.session;
@@ -1734,7 +1805,7 @@ export default function Editor() {
                               ) : (
                                 <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                                   {sceneShots.map((shot, shotIdx) => (
-                                    <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} />
+                                    <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} isLastInScene={shotIdx === sceneShots.length - 1} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} onMergeWithNext={handleShotMergeWithNext} />
                                   ))}
                                 </div>
                               )}

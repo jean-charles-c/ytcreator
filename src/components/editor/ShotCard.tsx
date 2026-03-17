@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload, Merge } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -32,10 +32,12 @@ interface ShotCardProps {
   shot: Shot;
   globalIndex?: number;
   sceneLabel?: string;
+  isLastInScene?: boolean;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
   onGenerateImage?: (shotId: string) => Promise<void>;
+  onMergeWithNext?: (shotId: string) => Promise<void>;
 }
 
 const formatUsd = (value: number | string | null | undefined) => {
@@ -43,7 +45,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDelete, onRegenerate, onGenerateImage }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -55,6 +57,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
   const [deleting, setDeleting] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [merging, setMerging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
@@ -111,6 +114,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
     if (!onDelete || deleting) return;
     setDeleting(true);
     try { await onDelete(shot.id); setDeleteDialogOpen(false); } finally { setDeleting(false); }
+  };
+
+  const handleMerge = async () => {
+    if (!onMergeWithNext || merging) return;
+    setMerging(true);
+    try { await onMergeWithNext(shot.id); } finally { setMerging(false); }
   };
 
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +218,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, onUpdate, onDe
             <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
               <Pencil className="h-3.5 w-3.5" />
             </button>
+            {onMergeWithNext && !isLastInScene && (
+              <button onClick={handleMerge} disabled={merging} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Fusionner avec le shot suivant">
+                {merging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Merge className="h-3.5 w-3.5" />}
+              </button>
+            )}
             <button onClick={() => setDeleteDialogOpen(true)} className="p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Supprimer ce shot">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
