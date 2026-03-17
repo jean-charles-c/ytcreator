@@ -57,6 +57,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [deleting, setDeleting] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [merging, setMerging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
