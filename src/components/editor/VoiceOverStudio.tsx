@@ -40,6 +40,7 @@ interface PlayerState {
   audioUrl: string;
   fileName: string;
   durationEstimate: number;
+  realDuration: number | null;
 }
 
 export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort }: VoiceOverStudioProps) {
@@ -160,6 +161,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         audioUrl: data.audioUrl,
         fileName: data.fileName,
         durationEstimate: data.durationEstimate,
+        realDuration: null,
       });
 
       // Refresh history
@@ -181,7 +183,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       audioRef.current.pause();
       audioRef.current = null;
     }
-    setPlayerState({ audioUrl, fileName, durationEstimate: duration });
+    setPlayerState({ audioUrl, fileName, durationEstimate: duration, realDuration: null });
     setIsPlaying(false);
     setAudioProgress(0);
 
@@ -189,6 +191,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     setTimeout(() => {
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
+      audio.onloadedmetadata = () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          setPlayerState((prev) => prev ? { ...prev, realDuration: audio.duration } : prev);
+        }
+      };
       audio.ontimeupdate = () => {
         if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
       };
@@ -204,6 +211,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     if (!audioRef.current) {
       const audio = new Audio(playerState.audioUrl);
       audioRef.current = audio;
+      audio.onloadedmetadata = () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          setPlayerState((prev) => prev ? { ...prev, realDuration: audio.duration } : prev);
+        }
+      };
       audio.ontimeupdate = () => {
         if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
       };
@@ -341,7 +353,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   <div className="flex items-center justify-between">
                     <h3 className="font-display text-xs font-semibold text-foreground">Lecteur</h3>
                     <span className="text-[10px] text-muted-foreground font-mono">
-                      {formatDuration(playerState.durationEstimate)}
+                      {formatDuration(playerState.realDuration ?? playerState.durationEstimate)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
