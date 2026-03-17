@@ -238,22 +238,67 @@ function processSentenceProsody(sentence: string, startBoostPct: number, endSlow
   return sentence;
 }
 
-function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number, endSlowPct: number): string {
-  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0) return rawText;
+/**
+ * Inject <break> after commas in already-escaped text.
+ */
+function injectCommaPauses(text: string, commaMs: number): string {
+  if (commaMs <= 0) return text;
+  // Insert break after commas (but not inside SSML tags)
+  return text.replace(/,(?![^<]*>)/g, `,<break time="${commaMs}ms"/>`);
+}
+
+/**
+ * Add random variation to a pause value (returns jittered ms).
+ */
+function jitterPause(baseMs: number, variationMs: number, enabled: boolean): number {
+  if (!enabled || variationMs <= 0 || baseMs <= 0) return baseMs;
+  const jitter = Math.round((Math.random() * 2 - 1) * variationMs);
+  return Math.max(50, baseMs + jitter);
+}
+
+function textToSsml(
+  rawText: string,
+  paraPauseMs: number,
+  sentPauseMs: number,
+  startBoostPct: number,
+  endSlowPct: number,
+  commaPauseMs = 0,
+  dynamicPauseEnabled = false,
+  dynamicPauseVariation = 0
+): string {
+  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0 && commaPauseMs <= 0) return rawText;
 
   const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
-  const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
-  const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
 
   const processedParagraphs = paragraphs.map((p) => {
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
-    const processed = sentences.map((s) => processSentenceProsody(s, startBoostPct, endSlowPct));
-    return sentPauseMs > 0 ? processed.join(`${sentBreak} `) : processed.join(" ");
+    const processed = sentences.map((s) => {
+      let result = processSentenceProsody(s, startBoostPct, endSlowPct);
+      if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
+      return result;
+    });
+    if (sentPauseMs > 0) {
+      return processed.map((s, i) => {
+        if (i < processed.length - 1) {
+          const pause = jitterPause(sentPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+          return `${s}<break time="${pause}ms"/>`;
+        }
+        return s;
+      }).join(" ");
+    }
+    return processed.join(" ");
   });
 
-  const inner = processedParagraphs.join(paraBreak ? `${paraBreak}\n` : "\n");
-  return `<speak>${inner}</speak>`;
+  const paraBreakParts = processedParagraphs.map((p, i) => {
+    if (i < processedParagraphs.length - 1 && paraPauseMs > 0) {
+      const pause = jitterPause(paraPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+      return `${p}<break time="${pause}ms"/>`;
+    }
+    return p;
+  });
+
+  return `<speak>${paraBreakParts.join("\n")}</speak>`;
 }
 
 /**
