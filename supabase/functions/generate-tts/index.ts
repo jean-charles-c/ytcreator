@@ -394,7 +394,7 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb, sampleRateHertz: 44100 };
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
     if (effectsProfileId) {
       audioConfig.effectsProfileId = [effectsProfileId];
     }
