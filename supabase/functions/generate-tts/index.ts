@@ -14,6 +14,7 @@ interface TTSRequest {
   voiceName?: string;
   voiceType?: string;
   style?: string;
+  narrationProfile?: "standard" | "storytelling" | "educational";
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
@@ -30,6 +31,56 @@ interface TTSRequest {
   customFileName?: string;
   shotSentences?: { id: string; text: string }[];
 }
+
+/**
+ * Narration profile modulation: applies additive offsets to user settings.
+ * These are combined with (not replacing) the user's manual controls.
+ */
+const NARRATION_MODULATION: Record<string, {
+  pauseAfterSentencesAdd: number;
+  pauseBetweenParagraphsAdd: number;
+  pauseAfterCommaAdd: number;
+  dynamicPauseForce: boolean;
+  dynamicPauseVariationMin: number;
+  emphasisBoost: number; // 0 = normal, 1 = allow more emphasis per sentence
+  sentenceStartBoostAdd: number;
+  sentenceEndSlowAdd: number;
+  rateOffset: number;
+}> = {
+  standard: {
+    pauseAfterSentencesAdd: 0,
+    pauseBetweenParagraphsAdd: 0,
+    pauseAfterCommaAdd: 0,
+    dynamicPauseForce: false,
+    dynamicPauseVariationMin: 0,
+    emphasisBoost: 0,
+    sentenceStartBoostAdd: 0,
+    sentenceEndSlowAdd: 0,
+    rateOffset: 0,
+  },
+  storytelling: {
+    pauseAfterSentencesAdd: 100,
+    pauseBetweenParagraphsAdd: 200,
+    pauseAfterCommaAdd: 50,
+    dynamicPauseForce: true,
+    dynamicPauseVariationMin: 300,
+    emphasisBoost: 1,
+    sentenceStartBoostAdd: 10,
+    sentenceEndSlowAdd: 15,
+    rateOffset: -0.03,
+  },
+  educational: {
+    pauseAfterSentencesAdd: 150,
+    pauseBetweenParagraphsAdd: 300,
+    pauseAfterCommaAdd: 75,
+    dynamicPauseForce: false,
+    dynamicPauseVariationMin: 0,
+    emphasisBoost: 0,
+    sentenceStartBoostAdd: 0,
+    sentenceEndSlowAdd: 5,
+    rateOffset: -0.05,
+  },
+};
 
 interface Timepoint {
   markName: string;

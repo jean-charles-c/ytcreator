@@ -488,6 +488,31 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         </Select>
       </div>
 
+      {/* Narration Profile */}
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Profil de narration</Label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {NARRATION_PROFILES.map((np) => (
+            <button
+              key={np.value}
+              onClick={() => update({ narrationProfile: np.value })}
+              className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-center transition-colors ${
+                settings.narrationProfile === np.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+              }`}
+              title={np.desc}
+            >
+              <span className="text-base leading-none">{np.icon}</span>
+              <span className="text-[10px] font-medium leading-tight">{np.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          {NARRATION_PROFILES.find(p => p.value === settings.narrationProfile)?.desc}
+        </p>
+      </div>
+
       {/* Speaking Rate */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
