@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const SECTION_ORDER = ["hook", "introduction", "act1", "act2", "act3", "climax", "conclusion"];
+
 const SECTION_DESCRIPTIONS: Record<string, string> = {
   hook: "The HOOK — the opening 3-5 paragraphs that grab attention instantly. Must start with a surprising fact, paradox, or mystery. No greetings, no channel name. Pure curiosity trigger.",
   introduction: "The INTRODUCTION — establishes the world and context. Concrete details: time, place, key characters or objects. Sets up the central question or mystery.",
@@ -37,12 +39,32 @@ serve(async (req) => {
 
     // Build context from other sections
     const contextParts: string[] = [];
+    const allSections: Record<string, { label: string; content: string }> = {};
     if (otherSections && Array.isArray(otherSections)) {
       for (const s of otherSections) {
+        allSections[s.key] = { label: s.label, content: s.content || "" };
         if (s.content && s.content.trim()) {
           contextParts.push(`[${s.label}]:\n${s.content.trim().slice(0, 2000)}`);
         }
       }
+    }
+
+    // Identify adjacent sections for coherence
+    const idx = SECTION_ORDER.indexOf(sectionKey);
+    const prevKey = idx > 0 ? SECTION_ORDER[idx - 1] : null;
+    const nextKey = idx < SECTION_ORDER.length - 1 ? SECTION_ORDER[idx + 1] : null;
+    const prevSection = prevKey && allSections[prevKey]?.content ? allSections[prevKey] : null;
+    const nextSection = nextKey && allSections[nextKey]?.content ? allSections[nextKey] : null;
+
+    // Build transition constraints
+    const transitionRules: string[] = [];
+    if (prevSection) {
+      const lastParas = prevSection.content.trim().split(/\n\s*\n/).slice(-2).join("\n\n");
+      transitionRules.push(`PREVIOUS SECTION ENDING (${prevSection.label}):\n"${lastParas.slice(-500)}"\n→ Your opening must flow naturally from this ending. No abrupt topic changes.`);
+    }
+    if (nextSection) {
+      const firstParas = nextSection.content.trim().split(/\n\s*\n/).slice(0, 2).join("\n\n");
+      transitionRules.push(`NEXT SECTION BEGINNING (${nextSection.label}):\n"${firstParas.slice(0, 500)}"\n→ Your closing must set up a smooth transition into this beginning.`);
     }
 
     const currentCharCount = currentContent?.length || 0;
@@ -56,6 +78,16 @@ YOUR TASK: Regenerate ONLY the "${sectionLabel}" section of a YouTube documentar
 
 SECTION ROLE: ${sectionDesc}
 
+NARRATIVE COHERENCE RULES (CRITICAL):
+- The script is a continuous narration split into sections for editing purposes
+- The viewer hears ALL sections as ONE uninterrupted voice-over
+- Your section must feel like a seamless continuation, NOT a separate piece
+- Match the tone, vocabulary level, and pacing of the surrounding sections
+- Do NOT repeat information already covered in other sections
+- Do NOT introduce characters or concepts that contradict other sections
+- Transitions between sections must be invisible to the listener
+${transitionRules.length > 0 ? "\nTRANSITION CONSTRAINTS:\n" + transitionRules.join("\n\n") : ""}
+
 STYLE RULES:
 - Clear, direct, visual language — like the best YouTube explainer channels
 - ONE idea per sentence, each under 100 characters
@@ -67,8 +99,7 @@ OUTPUT RULES:
 - Return ONLY the raw narration text for this section
 - NO headers, titles, markers, separators, or meta-commentary
 - The text must be immediately usable as voice-over
-- Target approximately ${targetChars} characters (±20%)
-- Maintain narrative continuity with the surrounding sections`;
+- Target approximately ${targetChars} characters (±20%)`;
 
     const userMessage = [
       contextParts.length > 0 ? `SURROUNDING SECTIONS (for context and continuity — do NOT repeat their content):\n\n${contextParts.join("\n\n")}` : "",
@@ -105,11 +136,92 @@ OUTPUT RULES:
 
     const data = await response.json();
     let content = data.choices?.[0]?.message?.content || "";
-
-    // Strip any <plan> tags if present
     content = content.replace(/<plan>[\s\S]*?<\/plan>/gi, "").trim();
 
-    return new Response(JSON.stringify({ content, sectionKey }), {
+    // --- Coherence check: lightweight pass to detect transition issues ---
+    let transitionFixes: { key: string; label: string; fixedContent: string }[] = [];
+
+    // Only run coherence check if we have adjacent sections with content
+    if (content && (prevSection || nextSection)) {
+      try {
+        const coherencePrompt = buildCoherencePrompt(
+          sectionKey, sectionLabel, content,
+          prevKey, prevSection,
+          nextKey, nextSection,
+          langLabel, styleInstruction
+        );
+
+        const coherenceResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: coherencePrompt.system },
+              { role: "user", content: coherencePrompt.user },
+            ],
+            tools: [{
+              type: "function",
+              function: {
+                name: "report_transition_fixes",
+                description: "Report any transition fixes needed for adjacent sections",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    needs_fixes: { type: "boolean", description: "Whether any adjacent section needs a transition fix" },
+                    fixes: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          key: { type: "string", description: "Section key to fix (e.g. 'introduction', 'act1')" },
+                          label: { type: "string", description: "Section label" },
+                          original_transition: { type: "string", description: "The 1-3 sentences that need adjustment" },
+                          fixed_transition: { type: "string", description: "The improved 1-3 sentences" },
+                        },
+                        required: ["key", "label", "original_transition", "fixed_transition"],
+                        additionalProperties: false,
+                      },
+                    },
+                  },
+                  required: ["needs_fixes", "fixes"],
+                  additionalProperties: false,
+                },
+              },
+            }],
+            tool_choice: { type: "function", function: { name: "report_transition_fixes" } },
+          }),
+        });
+
+        if (coherenceResp.ok) {
+          const coherenceData = await coherenceResp.json();
+          const toolCall = coherenceData.choices?.[0]?.message?.tool_calls?.[0];
+          if (toolCall?.function?.arguments) {
+            const args = JSON.parse(toolCall.function.arguments);
+            if (args.needs_fixes && args.fixes?.length > 0) {
+              // Apply transition fixes: replace the original transition text in adjacent sections
+              for (const fix of args.fixes) {
+                const targetSection = allSections[fix.key];
+                if (targetSection && fix.original_transition && fix.fixed_transition) {
+                  const fixedContent = targetSection.content.replace(fix.original_transition, fix.fixed_transition);
+                  if (fixedContent !== targetSection.content) {
+                    transitionFixes.push({ key: fix.key, label: fix.label, fixedContent });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (coherenceErr) {
+        // Coherence check is optional — don't fail the whole request
+        console.error("Coherence check error (non-blocking):", coherenceErr);
+      }
+    }
+
+    return new Response(JSON.stringify({ content, sectionKey, transitionFixes }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
@@ -119,3 +231,34 @@ OUTPUT RULES:
     });
   }
 });
+
+function buildCoherencePrompt(
+  sectionKey: string, sectionLabel: string, newContent: string,
+  prevKey: string | null, prevSection: { label: string; content: string } | null,
+  nextKey: string | null, nextSection: { label: string; content: string } | null,
+  langLabel: string, styleInstruction: string,
+) {
+  const system = `You are a narrative coherence editor. ${styleInstruction}
+Language: ${langLabel}.
+
+You analyze whether adjacent sections need MINIMAL transition adjustments after one section was rewritten.
+
+RULES:
+- Only fix the LAST 1-3 sentences of the previous section OR the FIRST 1-3 sentences of the next section
+- Only suggest fixes if there's an actual continuity break (topic contradiction, jarring tonal shift, or repeated information)
+- Do NOT rewrite entire sections — only fix transition sentences
+- If transitions are already smooth, report needs_fixes=false
+- Preserve the original style, tone, and vocabulary`;
+
+  const parts: string[] = [];
+  if (prevSection) {
+    parts.push(`PREVIOUS SECTION [${prevSection.label}] (last 500 chars):\n"${prevSection.content.slice(-500)}"`);
+  }
+  parts.push(`REGENERATED SECTION [${sectionLabel}]:\n"${newContent.slice(0, 1500)}...${newContent.slice(-500)}"`);
+  if (nextSection) {
+    parts.push(`NEXT SECTION [${nextSection.label}] (first 500 chars):\n"${nextSection.content.slice(0, 500)}"`);
+  }
+  parts.push("Analyze the transitions. If any adjacent section needs a minimal fix, report it. Otherwise set needs_fixes=false.");
+
+  return { system, user: parts.join("\n\n") };
+}
