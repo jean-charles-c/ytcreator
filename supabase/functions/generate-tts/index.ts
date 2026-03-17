@@ -930,7 +930,7 @@ serve(async (req) => {
             dynamicPauseEnabled,
             dynamicPauseVariation,
             emphasisBoost: mod.emphasisBoost,
-            maxSsmlChars: MAX_CHARS,
+            maxSsmlBytes: 4500,
           });
 
       console.log(`Split into ${chunks.length} legacy chunks`);
