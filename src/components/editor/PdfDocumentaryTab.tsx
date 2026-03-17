@@ -163,6 +163,8 @@ export default function PdfDocumentaryTab({
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(["hook"]));
   const [sections, setSections] = useState<NarrativeSection[]>(() => parseScriptIntoSections(script || ""));
   const [sectionHistory, setSectionHistory] = useState<Record<string, SectionHistoryEntry[]>>({});
+  const [sectionTranslations, setSectionTranslations] = useState<Record<string, string>>({});
+  const [translatingSections, setTranslatingSections] = useState<Set<string>>(new Set());
   const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
@@ -207,6 +209,15 @@ export default function PdfDocumentaryTab({
       sectionsInitRef.current = reassembled;
       onScriptChange(reassembled);
       return next;
+    });
+    // Invalidate translation when content changes
+    setSectionTranslations((prev) => {
+      if (prev[key]) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return prev;
     });
   }, [onScriptChange]);
 
@@ -288,7 +299,54 @@ export default function PdfDocumentaryTab({
     }
   }, [sections, scriptLanguage, narrativeStyleId, extractedText, handleSectionContentChange, pushSectionHistory]);
 
-  // Combined: extract PDF text then immediately run analysis
+  // Translate a section to French
+  const handleTranslateSection = useCallback(async (sectionKey: string) => {
+    const section = sections.find((s) => s.key === sectionKey);
+    if (!section || !section.content.trim()) return;
+
+    setTranslatingSections((prev) => new Set(prev).add(sectionKey));
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-section`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            sectionKey,
+            sectionLabel: section.label,
+            content: section.content,
+            sourceLanguage: scriptLanguage,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error || `Erreur ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.translated) {
+        setSectionTranslations((prev) => ({ ...prev, [sectionKey]: data.translated }));
+        toast.success(`Section "${section.label}" traduite en français`);
+      }
+    } catch (e: any) {
+      console.error("Translation error:", e);
+      toast.error(e?.message || "Erreur de traduction");
+    } finally {
+      setTranslatingSections((prev) => {
+        const next = new Set(prev);
+        next.delete(sectionKey);
+        return next;
+      });
+    }
+  }, [sections, scriptLanguage]);
+
+
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
     setParsing(true);
     onExtractedTextChange(null);
@@ -933,6 +991,11 @@ export default function PdfDocumentaryTab({
                     regenerating={regeneratingSection === section.key}
                     history={sectionHistory[section.key] || []}
                     onRestore={handleRestoreSection}
+                    translation={sectionTranslations[section.key] || null}
+                    translating={translatingSections.has(section.key)}
+                    onTranslate={handleTranslateSection}
+                    showTranslation={!!sectionTranslations[section.key]}
+                    scriptLanguage={scriptLanguage}
                   />
                 ))}
               </div>
