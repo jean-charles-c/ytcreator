@@ -191,6 +191,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     setTimeout(() => {
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
+      audio.onloadedmetadata = () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          setPlayerState((prev) => prev ? { ...prev, realDuration: audio.duration } : prev);
+        }
+      };
       audio.ontimeupdate = () => {
         if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
       };
