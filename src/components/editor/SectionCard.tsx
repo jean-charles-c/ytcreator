@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -101,16 +102,35 @@ function resolveKey(headerText: string): string {
   return "act2"; // fallback
 }
 
+/** Reassemble sections back into a single script string */
+export function reassembleSections(sections: NarrativeSection[]): string {
+  return sections
+    .filter((s) => s.content.trim())
+    .map((s) => s.content.trim())
+    .join("\n\n");
+}
+
 interface SectionCardProps {
   section: NarrativeSection;
   index: number;
   isOpen: boolean;
   onToggle: () => void;
+  onContentChange?: (key: string, content: string) => void;
 }
 
-export default function SectionCard({ section, index, isOpen, onToggle }: SectionCardProps) {
+export default function SectionCard({ section, index, isOpen, onToggle, onContentChange }: SectionCardProps) {
   const wordCount = section.content ? section.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = section.content?.length || 0;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el && isOpen) {
+      el.style.height = "auto";
+      el.style.height = Math.max(120, el.scrollHeight) + "px";
+    }
+  }, [section.content, isOpen]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -132,15 +152,14 @@ export default function SectionCard({ section, index, isOpen, onToggle }: Sectio
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="rounded-b-lg border border-t-0 border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
-          {section.content ? (
-            <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">
-              {section.content}
-            </pre>
-          ) : (
-            <p className="text-sm text-muted-foreground/50 italic">
-              Aucun contenu pour cette section.
-            </p>
-          )}
+          <textarea
+            ref={textareaRef}
+            value={section.content}
+            onChange={(e) => onContentChange?.(section.key, e.target.value)}
+            placeholder="Saisissez le contenu de cette section…"
+            className="w-full min-h-[120px] bg-transparent text-sm text-foreground leading-relaxed resize-y font-body border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/40"
+            aria-label={`Édition section ${section.label}`}
+          />
         </div>
       </CollapsibleContent>
     </Collapsible>

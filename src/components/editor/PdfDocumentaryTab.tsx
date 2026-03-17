@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
-import SectionCard, { parseScriptIntoSections, NARRATIVE_SECTIONS } from "./SectionCard";
+import SectionCard, { parseScriptIntoSections, reassembleSections, type NarrativeSection } from "./SectionCard";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -160,6 +160,8 @@ export default function PdfDocumentaryTab({
   const [findingTension, setFindingTension] = useState(false);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(["hook"]));
+  const [sections, setSections] = useState<NarrativeSection[]>(() => parseScriptIntoSections(script || ""));
+  const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -173,6 +175,26 @@ export default function PdfDocumentaryTab({
       onCurrentVersionIdChange(1);
     }
   }, [script, generatingScript, scriptVersions.length]);
+
+  // Re-parse sections when script changes externally (generation, version restore)
+  useEffect(() => {
+    const scriptStr = script || "";
+    if (scriptStr !== sectionsInitRef.current) {
+      sectionsInitRef.current = scriptStr;
+      setSections(parseScriptIntoSections(scriptStr));
+    }
+  }, [script]);
+
+  // Handle section content edit — reassemble and propagate immediately
+  const handleSectionContentChange = useCallback((key: string, content: string) => {
+    setSections((prev) => {
+      const next = prev.map((s) => s.key === key ? { ...s, content } : s);
+      const reassembled = reassembleSections(next);
+      sectionsInitRef.current = reassembled;
+      onScriptChange(reassembled);
+      return next;
+    });
+  }, [onScriptChange]);
 
   // Combined: extract PDF text then immediately run analysis
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
@@ -800,7 +822,7 @@ export default function PdfDocumentaryTab({
               )}
               {/* SectionCards — modular narrative view */}
               <div className="space-y-2">
-                {parseScriptIntoSections(script!).map((section, idx) => (
+                {sections.map((section, idx) => (
                   <SectionCard
                     key={section.key}
                     section={section}
@@ -814,6 +836,7 @@ export default function PdfDocumentaryTab({
                         return next;
                       });
                     }}
+                    onContentChange={handleSectionContentChange}
                   />
                 ))}
               </div>
