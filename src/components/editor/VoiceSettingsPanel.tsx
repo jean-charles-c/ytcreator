@@ -42,13 +42,18 @@ const VOICE_TYPES = [
   { value: "Standard", label: "Standard", desc: "Basique — gratuit" },
   { value: "Wavenet", label: "WaveNet", desc: "Naturelle — haute qualité" },
   { value: "Neural2", label: "Neural2", desc: "Très naturelle — premium" },
+  { value: "Studio", label: "Studio", desc: "Voix studio — très réaliste" },
+  { value: "Chirp3-HD", label: "Chirp3 HD", desc: "Dernière génération — expressif" },
+  { value: "Chirp-HD", label: "Chirp HD", desc: "Haute définition" },
+  { value: "Polyglot", label: "Polyglot", desc: "Multilingue" },
 ];
 
 const NEURAL2_LANGS = new Set(["fr-FR", "en-US", "en-GB", "de-DE", "it-IT", "pt-BR", "ja-JP", "es-US"]);
 
 export function getVoiceName(lang: string, gender: string, voiceType: string): string {
+  // This is only a fallback — the real voice selection should come from the API list
   const VOICE_LETTER_MAP: Record<string, Record<string, string>> = {
-    "fr-FR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "fr-FR": { FEMALE: "F", MALE: "G", NEUTRAL: "F" },
     "en-US": { FEMALE: "C", MALE: "D", NEUTRAL: "C" },
     "en-GB": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
     "es-ES": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
@@ -62,8 +67,19 @@ export function getVoiceName(lang: string, gender: string, voiceType: string): s
   return `${lang}-${voiceType}-${letter}`;
 }
 
-export function getAvailableVoiceTypes(lang: string) {
-  return VOICE_TYPES.filter(t => t.value !== "Neural2" || NEURAL2_LANGS.has(lang));
+export function getAvailableVoiceTypes(lang: string, availableVoices?: VoiceInfo[]) {
+  // If we have live voice data, only show types that actually exist for this language
+  if (availableVoices && availableVoices.length > 0) {
+    const typesInData = new Set(availableVoices.map((v) => v.type));
+    return VOICE_TYPES.filter((t) => typesInData.has(t.value));
+  }
+  // Fallback: show standard types, filter Neural2 by known langs
+  return VOICE_TYPES.filter(t => {
+    if (t.value === "Neural2") return NEURAL2_LANGS.has(lang);
+    // Hide newer types without data
+    if (["Studio", "Chirp3-HD", "Chirp-HD", "Polyglot"].includes(t.value)) return false;
+    return true;
+  });
 }
 
 interface VoiceInfo {
@@ -395,7 +411,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         <Select value={settings.voiceType} onValueChange={(v) => update({ voiceType: v, voiceName: "" })}>
           <SelectTrigger id="vo-type" className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {getAvailableVoiceTypes(settings.languageCode).map((t) => (
+            {getAvailableVoiceTypes(settings.languageCode, availableVoices).map((t) => (
               <SelectItem key={t.value} value={t.value}>
                 <span className="flex items-center gap-2">
                   {t.label}
@@ -425,11 +441,11 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
             {voicesForDropdown.map((v) => (
               <SelectItem key={v.name} value={v.name}>
                 <span className="flex items-center gap-2">
-                  <span className="font-mono text-xs">{v.letter}</span>
+                  <span className="font-mono text-xs font-medium">{v.letter}</span>
                   <span className="text-[10px] text-muted-foreground">
                     {GENDER_LABELS[v.gender] || v.gender}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60">
+                  <span className="text-[10px] text-muted-foreground/60 truncate max-w-[140px]">
                     {v.name}
                   </span>
                 </span>

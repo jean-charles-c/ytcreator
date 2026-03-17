@@ -61,10 +61,12 @@ serve(async (req) => {
     const voices: VoiceInfo[] = rawVoices
       .filter((v) => v.languageCodes.includes(languageCode))
       .map((v) => {
-        // Voice name format: fr-FR-Wavenet-A
+        // Voice name format: fr-FR-Wavenet-A or fr-FR-Chirp3-HD-Achernar
+        // Extract: lang prefix (2 parts), then type (middle), then letter (last)
         const parts = v.name.split("-");
-        const letter = parts[parts.length - 1]; // A, B, C...
-        const typeRaw = parts[parts.length - 2]; // Standard, Wavenet, Neural2, Studio
+        const letter = parts[parts.length - 1]; // A, B, Achernar, etc.
+        // Type is everything between lang prefix (first 2 parts) and letter (last part)
+        const typeRaw = parts.slice(2, parts.length - 1).join("-"); // "Standard", "Wavenet", "Chirp3-HD"
         return {
           name: v.name,
           gender: v.ssmlGender,
