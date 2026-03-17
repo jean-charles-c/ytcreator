@@ -266,6 +266,19 @@ export default function PdfDocumentaryTab({
       if (data.content) {
         handleSectionContentChange(sectionKey, data.content);
         toast.success(`Section "${currentSection.label}" régénérée`);
+
+        // Apply transition fixes from NarrativeEngine coherence check
+        if (data.transitionFixes && Array.isArray(data.transitionFixes) && data.transitionFixes.length > 0) {
+          for (const fix of data.transitionFixes) {
+            // Save history before applying coherence fix
+            const targetSection = sections.find((s) => s.key === fix.key);
+            if (targetSection && targetSection.content.trim()) {
+              pushSectionHistory(fix.key, targetSection.content, "Avant ajustement cohérence");
+            }
+            handleSectionContentChange(fix.key, fix.fixedContent);
+          }
+          toast.info(`${data.transitionFixes.length} transition(s) ajustée(s) pour la cohérence`, { duration: 4000 });
+        }
       }
     } catch (e: any) {
       console.error("Section regeneration error:", e);
