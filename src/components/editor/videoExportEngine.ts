@@ -44,7 +44,7 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
   });
 
   const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
-  let loadTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
+  let loadTimeoutId: number | null = null;
 
   try {
     onProgress({ phase: "loading", percent: 5, message: "Téléchargement du moteur vidéo…" });
