@@ -887,6 +887,8 @@ export default function PdfDocumentaryTab({
                       });
                     }}
                     onContentChange={handleSectionContentChange}
+                    onRegenerate={handleRegenerateSection}
+                    regenerating={regeneratingSection === section.key}
                   />
                 ))}
               </div>
