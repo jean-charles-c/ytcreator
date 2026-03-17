@@ -1,19 +1,41 @@
+import JSZip from "jszip";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 
+const escapeXml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
 /**
- * Generate an FCP XML (Final Cut Pro 7 compatible) representation of the timeline.
- * Returns an XML string.
+ * Fetch a file as ArrayBuffer, returns null on failure.
  */
-export function exportTimelineToXml(timeline: Timeline, fps: ExportFps = 24): string {
+async function fetchMedia(url: string): Promise<ArrayBuffer | null> {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    return await resp.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+function getImageExtension(url: string): string {
+  if (url.includes(".png")) return "png";
+  if (url.includes(".webp")) return "webp";
+  return "jpg";
+}
+
+/**
+ * Generate FCP XML with local relative paths to bundled media.
+ */
+function generateXml(
+  timeline: Timeline,
+  fps: ExportFps,
+  imageFileNames: Map<number, string>,
+  audioFileName: string
+): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
-
-  const frameDuration = `1/${fps}s`;
   const totalFrames = Math.ceil(totalDuration * fps);
-
-  const escapeXml = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
   const clipItems = segments.map((seg, i) => {
     const startFrame = Math.round(seg.startTime * fps);
@@ -21,6 +43,7 @@ export function exportTimelineToXml(timeline: Timeline, fps: ExportFps = 24): st
     const name = `Shot ${seg.shotOrder} — ${escapeXml(seg.sceneTitle)}`;
     const description = escapeXml(seg.description);
     const sentence = escapeXml(seg.sentence || seg.sentenceFr || "");
+    const localPath = imageFileNames.get(i) ?? "";
 
     return `
       <clipitem id="clip-${i + 1}">
@@ -33,7 +56,7 @@ export function exportTimelineToXml(timeline: Timeline, fps: ExportFps = 24): st
         <out>${endFrame - startFrame}</out>
         <file id="file-${i + 1}">
           <name>${name}</name>
-          <pathurl>${seg.imageUrl ? escapeXml(seg.imageUrl) : ""}</pathurl>
+          <pathurl>${escapeXml(localPath)}</pathurl>
           <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
           <duration>${endFrame - startFrame}</duration>
           <media><video><duration>${endFrame - startFrame}</duration></video></media>
@@ -46,10 +69,9 @@ export function exportTimelineToXml(timeline: Timeline, fps: ExportFps = 24): st
       </clipitem>`;
   }).join("\n");
 
-  const audioStartFrame = 0;
   const audioEndFrame = Math.round((audioTrack.durationEstimate || totalDuration) * fps);
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xmeml>
 <xmeml version="5">
   <project>
@@ -79,13 +101,13 @@ ${clipItems}
                 <name>${escapeXml(audioTrack.fileName)}</name>
                 <duration>${audioEndFrame}</duration>
                 <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                <start>${audioStartFrame}</start>
+                <start>0</start>
                 <end>${audioEndFrame}</end>
                 <in>0</in>
                 <out>${audioEndFrame}</out>
                 <file id="audio-file-1">
                   <name>${escapeXml(audioTrack.fileName)}</name>
-                  <pathurl>${escapeXml(audioTrack.audioUrl)}</pathurl>
+                  <pathurl>${escapeXml(audioFileName)}</pathurl>
                   <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
                   <duration>${audioEndFrame}</duration>
                   <media><audio><channelcount>2</channelcount></audio></media>
@@ -98,13 +120,76 @@ ${clipItems}
     </children>
   </project>
 </xmeml>`;
+}
 
-  return xml;
+export interface XmlExportProgress {
+  phase: "images" | "audio" | "packaging" | "done" | "error";
+  percent: number;
+  message: string;
 }
 
 /**
- * Convert XML string to a Blob for download or upload.
+ * Export timeline as a ZIP containing the FCP XML + all media files.
+ * Returns a Blob of the ZIP.
  */
-export function xmlToBlob(xml: string): Blob {
-  return new Blob([xml], { type: "application/xml" });
+export async function exportTimelineToXmlZip(
+  timeline: Timeline,
+  fps: ExportFps = 24,
+  onProgress?: (p: XmlExportProgress) => void
+): Promise<Blob> {
+  const zip = new JSZip();
+  const mediaFolder = zip.folder("media")!;
+  const segments = timeline.videoTrack.segments;
+
+  const imageFileNames = new Map<number, string>();
+
+  // ── Download images ──
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    onProgress?.({
+      phase: "images",
+      percent: Math.round((i / segments.length) * 60),
+      message: `Téléchargement image ${i + 1}/${segments.length}…`,
+    });
+
+    if (seg.imageUrl) {
+      const ext = getImageExtension(seg.imageUrl);
+      const fileName = `shot_${String(i + 1).padStart(3, "0")}.${ext}`;
+      const data = await fetchMedia(seg.imageUrl);
+      if (data) {
+        mediaFolder.file(fileName, data);
+        imageFileNames.set(i, `media/${fileName}`);
+      }
+    }
+  }
+
+  // ── Download audio ──
+  onProgress?.({ phase: "audio", percent: 65, message: "Téléchargement audio…" });
+  const audioExt = timeline.audioTrack.fileName.split(".").pop() || "mp3";
+  const audioFileName = `narration.${audioExt}`;
+  const audioData = await fetchMedia(timeline.audioTrack.audioUrl);
+  if (audioData) {
+    mediaFolder.file(audioFileName, audioData);
+  }
+
+  // ── Generate XML with relative paths ──
+  onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
+  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`);
+  zip.file("timeline.xml", xml);
+
+  // ── Generate ZIP ──
+  onProgress?.({ phase: "packaging", percent: 85, message: "Compression du package…" });
+  const blob = await zip.generateAsync(
+    { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+    (metadata) => {
+      onProgress?.({
+        phase: "packaging",
+        percent: 85 + Math.round(metadata.percent * 0.14),
+        message: `Compression… ${Math.round(metadata.percent)}%`,
+      });
+    }
+  );
+
+  onProgress?.({ phase: "done", percent: 100, message: "Package XML prêt !" });
+  return blob;
 }
