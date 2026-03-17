@@ -210,6 +210,15 @@ export default function PdfDocumentaryTab({
       onScriptChange(reassembled);
       return next;
     });
+    // Invalidate translation when content changes
+    setSectionTranslations((prev) => {
+      if (prev[key]) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return prev;
+    });
   }, [onScriptChange]);
 
   // Restore a section from history
