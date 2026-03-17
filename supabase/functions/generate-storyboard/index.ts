@@ -359,14 +359,86 @@ serve(async (req) => {
     const shotRows: any[] = [];
     for (const scene of scenes) {
       const sceneData = storyboardBySceneId.get(scene.id);
-      const sceneShots = Array.isArray(sceneData?.shots) && sceneData.shots.length > 0
+      let sceneShots = Array.isArray(sceneData?.shots) && sceneData.shots.length > 0
         ? sceneData.shots
         : buildFallbackShots(scene);
+
+      const sceneText = (scene.source_text || "").trim();
+      const sceneSentences = splitSentences(sceneText);
+
+      // ── TEXT COVERAGE ENFORCEMENT ──
+      // If only 1 shot: source_sentence = full scene text
+      if (sceneShots.length === 1) {
+        sceneShots[0] = { ...sceneShots[0], source_sentence: sceneText };
+      } else {
+        // Multi-shot: ensure every sentence from the scene is covered
+        // Normalize for comparison
+        const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+        const coveredText = sceneShots.map((sh: any) => normalize(sh.source_sentence || "")).join(" ");
+        
+        // Find sentences not covered by any shot's source_sentence
+        const missingSentences: string[] = [];
+        for (const sentence of sceneSentences) {
+          const norm = normalize(sentence);
+          if (norm.length < 3) continue; // skip trivial fragments
+          if (!coveredText.includes(norm)) {
+            missingSentences.push(sentence);
+          }
+        }
+
+        if (missingSentences.length > 0) {
+          console.log(`Scene ${scene.id}: ${missingSentences.length} uncovered sentence(s), adding extra shots`);
+          // Append missing sentences as additional shots
+          for (const missing of missingSentences) {
+            const idx = sceneShots.length;
+            const shotType = CAMERA_TYPES[idx % CAMERA_TYPES.length];
+            sceneShots.push({
+              shot_type: shotType,
+              description: fallbackDescription(missing),
+              source_sentence: missing,
+              prompt_export: fallbackPrompt(missing, scene.visual_intention, shotType),
+              guardrails: "historically accurate clothing, architecture, and materials",
+            });
+          }
+        }
+
+        // Final safety: if concatenated shot sentences don't cover all the scene text,
+        // redistribute scene text across shots by sentence
+        const allShotText = sceneShots.map((sh: any) => normalize(sh.source_sentence || "")).join(" ");
+        const sceneNorm = normalize(sceneText);
+        
+        // Check if significant portions are missing (>10% of text)
+        if (sceneNorm.length > 0) {
+          let coveredChars = 0;
+          for (const sh of sceneShots) {
+            const shotNorm = normalize(sh.source_sentence || "");
+            if (sceneNorm.includes(shotNorm)) coveredChars += shotNorm.length;
+          }
+          const coverage = coveredChars / sceneNorm.length;
+          
+          if (coverage < 0.8) {
+            console.log(`Scene ${scene.id}: coverage only ${Math.round(coverage * 100)}%, rebuilding from sentences`);
+            // Rebuild shots from sentences, preserving AI prompts where possible
+            sceneShots = sceneSentences.map((sentence, idx) => {
+              const existingShot = idx < sceneShots.length ? sceneShots[idx] : null;
+              const shotType = existingShot?.shot_type || CAMERA_TYPES[idx % CAMERA_TYPES.length];
+              return {
+                shot_type: shotType,
+                description: existingShot?.description || fallbackDescription(sentence),
+                source_sentence: sentence,
+                source_sentence_fr: existingShot?.source_sentence_fr || null,
+                prompt_export: existingShot?.prompt_export || fallbackPrompt(sentence, scene.visual_intention, shotType),
+                guardrails: existingShot?.guardrails || "historically accurate clothing, architecture, and materials",
+              };
+            });
+          }
+        }
+      }
 
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
         const fbType = CAMERA_TYPES[j % CAMERA_TYPES.length];
-        const fbSentence = splitSentences(scene.source_text || "")[j] || scene.source_text;
+        const fbSentence = sceneSentences[j] || sceneText;
         shotRows.push({
           scene_id: scene.id,
           project_id,
