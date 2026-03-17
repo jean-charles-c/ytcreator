@@ -62,24 +62,46 @@ function generateXml(
     const description = escapeXml(seg.description);
     const sentence = escapeXml(seg.sentence || seg.sentenceFr || "");
     const localPath = imageFileNames.get(i) ?? "";
-
+    const masterClipId = `masterclip-img-${globalIndex}`;
+    const fileId = `file-img-${globalIndex}`;
     const fileDuration = dur;
 
     return `
       <clipitem id="clip-${globalIndex}">
+        <masterclipid>${masterClipId}</masterclipid>
         <name>${name}</name>
+        <enabled>TRUE</enabled>
         <duration>${dur}</duration>
         <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
         <start>${startFrame}</start>
         <end>${endFrame}</end>
         <in>0</in>
         <out>${dur}</out>
-        <file id="file-img-${globalIndex}">
+        <stillframe>TRUE</stillframe>
+        <stillframeoffset>0</stillframeoffset>
+        <anamorphic>FALSE</anamorphic>
+        <pixelaspectratio>square</pixelaspectratio>
+        <sourcetrack>
+          <mediatype>video</mediatype>
+        </sourcetrack>
+        <file id="${fileId}">
           <name>shot_${paddedIndex}</name>
           <pathurl>${escapeXml(localPath)}</pathurl>
           <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
           <duration>${fileDuration}</duration>
-          <media><video><duration>${fileDuration}</duration></video></media>
+          <media>
+            <video>
+              <duration>${fileDuration}</duration>
+              <stillframe>TRUE</stillframe>
+              <samplecharacteristics>
+                <width>1920</width>
+                <height>1080</height>
+                <pixelaspectratio>square</pixelaspectratio>
+                <fielddominance>none</fielddominance>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+              </samplecharacteristics>
+            </video>
+          </media>
         </file>
         <comments>
           <mastercomment1>${sentence}</mastercomment1>
