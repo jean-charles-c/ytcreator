@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
+import SectionCard, { parseScriptIntoSections, NARRATIVE_SECTIONS } from "./SectionCard";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -158,6 +159,7 @@ export default function PdfDocumentaryTab({
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(["hook"]));
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -796,10 +798,26 @@ export default function PdfDocumentaryTab({
                   })()}
                 </div>
               )}
-              <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
-                <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
-                <div ref={scriptEndRef} />
+              {/* SectionCards — modular narrative view */}
+              <div className="space-y-2">
+                {parseScriptIntoSections(script!).map((section, idx) => (
+                  <SectionCard
+                    key={section.key}
+                    section={section}
+                    index={idx}
+                    isOpen={openSections.has(section.key)}
+                    onToggle={() => {
+                      setOpenSections((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(section.key)) next.delete(section.key);
+                        else next.add(section.key);
+                        return next;
+                      });
+                    }}
+                  />
+                ))}
               </div>
+              <div ref={scriptEndRef} />
             </div>
           </CollapsibleContent>
         </Collapsible>
