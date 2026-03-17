@@ -411,7 +411,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         <Select value={settings.voiceType} onValueChange={(v) => update({ voiceType: v, voiceName: "" })}>
           <SelectTrigger id="vo-type" className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {getAvailableVoiceTypes(settings.languageCode).map((t) => (
+            {getAvailableVoiceTypes(settings.languageCode, availableVoices).map((t) => (
               <SelectItem key={t.value} value={t.value}>
                 <span className="flex items-center gap-2">
                   {t.label}
