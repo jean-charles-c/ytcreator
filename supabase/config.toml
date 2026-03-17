@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.translate-section]
 verify_jwt = false
+
+[functions.analyze-script]
+verify_jwt = false
