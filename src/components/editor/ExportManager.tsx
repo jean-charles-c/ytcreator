@@ -31,7 +31,7 @@ const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
 ];
 
 export default function ExportManager({ timeline }: ExportManagerProps) {
-  const [fps, setFps] = useState<ExportFps>(25);
+  const [fps, setFps] = useState<ExportFps>(24);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [exportBlob, setExportBlob] = useState<Blob | null>(null);
   const [exportDate, setExportDate] = useState<string | null>(null);
