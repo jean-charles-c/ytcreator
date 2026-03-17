@@ -1645,66 +1645,99 @@ export default function Editor() {
                     <p className="text-sm text-muted-foreground">Génération des prompts visuels en cours...</p>
                   </div>
                 )}
-                <div className="space-y-8">
+                {(() => {
+                  const sceneIds = scenes.map((s) => s.id);
+                  const allOpen = openSceneIds.length === sceneIds.length && sceneIds.every((id) => openSceneIds.includes(id));
+                  return (
+                    <div className="mb-4 flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOpenSceneIds(allOpen ? [] : sceneIds)}
+                      >
+                        {allOpen ? "Tout fermer" : "Tout ouvrir"}
+                      </Button>
+                    </div>
+                  );
+                })()}
+                <div className="space-y-2">
                   {(() => {
                     let globalShotIndex = 1;
-                    return scenes.map((scene, i) => {
+                    return scenes.map((scene) => {
                       const sceneShots = getShotsForScene(scene.id);
                       const isRegenerating = regeneratingSceneId === scene.id;
                       const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
                       const startIndex = globalShotIndex;
                       globalShotIndex += sceneShots.length;
+                      const isOpen = openSceneIds.includes(scene.id);
                       return (
-                        <div key={scene.id} className="animate-fade-in" style={{ animationDelay: `${i * 120}ms` }}>
-                          <div className="flex items-start sm:items-center flex-wrap gap-2 mb-4">
-                            <span className="text-xs font-display font-medium text-primary">SCÈNE {scene.scene_order}</span>
+                        <div key={scene.id} className="rounded border border-border bg-card overflow-hidden">
+                          <button
+                            onClick={() =>
+                              setOpenSceneIds((prev) =>
+                                prev.includes(scene.id)
+                                  ? prev.filter((id) => id !== scene.id)
+                                  : [...prev, scene.id]
+                              )
+                            }
+                            className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                          >
+                            <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
+                            <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
                             <span className="text-xs text-muted-foreground">—</span>
-                            <span className="text-sm font-display text-foreground">{scene.title}</span>
+                            <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
+                            <span className="ml-auto shrink-0 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                              {sceneShots.length} SHOT{sceneShots.length > 1 ? "S" : ""}
+                            </span>
                             {scene.validated && (
-                              <span className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
                                 <CheckCircle2 className="h-2.5 w-2.5" /> Validée
                               </span>
                             )}
-                            <div className="sm:ml-auto flex items-center gap-1">
-                              <button
-                                onClick={() => handleGenerateSceneImages(scene.id)}
-                                disabled={generatingSceneImages === scene.id}
-                                className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                                title="Générer les visuels de cette scène"
-                              >
-                                {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
-                                <span>Visuels</span>
-                              </button>
-                              <button
-                                onClick={() => runStoryboard(scene.id)}
-                                disabled={isRegenerating}
-                                className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                                title="Régénérer les shots de cette scène"
-                              >
-                                {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                                <span>Régénérer</span>
-                              </button>
-                            </div>
-                          </div>
-                          <div className="rounded border border-border bg-card p-4 mb-4">
-                            <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
-                            {(scene as any).source_text_fr && (
-                              <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
-                            )}
-                          </div>
+                          </button>
+                          {isOpen && (
+                            <div className="px-4 pb-4 pt-2 border-t border-border space-y-4 animate-fade-in">
+                              <div className="flex items-center flex-wrap gap-2 justify-end">
+                                <button
+                                  onClick={() => handleGenerateSceneImages(scene.id)}
+                                  disabled={generatingSceneImages === scene.id}
+                                  className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                  title="Générer les visuels de cette scène"
+                                >
+                                  {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                  <span>Visuels</span>
+                                </button>
+                                <button
+                                  onClick={() => runStoryboard(scene.id)}
+                                  disabled={isRegenerating}
+                                  className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                  title="Régénérer les shots de cette scène"
+                                >
+                                  {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                  <span>Régénérer</span>
+                                </button>
+                              </div>
+                              <div className="rounded border border-border bg-background p-4">
+                                <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                                {(scene as any).source_text_fr && (
+                                  <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                                )}
+                              </div>
 
-                          {isRegenerating || isPendingGeneration ? (
-                            <div className="flex items-center justify-center py-8 gap-2">
-                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                              <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
-                            </div>
-                          ) : sceneShots.length === 0 && !generatingStoryboard ? (
-                            <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
-                          ) : (
-                            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                              {sceneShots.map((shot, shotIdx) => (
-                                <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} />
-                              ))}
+                              {isRegenerating || isPendingGeneration ? (
+                                <div className="flex items-center justify-center py-8 gap-2">
+                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                  <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
+                                </div>
+                              ) : sceneShots.length === 0 && !generatingStoryboard ? (
+                                <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
+                              ) : (
+                                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                                  {sceneShots.map((shot, shotIdx) => (
+                                    <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
