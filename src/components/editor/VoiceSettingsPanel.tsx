@@ -244,6 +244,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
       voiceType,
       voiceName: p.voice_name || "",
       style: tone,
+      narrationProfile: "standard",
       speakingRate: p.speaking_rate,
       pitch: 0,
       volumeGainDb: p.volume_gain_db ?? 0,
