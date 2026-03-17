@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.regenerate-section]
 verify_jwt = false
+
+[functions.translate-section]
+verify_jwt = false

@@ -982,6 +982,11 @@ export default function PdfDocumentaryTab({
                     regenerating={regeneratingSection === section.key}
                     history={sectionHistory[section.key] || []}
                     onRestore={handleRestoreSection}
+                    translation={sectionTranslations[section.key] || null}
+                    translating={translatingSections.has(section.key)}
+                    onTranslate={handleTranslateSection}
+                    showTranslation={!!sectionTranslations[section.key]}
+                    scriptLanguage={scriptLanguage}
                   />
                 ))}
               </div>
