@@ -1805,7 +1805,7 @@ export default function Editor() {
                               ) : (
                                 <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                                   {sceneShots.map((shot, shotIdx) => (
-                                    <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} />
+                                    <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} isLastInScene={shotIdx === sceneShots.length - 1} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} onMergeWithNext={handleShotMergeWithNext} />
                                   ))}
                                 </div>
                               )}
