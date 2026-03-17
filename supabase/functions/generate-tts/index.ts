@@ -50,7 +50,7 @@ async function callGoogleTTS(
   const input = useSsml ? { ssml: text } : { text };
   const body: Record<string, unknown> = { input, voice, audioConfig };
   if (enableTimePointing) {
-    body.enableTimePointing = ["SSML_MARK"];
+    body.enable_time_pointing = ["SSML_MARK"];
   }
 
   const response = await fetch(
