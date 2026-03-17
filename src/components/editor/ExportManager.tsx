@@ -125,7 +125,8 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
       const url = URL.createObjectURL(data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${entry.type}`;
+      const ext = entry.type === "xml" ? "zip" : entry.type;
+      a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
