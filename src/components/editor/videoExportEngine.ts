@@ -1,4 +1,5 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
+import ffmpegWorkerURL from "@ffmpeg/ffmpeg/dist/esm/worker.js?url";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
 
@@ -17,6 +18,7 @@ export interface ExportProgress {
 }
 
 const DEFAULT_OPTIONS: ExportOptions = { fps: 24, width: 1920, height: 1080 };
+const LOAD_TIMEOUT_MS = 20000;
 
 let ffmpegInstance: FFmpeg | null = null;
 let abortFlag = false;
@@ -42,6 +44,7 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
   });
 
   const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+  let loadTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
 
   try {
     onProgress({ phase: "loading", percent: 5, message: "Téléchargement du moteur vidéo…" });
@@ -49,10 +52,28 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
     onProgress({ phase: "loading", percent: 15, message: "Téléchargement du WASM…" });
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
     onProgress({ phase: "loading", percent: 25, message: "Initialisation du moteur…" });
-    await ffmpeg.load({ coreURL, wasmURL });
+
+    const loadPromise = ffmpeg.load({
+      coreURL,
+      wasmURL,
+      classWorkerURL: ffmpegWorkerURL,
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      loadTimeoutId = window.setTimeout(() => {
+        reject(new Error("Le chargement du moteur vidéo a expiré."));
+      }, LOAD_TIMEOUT_MS);
+    });
+
+    await Promise.race([loadPromise, timeoutPromise]);
   } catch (err) {
+    ffmpeg.terminate();
     console.error("FFmpeg load failed:", err);
-    throw new Error("Impossible de charger le moteur vidéo. Vérifiez votre connexion et réessayez.");
+    throw new Error("Impossible de charger le moteur vidéo. Le worker FFmpeg n’a pas pu s’initialiser.");
+  } finally {
+    if (loadTimeoutId !== null) {
+      window.clearTimeout(loadTimeoutId);
+    }
   }
 
   ffmpegInstance = ffmpeg;
