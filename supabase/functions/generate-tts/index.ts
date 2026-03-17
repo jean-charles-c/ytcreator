@@ -879,38 +879,19 @@ serve(async (req) => {
 
       console.log(`Legacy mode: isSsml=${isSsml}, totalLen=${ssmlText.length}`);
 
-      const chunks: string[] = [];
-      if (ssmlText.length <= MAX_CHARS) {
-        chunks.push(ssmlText);
-      } else {
-        if (isSsml) {
-          const inner = ssmlText.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
-          const parts = inner.split(/(<break[^/]*\/>)/);
-          let current = "<speak>";
-          for (const part of parts) {
-            if ((current + part + "</speak>").length > MAX_CHARS && current !== "<speak>") {
-              chunks.push(current + "</speak>");
-              current = "<speak>" + part;
-            } else {
-              current += part;
-            }
-          }
-          if (current !== "<speak>") chunks.push(current + "</speak>");
-        } else {
-          // Non-SSML: wrap each chunk in <speak> for Neural2 compatibility
-          const sentences = ssmlText.split(/(?<=[.!?])\s+/);
-          let current = "";
-          for (const sentence of sentences) {
-            if ((current + " " + sentence).length > (MAX_CHARS - 20) && current.length > 0) {
-              chunks.push(`<speak>${current.trim()}</speak>`);
-              current = sentence;
-            } else {
-              current = current ? current + " " + sentence : sentence;
-            }
-          }
-          if (current.trim()) chunks.push(`<speak>${current.trim()}</speak>`);
-        }
-      }
+      const chunks = ssmlText.length <= MAX_CHARS
+        ? [ssmlText]
+        : chunkTextForLegacySsml(text, {
+            paraPauseMs: pauseBetweenParagraphs,
+            sentPauseMs: pauseAfterSentences,
+            startBoostPct: sentenceStartBoost,
+            endSlowPct: sentenceEndSlow,
+            commaPauseMs: pauseAfterComma,
+            dynamicPauseEnabled,
+            dynamicPauseVariation,
+            emphasisBoost: mod.emphasisBoost,
+            maxSsmlChars: MAX_CHARS,
+          });
 
       console.log(`Split into ${chunks.length} legacy chunks`);
 
@@ -918,23 +899,23 @@ serve(async (req) => {
         const chunk = chunks[ci];
         const chunkIsSsml = chunk.startsWith("<speak>");
         console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
-        
-        // Validate SSML: ensure well-formed before sending
-        if (chunkIsSsml) {
-          // Quick validation: check matching speak tags
-          if (!chunk.endsWith("</speak>")) {
-            console.error(`Chunk ${ci + 1} missing closing </speak>, fixing...`);
-            const fixed = chunk + "</speak>";
-            const result = await callGoogleTTS(fixed, GOOGLE_TTS_API_KEY, voice, audioConfig, true);
-            const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+
+        try {
+          const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
+          const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+          audioBuffers.push(raw);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (chunkIsSsml && message.includes("Invalid SSML")) {
+            console.warn(`Legacy chunk ${ci + 1} invalid SSML, retrying as plain text fallback`);
+            const fallbackText = ssmlToPlainText(chunk);
+            const fallbackResult = await callGoogleTTS(fallbackText, GOOGLE_TTS_API_KEY, voice, audioConfig, false);
+            const raw = Uint8Array.from(atob(fallbackResult.audioContent), (c) => c.charCodeAt(0));
             audioBuffers.push(raw);
             continue;
           }
+          throw error;
         }
-        
-        const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
-        const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-        audioBuffers.push(raw);
       }
     }
 
