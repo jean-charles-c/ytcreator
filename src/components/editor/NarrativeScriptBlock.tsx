@@ -179,6 +179,18 @@ export default function NarrativeScriptBlock({
                   >
                     <RotateCcw className="h-3 w-3" /> Régénérer
                   </Button>
+                  {onAnalyzeScript && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onAnalyzeScript}
+                      disabled={analyzingScript || generatingScript}
+                      className="h-8 text-xs"
+                    >
+                      {analyzingScript ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      {analyzingScript ? "Analyse…" : "Analyser la structure"}
+                    </Button>
+                  )}
                 </div>
               )}
 
