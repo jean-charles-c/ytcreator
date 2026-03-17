@@ -428,7 +428,7 @@ function textToSsml(
   dynamicPauseVariation = 0,
   emphasisBoost = 0
 ): string {
-  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0 && commaPauseMs <= 0) return rawText;
+  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0 && commaPauseMs <= 0) return `<speak>${escapeXml(rawText)}</speak>`;
 
   const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
 
