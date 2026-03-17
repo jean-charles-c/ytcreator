@@ -435,6 +435,17 @@ serve(async (req) => {
         }
       }
 
+      // ── SORT SHOTS BY READING ORDER ──
+      // Sort shots so their source_sentence appears in the same order as in the scene text
+      const sceneTextLower = sceneText.toLowerCase();
+      sceneShots.sort((a: any, b: any) => {
+        const sentA = (a.source_sentence || "").trim().toLowerCase();
+        const sentB = (b.source_sentence || "").trim().toLowerCase();
+        const posA = sentA ? sceneTextLower.indexOf(sentA) : 9999;
+        const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
+        return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
+      });
+
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
         const fbType = CAMERA_TYPES[j % CAMERA_TYPES.length];
