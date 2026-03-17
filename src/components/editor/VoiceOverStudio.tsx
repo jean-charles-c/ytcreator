@@ -348,7 +348,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   <div className="flex items-center justify-between">
                     <h3 className="font-display text-xs font-semibold text-foreground">Lecteur</h3>
                     <span className="text-[10px] text-muted-foreground font-mono">
-                      {formatDuration(playerState.durationEstimate)}
+                      {formatDuration(playerState.realDuration ?? playerState.durationEstimate)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
