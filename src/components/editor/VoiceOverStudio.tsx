@@ -368,10 +368,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handlePlayPause}
-                      className="flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                      className="flex items-center justify-center h-10 w-10 sm:h-7 sm:w-7 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
                       aria-label={isPlaying ? "Pause" : "Lecture"}
                     >
-                      {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 ml-0.5" />}
+                      {isPlaying ? <Pause className="h-4 w-4 sm:h-3 sm:w-3" /> : <Play className="h-4 w-4 sm:h-3 sm:w-3 ml-0.5" />}
                     </button>
                     <div className="flex-1">
                       <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
