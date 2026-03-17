@@ -51,8 +51,9 @@ const VOICE_TYPES = [
 const NEURAL2_LANGS = new Set(["fr-FR", "en-US", "en-GB", "de-DE", "it-IT", "pt-BR", "ja-JP", "es-US"]);
 
 export function getVoiceName(lang: string, gender: string, voiceType: string): string {
+  // This is only a fallback — the real voice selection should come from the API list
   const VOICE_LETTER_MAP: Record<string, Record<string, string>> = {
-    "fr-FR": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
+    "fr-FR": { FEMALE: "F", MALE: "G", NEUTRAL: "F" },
     "en-US": { FEMALE: "C", MALE: "D", NEUTRAL: "C" },
     "en-GB": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
     "es-ES": { FEMALE: "A", MALE: "B", NEUTRAL: "A" },
