@@ -18,6 +18,7 @@ export interface ExportProgress {
 
 const DEFAULT_OPTIONS: ExportOptions = { fps: 24, width: 1920, height: 1080 };
 
+
 let ffmpegInstance: FFmpeg | null = null;
 let abortFlag = false;
 
