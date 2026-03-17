@@ -117,17 +117,22 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
 
   const handleDownload = useCallback(async (entry: ExportEntry) => {
     try {
-      const response = await fetch(entry.publicUrl);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      // Use Supabase storage download to get the blob directly
+      const { data, error } = await supabase.storage
+        .from("video-exports")
+        .download(entry.storagePath);
+      if (error || !data) throw error;
+      const url = URL.createObjectURL(data);
       const a = document.createElement("a");
       a.href = url;
       a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${entry.type}`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-    } catch {
-      // Fallback: open in new tab
-      window.open(entry.publicUrl, "_blank");
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.error("Erreur lors du téléchargement.");
     }
   }, []);
 
