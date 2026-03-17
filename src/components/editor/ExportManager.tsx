@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   XCircle,
   StopCircle,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -24,6 +25,14 @@ interface ExportManagerProps {
   timeline: Timeline;
 }
 
+interface ExportEntry {
+  id: string;
+  blob: Blob;
+  date: string;
+  fps: ExportFps;
+  sizeMb: string;
+}
+
 const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
   { value: 24, label: "24 fps (cinéma)" },
   { value: 25, label: "25 fps (PAL)" },
@@ -33,8 +42,7 @@ const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
 export default function ExportManager({ timeline }: ExportManagerProps) {
   const [fps, setFps] = useState<ExportFps>(24);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
-  const [exportBlob, setExportBlob] = useState<Blob | null>(null);
-  const [exportDate, setExportDate] = useState<string | null>(null);
+  const [exports, setExports] = useState<ExportEntry[]>([]);
   const abortRef = useRef(false);
 
   const isExporting = progress !== null && progress.phase !== "done" && progress.phase !== "error";
@@ -48,14 +56,19 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
 
   const handleExport = useCallback(async () => {
     abortRef.current = false;
-    setExportBlob(null);
-    setExportDate(null);
 
     try {
       const blob = await exportTimelineToMp4(timeline, setProgress, { fps });
       if (abortRef.current) return;
-      setExportBlob(blob);
-      setExportDate(new Date().toLocaleString("fr-FR"));
+
+      const entry: ExportEntry = {
+        id: crypto.randomUUID(),
+        blob,
+        date: new Date().toLocaleString("fr-FR"),
+        fps,
+        sizeMb: (blob.size / (1024 * 1024)).toFixed(1),
+      };
+      setExports((prev) => [entry, ...prev]);
       toast.success("Export MP4 terminé !");
     } catch (err: any) {
       if (abortRef.current) return;
@@ -65,26 +78,19 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
     }
   }, [timeline, fps]);
 
-  const handleDownload = useCallback(() => {
-    if (!exportBlob) return;
-    const url = URL.createObjectURL(exportBlob);
+  const handleDownload = useCallback((entry: ExportEntry) => {
+    const url = URL.createObjectURL(entry.blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `export_${Date.now()}.mp4`;
+    a.download = `export_${entry.fps}fps_${Date.now()}.mp4`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [exportBlob]);
-
-  const handleDelete = useCallback(() => {
-    setExportBlob(null);
-    setExportDate(null);
-    setProgress(null);
-    toast.info("Export supprimé.");
   }, []);
 
-  const handleReExport = useCallback(() => {
-    handleExport();
-  }, [handleExport]);
+  const handleDelete = useCallback((id: string) => {
+    setExports((prev) => prev.filter((e) => e.id !== id));
+    toast.info("Export supprimé.");
+  }, []);
 
   const progressPct = progress?.percent ?? 0;
 
@@ -94,11 +100,14 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30">
         <Film className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">Export Manager</span>
+        {exports.length > 0 && (
+          <span className="text-[10px] text-muted-foreground ml-auto">{exports.length} export{exports.length > 1 ? "s" : ""}</span>
+        )}
       </div>
 
       <div className="p-4 space-y-4">
         {/* FPS selector */}
-        {!isExporting && !exportBlob && (
+        {!isExporting && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2 sm:gap-3">
               <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -123,7 +132,7 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
         )}
 
         {/* Export specs */}
-        {!isExporting && !exportBlob && (
+        {!isExporting && (
           <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
             <span className="px-2 py-0.5 rounded bg-muted">MP4 / H.264</span>
             <span className="px-2 py-0.5 rounded bg-muted">1920×1080</span>
@@ -135,7 +144,7 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
         )}
 
         {/* Export button */}
-        {!isExporting && !exportBlob && (
+        {!isExporting && (
           <Button onClick={handleExport} className="w-full gap-2 min-h-[48px] sm:min-h-[36px]">
             <Film className="h-4 w-4" />
             Exporter en MP4
@@ -171,38 +180,53 @@ export default function ExportManager({ timeline }: ExportManagerProps) {
               <p className="text-sm font-medium text-destructive">Erreur d'export</p>
               <p className="text-xs text-muted-foreground mt-0.5">{progress.message}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleReExport} className="gap-1.5 shrink-0">
+            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 shrink-0">
               <RefreshCw className="h-3 w-3" />
               Réessayer
             </Button>
           </div>
         )}
 
-        {/* Export ready */}
-        {exportBlob && progress?.phase === "done" && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/5 p-3">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">Export prêt</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {(exportBlob.size / (1024 * 1024)).toFixed(1)} MB • {fps} fps • {exportDate}
-                </p>
+        {/* ── Export history ── */}
+        {exports.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-border">
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              Exports générés
+            </h4>
+            {exports.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/5 p-3"
+              >
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">Export prêt</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {entry.sizeMb} MB • {entry.fps} fps • {entry.date}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    onClick={() => handleDownload(entry)}
+                    className="gap-1.5 h-8"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Télécharger</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(entry.id)}
+                    className="gap-1.5 text-destructive hover:text-destructive h-8"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button onClick={handleDownload} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
-                <Download className="h-4 w-4" />
-                Télécharger
-              </Button>
-              <Button variant="outline" onClick={handleReExport} className="gap-1.5 min-h-[48px] sm:min-h-[36px]" title="Relancer l'export">
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="outline" onClick={handleDelete} className="gap-1.5 text-destructive hover:text-destructive min-h-[48px] sm:min-h-[36px]" title="Supprimer l'export">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            ))}
           </div>
         )}
       </div>
