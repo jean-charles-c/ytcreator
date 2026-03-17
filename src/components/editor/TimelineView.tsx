@@ -210,6 +210,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const listRef = useRef<HTMLDivElement | null>(null);
   const miniTimelineRef = useRef<HTMLDivElement | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1); // 1x to 30x
+  const [segmentsOpen, setSegmentsOpen] = useState(false);
 
   const activeIndex = useMemo(() => findSegmentAt(segments, currentTime), [segments, currentTime]);
   const activeSegment = segments[activeIndex] ?? null;
