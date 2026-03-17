@@ -258,6 +258,9 @@ function buildMarkedSsml(
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
+    // Emphasis heuristics
+    processed = applyEmphasis(processed);
+
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
     }
@@ -265,16 +268,20 @@ function buildMarkedSsml(
       processed = injectCommaPauses(processed, commaPauseMs);
     }
 
-    return `${mark}${processed}`;
+    return { ssml: `${mark}${processed}`, text: shot.text.trim() };
   });
 
-  // Join with sentence pauses (with optional jitter)
+  // Join with sentence pauses (with continuity awareness)
   const joined = parts.map((p, i) => {
     if (i < parts.length - 1 && pauseAfterSentences > 0) {
-      const pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
-      return `${p}<break time="${pause}ms"/>`;
+      let pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
+      // Reduce pause for prosodic continuity
+      if (shouldReducePause(p.text, parts[i + 1].text)) {
+        pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+      }
+      return `${p.ssml}<break time="${pause}ms"/>`;
     }
-    return p;
+    return p.ssml;
   }).join(" ");
 
   const endMark = `<mark name="__end"/>`;
