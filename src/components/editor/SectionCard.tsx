@@ -106,6 +106,12 @@ export function reassembleSections(sections: NarrativeSection[]): string {
     .join("\n\n");
 }
 
+export interface SectionHistoryEntry {
+  content: string;
+  timestamp: string;
+  label?: string;
+}
+
 interface SectionCardProps {
   section: NarrativeSection;
   index: number;
@@ -114,6 +120,8 @@ interface SectionCardProps {
   onContentChange?: (key: string, content: string) => void;
   onRegenerate?: (key: string) => Promise<void>;
   regenerating?: boolean;
+  history?: SectionHistoryEntry[];
+  onRestore?: (key: string, content: string) => void;
 }
 
 export default function SectionCard({ section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating }: SectionCardProps) {
