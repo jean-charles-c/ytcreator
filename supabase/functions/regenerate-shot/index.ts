@@ -59,7 +59,17 @@ serve(async (req) => {
       .single();
     if (!scene) throw new Error("Scene not found");
 
-    const sourceText = shot.source_sentence || shot.description;
+    // Count shots in this scene to determine if this is the only one
+    const { count: sceneShotCount } = await supabase
+      .from("shots")
+      .select("id", { count: "exact", head: true })
+      .eq("scene_id", shot.scene_id);
+
+    // If this is the only shot in the scene, use the full scene text
+    const isOnlyShot = (sceneShotCount ?? 0) <= 1;
+    const sourceText = isOnlyShot
+      ? (scene.source_text || shot.source_sentence || shot.description)
+      : (shot.source_sentence || shot.description);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
