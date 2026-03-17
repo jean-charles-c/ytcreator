@@ -110,10 +110,15 @@ interface VoiceProfile {
   voice_name: string;
   style: string;
   speaking_rate: number;
+  pitch: number;
   volume_gain_db: number;
   effects_profile_id: string;
   pause_between_paragraphs: number;
   pause_after_sentences: number;
+  pause_after_comma: number;
+  narration_profile: string;
+  dynamic_pause_enabled: boolean;
+  dynamic_pause_variation: number;
   sentence_start_boost: number;
   sentence_end_slow: number;
 }
