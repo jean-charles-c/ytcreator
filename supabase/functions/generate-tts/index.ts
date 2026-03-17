@@ -420,7 +420,8 @@ function textToSsml(
   endSlowPct: number,
   commaPauseMs = 0,
   dynamicPauseEnabled = false,
-  dynamicPauseVariation = 0
+  dynamicPauseVariation = 0,
+  emphasisBoost = 0
 ): string {
   if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0 && commaPauseMs <= 0) return rawText;
 
@@ -430,7 +431,7 @@ function textToSsml(
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
     const processed = sentences.map((s) => {
-      let result = applyEmphasis(s);
+      let result = applyEmphasis(s, emphasisBoost);
       result = processSentenceProsody(result, startBoostPct, endSlowPct);
       if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
       return result;
