@@ -354,13 +354,14 @@ Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString(
 HOW TO HIT THE TARGET — CONCRETE STRATEGY:
 • You need approximately ${paragraphEstimate} paragraphs total following the 2-2-2-3-2-1-3-2-4-2 cycle.
 • That means approximately ${Math.round(paragraphEstimate / 10)} complete cycles of 10 paragraphs.
-• The Escalation phase (Phase 3) should contain at least ${Math.round(paragraphEstimate * 0.45)} paragraphs.
-• The Setup phase (Phase 2) should contain at least ${Math.round(paragraphEstimate * 0.2)} paragraphs.
+• Act 2 (Escalation) should contain at least ${Math.round(paragraphEstimate * 0.25)} paragraphs — it's the longest section.
+• Act 3 (Impact) should contain at least ${Math.round(paragraphEstimate * 0.20)} paragraphs.
+• Act 1 (Setup) should contain at least ${Math.round(paragraphEstimate * 0.15)} paragraphs.
 • Average ~${Math.round(charTarget / paragraphEstimate)} characters per paragraph.
 
 WHEN YOU THINK YOU'RE DONE — KEEP WRITING:
 • LLMs systematically underestimate text length. You are almost certainly too short.
-• After finishing your first draft mentally, ADD 30% more content to the Escalation phase.
+• After finishing your first draft mentally, ADD 30% more content to Act 2 (Escalation) and Act 3 (Impact).
 • Develop scenes cinematically: describe what the place looks like, what the people are doing, what objects are present.
 • For each discovery, add: who found it, when, where exactly, what it looked like, why it was surprising.
 • If a fact is interesting, explore its IMPLICATIONS in the next paragraph.
