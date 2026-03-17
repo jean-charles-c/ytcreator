@@ -143,7 +143,7 @@ ${clipItems}
           </video>
           <audio>
             <track>
-              <clipitem id="audio-clip-1">
+              <clipitem id="audio-clip-${exportUid}-1">
                 <name>${escapeXml(audioTrack.fileName)}</name>
                 <duration>${audioEndFrame}</duration>
                 <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
@@ -151,7 +151,7 @@ ${clipItems}
                 <end>${audioEndFrame}</end>
                 <in>0</in>
                 <out>${audioEndFrame}</out>
-                <file id="audio-file-1">
+                <file id="audio-file-${exportUid}-1">
                   <name>${escapeXml(audioTrack.fileName)}</name>
                   <pathurl>${escapeXml(audioFileName)}</pathurl>
                   <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
