@@ -476,6 +476,170 @@ function textToSsml(
   return `<speak>${paraBreakParts.join("\n")}</speak>`;
 }
 
+function unescapeXml(s: string): string {
+  return s
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
+}
+
+function ssmlToPlainText(ssml: string): string {
+  return unescapeXml(
+    ssml
+      .replace(/^<speak>/, "")
+      .replace(/<\/speak>$/, "")
+      .replace(/<break[^>]*\/>/g, " ")
+      .replace(/<mark[^>]*\/>/g, " ")
+      .replace(/<\/?(?:prosody|emphasis)[^>]*>/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+interface LegacyChunkOptions {
+  paraPauseMs: number;
+  sentPauseMs: number;
+  startBoostPct: number;
+  endSlowPct: number;
+  commaPauseMs: number;
+  dynamicPauseEnabled: boolean;
+  dynamicPauseVariation: number;
+  emphasisBoost: number;
+  maxSsmlBytes: number;
+}
+
+const ssmlByteLength = (value: string) => new TextEncoder().encode(value).length;
+
+function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): string[] {
+  const buildSsml = (input: string) => textToSsml(
+    input,
+    options.paraPauseMs,
+    options.sentPauseMs,
+    options.startBoostPct,
+    options.endSlowPct,
+    options.commaPauseMs,
+    options.dynamicPauseEnabled,
+    options.dynamicPauseVariation,
+    options.emphasisBoost
+  );
+
+  const fits = (input: string) => ssmlByteLength(buildSsml(input)) <= options.maxSsmlBytes;
+  const chunks: string[] = [];
+  let current = "";
+
+  const flush = () => {
+    const trimmed = current.trim();
+    if (!trimmed) return;
+    chunks.push(buildSsml(trimmed));
+    current = "";
+  };
+
+  const pushOversizedWordSafely = (word: string) => {
+    const maxSliceLength = Math.max(20, Math.floor(options.maxSsmlBytes / 4));
+    const safeSlices = word.match(new RegExp(`.{1,${maxSliceLength}}`, "g")) ?? [word];
+
+    for (let i = 0; i < safeSlices.length; i++) {
+      const slice = safeSlices[i];
+      if (fits(slice)) {
+        if (i === safeSlices.length - 1) {
+          current = slice;
+        } else {
+          chunks.push(buildSsml(slice));
+        }
+        continue;
+      }
+
+      const chars = [...slice];
+      let partial = "";
+      for (const char of chars) {
+        const candidate = partial + char;
+        if (!partial || fits(candidate)) {
+          partial = candidate;
+        } else {
+          chunks.push(buildSsml(partial));
+          partial = char;
+        }
+      }
+
+      if (partial) {
+        if (i === safeSlices.length - 1) {
+          current = partial;
+        } else {
+          chunks.push(buildSsml(partial));
+        }
+      }
+    }
+  };
+
+  const addUnit = (unit: string, separator: string) => {
+    const trimmedUnit = unit.trim();
+    if (!trimmedUnit) return;
+
+    const candidate = current ? `${current}${separator}${trimmedUnit}` : trimmedUnit;
+    if (fits(candidate)) {
+      current = candidate;
+      return;
+    }
+
+    flush();
+    if (fits(trimmedUnit)) {
+      current = trimmedUnit;
+      return;
+    }
+
+    const words = trimmedUnit.split(/\s+/).filter(Boolean);
+    let partial = "";
+
+    for (const word of words) {
+      const partialCandidate = partial ? `${partial} ${word}` : word;
+      if (fits(partialCandidate)) {
+        partial = partialCandidate;
+        continue;
+      }
+
+      if (partial) {
+        chunks.push(buildSsml(partial));
+        partial = "";
+      }
+
+      if (fits(word)) {
+        partial = word;
+      } else {
+        pushOversizedWordSafely(word);
+      }
+    }
+
+    current = partial.trim() || current;
+  };
+
+  const paragraphs = rawText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+
+  for (const paragraph of paragraphs) {
+    const paragraphCandidate = current ? `${current}\n\n${paragraph}` : paragraph;
+    if (fits(paragraphCandidate)) {
+      current = paragraphCandidate;
+      continue;
+    }
+
+    flush();
+    if (fits(paragraph)) {
+      current = paragraph;
+      continue;
+    }
+
+    const sentences = paragraph.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+    for (const sentence of sentences) {
+      addUnit(sentence, " ");
+    }
+    flush();
+  }
+
+  flush();
+  return chunks.length > 0 ? chunks : [buildSsml(rawText)];
+}
+
 /**
  * Split marked SSML into chunks of ~MAX_CHARS, keeping mark+sentence pairs together.
  * Returns array of {ssml, markIndices} where markIndices tracks which s_N marks are in each chunk.
@@ -755,38 +919,19 @@ serve(async (req) => {
 
       console.log(`Legacy mode: isSsml=${isSsml}, totalLen=${ssmlText.length}`);
 
-      const chunks: string[] = [];
-      if (ssmlText.length <= MAX_CHARS) {
-        chunks.push(ssmlText);
-      } else {
-        if (isSsml) {
-          const inner = ssmlText.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
-          const parts = inner.split(/(<break[^/]*\/>)/);
-          let current = "<speak>";
-          for (const part of parts) {
-            if ((current + part + "</speak>").length > MAX_CHARS && current !== "<speak>") {
-              chunks.push(current + "</speak>");
-              current = "<speak>" + part;
-            } else {
-              current += part;
-            }
-          }
-          if (current !== "<speak>") chunks.push(current + "</speak>");
-        } else {
-          // Non-SSML: wrap each chunk in <speak> for Neural2 compatibility
-          const sentences = ssmlText.split(/(?<=[.!?])\s+/);
-          let current = "";
-          for (const sentence of sentences) {
-            if ((current + " " + sentence).length > (MAX_CHARS - 20) && current.length > 0) {
-              chunks.push(`<speak>${current.trim()}</speak>`);
-              current = sentence;
-            } else {
-              current = current ? current + " " + sentence : sentence;
-            }
-          }
-          if (current.trim()) chunks.push(`<speak>${current.trim()}</speak>`);
-        }
-      }
+      const chunks = ssmlText.length <= MAX_CHARS
+        ? [ssmlText]
+        : chunkTextForLegacySsml(text, {
+            paraPauseMs: pauseBetweenParagraphs,
+            sentPauseMs: pauseAfterSentences,
+            startBoostPct: sentenceStartBoost,
+            endSlowPct: sentenceEndSlow,
+            commaPauseMs: pauseAfterComma,
+            dynamicPauseEnabled,
+            dynamicPauseVariation,
+            emphasisBoost: mod.emphasisBoost,
+            maxSsmlBytes: 4500,
+          });
 
       console.log(`Split into ${chunks.length} legacy chunks`);
 
@@ -794,23 +939,23 @@ serve(async (req) => {
         const chunk = chunks[ci];
         const chunkIsSsml = chunk.startsWith("<speak>");
         console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
-        
-        // Validate SSML: ensure well-formed before sending
-        if (chunkIsSsml) {
-          // Quick validation: check matching speak tags
-          if (!chunk.endsWith("</speak>")) {
-            console.error(`Chunk ${ci + 1} missing closing </speak>, fixing...`);
-            const fixed = chunk + "</speak>";
-            const result = await callGoogleTTS(fixed, GOOGLE_TTS_API_KEY, voice, audioConfig, true);
-            const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+
+        try {
+          const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
+          const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+          audioBuffers.push(raw);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (chunkIsSsml && message.includes("Invalid SSML")) {
+            console.warn(`Legacy chunk ${ci + 1} invalid SSML, retrying as plain text fallback`);
+            const fallbackText = ssmlToPlainText(chunk);
+            const fallbackResult = await callGoogleTTS(fallbackText, GOOGLE_TTS_API_KEY, voice, audioConfig, false);
+            const raw = Uint8Array.from(atob(fallbackResult.audioContent), (c) => c.charCodeAt(0));
             audioBuffers.push(raw);
             continue;
           }
+          throw error;
         }
-        
-        const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
-        const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-        audioBuffers.push(raw);
       }
     }
 
