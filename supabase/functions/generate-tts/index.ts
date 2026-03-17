@@ -659,7 +659,7 @@ serve(async (req) => {
       );
     }
 
-    const useMarkedMode = shotSentences && shotSentences.length > 0;
+    const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0;
     const MAX_CHARS = 4800;
 
     let audioBuffers: Uint8Array[] = [];
