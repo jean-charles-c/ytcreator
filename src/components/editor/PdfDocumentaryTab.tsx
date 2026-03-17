@@ -181,11 +181,24 @@ export default function PdfDocumentaryTab({
   }, [script, generatingScript, scriptVersions.length]);
 
   // Re-parse sections when script changes externally (generation, version restore)
+  // Apply content sanitization rules automatically
   useEffect(() => {
     const scriptStr = script || "";
     if (scriptStr !== sectionsInitRef.current) {
       sectionsInitRef.current = scriptStr;
-      setSections(parseScriptIntoSections(scriptStr));
+      const parsed = parseScriptIntoSections(scriptStr);
+      const { sections: sanitized, warnings } = sanitizeNarrativeSections(parsed);
+
+      // If sanitization changed content, propagate the cleaned version
+      const reassembled = reassembleSections(sanitized);
+      if (reassembled !== scriptStr && scriptStr.trim()) {
+        sectionsInitRef.current = reassembled;
+        onScriptChange(reassembled);
+        for (const w of warnings) {
+          toast.info(w, { duration: 3000 });
+        }
+      }
+      setSections(sanitized);
     }
   }, [script]);
 
