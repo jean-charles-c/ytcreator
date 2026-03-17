@@ -115,12 +115,20 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
     toast.info("Export XML annulé.");
   }, [projectId, stopTask]);
 
-  const handleDownload = useCallback((entry: ExportEntry) => {
-    const a = document.createElement("a");
-    a.href = entry.publicUrl;
-    a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${entry.type}`;
-    a.target = "_blank";
-    a.click();
+  const handleDownload = useCallback(async (entry: ExportEntry) => {
+    try {
+      const response = await fetch(entry.publicUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${entry.type}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      // Fallback: open in new tab
+      window.open(entry.publicUrl, "_blank");
+    }
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
