@@ -15,10 +15,12 @@ import {
   Plus,
   ZoomIn,
   ZoomOut,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
 import { updateTimelineSegments } from "./timelineAssembly";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 interface TimelineViewProps {
   timeline: Timeline;
@@ -208,6 +210,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const listRef = useRef<HTMLDivElement | null>(null);
   const miniTimelineRef = useRef<HTMLDivElement | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1); // 1x to 30x
+  const [segmentsOpen, setSegmentsOpen] = useState(false);
 
   const activeIndex = useMemo(() => findSegmentAt(segments, currentTime), [segments, currentTime]);
   const activeSegment = segments[activeIndex] ?? null;
@@ -493,34 +496,41 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
         </div>
       </div>
 
-      {/* ═══ Editable Segment list (flat, by shot) ═══ */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
-          <Film className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium text-foreground">Segments — Édition</span>
-          <span className="text-[10px] text-muted-foreground ml-auto">{segments.length} shots</span>
-        </div>
-        <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
-          <div className="px-1 py-1 space-y-0.5">
-            {segments.map((seg, globalIndex) => (
-              <div key={seg.id} data-seg-index={globalIndex}>
-                <EditableSegmentCard
-                  segment={seg}
-                  displayIndex={globalIndex + 1}
-                  index={globalIndex}
-                  total={segments.length}
-                  isActive={seg.id === activeSegment?.id}
-                  onSeek={() => seekTo(seg.startTime)}
-                  onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
-                  onMoveDown={() => handleMoveSegment(globalIndex, globalIndex + 1)}
-                  onDurationChange={(delta) => handleDurationChange(seg.id, delta)}
-                  onReplaceImage={() => triggerReplace(seg.id)}
-                />
+      {/* ═══ Editable Segment list (collapsible) ═══ */}
+      <Collapsible open={segmentsOpen} onOpenChange={setSegmentsOpen}>
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
+              <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${segmentsOpen ? "rotate-90" : ""}`} />
+              <Film className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-foreground">Segments — Édition</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">{segments.length} shots</span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
+              <div className="px-1 py-1 space-y-0.5">
+                {segments.map((seg, globalIndex) => (
+                  <div key={seg.id} data-seg-index={globalIndex}>
+                    <EditableSegmentCard
+                      segment={seg}
+                      displayIndex={globalIndex + 1}
+                      index={globalIndex}
+                      total={segments.length}
+                      isActive={seg.id === activeSegment?.id}
+                      onSeek={() => seekTo(seg.startTime)}
+                      onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
+                      onMoveDown={() => handleMoveSegment(globalIndex, globalIndex + 1)}
+                      onDurationChange={(delta) => handleDurationChange(seg.id, delta)}
+                      onReplaceImage={() => triggerReplace(seg.id)}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          </CollapsibleContent>
         </div>
-      </div>
+      </Collapsible>
     </div>
   );
 }
