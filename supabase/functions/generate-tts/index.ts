@@ -30,6 +30,7 @@ interface TTSRequest {
   projectId?: string;
   customFileName?: string;
   shotSentences?: { id: string; text: string }[];
+  syncMode?: "standard" | "shot_marked";
 }
 
 /**
@@ -579,6 +580,7 @@ serve(async (req) => {
       mode = "preview",
       projectId,
       shotSentences,
+      syncMode = "standard",
     } = body;
 
     // Apply narration profile modulation on top of user settings
@@ -657,7 +659,7 @@ serve(async (req) => {
       );
     }
 
-    const useMarkedMode = shotSentences && shotSentences.length > 0;
+    const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0;
     const MAX_CHARS = 4800;
 
     let audioBuffers: Uint8Array[] = [];
