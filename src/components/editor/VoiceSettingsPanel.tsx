@@ -22,10 +22,14 @@ export interface VoiceSettings {
   voiceName: string;
   style: string;
   speakingRate: number;
+  pitch: number;
   volumeGainDb: number;
   effectsProfileId: string;
   pauseBetweenParagraphs: number;
   pauseAfterSentences: number;
+  pauseAfterComma: number;
+  dynamicPauseEnabled: boolean;
+  dynamicPauseVariation: number;
   sentenceStartBoost: number;
   sentenceEndSlow: number;
 }
