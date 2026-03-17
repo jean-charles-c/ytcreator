@@ -566,21 +566,27 @@ serve(async (req) => {
       voiceGender = "FEMALE",
       voiceName,
       voiceType,
-      speakingRate = 1.0,
-      pitch = 0,
-      volumeGainDb = 0,
-      effectsProfileId,
-      pauseBetweenParagraphs = 0,
-      pauseAfterSentences = 0,
-      pauseAfterComma = 0,
-      dynamicPauseEnabled = false,
-      dynamicPauseVariation = 0,
-      sentenceStartBoost = 0,
-      sentenceEndSlow = 0,
+      narrationProfile = "standard",
       mode = "preview",
       projectId,
       shotSentences,
     } = body;
+
+    // Apply narration profile modulation on top of user settings
+    const mod = NARRATION_MODULATION[narrationProfile] ?? NARRATION_MODULATION.standard;
+    const speakingRate = (body.speakingRate ?? 1.0) + mod.rateOffset;
+    const pitch = body.pitch ?? 0;
+    const volumeGainDb = body.volumeGainDb ?? 0;
+    const effectsProfileId = body.effectsProfileId;
+    const pauseBetweenParagraphs = (body.pauseBetweenParagraphs ?? 0) + mod.pauseBetweenParagraphsAdd;
+    const pauseAfterSentences = (body.pauseAfterSentences ?? 0) + mod.pauseAfterSentencesAdd;
+    const pauseAfterComma = (body.pauseAfterComma ?? 0) + mod.pauseAfterCommaAdd;
+    const dynamicPauseEnabled = (body.dynamicPauseEnabled ?? false) || mod.dynamicPauseForce;
+    const dynamicPauseVariation = Math.max(body.dynamicPauseVariation ?? 0, mod.dynamicPauseVariationMin);
+    const sentenceStartBoost = (body.sentenceStartBoost ?? 0) + mod.sentenceStartBoostAdd;
+    const sentenceEndSlow = (body.sentenceEndSlow ?? 0) + mod.sentenceEndSlowAdd;
+
+    console.log(`NarrationProfile: ${narrationProfile}, effective pauses: sent=${pauseAfterSentences}, para=${pauseBetweenParagraphs}, comma=${pauseAfterComma}, dynamic=${dynamicPauseEnabled}/${dynamicPauseVariation}`);
 
     if (!text || text.trim().length === 0) {
       return new Response(
