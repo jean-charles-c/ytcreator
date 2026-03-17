@@ -688,6 +688,13 @@ export default function Editor() {
       const deletedShot = shots.find((s) => s.id === shotId);
       if (!deletedShot) return;
 
+      // Prevent deleting the last shot of a scene
+      const sceneShotCount = shots.filter((s) => s.scene_id === deletedShot.scene_id).length;
+      if (sceneShotCount <= 1) {
+        toast.warning("Impossible de supprimer le dernier plan d'une scène. Il doit rester au moins un plan par scène.");
+        return;
+      }
+
       const { error } = await supabase.from("shots").delete().eq("id", shotId);
       if (error) {
         console.error("Delete error:", error);
