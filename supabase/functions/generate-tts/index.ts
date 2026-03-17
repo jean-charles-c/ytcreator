@@ -50,11 +50,13 @@ async function callGoogleTTS(
   const input = useSsml ? { ssml: text } : { text };
   const body: Record<string, unknown> = { input, voice, audioConfig };
   if (enableTimePointing) {
-    body.enable_time_pointing = ["SSML_MARK"];
+    body.enableTimePointing = ["SSML_MARK"];
   }
 
+  // Use v1beta1 for enableTimePointing support (not available in v1)
+  const apiVersion = enableTimePointing ? "v1beta1" : "v1";
   const response = await fetch(
-    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+    `https://texttospeech.googleapis.com/${apiVersion}/text:synthesize?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
