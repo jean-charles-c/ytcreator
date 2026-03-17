@@ -161,6 +161,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         audioUrl: data.audioUrl,
         fileName: data.fileName,
         durationEstimate: data.durationEstimate,
+        realDuration: null,
       });
 
       // Refresh history
