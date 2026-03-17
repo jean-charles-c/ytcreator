@@ -580,6 +580,7 @@ serve(async (req) => {
       mode = "preview",
       projectId,
       shotSentences,
+      syncMode = "standard",
     } = body;
 
     // Apply narration profile modulation on top of user settings
