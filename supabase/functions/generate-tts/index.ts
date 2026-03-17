@@ -236,13 +236,13 @@ const EMPHASIS_OPENERS_FR = new Set([
  * - High-impact words get level="moderate".
  * - Skip words already inside SSML tags.
  */
-function applyEmphasis(sentence: string): string {
+function applyEmphasis(sentence: string, emphasisBoost = 0): string {
   // Don't process very short sentences
   const wordCount = sentence.split(/\s+/).filter(w => w.trim()).length;
   if (wordCount < 4) return sentence;
 
   let emphasisCount = 0;
-  const MAX_EMPHASIS = 2;
+  const MAX_EMPHASIS = 2 + emphasisBoost; // storytelling allows more
 
   // Split into tokens preserving whitespace and existing SSML tags
   const parts = sentence.split(/(<[^>]+>)/);
