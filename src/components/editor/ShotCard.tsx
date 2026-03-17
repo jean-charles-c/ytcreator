@@ -218,6 +218,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
               <Pencil className="h-3.5 w-3.5" />
             </button>
+            {onMergeWithNext && !isLastInScene && (
+              <button onClick={handleMerge} disabled={merging} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Fusionner avec le shot suivant">
+                {merging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Merge className="h-3.5 w-3.5" />}
+              </button>
+            )}
             <button onClick={() => setDeleteDialogOpen(true)} className="p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Supprimer ce shot">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
