@@ -684,14 +684,101 @@ export default function Editor() {
 
   const handleShotDelete = async (shotId: string) => {
     try {
+      // Find the shot to delete and its scene
+      const deletedShot = shots.find((s) => s.id === shotId);
+      if (!deletedShot) return;
+
       const { error } = await supabase.from("shots").delete().eq("id", shotId);
       if (error) {
         console.error("Delete error:", error);
         toast.error("Erreur de suppression");
         return;
       }
-      setShots((prev) => prev.filter((s) => s.id !== shotId));
-      toast.success("Shot supprimé");
+
+      // Get remaining shots for this scene
+      const remainingSceneShots = shots
+        .filter((s) => s.scene_id === deletedShot.scene_id && s.id !== shotId)
+        .sort((a, b) => a.shot_order - b.shot_order);
+
+      // Find the scene to get its full text
+      const scene = scenes.find((sc) => sc.id === deletedShot.scene_id);
+
+      if (scene && remainingSceneShots.length > 0) {
+        const sceneText = scene.source_text;
+        const sceneTextFr = scene.source_text_fr || null;
+
+        if (remainingSceneShots.length === 1) {
+          // Single remaining shot gets the full scene text
+          const solo = remainingSceneShots[0];
+          await supabase
+            .from("shots")
+            .update({ source_sentence: sceneText, source_sentence_fr: sceneTextFr })
+            .eq("id", solo.id);
+          setShots((prev) =>
+            prev
+              .filter((s) => s.id !== shotId)
+              .map((s) =>
+                s.id === solo.id
+                  ? { ...s, source_sentence: sceneText, source_sentence_fr: sceneTextFr }
+                  : s
+              )
+          );
+        } else {
+          // Multiple remaining shots: split scene sentences across them
+          const sentences = sceneText.match(/[^.!?]+[.!?]+/g) || [sceneText];
+          const sentencesFr = sceneTextFr
+            ? sceneTextFr.match(/[^.!?]+[.!?]+/g) || [sceneTextFr]
+            : null;
+
+          // Distribute sentences across shots
+          const updates: { id: string; source_sentence: string; source_sentence_fr: string | null }[] = [];
+          const perShot = Math.max(1, Math.ceil(sentences.length / remainingSceneShots.length));
+
+          for (let i = 0; i < remainingSceneShots.length; i++) {
+            const start = i * perShot;
+            const end = Math.min(start + perShot, sentences.length);
+            // Last shot gets everything remaining
+            const chunk =
+              i === remainingSceneShots.length - 1
+                ? sentences.slice(start).join("").trim()
+                : sentences.slice(start, end).join("").trim();
+            const chunkFr =
+              sentencesFr
+                ? i === remainingSceneShots.length - 1
+                  ? sentencesFr.slice(start).join("").trim()
+                  : sentencesFr.slice(start, end).join("").trim()
+                : null;
+            updates.push({
+              id: remainingSceneShots[i].id,
+              source_sentence: chunk || sceneText,
+              source_sentence_fr: chunkFr,
+            });
+          }
+
+          // Batch update
+          for (const u of updates) {
+            await supabase
+              .from("shots")
+              .update({ source_sentence: u.source_sentence, source_sentence_fr: u.source_sentence_fr })
+              .eq("id", u.id);
+          }
+
+          setShots((prev) => {
+            const filtered = prev.filter((s) => s.id !== shotId);
+            const updateMap = new Map(updates.map((u) => [u.id, u]));
+            return filtered.map((s) => {
+              const upd = updateMap.get(s.id);
+              return upd
+                ? { ...s, source_sentence: upd.source_sentence, source_sentence_fr: upd.source_sentence_fr }
+                : s;
+            });
+          });
+        }
+      } else {
+        setShots((prev) => prev.filter((s) => s.id !== shotId));
+      }
+
+      toast.success("Shot supprimé — phrases redistribuées");
     } catch (e) {
       console.error("Delete exception:", e);
       toast.error("Erreur de suppression");
