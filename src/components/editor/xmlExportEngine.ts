@@ -37,6 +37,9 @@ function generateXml(
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
 
+  // Handle frames: extra source frames before/after for transitions in NLEs
+  const HANDLE_FRAMES = Math.round(fps * 2); // 2 seconds of handles on each side
+
   // Build non-overlapping frame ranges ensuring each shot gets at least 1 frame
   const MIN_FRAMES = 1;
   const clipFrames: { start: number; end: number }[] = [];
@@ -65,7 +68,11 @@ function generateXml(
     const localPath = imageFileNames.get(i) ?? "";
     const masterClipId = `masterclip-${exportUid}-img-${globalIndex}`;
     const fileId = `file-${exportUid}-img-${globalIndex}`;
-    const fileDuration = dur;
+    // Source duration = visible duration + handles on both sides
+    const fileDuration = dur + HANDLE_FRAMES * 2;
+    // in/out point into the source: start after the pre-handle
+    const inPoint = HANDLE_FRAMES;
+    const outPoint = HANDLE_FRAMES + dur;
 
     return `
       <clipitem id="clip-${exportUid}-${globalIndex}">
