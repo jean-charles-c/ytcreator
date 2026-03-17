@@ -1,5 +1,6 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
+import ffmpegClassWorkerUrl from "./ffmpegClassWorker.ts?worker&url";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
 
 export type ExportFps = 24 | 25 | 30;
@@ -19,7 +20,6 @@ export interface ExportProgress {
 const DEFAULT_OPTIONS: ExportOptions = { fps: 24, width: 1920, height: 1080 };
 const LOAD_TIMEOUT_MS = 20000;
 const FFMPEG_CORE_BASE_URL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
-const FFMPEG_CLASS_WORKER_URL = "https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/worker.js";
 
 let ffmpegInstance: FFmpeg | null = null;
 let abortFlag = false;
@@ -56,7 +56,7 @@ async function getFFmpeg(onProgress: (p: ExportProgress) => void): Promise<FFmpe
     const loadPromise = ffmpeg.load({
       coreURL,
       wasmURL,
-      classWorkerURL: FFMPEG_CLASS_WORKER_URL,
+      classWorkerURL: ffmpegClassWorkerUrl,
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
