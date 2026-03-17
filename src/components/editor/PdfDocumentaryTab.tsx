@@ -179,27 +179,90 @@ export default function PdfDocumentaryTab({
     }
   }, [script, generatingScript, scriptVersions.length]);
 
-  // Re-parse sections when script changes externally (generation, version restore)
-  // Apply content sanitization rules automatically
+  // When script changes externally (generation, version restore), reset sections to empty
+  // Sections are now populated by AI analysis, not heuristic parsing
   useEffect(() => {
     const scriptStr = script || "";
     if (scriptStr !== sectionsInitRef.current) {
       sectionsInitRef.current = scriptStr;
-      const parsed = parseScriptIntoSections(scriptStr);
-      const { sections: sanitized, warnings } = sanitizeNarrativeSections(parsed);
+      // Don't auto-parse into sections — wait for AI analysis
+      // Only reset to empty sections if script changed significantly
+      if (!scriptStr.trim()) {
+        setSections(parseScriptIntoSections(""));
+      }
+    }
+  }, [script]);
 
-      // If sanitization changed content, propagate the cleaned version
-      const reassembled = reassembleSections(sanitized);
-      if (reassembled !== scriptStr && scriptStr.trim()) {
+  // AI-powered script analysis — replaces heuristic segmentation
+  const handleAnalyzeScript = useCallback(async (scriptText?: string) => {
+    const textToAnalyze = scriptText || script;
+    if (!textToAnalyze || textToAnalyze.trim().length < 100) return;
+
+    setAnalyzingScript(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-script`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            script: textToAnalyze,
+            language: scriptLanguage,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error || `Erreur ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.sections && Array.isArray(data.sections)) {
+        const SECTION_META: Record<string, { label: string; icon: string }> = {
+          hook: { label: "Hook", icon: "🎣" },
+          introduction: { label: "Introduction", icon: "📖" },
+          act1: { label: "Act 1 — Setup", icon: "🏗️" },
+          act2: { label: "Act 2 — Escalade", icon: "⚡" },
+          act3: { label: "Act 3 — Impact", icon: "🔥" },
+          climax: { label: "Révélation", icon: "💡" },
+          conclusion: { label: "Conclusion", icon: "🎬" },
+        };
+
+        const newSections: NarrativeSection[] = data.sections.map((s: { key: string; content: string }) => ({
+          key: s.key,
+          label: SECTION_META[s.key]?.label || s.key,
+          icon: SECTION_META[s.key]?.icon || "📄",
+          content: s.content || "",
+        }));
+
+        const { sections: sanitized, warnings } = sanitizeNarrativeSections(newSections);
+        setSections(sanitized);
+
+        // Rebuild script from AI sections to ensure consistency
+        const reassembled = reassembleSections(sanitized);
         sectionsInitRef.current = reassembled;
         onScriptChange(reassembled);
+
         for (const w of warnings) {
           toast.info(w, { duration: 3000 });
         }
+
+        setScriptOpen(true);
+        setOpenSections(new Set(["hook"]));
+        toast.success("Analyse narrative terminée — 7 sections identifiées");
       }
-      setSections(sanitized);
+    } catch (e: any) {
+      console.error("Script analysis error:", e);
+      toast.error(e?.message || "Erreur lors de l'analyse du script");
+    } finally {
+      setAnalyzingScript(false);
     }
-  }, [script]);
+  }, [script, scriptLanguage, onScriptChange]);
 
   // Save current content of a section to its history
   const pushSectionHistory = useCallback((key: string, content: string, label?: string) => {
