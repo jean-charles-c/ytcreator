@@ -31,7 +31,8 @@ function generateXml(
   timeline: Timeline,
   fps: ExportFps,
   imageFileNames: Map<number, string>,
-  audioFileName: string
+  audioFileName: string,
+  exportUid: string
 ): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
