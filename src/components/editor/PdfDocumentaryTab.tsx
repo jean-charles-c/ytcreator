@@ -495,6 +495,8 @@ export default function PdfDocumentaryTab({
           onCurrentVersionIdChange(1);
           return [{ id: 1, content: full }];
         });
+        // Auto-trigger AI analysis after generation
+        handleAnalyzeScript(full);
       }
     });
     return unsub;
