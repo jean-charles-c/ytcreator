@@ -21,6 +21,7 @@ export interface VoiceSettings {
   voiceType: string;
   voiceName: string;
   style: string;
+  narrationProfile: "standard" | "storytelling" | "educational";
   speakingRate: number;
   pitch: number;
   volumeGainDb: number;
@@ -33,6 +34,12 @@ export interface VoiceSettings {
   sentenceStartBoost: number;
   sentenceEndSlow: number;
 }
+
+export const NARRATION_PROFILES = [
+  { value: "standard" as const, label: "Standard", desc: "Équilibre neutre — polyvalent", icon: "⚖️" },
+  { value: "storytelling" as const, label: "Storytelling", desc: "Plus vivant — pauses dramatiques", icon: "🎭" },
+  { value: "educational" as const, label: "Éducatif", desc: "Articulé — segmentation claire", icon: "🎓" },
+];
 
 export const STYLE_PRESETS: Record<string, { pitch: number; rateOffset: number; label: string }> = {
   neutral:    { pitch: 0,    rateOffset: 0,    label: "Neutre" },
