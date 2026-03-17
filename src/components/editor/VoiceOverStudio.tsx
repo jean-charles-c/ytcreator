@@ -40,6 +40,7 @@ interface PlayerState {
   audioUrl: string;
   fileName: string;
   durationEstimate: number;
+  realDuration: number | null;
 }
 
 export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort }: VoiceOverStudioProps) {
