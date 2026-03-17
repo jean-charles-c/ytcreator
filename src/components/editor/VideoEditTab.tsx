@@ -321,9 +321,34 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
     setTimeline(assembled);
     saveTimelineToDb(assembled);
-    const syncMode = timepoints ? "sync précis" : "sync proportionnel";
+    const syncMode = timepoints ? "sync précis (marqueurs SSML)" : "sync proportionnel (par caractères)";
     toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s (${syncMode})`);
   }, [selectedAudioId, audioFiles, scenes, shots, saveTimelineToDb]);
+
+  // ── Auto-detect stale timeline and reassemble ──
+  useEffect(() => {
+    if (!timeline || !selectedAudioId || shots.length === 0) return;
+
+    // Check if the audio or shot count changed since the timeline was built
+    const tlSegmentIds = new Set(timeline.videoTrack.segments.map((s) => s.id));
+    const currentShotIds = new Set(shots.map((s) => s.id));
+    const audioChanged = timeline.audioTrack.audioId !== selectedAudioId;
+    const shotsChanged = tlSegmentIds.size !== currentShotIds.size ||
+      [...tlSegmentIds].some((id) => !currentShotIds.has(id));
+
+    if (audioChanged || shotsChanged) {
+      // Auto-reassemble
+      const audioFile = audioFiles.find((a) => a.id === selectedAudioId);
+      if (!audioFile) return;
+      const timepoints = (audioFile as any).shot_timepoints ?? null;
+      const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
+      setTimeline(assembled);
+      saveTimelineToDb(assembled);
+      const reason = audioChanged ? "nouvel audio détecté" : "shots modifiés";
+      const syncMode = timepoints ? "sync précis" : "sync proportionnel";
+      toast.info(`Timeline auto-réassemblée (${reason}) — ${syncMode}`);
+    }
+  }, [selectedAudioId, shots, audioFiles, scenes, timeline, saveTimelineToDb]);
 
   useEffect(() => {
     if (!projectId) {

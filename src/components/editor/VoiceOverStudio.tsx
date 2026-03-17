@@ -87,6 +87,25 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     toast.success("Narration collée");
   };
 
+  // Build sorted shotSentences for marked sync mode
+  const buildShotSentences = (): { id: string; text: string }[] | null => {
+    if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return null;
+    const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
+    const sorted = [...shots].sort((a, b) => {
+      const oa = sceneOrderMap.get(a.scene_id) ?? 0;
+      const ob = sceneOrderMap.get(b.scene_id) ?? 0;
+      if (oa !== ob) return oa - ob;
+      return a.shot_order - b.shot_order;
+    });
+    const sentences = sorted
+      .map((s) => ({
+        id: s.id,
+        text: (s.source_sentence || s.source_sentence_fr || s.description || "").trim(),
+      }))
+      .filter((s) => s.text.length > 0);
+    return sentences.length > 0 ? sentences : null;
+  };
+
   const handleGenerate = async () => {
     if (!voScript.trim()) {
       toast.error("Saisissez ou collez un script avant de générer.");
@@ -104,6 +123,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         toast.error("Vous devez être connecté.");
         return;
       }
+
+      const shotSentences = buildShotSentences();
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts`,
@@ -136,8 +157,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
-            // Shot sentences are NOT sent here: the VO textarea text is the source of truth.
-            // Shot-synced audio (with <mark> tags) is reserved for VideoEdit timeline assembly.
+            // Send shot sentences for precise <mark>-based sync when available
+            ...(shotSentences ? { shotSentences, syncMode: "shot_marked" } : {}),
           }),
         }
       );
