@@ -56,16 +56,17 @@ function generateXml(
   const clipItems = segments.map((seg, i) => {
     const { start: startFrame, end: endFrame } = clipFrames[i];
     const dur = endFrame - startFrame;
-    const name = `Shot ${seg.shotOrder} — ${escapeXml(seg.sceneTitle)}`;
+    const globalIndex = i + 1;
+    const paddedIndex = String(globalIndex).padStart(3, "0");
+    const name = `Shot_${paddedIndex} — ${escapeXml(seg.sceneTitle)}`;
     const description = escapeXml(seg.description);
     const sentence = escapeXml(seg.sentence || seg.sentenceFr || "");
     const localPath = imageFileNames.get(i) ?? "";
 
-    // For still images, file duration = very long so FCP treats it as a freeze frame
     const fileDuration = dur;
 
     return `
-      <clipitem id="clip-${i + 1}">
+      <clipitem id="clip-${globalIndex}">
         <name>${name}</name>
         <duration>${dur}</duration>
         <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
@@ -73,8 +74,8 @@ function generateXml(
         <end>${endFrame}</end>
         <in>0</in>
         <out>${dur}</out>
-        <file id="file-${i + 1}">
-          <name>${name}</name>
+        <file id="file-img-${globalIndex}">
+          <name>shot_${paddedIndex}</name>
           <pathurl>${escapeXml(localPath)}</pathurl>
           <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
           <duration>${fileDuration}</duration>
