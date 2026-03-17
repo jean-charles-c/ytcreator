@@ -963,6 +963,8 @@ export default function PdfDocumentaryTab({
         showVersionPreviewId={showVersionPreviewId}
         onRegenerate={() => runFullScriptGeneration(true)}
         canRegenerate={!generatingScript}
+        analyzingScript={analyzingScript}
+        onAnalyzeScript={() => handleAnalyzeScript()}
         toolbarSlot={
           <div className="flex items-center gap-2 flex-wrap">
             <select
