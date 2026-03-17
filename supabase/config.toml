@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.generate-shot-image]
 verify_jwt = false
+
+[functions.regenerate-section]
+verify_jwt = false
