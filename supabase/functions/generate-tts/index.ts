@@ -303,14 +303,15 @@ function buildMarkedSsml(
   sentenceEndSlow: number,
   commaPauseMs = 0,
   dynamicPauseEnabled = false,
-  dynamicPauseVariation = 0
+  dynamicPauseVariation = 0,
+  emphasisBoost = 0
 ): string {
   const parts = shotSentences.map((shot, idx) => {
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
     // Emphasis heuristics
-    processed = applyEmphasis(processed);
+    processed = applyEmphasis(processed, emphasisBoost);
 
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
