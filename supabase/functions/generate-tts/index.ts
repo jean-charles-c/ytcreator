@@ -155,6 +155,92 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// ── Emphasis heuristics ──
+
+/** High-impact French narrative words that benefit from moderate emphasis. */
+const EMPHASIS_WORDS_FR = new Set([
+  "jamais", "toujours", "absolument", "exactement", "fondamental", "essentiel",
+  "crucial", "unique", "extraordinaire", "remarquable", "incroyable", "terrible",
+  "immense", "énorme", "radical", "profond", "décisif", "capital", "vital",
+  "dramatique", "tragique", "historique", "révolutionnaire", "spectaculaire",
+  "impossible", "inévitable", "irréversible", "définitivement", "totalement",
+  "véritablement", "réellement", "surtout", "notamment", "paradoxalement",
+  "never", "always", "absolutely", "crucial", "essential", "extraordinary",
+  "remarkable", "incredible", "dramatic", "revolutionary", "impossible",
+  "fundamental", "critical", "devastating", "unprecedented", "ultimately",
+]);
+
+/** Dramatic opener words — get a lighter emphasis. */
+const EMPHASIS_OPENERS_FR = new Set([
+  "mais", "or", "pourtant", "cependant", "néanmoins", "toutefois",
+  "soudain", "alors", "ainsi", "désormais", "enfin", "finalement",
+  "but", "however", "yet", "suddenly", "finally", "therefore",
+]);
+
+/**
+ * Apply heuristic emphasis to a sentence (already XML-escaped).
+ * Rules:
+ * - Max 2 emphasized words per sentence to avoid over-accentuation.
+ * - Opener words at position 0 get level="reduced" (subtle lift).
+ * - High-impact words get level="moderate".
+ * - Skip words already inside SSML tags.
+ */
+function applyEmphasis(sentence: string): string {
+  // Don't process very short sentences
+  const wordCount = sentence.split(/\s+/).filter(w => w.trim()).length;
+  if (wordCount < 4) return sentence;
+
+  let emphasisCount = 0;
+  const MAX_EMPHASIS = 2;
+
+  // Split into tokens preserving whitespace and existing SSML tags
+  const parts = sentence.split(/(<[^>]+>)/);
+  let insideTag = false;
+  let wordPosition = 0;
+
+  const result = parts.map((part) => {
+    // Track SSML tag depth
+    if (part.startsWith("<")) return part;
+
+    // Process text segments word by word
+    return part.replace(/\b([a-zA-ZÀ-ÿ''-]+)\b/g, (match, word) => {
+      if (emphasisCount >= MAX_EMPHASIS) return match;
+
+      const lower = word.toLowerCase().replace(/['']/g, "'");
+      const isFirst = wordPosition === 0;
+      wordPosition++;
+
+      if (isFirst && EMPHASIS_OPENERS_FR.has(lower)) {
+        emphasisCount++;
+        return `<emphasis level="reduced">${match}</emphasis>`;
+      }
+
+      if (EMPHASIS_WORDS_FR.has(lower)) {
+        emphasisCount++;
+        return `<emphasis level="moderate">${match}</emphasis>`;
+      }
+
+      return match;
+    });
+  });
+
+  return result.join("");
+}
+
+/**
+ * Prosodic continuity: soften breaks between closely linked sentences.
+ * When a sentence ends with a colon, semicolon, or dash followed by another sentence,
+ * reduce the inter-sentence pause to create smoother flow.
+ * Returns the processed array with continuity hints.
+ */
+function shouldReducePause(currentSentence: string, _nextSentence: string): boolean {
+  // Sentences ending with continuation markers should flow into the next
+  const trimmed = currentSentence.trim();
+  return /[:;–—]\s*$/.test(trimmed) || /[,]\s*$/.test(trimmed);
+}
+
+const CONTINUITY_PAUSE_RATIO = 0.4; // reduce pause to 40% of normal
+
 /**
  * Build SSML with <mark> tags between shot sentences for precise timepointing.
  * Returns SSML string with marks named "s_0", "s_1", etc.
@@ -172,6 +258,9 @@ function buildMarkedSsml(
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
+    // Emphasis heuristics
+    processed = applyEmphasis(processed);
+
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
     }
@@ -179,16 +268,20 @@ function buildMarkedSsml(
       processed = injectCommaPauses(processed, commaPauseMs);
     }
 
-    return `${mark}${processed}`;
+    return { ssml: `${mark}${processed}`, text: shot.text.trim() };
   });
 
-  // Join with sentence pauses (with optional jitter)
+  // Join with sentence pauses (with continuity awareness)
   const joined = parts.map((p, i) => {
     if (i < parts.length - 1 && pauseAfterSentences > 0) {
-      const pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
-      return `${p}<break time="${pause}ms"/>`;
+      let pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
+      // Reduce pause for prosodic continuity
+      if (shouldReducePause(p.text, parts[i + 1].text)) {
+        pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+      }
+      return `${p.ssml}<break time="${pause}ms"/>`;
     }
-    return p;
+    return p.ssml;
   }).join(" ");
 
   const endMark = `<mark name="__end"/>`;
@@ -285,14 +378,19 @@ function textToSsml(
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
     const processed = sentences.map((s) => {
-      let result = processSentenceProsody(s, startBoostPct, endSlowPct);
+      let result = applyEmphasis(s);
+      result = processSentenceProsody(result, startBoostPct, endSlowPct);
       if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
       return result;
     });
     if (sentPauseMs > 0) {
       return processed.map((s, i) => {
         if (i < processed.length - 1) {
-          const pause = jitterPause(sentPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+          let pause = jitterPause(sentPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+          // Prosodic continuity: reduce pause between linked sentences
+          if (shouldReducePause(sentences[i], sentences[i + 1] || "")) {
+            pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+          }
           return `${s}<break time="${pause}ms"/>`;
         }
         return s;
