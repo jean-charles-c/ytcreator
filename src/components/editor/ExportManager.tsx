@@ -294,7 +294,7 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">
-                    {entry.type === "xml" ? "XML (FCP)" : "MP4"} prêt
+                    {entry.type === "xml" ? "XML + Médias (ZIP)" : "MP4"} prêt
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {entry.sizeMb} MB • {entry.fps} fps • {entry.date}
