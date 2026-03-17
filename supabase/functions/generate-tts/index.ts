@@ -588,9 +588,11 @@ serve(async (req) => {
       .from("vo-audio")
       .getPublicUrl(filePath);
 
-    // Estimate duration
+    // Estimate duration: use cumulative offset from timepoints if available, else word count
     const wordCount = text.trim().split(/\s+/).length;
-    const durationEstimate = (wordCount / 150) * 60 / speakingRate;
+    const durationEstimate = allTimepoints.length > 0
+      ? cumulativeOffset
+      : (wordCount / 150) * 60 / speakingRate;
 
     // Save to history table (with timepoints if available)
     const { data: historyEntry, error: historyError } = await supabaseAdmin
