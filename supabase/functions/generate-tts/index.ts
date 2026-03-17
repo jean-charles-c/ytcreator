@@ -578,7 +578,7 @@ serve(async (req) => {
     const { error: uploadError } = await supabaseAdmin.storage
       .from("vo-audio")
       .upload(filePath, combined, {
-        contentType: "audio/mp4",
+        contentType: "audio/mpeg",
         upsert: false,
       });
 
