@@ -47,6 +47,10 @@ export interface NarrativeScriptBlockProps {
   onRegenerate: () => void;
   canRegenerate: boolean;
 
+  /* AI Analysis */
+  analyzingScript?: boolean;
+  onAnalyzeScript?: () => void;
+
   /* Toolbar extras (language, style, chars) */
   toolbarSlot?: React.ReactNode;
 }
