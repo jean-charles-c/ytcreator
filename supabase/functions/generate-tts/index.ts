@@ -578,7 +578,7 @@ serve(async (req) => {
       console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
     } else {
       // ── Legacy mode: no marks, plain text/SSML ──
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation);
       const isSsml = ssmlText.startsWith("<speak>");
 
       const chunks: string[] = [];
