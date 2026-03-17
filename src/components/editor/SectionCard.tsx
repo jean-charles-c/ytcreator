@@ -121,6 +121,16 @@ interface SectionCardProps {
 export default function SectionCard({ section, index, isOpen, onToggle, onContentChange }: SectionCardProps) {
   const wordCount = section.content ? section.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = section.content?.length || 0;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el && isOpen) {
+      el.style.height = "auto";
+      el.style.height = Math.max(120, el.scrollHeight) + "px";
+    }
+  }, [section.content, isOpen]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -143,6 +153,7 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
       <CollapsibleContent>
         <div className="rounded-b-lg border border-t-0 border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
           <textarea
+            ref={textareaRef}
             value={section.content}
             onChange={(e) => onContentChange?.(section.key, e.target.value)}
             placeholder="Saisissez le contenu de cette section…"
