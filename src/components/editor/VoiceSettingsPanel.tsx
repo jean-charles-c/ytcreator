@@ -514,6 +514,26 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         </div>
       </div>
 
+      {/* Pitch */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Pitch (tonalité)</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.pitch > 0 ? "+" : ""}{settings.pitch.toFixed(0)}%</span>
+        </div>
+        <Slider
+          min={-20} max={20} step={1}
+          value={[settings.pitch]}
+          onValueChange={([v]) => update({ pitch: v })}
+          aria-label="Pitch"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Grave −20%</span><span>Normal</span><span>Aigu +20%</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          Ajuste la hauteur de la voix. Négatif = plus grave, positif = plus aigu.
+        </p>
+      </div>
+
       {/* Effects Profile */}
       <div className="space-y-1.5">
         <Label htmlFor="vo-profile" className="text-xs text-muted-foreground">Profil audio</Label>
