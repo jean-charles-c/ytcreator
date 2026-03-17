@@ -476,6 +476,130 @@ function textToSsml(
   return `<speak>${paraBreakParts.join("\n")}</speak>`;
 }
 
+function unescapeXml(s: string): string {
+  return s
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, ">");
+    
+}
+
+function ssmlToPlainText(ssml: string): string {
+  return unescapeXml(
+    ssml
+      .replace(/^<speak>/, "")
+      .replace(/<\/speak>$/, "")
+      .replace(/<break[^>]*\/>/g, " ")
+      .replace(/<mark[^>]*\/>/g, " ")
+      .replace(/<\/?(?:prosody|emphasis)[^>]*>/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+interface LegacyChunkOptions {
+  paraPauseMs: number;
+  sentPauseMs: number;
+  startBoostPct: number;
+  endSlowPct: number;
+  commaPauseMs: number;
+  dynamicPauseEnabled: boolean;
+  dynamicPauseVariation: number;
+  emphasisBoost: number;
+  maxSsmlChars: number;
+}
+
+function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): string[] {
+  const buildSsml = (input: string) => textToSsml(
+    input,
+    options.paraPauseMs,
+    options.sentPauseMs,
+    options.startBoostPct,
+    options.endSlowPct,
+    options.commaPauseMs,
+    options.dynamicPauseEnabled,
+    options.dynamicPauseVariation,
+    options.emphasisBoost
+  );
+
+  const fits = (input: string) => buildSsml(input).length <= options.maxSsmlChars;
+  const chunks: string[] = [];
+  let current = "";
+
+  const flush = () => {
+    const trimmed = current.trim();
+    if (!trimmed) return;
+    chunks.push(buildSsml(trimmed));
+    current = "";
+  };
+
+  const addUnit = (unit: string, separator: string) => {
+    const trimmedUnit = unit.trim();
+    if (!trimmedUnit) return;
+
+    const candidate = current ? `${current}${separator}${trimmedUnit}` : trimmedUnit;
+    if (!current || fits(candidate)) {
+      current = candidate;
+      return;
+    }
+
+    flush();
+    if (fits(trimmedUnit)) {
+      current = trimmedUnit;
+      return;
+    }
+
+    const words = trimmedUnit.split(/\s+/).filter(Boolean);
+    let partial = "";
+
+    for (const word of words) {
+      const partialCandidate = partial ? `${partial} ${word}` : word;
+      if (!partial || fits(partialCandidate)) {
+        partial = partialCandidate;
+        continue;
+      }
+
+      chunks.push(buildSsml(partial.trim()));
+      partial = word;
+
+      if (!fits(partial)) {
+        const safeSlices = word.match(new RegExp(`.{1,${Math.max(50, Math.floor(options.maxSsmlChars / 2))}}`, "g")) ?? [word];
+        for (let i = 0; i < safeSlices.length - 1; i++) {
+          chunks.push(buildSsml(safeSlices[i]));
+        }
+        partial = safeSlices[safeSlices.length - 1];
+      }
+    }
+
+    current = partial.trim();
+  };
+
+  const paragraphs = rawText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+
+  for (const paragraph of paragraphs) {
+    const paragraphCandidate = current ? `${current}\n\n${paragraph}` : paragraph;
+    if (!current || fits(paragraphCandidate)) {
+      current = paragraphCandidate;
+      continue;
+    }
+
+    flush();
+    if (fits(paragraph)) {
+      current = paragraph;
+      continue;
+    }
+
+    const sentences = paragraph.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+    for (const sentence of sentences) {
+      addUnit(sentence, " ");
+    }
+    flush();
+  }
+
+  flush();
+  return chunks.length > 0 ? chunks : [buildSsml(rawText)];
+}
+
 /**
  * Split marked SSML into chunks of ~MAX_CHARS, keeping mark+sentence pairs together.
  * Returns array of {ssml, markIndices} where markIndices tracks which s_N marks are in each chunk.
