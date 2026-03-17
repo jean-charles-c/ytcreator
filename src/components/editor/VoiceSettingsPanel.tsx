@@ -441,11 +441,11 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
             {voicesForDropdown.map((v) => (
               <SelectItem key={v.name} value={v.name}>
                 <span className="flex items-center gap-2">
-                  <span className="font-mono text-xs">{v.letter}</span>
+                  <span className="font-mono text-xs font-medium">{v.letter}</span>
                   <span className="text-[10px] text-muted-foreground">
                     {GENDER_LABELS[v.gender] || v.gender}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60">
+                  <span className="text-[10px] text-muted-foreground/60 truncate max-w-[140px]">
                     {v.name}
                   </span>
                 </span>
