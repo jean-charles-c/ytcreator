@@ -414,8 +414,171 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  // ─── Export MP4 ────────────────────────────────────────────────────
+  const startExportMp4 = useCallback((params: ExportMp4Params) => {
+    const key = taskKey(params.projectId, "export-mp4");
+    abortControllers.current[key]?.abort();
+
+    const ac = new AbortController();
+    abortControllers.current[key] = ac;
+
+    setTask(key, {
+      projectId: params.projectId,
+      type: "export-mp4",
+      status: "running",
+      exportProgress: { phase: "loading", percent: 0, message: "Démarrage de l'export MP4…" },
+    });
+
+    (async () => {
+      try {
+        const onProgress = (p: ExportProgress) => {
+          if (ac.signal.aborted) return;
+          updateTask(key, { exportProgress: p });
+        };
+
+        const blob = await exportTimelineToMp4(params.timeline, onProgress, { fps: params.fps });
+        if (ac.signal.aborted) return;
+
+        // Upload to storage
+        const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.mp4`;
+        const { error: uploadError } = await supabase.storage
+          .from("video-exports")
+          .upload(fileName, blob, { contentType: "video/mp4" });
+
+        if (uploadError) throw new Error(`Upload échoué: ${uploadError.message}`);
+
+        const { data: urlData } = supabase.storage
+          .from("video-exports")
+          .getPublicUrl(fileName);
+
+        // Save to DB
+        const { data: stateData } = await supabase
+          .from("project_scriptcreator_state")
+          .select("timeline_state")
+          .eq("project_id", params.projectId)
+          .single();
+        const currentState = (stateData?.timeline_state as any) ?? {};
+        const existingExports = Array.isArray(currentState.exports) ? currentState.exports : [];
+
+        const entry = {
+          id: crypto.randomUUID(),
+          type: "mp4" as const,
+          storagePath: fileName,
+          publicUrl: urlData.publicUrl,
+          date: new Date().toLocaleString("fr-FR"),
+          fps: params.fps,
+          sizeMb: (blob.size / (1024 * 1024)).toFixed(1),
+        };
+        const newExports = [entry, ...existingExports];
+        await supabase
+          .from("project_scriptcreator_state")
+          .update({ timeline_state: { ...currentState, exports: newExports } as any })
+          .eq("project_id", params.projectId);
+
+        updateTask(key, {
+          status: "done",
+          exportProgress: { phase: "done", percent: 100, message: "Export MP4 terminé !" },
+        });
+        toast.success("Export MP4 terminé !");
+      } catch (e: any) {
+        if (ac.signal.aborted || e?.message === "Export annulé") {
+          toast.info("Export MP4 annulé");
+          removeTask(key);
+          return;
+        }
+        console.error("Background MP4 export error:", e);
+        updateTask(key, {
+          status: "error",
+          error: e?.message || "Erreur inconnue",
+          exportProgress: { phase: "error", percent: 0, message: e?.message || "Erreur inconnue" },
+        });
+        toast.error("Échec de l'export MP4.");
+      }
+    })();
+  }, []);
+
+  // ─── Export XML ────────────────────────────────────────────────────
+  const startExportXml = useCallback((params: ExportXmlParams) => {
+    const key = taskKey(params.projectId, "export-xml");
+    abortControllers.current[key]?.abort();
+
+    const ac = new AbortController();
+    abortControllers.current[key] = ac;
+
+    setTask(key, {
+      projectId: params.projectId,
+      type: "export-xml",
+      status: "running",
+      exportProgress: { phase: "preparing", percent: 10, message: "Génération du XML…" },
+    });
+
+    (async () => {
+      try {
+        const xml = exportTimelineToXml(params.timeline, params.fps);
+        if (ac.signal.aborted) return;
+
+        updateTask(key, { exportProgress: { phase: "encoding", percent: 50, message: "Upload du XML…" } });
+
+        const blob = new Blob([xml], { type: "application/xml" });
+        const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.xml`;
+        const { error: uploadError } = await supabase.storage
+          .from("video-exports")
+          .upload(fileName, blob, { contentType: "application/xml" });
+
+        if (uploadError) throw new Error(`Upload échoué: ${uploadError.message}`);
+
+        const { data: urlData } = supabase.storage
+          .from("video-exports")
+          .getPublicUrl(fileName);
+
+        // Save to DB
+        const { data: stateData } = await supabase
+          .from("project_scriptcreator_state")
+          .select("timeline_state")
+          .eq("project_id", params.projectId)
+          .single();
+        const currentState = (stateData?.timeline_state as any) ?? {};
+        const existingExports = Array.isArray(currentState.exports) ? currentState.exports : [];
+
+        const entry = {
+          id: crypto.randomUUID(),
+          type: "xml" as const,
+          storagePath: fileName,
+          publicUrl: urlData.publicUrl,
+          date: new Date().toLocaleString("fr-FR"),
+          fps: params.fps,
+          sizeMb: (blob.size / (1024 * 1024)).toFixed(2),
+        };
+        const newExports = [entry, ...existingExports];
+        await supabase
+          .from("project_scriptcreator_state")
+          .update({ timeline_state: { ...currentState, exports: newExports } as any })
+          .eq("project_id", params.projectId);
+
+        updateTask(key, {
+          status: "done",
+          exportProgress: { phase: "done", percent: 100, message: "Export XML terminé !" },
+        });
+        toast.success("Export XML terminé !");
+      } catch (e: any) {
+        if (ac.signal.aborted) {
+          toast.info("Export XML annulé");
+          removeTask(key);
+          return;
+        }
+        console.error("Background XML export error:", e);
+        updateTask(key, {
+          status: "error",
+          error: e?.message || "Erreur inconnue",
+          exportProgress: { phase: "error", percent: 0, message: e?.message || "Erreur inconnue" },
+        });
+        toast.error("Échec de l'export XML.");
+      }
+    })();
+  }, []);
+
   return (
-    <BackgroundTasksContext.Provider value={{ tasks, startScriptGeneration, startSegmentation, startStoryboard, stopTask, getTask, subscribe }}>
+    <BackgroundTasksContext.Provider value={{ tasks, startScriptGeneration, startSegmentation, startStoryboard, startExportMp4, startExportXml, stopTask, getTask, subscribe }}>
       {children}
     </BackgroundTasksContext.Provider>
   );
