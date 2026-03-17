@@ -847,7 +847,7 @@ export default function PdfDocumentaryTab({
         </Collapsible>
       )}
 
-      {/* Generation loading */}
+      {/* Generation loading — shown before script arrives */}
       {generatingScript && !script && (
         <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -855,166 +855,90 @@ export default function PdfDocumentaryTab({
         </div>
       )}
 
-      {/* Script result — collapsible */}
-      {(script !== null && script !== "") && (
-        <Collapsible open={scriptOpen} onOpenChange={setScriptOpen} className="mt-6">
-          <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
-            <div className="flex items-center gap-2">
-              <ScrollText className="h-4 w-4 text-primary" />
-              <h3 className="font-display text-sm font-semibold text-foreground">Script narratif</h3>
-              {!generatingScript && script && (
-                <span className="text-xs text-muted-foreground">
-                  {script.length.toLocaleString()} car.
-                </span>
-              )}
-              {generatingScript && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin text-primary" /> Écriture…
-                </span>
-              )}
-            </div>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${scriptOpen ? "rotate-180" : ""}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3 animate-fade-in">
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-              {!generatingScript && script && (
-                <div className="flex items-center gap-2 flex-wrap mb-4">
-                  <Button variant="outline" size="sm" onClick={copyScriptToClipboard} className="h-8 text-xs">
-                    <Copy className="h-3 w-3" /> Copier
-                  </Button>
-                  <Button variant="hero" size="sm" onClick={() => {
-                    const clean = cleanScriptForExport(script);
-                    onSendToNarration?.(clean);
-                    toast.success("Script envoyé dans ScriptInput");
-                  }} className="h-8 text-xs">
-                    <ArrowRight className="h-3 w-3" /> ScriptInput
-                  </Button>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      value={scriptLanguage}
-                      onChange={(e) => onLanguageChange?.(e.target.value)}
-                      className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                    </select>
-                    <select
-                      value={narrativeStyleId}
-                      onChange={(e) => { setNarrativeStyleId(e.target.value); if (e.target.value !== "custom") setCustomStyleLabel(""); }}
-                      className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                      <option value="custom">+ Personnalisé</option>
-                    </select>
-                    {narrativeStyleId === "custom" && (
-                      <input
-                        type="text"
-                        placeholder="Style personnalisé…"
-                        value={customStyleLabel}
-                        onChange={(e) => setCustomStyleLabel(e.target.value)}
-                        className="h-8 w-36 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    )}
-                    <input
-                      type="number"
-                      min={5000}
-                      max={30000}
-                      step={1000}
-                      value={targetChars}
-                      onChange={(e) => setTargetChars(Number(e.target.value))}
-                      className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
-                    <Button variant="hero" size="sm" onClick={() => runFullScriptGeneration(true)} disabled={generatingScript} className="h-8 text-xs">
-                      <RotateCcw className="h-3 w-3" /> Régénérer
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {/* Versions */}
-              {scriptVersions.length > 0 && !generatingScript && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {scriptVersions.map((version) => (
-                      <button
-                        key={version.id}
-                        onClick={() => setShowVersionPreviewId(showVersionPreviewId === version.id ? null : version.id)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors font-medium ${currentVersionId === version.id ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
-                      >
-                        V{version.id}
-                        {currentVersionId === version.id && (
-                          <span className="ml-1 text-[9px] opacity-70">actuelle</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-
-                  {showVersionPreviewId !== null && (() => {
-                    const previewVersion = scriptVersions.find((v) => v.id === showVersionPreviewId);
-                    if (!previewVersion) return null;
-
-                    return (
-                      <div className="mt-2 rounded border border-border bg-background p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] text-muted-foreground">Version {previewVersion.id} — {previewVersion.content.length.toLocaleString()} car.</span>
-                          <div className="flex gap-1.5">
-                            <Button variant="outline" size="sm" onClick={() => {
-                              navigator.clipboard.writeText(cleanScriptForExport(previewVersion.content));
-                              toast.success("Version copiée");
-                            }} className="h-6 text-[10px] px-2">
-                              <Copy className="h-2.5 w-2.5" /> Copier
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => {
-                              onScriptChange(previewVersion.content);
-                              onCurrentVersionIdChange(previewVersion.id);
-                              setShowVersionPreviewId(null);
-                              toast.success(`Version V${previewVersion.id} restaurée`);
-                            }} className="h-6 text-[10px] px-2">
-                              <RotateCcw className="h-2.5 w-2.5" /> Restaurer
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="max-h-[150px] overflow-y-auto">
-                          <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-body">{previewVersion.content.slice(0, 2000)}…</pre>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-              {/* SectionCards — modular narrative view */}
-              <div className="space-y-2">
-                {sections.map((section, idx) => (
-                  <SectionCard
-                    key={section.key}
-                    section={section}
-                    index={idx}
-                    isOpen={openSections.has(section.key)}
-                    onToggle={() => {
-                      setOpenSections((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(section.key)) next.delete(section.key);
-                        else next.add(section.key);
-                        return next;
-                      });
-                    }}
-                    onContentChange={handleSectionContentChange}
-                    onRegenerate={handleRegenerateSection}
-                    regenerating={regeneratingSection === section.key}
-                    history={sectionHistory[section.key] || []}
-                    onRestore={handleRestoreSection}
-                    translation={sectionTranslations[section.key] || null}
-                    translating={translatingSections.has(section.key)}
-                    onTranslate={handleTranslateSection}
-                    showTranslation={!!sectionTranslations[section.key]}
-                    scriptLanguage={scriptLanguage}
-                  />
-                ))}
-              </div>
-              <div ref={scriptEndRef} />
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
+      {/* Script narratif — modular block */}
+      <NarrativeScriptBlock
+        script={script}
+        generatingScript={generatingScript}
+        sections={sections}
+        scriptVersions={scriptVersions}
+        currentVersionId={currentVersionId}
+        sectionHistory={sectionHistory}
+        sectionTranslations={sectionTranslations}
+        translatingSections={translatingSections}
+        regeneratingSection={regeneratingSection}
+        openSections={openSections}
+        scriptLanguage={scriptLanguage}
+        isOpen={scriptOpen}
+        onToggleOpen={setScriptOpen}
+        onSectionToggle={(key) => {
+          setOpenSections((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+          });
+        }}
+        onSectionContentChange={handleSectionContentChange}
+        onRegenerateSection={handleRegenerateSection}
+        onRestoreSection={handleRestoreSection}
+        onTranslateSection={handleTranslateSection}
+        onCopyScript={copyScriptToClipboard}
+        onSendToNarration={() => {
+          if (script) {
+            const clean = cleanScriptForExport(script);
+            onSendToNarration?.(clean);
+            toast.success("Script envoyé dans ScriptInput");
+          }
+        }}
+        onScriptVersionRestore={(version) => {
+          onScriptChange(version.content);
+          onCurrentVersionIdChange(version.id);
+          setShowVersionPreviewId(null);
+          toast.success(`Version V${version.id} restaurée`);
+        }}
+        onVersionPreviewToggle={setShowVersionPreviewId}
+        showVersionPreviewId={showVersionPreviewId}
+        onRegenerate={() => runFullScriptGeneration(true)}
+        canRegenerate={!generatingScript}
+        toolbarSlot={
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={scriptLanguage}
+              onChange={(e) => onLanguageChange?.(e.target.value)}
+              className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+            </select>
+            <select
+              value={narrativeStyleId}
+              onChange={(e) => { setNarrativeStyleId(e.target.value); if (e.target.value !== "custom") setCustomStyleLabel(""); }}
+              className="h-8 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {NARRATIVE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              <option value="custom">+ Personnalisé</option>
+            </select>
+            {narrativeStyleId === "custom" && (
+              <input
+                type="text"
+                placeholder="Style personnalisé…"
+                value={customStyleLabel}
+                onChange={(e) => setCustomStyleLabel(e.target.value)}
+                className="h-8 w-36 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            )}
+            <input
+              type="number"
+              min={5000}
+              max={30000}
+              step={1000}
+              value={targetChars}
+              onChange={(e) => setTargetChars(Number(e.target.value))}
+              className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+          </div>
+        }
+      />
 
       {/* ScriptInput — collapsible */}
       <Collapsible className="mt-6">
