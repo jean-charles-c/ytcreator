@@ -500,7 +500,7 @@ export default function PdfDocumentaryTab({
       }
     });
     return unsub;
-  }, [projectId, subscribe, onScriptChange, onScriptReady, onScriptVersionsChange, onCurrentVersionIdChange]);
+  }, [projectId, subscribe, onScriptChange, onScriptReady, onScriptVersionsChange, onCurrentVersionIdChange, handleAnalyzeScript]);
 
   // Delegate script generation to background context
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
