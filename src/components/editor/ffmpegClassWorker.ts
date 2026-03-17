@@ -55,7 +55,7 @@ type WorkerGlobalScopeWithFFmpeg = DedicatedWorkerGlobalScope &
     createFFmpegCore?: FFmpegCoreModuleFactory;
   };
 
-const workerScope = self as WorkerGlobalScopeWithFFmpeg;
+const workerScope = self as unknown as WorkerGlobalScopeWithFFmpeg;
 let ffmpeg: FFmpegCore | undefined;
 
 const load = async ({
