@@ -30,11 +30,25 @@ export interface BackgroundTask {
 
 type Listener = (task: BackgroundTask) => void;
 
+export interface ExportMp4Params {
+  projectId: string;
+  timeline: Timeline;
+  fps: ExportFps;
+}
+
+export interface ExportXmlParams {
+  projectId: string;
+  timeline: Timeline;
+  fps: ExportFps;
+}
+
 interface BackgroundTasksContextValue {
   tasks: Record<string, BackgroundTask>;
   startScriptGeneration: (params: ScriptGenParams) => void;
   startSegmentation: (params: SegmentationParams) => void;
   startStoryboard: (params: StoryboardParams) => void;
+  startExportMp4: (params: ExportMp4Params) => void;
+  startExportXml: (params: ExportXmlParams) => void;
   stopTask: (projectId: string, type: TaskType) => void;
   getTask: (projectId: string, type: TaskType) => BackgroundTask | undefined;
   subscribe: (projectId: string, type: TaskType, listener: Listener) => () => void;
