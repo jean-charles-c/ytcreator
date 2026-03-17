@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Star, Loader2, Mic2, Pencil, Check, X, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,10 +22,14 @@ export interface VoiceSettings {
   voiceName: string;
   style: string;
   speakingRate: number;
+  pitch: number;
   volumeGainDb: number;
   effectsProfileId: string;
   pauseBetweenParagraphs: number;
   pauseAfterSentences: number;
+  pauseAfterComma: number;
+  dynamicPauseEnabled: boolean;
+  dynamicPauseVariation: number;
   sentenceStartBoost: number;
   sentenceEndSlow: number;
 }
@@ -233,10 +238,14 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
       voiceName: p.voice_name || "",
       style: tone,
       speakingRate: p.speaking_rate,
+      pitch: 0,
       volumeGainDb: p.volume_gain_db ?? 0,
       effectsProfileId: p.effects_profile_id ?? "none",
       pauseBetweenParagraphs: p.pause_between_paragraphs ?? 500,
       pauseAfterSentences: p.pause_after_sentences ?? 0,
+      pauseAfterComma: 0,
+      dynamicPauseEnabled: false,
+      dynamicPauseVariation: 300,
       sentenceStartBoost: p.sentence_start_boost ?? 0,
       sentenceEndSlow: p.sentence_end_slow ?? 0,
     });
@@ -505,6 +514,26 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         </div>
       </div>
 
+      {/* Pitch */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Pitch (tonalité)</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.pitch > 0 ? "+" : ""}{settings.pitch.toFixed(0)}%</span>
+        </div>
+        <Slider
+          min={-20} max={20} step={1}
+          value={[settings.pitch]}
+          onValueChange={([v]) => update({ pitch: v })}
+          aria-label="Pitch"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Grave −20%</span><span>Normal</span><span>Aigu +20%</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          Ajuste la hauteur de la voix. Négatif = plus grave, positif = plus aigu.
+        </p>
+      </div>
+
       {/* Effects Profile */}
       <div className="space-y-1.5">
         <Label htmlFor="vo-profile" className="text-xs text-muted-foreground">Profil audio</Label>
@@ -550,6 +579,61 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
         <div className="flex justify-between text-[10px] text-muted-foreground/60">
           <span>Aucune</span><span>1s</span><span>2s</span>
         </div>
+      </div>
+
+      {/* Pause after comma */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Pause après virgule</Label>
+          <span className="text-xs font-mono text-muted-foreground">{settings.pauseAfterComma === 0 ? "Aucune" : `${settings.pauseAfterComma} ms`}</span>
+        </div>
+        <Slider
+          min={0} max={500} step={25}
+          value={[settings.pauseAfterComma]}
+          onValueChange={([v]) => update({ pauseAfterComma: v })}
+          aria-label="Pause après virgule"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground/60">
+          <span>Aucune</span><span>250ms</span><span>500ms</span>
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          Ajoute un silence après chaque virgule pour un rythme plus posé et naturel.
+        </p>
+      </div>
+
+      {/* Dynamic Pause Variation */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">Variation dynamique des pauses</Label>
+          <Switch
+            checked={settings.dynamicPauseEnabled}
+            onCheckedChange={(v) => update({ dynamicPauseEnabled: v })}
+            aria-label="Activer la variation dynamique des pauses"
+          />
+        </div>
+        {settings.dynamicPauseEnabled && (
+          <div className="space-y-1.5 pl-1 border-l-2 border-primary/20 ml-1">
+            <Label className="text-[10px] text-muted-foreground">Amplitude de variation</Label>
+            <div className="flex gap-1.5">
+              {[300, 450, 600].map((ms) => (
+                <button
+                  key={ms}
+                  onClick={() => update({ dynamicPauseVariation: ms })}
+                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-mono transition-colors ${
+                    settings.dynamicPauseVariation === ms
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {ms}ms
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground/60">
+              Ajoute une variation aléatoire (±) aux pauses entre phrases pour un rendu plus organique.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Sentence start boost */}
