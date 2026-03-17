@@ -615,10 +615,7 @@ export default function PdfDocumentaryTab({
               )}
               {script !== null && script !== "" && (
                 <button
-                  onClick={() => {
-                    const el = scriptEndRef.current;
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
+                  onClick={() => setScriptOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
                 >
                   <ScrollText className="h-3 w-3" />
