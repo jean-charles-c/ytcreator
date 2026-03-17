@@ -124,10 +124,11 @@ interface SectionCardProps {
   onRestore?: (key: string, content: string) => void;
 }
 
-export default function SectionCard({ section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating }: SectionCardProps) {
+export default function SectionCard({ section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating, history, onRestore }: SectionCardProps) {
   const wordCount = section.content ? section.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -136,6 +137,11 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
       el.style.height = Math.max(120, el.scrollHeight) + "px";
     }
   }, [section.content, isOpen]);
+
+  const formatTimestamp = (ts: string) => {
+    const d = new Date(ts);
+    return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" });
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -151,6 +157,11 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
             <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
               {charCount > 0 ? `${charCount.toLocaleString()} car. · ${wordCount} mots` : "vide"}
             </span>
+            {history && history.length > 0 && (
+              <span className="text-[10px] text-muted-foreground font-mono">
+                · {history.length} ver.
+              </span>
+            )}
             {regenerating && (
               <span className="flex items-center gap-1 text-[10px] text-primary">
                 <Loader2 className="h-3 w-3 animate-spin" /> Régénération…
@@ -162,8 +173,19 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="rounded-b-lg border border-t-0 border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
-          {onRegenerate && (
-            <div className="flex justify-end mb-2">
+          <div className="flex items-center justify-end gap-2 mb-2">
+            {history && history.length > 0 && onRestore && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); setHistoryOpen(!historyOpen); }}
+                className="h-7 text-[11px] gap-1.5"
+              >
+                <History className="h-3 w-3" />
+                Historique ({history.length})
+              </Button>
+            )}
+            {onRegenerate && (
               <Button
                 variant="outline"
                 size="sm"
@@ -172,10 +194,40 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
                 className="h-7 text-[11px] gap-1.5"
               >
                 {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                Régénérer cette section
+                Régénérer
               </Button>
+            )}
+          </div>
+
+          {/* History panel */}
+          {historyOpen && history && history.length > 0 && onRestore && (
+            <div className="mb-3 rounded border border-border bg-background p-3 space-y-2 max-h-[250px] overflow-y-auto">
+              <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                <Clock className="h-3 w-3" /> Versions précédentes
+              </p>
+              {history.map((entry, i) => (
+                <div key={i} className="rounded border border-border bg-card p-2.5 group">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {entry.label || `V${history.length - i}`} — {formatTimestamp(entry.timestamp)} — {entry.content.length.toLocaleString()} car.
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { onRestore(section.key, entry.content); setHistoryOpen(false); }}
+                      className="h-5 text-[9px] px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <RotateCcw className="h-2.5 w-2.5" /> Restaurer
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/70 leading-relaxed line-clamp-2">
+                    {entry.content.slice(0, 200)}{entry.content.length > 200 ? "…" : ""}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
+
           <textarea
             ref={textareaRef}
             value={section.content}
