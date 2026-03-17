@@ -507,8 +507,10 @@ interface LegacyChunkOptions {
   dynamicPauseEnabled: boolean;
   dynamicPauseVariation: number;
   emphasisBoost: number;
-  maxSsmlChars: number;
+  maxSsmlBytes: number;
 }
+
+const ssmlByteLength = (value: string) => new TextEncoder().encode(value).length;
 
 function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): string[] {
   const buildSsml = (input: string) => textToSsml(
@@ -523,7 +525,7 @@ function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): s
     options.emphasisBoost
   );
 
-  const fits = (input: string) => buildSsml(input).length <= options.maxSsmlChars;
+  const fits = (input: string) => ssmlByteLength(buildSsml(input)) <= options.maxSsmlBytes;
   const chunks: string[] = [];
   let current = "";
 
@@ -534,12 +536,49 @@ function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): s
     current = "";
   };
 
+  const pushOversizedWordSafely = (word: string) => {
+    const maxSliceLength = Math.max(20, Math.floor(options.maxSsmlBytes / 4));
+    const safeSlices = word.match(new RegExp(`.{1,${maxSliceLength}}`, "g")) ?? [word];
+
+    for (let i = 0; i < safeSlices.length; i++) {
+      const slice = safeSlices[i];
+      if (fits(slice)) {
+        if (i === safeSlices.length - 1) {
+          current = slice;
+        } else {
+          chunks.push(buildSsml(slice));
+        }
+        continue;
+      }
+
+      const chars = [...slice];
+      let partial = "";
+      for (const char of chars) {
+        const candidate = partial + char;
+        if (!partial || fits(candidate)) {
+          partial = candidate;
+        } else {
+          chunks.push(buildSsml(partial));
+          partial = char;
+        }
+      }
+
+      if (partial) {
+        if (i === safeSlices.length - 1) {
+          current = partial;
+        } else {
+          chunks.push(buildSsml(partial));
+        }
+      }
+    }
+  };
+
   const addUnit = (unit: string, separator: string) => {
     const trimmedUnit = unit.trim();
     if (!trimmedUnit) return;
 
     const candidate = current ? `${current}${separator}${trimmedUnit}` : trimmedUnit;
-    if (!current || fits(candidate)) {
+    if (fits(candidate)) {
       current = candidate;
       return;
     }
@@ -555,31 +594,31 @@ function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): s
 
     for (const word of words) {
       const partialCandidate = partial ? `${partial} ${word}` : word;
-      if (!partial || fits(partialCandidate)) {
+      if (fits(partialCandidate)) {
         partial = partialCandidate;
         continue;
       }
 
-      chunks.push(buildSsml(partial.trim()));
-      partial = word;
+      if (partial) {
+        chunks.push(buildSsml(partial));
+        partial = "";
+      }
 
-      if (!fits(partial)) {
-        const safeSlices = word.match(new RegExp(`.{1,${Math.max(50, Math.floor(options.maxSsmlChars / 2))}}`, "g")) ?? [word];
-        for (let i = 0; i < safeSlices.length - 1; i++) {
-          chunks.push(buildSsml(safeSlices[i]));
-        }
-        partial = safeSlices[safeSlices.length - 1];
+      if (fits(word)) {
+        partial = word;
+      } else {
+        pushOversizedWordSafely(word);
       }
     }
 
-    current = partial.trim();
+    current = partial.trim() || current;
   };
 
   const paragraphs = rawText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
 
   for (const paragraph of paragraphs) {
     const paragraphCandidate = current ? `${current}\n\n${paragraph}` : paragraph;
-    if (!current || fits(paragraphCandidate)) {
+    if (fits(paragraphCandidate)) {
       current = paragraphCandidate;
       continue;
     }
