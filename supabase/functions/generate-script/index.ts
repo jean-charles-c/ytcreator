@@ -140,6 +140,7 @@ PHASE 1 — HOOK (minimum 2 sentences, spread across the first paragraphs of the
 • Structure across these paragraphs: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
 • The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
 • Never start with greetings, channel name, or "today we will talk about".
+• ABSOLUTELY NEVER include "Welcome to [channel name]", "Bienvenue sur [nom]", or ANY channel introduction ANYWHERE in the script — not in the hook, not after it, NOWHERE.
 • Never open with a generic descriptive sentence ("A hand places a clay tablet").
 • Open with something that creates TENSION or CURIOSITY immediately.
 

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
-import SectionCard, { parseScriptIntoSections, reassembleSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
+import SectionCard, { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -181,11 +181,24 @@ export default function PdfDocumentaryTab({
   }, [script, generatingScript, scriptVersions.length]);
 
   // Re-parse sections when script changes externally (generation, version restore)
+  // Apply content sanitization rules automatically
   useEffect(() => {
     const scriptStr = script || "";
     if (scriptStr !== sectionsInitRef.current) {
       sectionsInitRef.current = scriptStr;
-      setSections(parseScriptIntoSections(scriptStr));
+      const parsed = parseScriptIntoSections(scriptStr);
+      const { sections: sanitized, warnings } = sanitizeNarrativeSections(parsed);
+
+      // If sanitization changed content, propagate the cleaned version
+      const reassembled = reassembleSections(sanitized);
+      if (reassembled !== scriptStr && scriptStr.trim()) {
+        sectionsInitRef.current = reassembled;
+        onScriptChange(reassembled);
+        for (const w of warnings) {
+          toast.info(w, { duration: 3000 });
+        }
+      }
+      setSections(sanitized);
     }
   }, [script]);
 

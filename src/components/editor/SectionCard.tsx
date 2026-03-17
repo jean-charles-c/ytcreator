@@ -98,6 +98,52 @@ export function reassembleSections(sections: NarrativeSection[]): string {
     .join("\n\n");
 }
 
+/** Content rules patterns to strip from generated scripts */
+const GREETING_PATTERNS = [
+  /^(Welcome to|Bienvenue sur|Bienvenue à|Bienvenue dans)\s+[^\n.!?]*[.!?]?\s*/gim,
+  /^(Today we|Aujourd'hui nous|In this video|Dans cette vidéo|In today's video|Dans la vidéo d'aujourd'hui)[^\n.!?]*[.!?]?\s*/gim,
+  /^(Hey everyone|Salut à tous|Hello everyone|Bonjour à tous)[^\n.!?]*[.!?]?\s*/gim,
+];
+
+/**
+ * Sanitize narrative sections:
+ * 1. Remove greeting/channel-name patterns (especially after Hook)
+ * 2. Ensure no section is completely empty (flag it)
+ * 3. Clean up stray markdown artifacts
+ */
+export function sanitizeNarrativeSections(sections: NarrativeSection[]): { sections: NarrativeSection[]; warnings: string[] } {
+  const warnings: string[] = [];
+
+  const sanitized = sections.map((s) => {
+    let content = s.content;
+
+    // Strip greeting/channel patterns from all sections (especially introduction)
+    for (const pattern of GREETING_PATTERNS) {
+      const before = content;
+      content = content.replace(pattern, "");
+      if (content !== before) {
+        warnings.push(`Formule d'accueil retirée de "${s.label}"`);
+      }
+    }
+
+    // Strip stray markdown headers that leaked into content
+    content = content.replace(/^#{1,3}\s+.+$/gm, "").trim();
+
+    // Collapse excessive blank lines
+    content = content.replace(/\n{3,}/g, "\n\n").trim();
+
+    return { ...s, content };
+  });
+
+  // Check for empty sections
+  const emptySections = sanitized.filter((s) => !s.content.trim());
+  if (emptySections.length > 0) {
+    warnings.push(`Section(s) vide(s) : ${emptySections.map((s) => s.label).join(", ")}`);
+  }
+
+  return { sections: sanitized, warnings };
+}
+
 export interface SectionHistoryEntry {
   content: string;
   timestamp: string;
