@@ -342,8 +342,12 @@ function buildMarkedSsml(
 }
 
 function processSentenceProsody(sentence: string, startBoostPct: number, endSlowPct: number): string {
+  // Detect interrogative/exclamatory sentences: ? or ! at end, or .? / .! (common in scripts)
   const endsWithExclamOrQuestion = /[!?]\s*$/.test(sentence) || /\.\s*[?!]\s*$/.test(sentence);
-  const effectiveEndSlow = endsWithExclamOrQuestion ? 0 : endSlowPct;
+  // For questions/exclamations: disable ALL prosody to preserve natural TTS intonation
+  // Neural2/WaveNet voices produce correct rising intonation only without prosody interference
+  if (endsWithExclamOrQuestion) return sentence;
+  const effectiveEndSlow = endSlowPct;
   const words = sentence.split(/(\s+)/);
   const actualWords = words.filter(w => w.trim());
 
