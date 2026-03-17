@@ -101,12 +101,12 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   };
 
   const handleExportMp4 = useCallback(() => {
-    startExportMp4({ projectId, timeline, fps });
-  }, [projectId, timeline, fps, startExportMp4]);
+    startExportMp4({ projectId, timeline: timelineRef.current, fps });
+  }, [projectId, fps, startExportMp4]);
 
   const handleExportXml = useCallback(() => {
-    startExportXml({ projectId, timeline, fps });
-  }, [projectId, timeline, fps, startExportXml]);
+    startExportXml({ projectId, timeline: timelineRef.current, fps });
+  }, [projectId, fps, startExportXml]);
 
   const handleAbortMp4 = useCallback(() => {
     stopTask(projectId, "export-mp4");
