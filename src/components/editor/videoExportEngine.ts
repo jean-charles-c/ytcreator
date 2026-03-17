@@ -2,7 +2,6 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 import coreURL from "@ffmpeg/core?url";
 import wasmURL from "@ffmpeg/core/wasm?url";
-import workerURL from "@ffmpeg/core/worker?url";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
 
 export type ExportFps = 24 | 25 | 30;
