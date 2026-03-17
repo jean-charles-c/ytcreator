@@ -62,8 +62,9 @@ Before writing ANY narration, you MUST first output an internal plan (inside a <
 - Target: ${charTarget.toLocaleString()} characters / ~${wordTarget.toLocaleString()} words / ~${paragraphEstimate} paragraphs
 - Minimum: ${charMin.toLocaleString()} characters / ~${wordMin.toLocaleString()} words
 - Maximum: ${charMax.toLocaleString()} characters / ~${wordMax.toLocaleString()} words
-- How many paragraphs you will write for each phase (Hook, Setup, Escalation, Revelation, Conclusion)
-- A brief outline of what each phase will cover
+- How many paragraphs you will write for each of the 7 sections (Hook, Introduction, Act 1, Act 2, Act 3, Climax, Conclusion)
+- Word budget per section following the prescribed percentages (8%, 12%, 15%, 25%, 20%, 12%, 8%)
+- A brief outline of what each section will cover
 
 After </plan>, write ONLY the raw narration text.
 
@@ -129,46 +130,60 @@ OUTPUT FORMAT — STRICT RULES:
 
 ---
 
-NARRATIVE ARCHITECTURE (invisible — never shown in output):
+NARRATIVE ARCHITECTURE — 7 CANONICAL SECTIONS (invisible — never shown in output):
 
-Internally, structure the script following this dramatic arc:
+Internally, structure the script following these 7 sequential sections. They must flow seamlessly — the viewer should NEVER perceive section boundaries. No titles, no markers, no visible transitions between sections.
 
-PHASE 1 — HOOK (minimum 2 sentences, spread across the first paragraphs of the cycle):
+SECTION 1 — HOOK (~8% of total = ~${Math.round(wordTarget * 0.08)} words):
 • The hook is the MOST IMPORTANT part of the script. It must grab attention INSTANTLY.
-• The hook follows the paragraph cycle but the FIRST paragraph (position 1 = 2 sentences) must have at least 2 sentences for a stronger opening.
-• The hook spans the first 3-5 paragraphs of the cycle.
-• Structure across these paragraphs: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
+• Minimum 2 sentences. Spans the first 3-5 paragraphs.
+• Structure: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
 • The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
+• MODE: Abstract, mysterious, conceptual — create intrigue without concrete explanations.
 • Never start with greetings, channel name, or "today we will talk about".
-• ABSOLUTELY NEVER include "Welcome to [channel name]", "Bienvenue sur [nom]", or ANY channel introduction ANYWHERE in the script — not in the hook, not after it, NOWHERE.
-• Never open with a generic descriptive sentence ("A hand places a clay tablet").
+• ABSOLUTELY NEVER include "Welcome to [channel name]", "Bienvenue sur [nom]", or ANY channel introduction ANYWHERE in the script.
+• Never open with a generic descriptive sentence.
 • Open with something that creates TENSION or CURIOSITY immediately.
 
-After the hook, transition IMMEDIATELY into the narrative — no pause, no meta-commentary.
-
-PHASE 2 — SETUP (~20% of total = ~${Math.round(wordTarget * 0.2)} words):
+SECTION 2 — INTRODUCTION (~12% of total = ~${Math.round(wordTarget * 0.12)} words):
+• MODE SWITCH: Transition from abstract/mysterious to CONCRETE/factual.
 • Establish the world with concrete details: time, place, objects, people.
 • Introduce the MAIN CONTRADICTION with clear, factual language.
 • Plant the first INTRIGUING DISCOVERIES as specific, tangible clues.
 • Help the viewer build a mental picture of the setting.
 
-PHASE 3 — ESCALATION (~45% of total = ~${Math.round(wordTarget * 0.45)} words — THIS IS THE LONGEST SECTION):
-• This is the longest section — the investigation unfolds here.
+SECTION 3 — ACT 1: SETUP (~15% of total = ~${Math.round(wordTarget * 0.15)} words):
+• Origin story: how it all began, the invention, the first system, the founding moment.
+• Present key characters and their motivations.
+• Lay the groundwork for the escalation to come.
+• Concrete historical and factual content.
+
+SECTION 4 — ACT 2: ESCALATION (~25% of total = ~${Math.round(wordTarget * 0.25)} words — THE LONGEST SECTION):
+• This is the longest section — the investigation unfolds and EXPANDS here.
 • Deploy each NARRATIVE TENSION one by one as escalating reveals.
+• Show expansion: spread, growth, scaling, mass adoption, complexification.
 • Show evidence concretely: who found it, where, what it looked like.
 • Alternate between: new evidence → what it means → why it's surprising → deeper mystery.
-• The viewer must feel the mystery is getting bigger, not smaller.
+• The viewer must feel the story is getting BIGGER, not smaller.
 • EXPAND this section generously. Add cinematic details, describe scenes vividly, explore implications.
 
-PHASE 4 — REVELATION (~15% of total = ~${Math.round(wordTarget * 0.15)} words):
+SECTION 5 — ACT 3: IMPACT (~20% of total = ~${Math.round(wordTarget * 0.20)} words):
+• Consequences, effects, and real-world impact of what was established in Acts 1-2.
+• Show how the subject changed the world, affected people, or created new problems.
+• Present the final complications and unresolved tensions before the climax.
+• Build toward the resolution — the viewer should feel the answer is coming.
+
+SECTION 6 — CLIMAX / REVELATION (~12% of total = ~${Math.round(wordTarget * 0.12)} words):
 • Bring the threads together into a powerful turning point.
 • Present the key insight as a concrete discovery or realization.
 • Show the "aha moment" through specific facts, not abstract statements.
+• Resolve the central mystery introduced in the Hook.
 
-PHASE 5 — CONCLUSION (~5-8% of total):
+SECTION 7 — CONCLUSION (~8% of total = ~${Math.round(wordTarget * 0.08)} words):
 • Leave the viewer with a resonant final thought.
 • Do NOT summarize the video.
 • End with a concrete image or fact that lingers — not a philosophical statement.
+• Open a broader perspective or hint at what remains unknown.
 
 ---
 
@@ -339,13 +354,14 @@ Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString(
 HOW TO HIT THE TARGET — CONCRETE STRATEGY:
 • You need approximately ${paragraphEstimate} paragraphs total following the 2-2-2-3-2-1-3-2-4-2 cycle.
 • That means approximately ${Math.round(paragraphEstimate / 10)} complete cycles of 10 paragraphs.
-• The Escalation phase (Phase 3) should contain at least ${Math.round(paragraphEstimate * 0.45)} paragraphs.
-• The Setup phase (Phase 2) should contain at least ${Math.round(paragraphEstimate * 0.2)} paragraphs.
+• Act 2 (Escalation) should contain at least ${Math.round(paragraphEstimate * 0.25)} paragraphs — it's the longest section.
+• Act 3 (Impact) should contain at least ${Math.round(paragraphEstimate * 0.20)} paragraphs.
+• Act 1 (Setup) should contain at least ${Math.round(paragraphEstimate * 0.15)} paragraphs.
 • Average ~${Math.round(charTarget / paragraphEstimate)} characters per paragraph.
 
 WHEN YOU THINK YOU'RE DONE — KEEP WRITING:
 • LLMs systematically underestimate text length. You are almost certainly too short.
-• After finishing your first draft mentally, ADD 30% more content to the Escalation phase.
+• After finishing your first draft mentally, ADD 30% more content to Act 2 (Escalation) and Act 3 (Impact).
 • Develop scenes cinematically: describe what the place looks like, what the people are doing, what objects are present.
 • For each discovery, add: who found it, when, where exactly, what it looked like, why it was surprising.
 • If a fact is interesting, explore its IMPLICATIONS in the next paragraph.
