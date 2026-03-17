@@ -798,10 +798,26 @@ export default function PdfDocumentaryTab({
                   })()}
                 </div>
               )}
-              <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto rounded border border-border bg-background p-3 sm:p-4">
-                <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{script}</pre>
-                <div ref={scriptEndRef} />
+              {/* SectionCards — modular narrative view */}
+              <div className="space-y-2">
+                {parseScriptIntoSections(script!).map((section, idx) => (
+                  <SectionCard
+                    key={section.key}
+                    section={section}
+                    index={idx}
+                    isOpen={openSections.has(section.key)}
+                    onToggle={() => {
+                      setOpenSections((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(section.key)) next.delete(section.key);
+                        else next.add(section.key);
+                        return next;
+                      });
+                    }}
+                  />
+                ))}
               </div>
+              <div ref={scriptEndRef} />
             </div>
           </CollapsibleContent>
         </Collapsible>
