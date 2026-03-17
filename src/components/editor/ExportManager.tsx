@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Download,
   Trash2,
   RefreshCw,
   Film,
+  FileCode2,
   Settings2,
   Loader2,
   CheckCircle2,
@@ -15,12 +16,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Timeline } from "./timelineAssembly";
-import {
-  exportTimelineToMp4,
-  abortExport,
-  type ExportFps,
-  type ExportProgress,
-} from "./videoExportEngine";
+import type { ExportFps, ExportProgress } from "./videoExportEngine";
+import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 
 interface ExportManagerProps {
   timeline: Timeline;
@@ -29,6 +26,7 @@ interface ExportManagerProps {
 
 export interface ExportEntry {
   id: string;
+  type: "mp4" | "xml";
   storagePath: string;
   publicUrl: string;
   date: string;
@@ -44,14 +42,18 @@ const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
 
 export default function ExportManager({ timeline, projectId }: ExportManagerProps) {
   const [fps, setFps] = useState<ExportFps>(24);
-  const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
-  const abortRef = useRef(false);
 
-  const isExporting = progress !== null && progress.phase !== "done" && progress.phase !== "error";
+  const { startExportMp4, startExportXml, getTask, stopTask, subscribe } = useBackgroundTasks();
 
-  // ── Load persisted exports from DB on mount ──
+  const mp4Task = getTask(projectId, "export-mp4");
+  const xmlTask = getTask(projectId, "export-xml");
+  const isMp4Exporting = mp4Task?.status === "running";
+  const isXmlExporting = xmlTask?.status === "running";
+  const isAnyExporting = isMp4Exporting || isXmlExporting;
+
+  // ── Load persisted exports from DB ──
   useEffect(() => {
     if (!projectId) return;
     const load = async () => {
@@ -72,10 +74,63 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
     load();
   }, [projectId]);
 
-  // ── Save exports metadata to DB ──
-  const saveExportsToDB = useCallback(async (entries: ExportEntry[]) => {
-    if (!projectId) return;
-    // Read current timeline_state and merge exports into it
+  // ── Listen for export completion to refresh list ──
+  useEffect(() => {
+    const unsub1 = subscribe(projectId, "export-mp4", (task) => {
+      if (task.status === "done") refreshExports();
+    });
+    const unsub2 = subscribe(projectId, "export-xml", (task) => {
+      if (task.status === "done") refreshExports();
+    });
+    return () => { unsub1(); unsub2(); };
+  }, [projectId, subscribe]);
+
+  const refreshExports = async () => {
+    const { data } = await supabase
+      .from("project_scriptcreator_state")
+      .select("timeline_state")
+      .eq("project_id", projectId)
+      .single();
+    if (data?.timeline_state) {
+      const state = data.timeline_state as any;
+      if (Array.isArray(state.exports)) setExports(state.exports);
+    }
+  };
+
+  const handleExportMp4 = useCallback(() => {
+    startExportMp4({ projectId, timeline, fps });
+  }, [projectId, timeline, fps, startExportMp4]);
+
+  const handleExportXml = useCallback(() => {
+    startExportXml({ projectId, timeline, fps });
+  }, [projectId, timeline, fps, startExportXml]);
+
+  const handleAbortMp4 = useCallback(() => {
+    stopTask(projectId, "export-mp4");
+    toast.info("Export MP4 annulé.");
+  }, [projectId, stopTask]);
+
+  const handleAbortXml = useCallback(() => {
+    stopTask(projectId, "export-xml");
+    toast.info("Export XML annulé.");
+  }, [projectId, stopTask]);
+
+  const handleDownload = useCallback((entry: ExportEntry) => {
+    const a = document.createElement("a");
+    a.href = entry.publicUrl;
+    a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${entry.type}`;
+    a.target = "_blank";
+    a.click();
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const entry = exports.find((e) => e.id === id);
+    if (entry) {
+      await supabase.storage.from("video-exports").remove([entry.storagePath]);
+    }
+    const newExports = exports.filter((e) => e.id !== id);
+    setExports(newExports);
+    // Persist
     const { data } = await supabase
       .from("project_scriptcreator_state")
       .select("timeline_state")
@@ -84,79 +139,51 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
     const currentState = (data?.timeline_state as any) ?? {};
     await supabase
       .from("project_scriptcreator_state")
-      .update({ timeline_state: { ...currentState, exports: entries } as any })
+      .update({ timeline_state: { ...currentState, exports: newExports } as any })
       .eq("project_id", projectId);
-  }, [projectId]);
-
-  const handleAbort = useCallback(() => {
-    abortRef.current = true;
-    abortExport();
-    setProgress({ phase: "error", percent: 0, message: "Export annulé par l'utilisateur." });
-    toast.info("Export annulé.");
-  }, []);
-
-  const handleExport = useCallback(async () => {
-    abortRef.current = false;
-
-    try {
-      const blob = await exportTimelineToMp4(timeline, setProgress, { fps });
-      if (abortRef.current) return;
-
-      // Upload to storage
-      const fileName = `${projectId}/${Date.now()}_${fps}fps.mp4`;
-      const { error: uploadError } = await supabase.storage
-        .from("video-exports")
-        .upload(fileName, blob, { contentType: "video/mp4" });
-
-      if (uploadError) {
-        throw new Error(`Upload échoué: ${uploadError.message}`);
-      }
-
-      const { data: urlData } = supabase.storage
-        .from("video-exports")
-        .getPublicUrl(fileName);
-
-      const entry: ExportEntry = {
-        id: crypto.randomUUID(),
-        storagePath: fileName,
-        publicUrl: urlData.publicUrl,
-        date: new Date().toLocaleString("fr-FR"),
-        fps,
-        sizeMb: (blob.size / (1024 * 1024)).toFixed(1),
-      };
-      const newExports = [entry, ...exports];
-      setExports(newExports);
-      await saveExportsToDB(newExports);
-      toast.success("Export MP4 terminé !");
-    } catch (err: any) {
-      if (abortRef.current) return;
-      console.error("Export error:", err);
-      setProgress({ phase: "error", percent: 0, message: err?.message || "Erreur inconnue" });
-      toast.error("Échec de l'export vidéo.");
-    }
-  }, [timeline, fps, projectId, exports, saveExportsToDB]);
-
-  const handleDownload = useCallback((entry: ExportEntry) => {
-    const a = document.createElement("a");
-    a.href = entry.publicUrl;
-    a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.mp4`;
-    a.target = "_blank";
-    a.click();
-  }, []);
-
-  const handleDelete = useCallback(async (id: string) => {
-    const entry = exports.find((e) => e.id === id);
-    if (entry) {
-      // Delete from storage
-      await supabase.storage.from("video-exports").remove([entry.storagePath]);
-    }
-    const newExports = exports.filter((e) => e.id !== id);
-    setExports(newExports);
-    await saveExportsToDB(newExports);
     toast.info("Export supprimé.");
-  }, [exports, saveExportsToDB]);
+  }, [exports, projectId]);
 
-  const progressPct = progress?.percent ?? 0;
+  const renderProgress = (label: string, progress: ExportProgress | undefined, onAbort: () => void) => {
+    if (!progress) return null;
+    const pct = progress.percent ?? 0;
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span className="text-sm text-foreground flex-1">{label}: {progress.message}</span>
+          <Button variant="destructive" size="sm" onClick={onAbort} className="gap-1.5 shrink-0">
+            <StopCircle className="h-3.5 w-3.5" />
+            Stopper
+          </Button>
+        </div>
+        <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-[10px] text-muted-foreground">{pct}%</span>
+      </div>
+    );
+  };
+
+  const renderError = (label: string, progress: ExportProgress | undefined, onRetry: () => void) => {
+    if (!progress || progress.phase !== "error") return null;
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+        <XCircle className="h-4 w-4 text-destructive shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-destructive">Erreur {label}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{progress.message}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5 shrink-0">
+          <RefreshCw className="h-3 w-3" />
+          Réessayer
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -171,7 +198,7 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
 
       <div className="p-4 space-y-4">
         {/* FPS selector */}
-        {!isExporting && (
+        {!isAnyExporting && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2 sm:gap-3">
               <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -196,60 +223,37 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
         )}
 
         {/* Export specs */}
-        {!isExporting && (
+        {!isAnyExporting && (
           <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-            <span className="px-2 py-0.5 rounded bg-muted">MP4 / H.264</span>
             <span className="px-2 py-0.5 rounded bg-muted">1920×1080</span>
-            <span className="px-2 py-0.5 rounded bg-muted">AAC 192k</span>
-            <span className="px-2 py-0.5 rounded bg-muted">YUV 4:2:0</span>
             <span className="px-2 py-0.5 rounded bg-muted">{timeline.segmentCount} segments</span>
             <span className="px-2 py-0.5 rounded bg-muted">~{Math.round(timeline.totalDuration)}s</span>
           </div>
         )}
 
-        {/* Export button */}
-        {!isExporting && (
-          <Button onClick={handleExport} className="w-full gap-2 min-h-[48px] sm:min-h-[36px]">
-            <Film className="h-4 w-4" />
-            Exporter en MP4
-          </Button>
-        )}
-
-        {/* Progress */}
-        {isExporting && progress && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="text-sm text-foreground flex-1">{progress.message}</span>
-              <Button variant="destructive" size="sm" onClick={handleAbort} className="gap-1.5 shrink-0">
-                <StopCircle className="h-3.5 w-3.5" />
-                Stopper
-              </Button>
-            </div>
-            <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground">{progressPct}%</span>
-          </div>
-        )}
-
-        {/* Error */}
-        {progress?.phase === "error" && (
-          <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-            <XCircle className="h-4 w-4 text-destructive shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">Erreur d'export</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{progress.message}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 shrink-0">
-              <RefreshCw className="h-3 w-3" />
-              Réessayer
+        {/* Export buttons */}
+        {!isAnyExporting && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={handleExportMp4} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
+              <Film className="h-4 w-4" />
+              Exporter MP4
+              <span className="text-[10px] opacity-70 ml-1">H.264 / AAC</span>
+            </Button>
+            <Button onClick={handleExportXml} variant="outline" className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
+              <FileCode2 className="h-4 w-4" />
+              Exporter XML
+              <span className="text-[10px] opacity-70 ml-1">FCP</span>
             </Button>
           </div>
         )}
+
+        {/* MP4 Progress */}
+        {isMp4Exporting && renderProgress("MP4", mp4Task?.exportProgress, handleAbortMp4)}
+        {mp4Task?.status === "error" && renderError("MP4", mp4Task?.exportProgress, handleExportMp4)}
+
+        {/* XML Progress */}
+        {isXmlExporting && renderProgress("XML", xmlTask?.exportProgress, handleAbortXml)}
+        {xmlTask?.status === "error" && renderError("XML", xmlTask?.exportProgress, handleExportXml)}
 
         {/* ── Export history ── */}
         {loadingExports && (
@@ -269,19 +273,21 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
                 key={entry.id}
                 className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/5 p-3"
               >
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                {entry.type === "xml" ? (
+                  <FileCode2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">Export prêt</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {entry.type === "xml" ? "XML (FCP)" : "MP4"} prêt
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {entry.sizeMb} MB • {entry.fps} fps • {entry.date}
                   </p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <Button
-                    size="sm"
-                    onClick={() => handleDownload(entry)}
-                    className="gap-1.5 h-8"
-                  >
+                  <Button size="sm" onClick={() => handleDownload(entry)} className="gap-1.5 h-8">
                     <Download className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Télécharger</span>
                   </Button>
