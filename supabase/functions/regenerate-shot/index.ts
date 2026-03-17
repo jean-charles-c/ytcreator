@@ -59,7 +59,17 @@ serve(async (req) => {
       .single();
     if (!scene) throw new Error("Scene not found");
 
-    const sourceText = shot.source_sentence || shot.description;
+    // Count shots in this scene to determine if this is the only one
+    const { count: sceneShotCount } = await supabase
+      .from("shots")
+      .select("id", { count: "exact", head: true })
+      .eq("scene_id", shot.scene_id);
+
+    // If this is the only shot in the scene, use the full scene text
+    const isOnlyShot = (sceneShotCount ?? 0) <= 1;
+    const sourceText = isOnlyShot
+      ? (scene.source_text || shot.source_sentence || shot.description)
+      : (shot.source_sentence || shot.description);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -163,14 +173,24 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       console.warn("Failed to parse AI response for shot regeneration", e);
     }
 
+    const updatePayload: Record<string, any> = {
+      shot_type: newShot.shot_type,
+      description: newShot.description,
+      prompt_export: newShot.prompt_export,
+    };
+    // If only shot in scene, ensure source_sentence matches full scene text
+    if (isOnlyShot) {
+      updatePayload.source_sentence = scene.source_text;
+      if (scene.source_text_fr) {
+        updatePayload.source_sentence_fr = scene.source_text_fr;
+      }
+    } else if (newShot.source_sentence_fr) {
+      updatePayload.source_sentence_fr = newShot.source_sentence_fr;
+    }
+
     const { error: updateErr } = await supabase
       .from("shots")
-      .update({
-        shot_type: newShot.shot_type,
-        description: newShot.description,
-        prompt_export: newShot.prompt_export,
-        ...(newShot.source_sentence_fr ? { source_sentence_fr: newShot.source_sentence_fr } : {}),
-      })
+      .update(updatePayload)
       .eq("id", shot_id);
 
     if (updateErr) throw new Error("Failed to update shot");
