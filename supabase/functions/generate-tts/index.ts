@@ -14,6 +14,7 @@ interface TTSRequest {
   voiceName?: string;
   voiceType?: string;
   style?: string;
+  narrationProfile?: "standard" | "storytelling" | "educational";
   speakingRate?: number;
   pitch?: number;
   volumeGainDb?: number;
@@ -30,6 +31,56 @@ interface TTSRequest {
   customFileName?: string;
   shotSentences?: { id: string; text: string }[];
 }
+
+/**
+ * Narration profile modulation: applies additive offsets to user settings.
+ * These are combined with (not replacing) the user's manual controls.
+ */
+const NARRATION_MODULATION: Record<string, {
+  pauseAfterSentencesAdd: number;
+  pauseBetweenParagraphsAdd: number;
+  pauseAfterCommaAdd: number;
+  dynamicPauseForce: boolean;
+  dynamicPauseVariationMin: number;
+  emphasisBoost: number; // 0 = normal, 1 = allow more emphasis per sentence
+  sentenceStartBoostAdd: number;
+  sentenceEndSlowAdd: number;
+  rateOffset: number;
+}> = {
+  standard: {
+    pauseAfterSentencesAdd: 0,
+    pauseBetweenParagraphsAdd: 0,
+    pauseAfterCommaAdd: 0,
+    dynamicPauseForce: false,
+    dynamicPauseVariationMin: 0,
+    emphasisBoost: 0,
+    sentenceStartBoostAdd: 0,
+    sentenceEndSlowAdd: 0,
+    rateOffset: 0,
+  },
+  storytelling: {
+    pauseAfterSentencesAdd: 100,
+    pauseBetweenParagraphsAdd: 200,
+    pauseAfterCommaAdd: 50,
+    dynamicPauseForce: true,
+    dynamicPauseVariationMin: 300,
+    emphasisBoost: 1,
+    sentenceStartBoostAdd: 10,
+    sentenceEndSlowAdd: 15,
+    rateOffset: -0.03,
+  },
+  educational: {
+    pauseAfterSentencesAdd: 150,
+    pauseBetweenParagraphsAdd: 300,
+    pauseAfterCommaAdd: 75,
+    dynamicPauseForce: false,
+    dynamicPauseVariationMin: 0,
+    emphasisBoost: 0,
+    sentenceStartBoostAdd: 0,
+    sentenceEndSlowAdd: 5,
+    rateOffset: -0.05,
+  },
+};
 
 interface Timepoint {
   markName: string;
@@ -185,13 +236,13 @@ const EMPHASIS_OPENERS_FR = new Set([
  * - High-impact words get level="moderate".
  * - Skip words already inside SSML tags.
  */
-function applyEmphasis(sentence: string): string {
+function applyEmphasis(sentence: string, emphasisBoost = 0): string {
   // Don't process very short sentences
   const wordCount = sentence.split(/\s+/).filter(w => w.trim()).length;
   if (wordCount < 4) return sentence;
 
   let emphasisCount = 0;
-  const MAX_EMPHASIS = 2;
+  const MAX_EMPHASIS = 2 + emphasisBoost; // storytelling allows more
 
   // Split into tokens preserving whitespace and existing SSML tags
   const parts = sentence.split(/(<[^>]+>)/);
@@ -252,14 +303,15 @@ function buildMarkedSsml(
   sentenceEndSlow: number,
   commaPauseMs = 0,
   dynamicPauseEnabled = false,
-  dynamicPauseVariation = 0
+  dynamicPauseVariation = 0,
+  emphasisBoost = 0
 ): string {
   const parts = shotSentences.map((shot, idx) => {
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
     // Emphasis heuristics
-    processed = applyEmphasis(processed);
+    processed = applyEmphasis(processed, emphasisBoost);
 
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
@@ -368,7 +420,8 @@ function textToSsml(
   endSlowPct: number,
   commaPauseMs = 0,
   dynamicPauseEnabled = false,
-  dynamicPauseVariation = 0
+  dynamicPauseVariation = 0,
+  emphasisBoost = 0
 ): string {
   if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0 && commaPauseMs <= 0) return rawText;
 
@@ -378,7 +431,7 @@ function textToSsml(
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
     const processed = sentences.map((s) => {
-      let result = applyEmphasis(s);
+      let result = applyEmphasis(s, emphasisBoost);
       result = processSentenceProsody(result, startBoostPct, endSlowPct);
       if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
       return result;
@@ -515,21 +568,27 @@ serve(async (req) => {
       voiceGender = "FEMALE",
       voiceName,
       voiceType,
-      speakingRate = 1.0,
-      pitch = 0,
-      volumeGainDb = 0,
-      effectsProfileId,
-      pauseBetweenParagraphs = 0,
-      pauseAfterSentences = 0,
-      pauseAfterComma = 0,
-      dynamicPauseEnabled = false,
-      dynamicPauseVariation = 0,
-      sentenceStartBoost = 0,
-      sentenceEndSlow = 0,
+      narrationProfile = "standard",
       mode = "preview",
       projectId,
       shotSentences,
     } = body;
+
+    // Apply narration profile modulation on top of user settings
+    const mod = NARRATION_MODULATION[narrationProfile] ?? NARRATION_MODULATION.standard;
+    const speakingRate = (body.speakingRate ?? 1.0) + mod.rateOffset;
+    const pitch = body.pitch ?? 0;
+    const volumeGainDb = body.volumeGainDb ?? 0;
+    const effectsProfileId = body.effectsProfileId;
+    const pauseBetweenParagraphs = (body.pauseBetweenParagraphs ?? 0) + mod.pauseBetweenParagraphsAdd;
+    const pauseAfterSentences = (body.pauseAfterSentences ?? 0) + mod.pauseAfterSentencesAdd;
+    const pauseAfterComma = (body.pauseAfterComma ?? 0) + mod.pauseAfterCommaAdd;
+    const dynamicPauseEnabled = (body.dynamicPauseEnabled ?? false) || mod.dynamicPauseForce;
+    const dynamicPauseVariation = Math.max(body.dynamicPauseVariation ?? 0, mod.dynamicPauseVariationMin);
+    const sentenceStartBoost = (body.sentenceStartBoost ?? 0) + mod.sentenceStartBoostAdd;
+    const sentenceEndSlow = (body.sentenceEndSlow ?? 0) + mod.sentenceEndSlowAdd;
+
+    console.log(`NarrationProfile: ${narrationProfile}, effective pauses: sent=${pauseAfterSentences}, para=${pauseBetweenParagraphs}, comma=${pauseAfterComma}, dynamic=${dynamicPauseEnabled}/${dynamicPauseVariation}`);
 
     if (!text || text.trim().length === 0) {
       return new Response(
@@ -559,7 +618,7 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation, mod.emphasisBoost);
       const isSsml = ssmlText.startsWith("<speak>");
       const result = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
@@ -608,7 +667,8 @@ serve(async (req) => {
         sentenceEndSlow,
         pauseAfterComma,
         dynamicPauseEnabled,
-        dynamicPauseVariation
+        dynamicPauseVariation,
+        mod.emphasisBoost
       );
 
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);

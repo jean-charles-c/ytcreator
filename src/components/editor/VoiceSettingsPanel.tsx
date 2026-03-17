@@ -21,6 +21,7 @@ export interface VoiceSettings {
   voiceType: string;
   voiceName: string;
   style: string;
+  narrationProfile: "standard" | "storytelling" | "educational";
   speakingRate: number;
   pitch: number;
   volumeGainDb: number;
@@ -33,6 +34,12 @@ export interface VoiceSettings {
   sentenceStartBoost: number;
   sentenceEndSlow: number;
 }
+
+export const NARRATION_PROFILES = [
+  { value: "standard" as const, label: "Standard", desc: "Équilibre neutre — polyvalent", icon: "⚖️" },
+  { value: "storytelling" as const, label: "Storytelling", desc: "Plus vivant — pauses dramatiques", icon: "🎭" },
+  { value: "educational" as const, label: "Éducatif", desc: "Articulé — segmentation claire", icon: "🎓" },
+];
 
 export const STYLE_PRESETS: Record<string, { pitch: number; rateOffset: number; label: string }> = {
   neutral:    { pitch: 0,    rateOffset: 0,    label: "Neutre" },
@@ -237,6 +244,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
       voiceType,
       voiceName: p.voice_name || "",
       style: tone,
+      narrationProfile: "standard",
       speakingRate: p.speaking_rate,
       pitch: 0,
       volumeGainDb: p.volume_gain_db ?? 0,
@@ -478,6 +486,31 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
             {STYLES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Narration Profile */}
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Profil de narration</Label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {NARRATION_PROFILES.map((np) => (
+            <button
+              key={np.value}
+              onClick={() => update({ narrationProfile: np.value })}
+              className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-center transition-colors ${
+                settings.narrationProfile === np.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+              }`}
+              title={np.desc}
+            >
+              <span className="text-base leading-none">{np.icon}</span>
+              <span className="text-[10px] font-medium leading-tight">{np.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          {NARRATION_PROFILES.find(p => p.value === settings.narrationProfile)?.desc}
+        </p>
       </div>
 
       {/* Speaking Rate */}
