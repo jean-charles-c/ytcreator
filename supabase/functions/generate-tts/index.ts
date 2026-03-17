@@ -30,6 +30,7 @@ interface TTSRequest {
   projectId?: string;
   customFileName?: string;
   shotSentences?: { id: string; text: string }[];
+  syncMode?: "standard" | "shot_marked";
 }
 
 /**
