@@ -480,8 +480,9 @@ function unescapeXml(s: string): string {
   return s
     .replace(/&apos;/g, "'")
     .replace(/&quot;/g, '"')
-    .replace(/&gt;/g, ">");
-    
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
 }
 
 function ssmlToPlainText(ssml: string): string {
