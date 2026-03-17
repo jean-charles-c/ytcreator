@@ -20,12 +20,14 @@ interface TTSRequest {
   effectsProfileId?: string;
   pauseBetweenParagraphs?: number;
   pauseAfterSentences?: number;
+  pauseAfterComma?: number;
+  dynamicPauseEnabled?: boolean;
+  dynamicPauseVariation?: number;
   sentenceStartBoost?: number;
   sentenceEndSlow?: number;
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
-  /** Optional: shot sentences for precise audio-visual sync */
   shotSentences?: { id: string; text: string }[];
 }
 
@@ -161,25 +163,36 @@ function buildMarkedSsml(
   shotSentences: { id: string; text: string }[],
   pauseAfterSentences: number,
   sentenceStartBoost: number,
-  sentenceEndSlow: number
+  sentenceEndSlow: number,
+  commaPauseMs = 0,
+  dynamicPauseEnabled = false,
+  dynamicPauseVariation = 0
 ): string {
-  const sentBreak = pauseAfterSentences > 0 ? `<break time="${pauseAfterSentences}ms"/>` : "";
-
   const parts = shotSentences.map((shot, idx) => {
     const mark = `<mark name="s_${idx}"/>`;
     let processed = escapeXml(shot.text.trim());
 
-    // Apply prosody effects
     if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
       processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
+    }
+    if (commaPauseMs > 0) {
+      processed = injectCommaPauses(processed, commaPauseMs);
     }
 
     return `${mark}${processed}`;
   });
 
-  // Add end marker to measure total duration
+  // Join with sentence pauses (with optional jitter)
+  const joined = parts.map((p, i) => {
+    if (i < parts.length - 1 && pauseAfterSentences > 0) {
+      const pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
+      return `${p}<break time="${pause}ms"/>`;
+    }
+    return p;
+  }).join(" ");
+
   const endMark = `<mark name="__end"/>`;
-  return `<speak>${parts.join(sentBreak + " ")}${endMark}</speak>`;
+  return `<speak>${joined}${endMark}</speak>`;
 }
 
 function processSentenceProsody(sentence: string, startBoostPct: number, endSlowPct: number): string {
@@ -236,22 +249,67 @@ function processSentenceProsody(sentence: string, startBoostPct: number, endSlow
   return sentence;
 }
 
-function textToSsml(rawText: string, paraPauseMs: number, sentPauseMs: number, startBoostPct: number, endSlowPct: number): string {
-  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0) return rawText;
+/**
+ * Inject <break> after commas in already-escaped text.
+ */
+function injectCommaPauses(text: string, commaMs: number): string {
+  if (commaMs <= 0) return text;
+  // Insert break after commas (but not inside SSML tags)
+  return text.replace(/,(?![^<]*>)/g, `,<break time="${commaMs}ms"/>`);
+}
+
+/**
+ * Add random variation to a pause value (returns jittered ms).
+ */
+function jitterPause(baseMs: number, variationMs: number, enabled: boolean): number {
+  if (!enabled || variationMs <= 0 || baseMs <= 0) return baseMs;
+  const jitter = Math.round((Math.random() * 2 - 1) * variationMs);
+  return Math.max(50, baseMs + jitter);
+}
+
+function textToSsml(
+  rawText: string,
+  paraPauseMs: number,
+  sentPauseMs: number,
+  startBoostPct: number,
+  endSlowPct: number,
+  commaPauseMs = 0,
+  dynamicPauseEnabled = false,
+  dynamicPauseVariation = 0
+): string {
+  if (paraPauseMs <= 0 && sentPauseMs <= 0 && startBoostPct <= 0 && endSlowPct <= 0 && commaPauseMs <= 0) return rawText;
 
   const paragraphs = rawText.split(/\n\s*\n/).filter((p) => p.trim());
-  const paraBreak = paraPauseMs > 0 ? `<break time="${paraPauseMs}ms"/>` : "";
-  const sentBreak = sentPauseMs > 0 ? `<break time="${sentPauseMs}ms"/>` : "";
 
   const processedParagraphs = paragraphs.map((p) => {
     const escaped = escapeXml(p.trim());
     const sentences = escaped.split(/(?<=[.!?])\s+/);
-    const processed = sentences.map((s) => processSentenceProsody(s, startBoostPct, endSlowPct));
-    return sentPauseMs > 0 ? processed.join(`${sentBreak} `) : processed.join(" ");
+    const processed = sentences.map((s) => {
+      let result = processSentenceProsody(s, startBoostPct, endSlowPct);
+      if (commaPauseMs > 0) result = injectCommaPauses(result, commaPauseMs);
+      return result;
+    });
+    if (sentPauseMs > 0) {
+      return processed.map((s, i) => {
+        if (i < processed.length - 1) {
+          const pause = jitterPause(sentPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+          return `${s}<break time="${pause}ms"/>`;
+        }
+        return s;
+      }).join(" ");
+    }
+    return processed.join(" ");
   });
 
-  const inner = processedParagraphs.join(paraBreak ? `${paraBreak}\n` : "\n");
-  return `<speak>${inner}</speak>`;
+  const paraBreakParts = processedParagraphs.map((p, i) => {
+    if (i < processedParagraphs.length - 1 && paraPauseMs > 0) {
+      const pause = jitterPause(paraPauseMs, dynamicPauseVariation, dynamicPauseEnabled);
+      return `${p}<break time="${pause}ms"/>`;
+    }
+    return p;
+  });
+
+  return `<speak>${paraBreakParts.join("\n")}</speak>`;
 }
 
 /**
@@ -365,6 +423,9 @@ serve(async (req) => {
       effectsProfileId,
       pauseBetweenParagraphs = 0,
       pauseAfterSentences = 0,
+      pauseAfterComma = 0,
+      dynamicPauseEnabled = false,
+      dynamicPauseVariation = 0,
       sentenceStartBoost = 0,
       sentenceEndSlow = 0,
       mode = "preview",
@@ -400,7 +461,7 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation);
       const isSsml = ssmlText.startsWith("<speak>");
       const result = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
@@ -446,7 +507,10 @@ serve(async (req) => {
         shotSentences!,
         pauseAfterSentences,
         sentenceStartBoost,
-        sentenceEndSlow
+        sentenceEndSlow,
+        pauseAfterComma,
+        dynamicPauseEnabled,
+        dynamicPauseVariation
       );
 
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
@@ -514,7 +578,7 @@ serve(async (req) => {
       console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
     } else {
       // ── Legacy mode: no marks, plain text/SSML ──
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow);
+      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation);
       const isSsml = ssmlText.startsWith("<speak>");
 
       const chunks: string[] = [];
