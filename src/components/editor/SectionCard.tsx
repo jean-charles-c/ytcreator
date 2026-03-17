@@ -102,6 +102,14 @@ function resolveKey(headerText: string): string {
   return "act2"; // fallback
 }
 
+/** Reassemble sections back into a single script string */
+export function reassembleSections(sections: NarrativeSection[]): string {
+  return sections
+    .filter((s) => s.content.trim())
+    .map((s) => s.content.trim())
+    .join("\n\n");
+}
+
 interface SectionCardProps {
   section: NarrativeSection;
   index: number;
