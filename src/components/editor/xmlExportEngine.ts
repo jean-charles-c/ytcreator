@@ -63,8 +63,8 @@ function generateXml(
     const description = escapeXml(seg.description);
     const sentence = escapeXml(seg.sentence || seg.sentenceFr || "");
     const localPath = imageFileNames.get(i) ?? "";
-    const masterClipId = `masterclip-img-${globalIndex}`;
-    const fileId = `file-img-${globalIndex}`;
+    const masterClipId = `masterclip-${exportUid}-img-${globalIndex}`;
+    const fileId = `file-${exportUid}-img-${globalIndex}`;
     const fileDuration = dur;
 
     return `
