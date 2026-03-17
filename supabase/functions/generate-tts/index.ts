@@ -450,7 +450,7 @@ serve(async (req) => {
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
       console.log(`Split into ${chunks.length} chunks, total shots: ${shotSentences!.length}`);
 
-      let cumulativeOffset = 0;
+      // cumulativeOffset is declared at outer scope
 
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
