@@ -15,10 +15,12 @@ import {
   Plus,
   ZoomIn,
   ZoomOut,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Timeline, ShotSegment } from "./timelineAssembly";
 import { updateTimelineSegments } from "./timelineAssembly";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 interface TimelineViewProps {
   timeline: Timeline;
