@@ -652,7 +652,7 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
                 <button
                   key={ms}
                   onClick={() => update({ dynamicPauseVariation: ms })}
-                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-mono transition-colors ${
+                  className={`flex-1 rounded-md px-2 py-2.5 sm:py-1.5 text-xs font-mono transition-colors min-h-[44px] sm:min-h-0 ${
                     settings.dynamicPauseVariation === ms
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-muted-foreground hover:bg-secondary/80"
