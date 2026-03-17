@@ -1,5 +1,6 @@
-import { useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
+import { ChevronDown, RotateCcw, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export interface NarrativeSection {
@@ -32,12 +33,11 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
 
   const cleaned = script.trim();
 
-  // Try header-based split first: look for ## Hook, ## Introduction, etc.
+  // Try header-based split first
   const headerPattern = /^#{1,3}\s*(Hook|Introduction|Act\s*1[^]*?|Act\s*2[^]*?|Act\s*3[^]*?|Climax|Révélation|Conclusion|Setup|Escalade)[^\n]*/gim;
   const headerMatches = [...cleaned.matchAll(headerPattern)];
 
   if (headerMatches.length >= 3) {
-    // Header-based parsing
     const segments: { key: string; content: string }[] = [];
     for (let i = 0; i < headerMatches.length; i++) {
       const start = headerMatches[i].index! + headerMatches[i][0].length;
@@ -47,7 +47,6 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
       segments.push({ key, content: cleaned.slice(start, end).trim() });
     }
 
-    // Content before first header goes to "hook"
     if (headerMatches[0].index! > 0) {
       const preContent = cleaned.slice(0, headerMatches[0].index!).trim();
       if (preContent) {
@@ -66,12 +65,9 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   // Fallback: split by paragraphs proportionally
   const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
   const total = paragraphs.length;
-
-  // Distribution: Hook ~10%, Intro ~10%, Act1 ~20%, Act2 ~25%, Act3 ~15%, Climax ~10%, Conclusion ~10%
   const ratios = [0.10, 0.10, 0.20, 0.25, 0.15, 0.10, 0.10];
   const counts = ratios.map((r) => Math.max(1, Math.round(r * total)));
 
-  // Adjust to match total
   let sum = counts.reduce((a, b) => a + b, 0);
   while (sum > total && counts.length > 0) {
     const maxIdx = counts.indexOf(Math.max(...counts));
@@ -79,7 +75,7 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
     sum--;
   }
   while (sum < total) {
-    counts[3]++; // Add extra to Act 2
+    counts[3]++;
     sum++;
   }
 
@@ -99,7 +95,7 @@ function resolveKey(headerText: string): string {
   if (/act\s*3/i.test(headerText)) return "act3";
   if (/climax|révélation|revelation/i.test(headerText)) return "climax";
   if (/conclusion/i.test(headerText)) return "conclusion";
-  return "act2"; // fallback
+  return "act2";
 }
 
 /** Reassemble sections back into a single script string */
@@ -116,14 +112,15 @@ interface SectionCardProps {
   isOpen: boolean;
   onToggle: () => void;
   onContentChange?: (key: string, content: string) => void;
+  onRegenerate?: (key: string) => Promise<void>;
+  regenerating?: boolean;
 }
 
-export default function SectionCard({ section, index, isOpen, onToggle, onContentChange }: SectionCardProps) {
+export default function SectionCard({ section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating }: SectionCardProps) {
   const wordCount = section.content ? section.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize textarea to fit content
   useEffect(() => {
     const el = textareaRef.current;
     if (el && isOpen) {
@@ -146,12 +143,31 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
             <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
               {charCount > 0 ? `${charCount.toLocaleString()} car. · ${wordCount} mots` : "vide"}
             </span>
+            {regenerating && (
+              <span className="flex items-center gap-1 text-[10px] text-primary">
+                <Loader2 className="h-3 w-3 animate-spin" /> Régénération…
+              </span>
+            )}
           </div>
         </div>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="rounded-b-lg border border-t-0 border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
+          {onRegenerate && (
+            <div className="flex justify-end mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={regenerating}
+                onClick={(e) => { e.stopPropagation(); onRegenerate(section.key); }}
+                className="h-7 text-[11px] gap-1.5"
+              >
+                {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                Régénérer cette section
+              </Button>
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={section.content}
@@ -159,6 +175,7 @@ export default function SectionCard({ section, index, isOpen, onToggle, onConten
             placeholder="Saisissez le contenu de cette section…"
             className="w-full min-h-[120px] bg-transparent text-sm text-foreground leading-relaxed resize-y font-body border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/40"
             aria-label={`Édition section ${section.label}`}
+            disabled={regenerating}
           />
         </div>
       </CollapsibleContent>
