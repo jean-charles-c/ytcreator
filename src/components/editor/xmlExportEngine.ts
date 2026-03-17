@@ -68,7 +68,7 @@ function generateXml(
     const fileDuration = dur;
 
     return `
-      <clipitem id="clip-${globalIndex}">
+      <clipitem id="clip-${exportUid}-${globalIndex}">
         <masterclipid>${masterClipId}</masterclipid>
         <name>${name}</name>
         <enabled>TRUE</enabled>
