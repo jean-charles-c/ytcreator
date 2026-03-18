@@ -29,7 +29,7 @@ interface TTSRequest {
   mode?: "preview" | "full";
   projectId?: string;
   customFileName?: string;
-  shotSentences?: { id: string; text: string }[];
+  shotSentences?: { id: string; text: string; isNewScene?: boolean }[];
   syncMode?: "standard" | "shot_marked";
 }
 
