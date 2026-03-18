@@ -157,8 +157,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
-            // Note: always use textarea text as source of truth (no shot_marked override)
-            // Shot sync is only used when explicitly requested via a dedicated toggle
+            ...(shotSentences ? { shotSentences, syncMode: "shot_marked" } : {}),
           }),
         }
       );
