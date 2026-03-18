@@ -25,6 +25,8 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 interface TimelineViewProps {
   timeline: Timeline;
   onTimelineChange?: (timeline: Timeline) => void;
+  imageOffsetMs?: number;
+  onImageOffsetChange?: (ms: number) => void;
 }
 
 function formatTime(seconds: number): string {
