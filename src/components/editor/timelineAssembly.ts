@@ -103,12 +103,18 @@ export function assembleTimeline(
       timepointMap.set(tp.shotId, tp.timeSeconds);
     }
 
+    const isReasonableTime = (value: number | undefined): value is number => {
+      if (value === undefined || !Number.isFinite(value) || value < 0) return false;
+      return audioDuration <= 0 || value <= audioDuration + MAX_TIMECODE_DRIFT_FOR_ID_MATCH;
+    };
+
     const resolveStartTime = (shotId: string, index: number): number => {
       const explicit = timepointMap.get(shotId);
       const sequential = orderedTimepoints[index]?.timeSeconds;
 
-      if (explicit === undefined) return sequential ?? 0;
-      if (sequential === undefined) return explicit;
+      if (isReasonableTime(explicit) && !isReasonableTime(sequential)) return explicit;
+      if (!isReasonableTime(explicit) && isReasonableTime(sequential)) return sequential;
+      if (!isReasonableTime(explicit) && !isReasonableTime(sequential)) return 0;
 
       return Math.abs(explicit - sequential) > MAX_TIMECODE_DRIFT_FOR_ID_MATCH
         ? sequential

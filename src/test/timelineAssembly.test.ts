@@ -50,8 +50,8 @@ describe("assembleTimeline", () => {
     const shotTimepoints: ShotTimepoint[] = [
       { shotId: "shot-1", shotIndex: 0, timeSeconds: 0 },
       { shotId: "_missing_1", shotIndex: 1, timeSeconds: 4 },
-      { shotId: "shot-3", shotIndex: 2, timeSeconds: 8 },
       { shotId: "shot-2", shotIndex: 3, timeSeconds: 600 },
+      { shotId: "shot-3", shotIndex: 4, timeSeconds: 8 },
     ];
 
     const timeline = assembleTimeline(scenes, shots, audioFile, shotTimepoints);

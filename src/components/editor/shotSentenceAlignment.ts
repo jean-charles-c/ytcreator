@@ -17,16 +17,19 @@ function normalizeText(value: string): string {
     .trim();
 }
 
-function textsMatch(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  return a === b || a.includes(b) || b.includes(a);
-}
-
 function splitScriptSentences(scriptText: string): string[] {
   return scriptText
     .split(SCRIPT_SENTENCE_SPLIT_REGEX)
     .map((sentence) => sentence.trim())
     .filter((sentence) => sentence.length > 0);
+}
+
+function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
+  if (!shotTextNormalized || !scriptBlockNormalized) return false;
+  return (
+    shotTextNormalized === scriptBlockNormalized ||
+    shotTextNormalized.includes(scriptBlockNormalized)
+  );
 }
 
 function getCoverageLength(
@@ -39,9 +42,9 @@ function getCoverageLength(
     normalizedScriptSentences.length - startIndex
   );
 
-  for (let length = 1; length <= maxLength; length++) {
+  for (let length = maxLength; length >= 1; length--) {
     const combined = normalizedScriptSentences.slice(startIndex, startIndex + length).join(" ");
-    if (textsMatch(shotTextNormalized, combined)) {
+    if (shotCoversScriptBlock(shotTextNormalized, combined)) {
       return length;
     }
   }
