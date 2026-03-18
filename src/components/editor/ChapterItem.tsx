@@ -126,7 +126,7 @@ export default function ChapterItem({
           size="sm"
           disabled={generating}
           onClick={handleGenerate}
-          className="h-7 text-xs gap-1"
+          className="h-9 sm:h-7 text-xs gap-1 min-w-[44px]"
         >
           {generating ? (
             <Loader2 className="h-3 w-3 animate-spin" />
