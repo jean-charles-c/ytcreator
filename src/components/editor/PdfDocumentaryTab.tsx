@@ -225,11 +225,13 @@ export default function PdfDocumentaryTab({
       if (data.sections && Array.isArray(data.sections)) {
         const SECTION_META: Record<string, { label: string; icon: string }> = {
           hook: { label: "Hook", icon: "🎣" },
-          introduction: { label: "Introduction", icon: "📖" },
+          context: { label: "Context", icon: "📖" },
+          promise: { label: "Promise", icon: "🎯" },
           act1: { label: "Act 1 — Setup", icon: "🏗️" },
           act2: { label: "Act 2 — Escalade", icon: "⚡" },
           act3: { label: "Act 3 — Impact", icon: "🔥" },
-          climax: { label: "Révélation", icon: "💡" },
+          climax: { label: "Climax", icon: "💡" },
+          insight: { label: "Insight", icon: "🧠" },
           conclusion: { label: "Conclusion", icon: "🎬" },
         };
 

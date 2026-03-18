@@ -29,7 +29,28 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   }
 
   const cleaned = script.trim();
-  const headerPattern = /^#{1,3}\s*(Hook|Introduction|Act\s*1[^]*?|Act\s*2[^]*?|Act\s*3[^]*?|Climax|Révélation|Conclusion|Setup|Escalade)[^\n]*/gim;
+
+  // V3: Parse [[TAG]] markers
+  const tagPattern = /\[\[(HOOK|CONTEXT|PROMISE|ACT1|ACT2|ACT3|CLIMAX|INSIGHT|CONCLUSION)\]\]/gi;
+  const tagMatches = [...cleaned.matchAll(tagPattern)];
+
+  if (tagMatches.length >= 3) {
+    const segments: { key: string; content: string }[] = [];
+    for (let i = 0; i < tagMatches.length; i++) {
+      const start = tagMatches[i].index! + tagMatches[i][0].length;
+      const end = i + 1 < tagMatches.length ? tagMatches[i + 1].index! : cleaned.length;
+      const key = tagMatches[i][1].toLowerCase();
+      segments.push({ key, content: cleaned.slice(start, end).trim() });
+    }
+
+    return NARRATIVE_SECTIONS.map((s) => ({
+      ...s,
+      content: segments.find((seg) => seg.key === s.key)?.content || "",
+    }));
+  }
+
+  // Legacy fallback: header-based parsing
+  const headerPattern = /^#{1,3}\s*(Hook|Context|Promise|Introduction|Act\s*1[^]*?|Act\s*2[^]*?|Act\s*3[^]*?|Climax|Insight|Révélation|Conclusion|Setup|Escalade)[^\n]*/gim;
   const headerMatches = [...cleaned.matchAll(headerPattern)];
 
   if (headerMatches.length >= 3) {
@@ -57,9 +78,10 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
     }));
   }
 
+  // Final fallback: proportional split
   const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
   const total = paragraphs.length;
-  const ratios = [0.10, 0.10, 0.20, 0.25, 0.15, 0.10, 0.10];
+  const ratios = [0.08, 0.08, 0.06, 0.18, 0.25, 0.15, 0.10, 0.05, 0.05];
   const counts = ratios.map((r) => Math.max(1, Math.round(r * total)));
 
   let sum = counts.reduce((a, b) => a + b, 0);
@@ -69,7 +91,7 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
     sum--;
   }
   while (sum < total) {
-    counts[3]++;
+    counts[4]++; // act2 gets extra
     sum++;
   }
 
@@ -83,11 +105,14 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
 
 function resolveKey(headerText: string): string {
   if (/hook/i.test(headerText)) return "hook";
-  if (/introduction/i.test(headerText)) return "introduction";
+  if (/context/i.test(headerText)) return "context";
+  if (/promise/i.test(headerText)) return "promise";
+  if (/introduction/i.test(headerText)) return "context";
   if (/act\s*1|setup/i.test(headerText)) return "act1";
   if (/act\s*2|escalade/i.test(headerText)) return "act2";
   if (/act\s*3/i.test(headerText)) return "act3";
   if (/climax|révélation|revelation/i.test(headerText)) return "climax";
+  if (/insight/i.test(headerText)) return "insight";
   if (/conclusion/i.test(headerText)) return "conclusion";
   return "act2";
 }

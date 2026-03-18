@@ -277,7 +277,7 @@ function enforceHookRules(classified: ClassifiedBlock[]): ClassifiedBlock[] {
       if (item.mode === "concrete" && !item.isNoise) {
         hookEnded = true;
         // This block starts the next section
-        return { ...item, section: "introduction" };
+        return { ...item, section: "context" as const };
       }
       return item;
     } else {
