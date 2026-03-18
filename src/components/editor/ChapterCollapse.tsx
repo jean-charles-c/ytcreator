@@ -205,25 +205,84 @@ export default function ChapterCollapse({
   const handleBatchGenerate = useCallback(async () => {
     if (!chapterState || chapters.length === 0) return;
     setBatchGenerating(true);
-    const toneOptions = ["curiosity", "dramatic", "informative", "contrarian"];
+
+    // For each chapter, call the edge function directly and collect results
+    const variantsMap = new Map<string, ChapterTitleVariant[]>();
+    const selectedToneMap = new Map<string, string>(); // track which tone was the "preferred"
     let errorCount = 0;
 
     for (let i = 0; i < chapterState.chapters.length; i++) {
       const ch = chapterState.chapters[i];
-      const tone = batchTone === "mixed" ? toneOptions[i % toneOptions.length] : batchTone;
       setGeneratingId(ch.id);
+
+      // Always use "mixed" to generate all 4 tones; batchTone determines which gets pre-selected
       try {
-        await handleGenerateTitles(ch.id, tone);
-      } catch {
+        const { data, error } = await supabase.functions.invoke("chapter-titles", {
+          body: {
+            chapterText: ch.sourceText,
+            chapterLabel: ch.title,
+            tone: "mixed",
+            language: scriptLanguage || "en",
+          },
+        });
+
+        if (error || data?.error) {
+          console.error(error || data?.error);
+          errorCount++;
+          continue;
+        }
+
+        const newVariants: ChapterTitleVariant[] = (data.titles || []).map(
+          (t: { title: string; hookType: string; titleFR?: string }, vi: number) => ({
+            id: `${ch.id}-v${Date.now()}-${vi}`,
+            title: t.title,
+            hookType: t.hookType,
+            selected: false,
+            titleFR: t.titleFR || null,
+          })
+        );
+
+        variantsMap.set(ch.id, newVariants);
+        selectedToneMap.set(ch.id, batchTone === "mixed" ? "" : batchTone);
+      } catch (e) {
+        console.error(e);
         errorCount++;
       }
     }
+
+    // Single state update with all results — pre-select the variant matching batchTone
+    onChapterStateChange({
+      ...chapterState,
+      chapters: chapterState.chapters.map((ch) => {
+        const newVars = variantsMap.get(ch.id);
+        if (!newVars) return ch;
+
+        const preferredTone = selectedToneMap.get(ch.id) || "";
+        const existingVariants = ch.variants.map((v) => ({ ...v, selected: false }));
+        const allVariants = [...newVars, ...existingVariants].slice(0, 20);
+
+        // Auto-select the first variant matching the preferred tone
+        const matchIdx = preferredTone
+          ? allVariants.findIndex((v) => v.hookType === preferredTone)
+          : 0;
+        const selectedIdx = matchIdx >= 0 ? matchIdx : 0;
+        const selectedVariant = allVariants[selectedIdx];
+
+        return {
+          ...ch,
+          title: selectedVariant?.title || ch.title,
+          titleFR: selectedVariant?.titleFR || ch.titleFR,
+          variants: allVariants.map((v, vi) => ({ ...v, selected: vi === selectedIdx })),
+        };
+      }),
+      lastUpdatedAt: new Date().toISOString(),
+    });
 
     setGeneratingId(null);
     setBatchGenerating(false);
     if (errorCount === 0) toast.success("9 chapitres générés !");
     else toast.warning(`${errorCount} erreur(s) sur 9`);
-  }, [chapterState, chapters.length, batchTone, handleGenerateTitles]);
+  }, [chapterState, chapters.length, batchTone, scriptLanguage, onChapterStateChange]);
 
   return (
     <Collapsible open={open} onOpenChange={handleOpenChange}>
