@@ -35,6 +35,8 @@ export default function ChapterCollapse({
 }: ChapterCollapseProps) {
   const [open, setOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchTone, setBatchTone] = useState("mixed");
 
   const normalizeChapterState = useCallback(
     (existingState: ChapterListState | null): ChapterListState => {
