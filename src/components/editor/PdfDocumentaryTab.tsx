@@ -148,6 +148,7 @@ export default function PdfDocumentaryTab({
   narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation,
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
+  const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [targetChars, setTargetChars] = useState(15000);
