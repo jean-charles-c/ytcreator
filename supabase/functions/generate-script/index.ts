@@ -334,7 +334,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output ONLY the narration text. No titles, no sections, no markers. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). DO NOT EXCEED ${charMax.toLocaleString()} characters. Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences. Never 3 consecutive sentences of similar length.`);
+  parts.push(`CRITICAL REMINDER: Output the script with ALL 9 section tags: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]]. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit. Every sentence under 100 characters.`);
 
   return parts.join("\n\n");
 }
