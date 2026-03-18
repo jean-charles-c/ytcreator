@@ -27,6 +27,7 @@ interface ChapterItemProps {
   onGenerateTitles: (id: string, tone: string) => Promise<void>;
   onSelectVariant: (chapterId: string, variantId: string) => void;
   generating?: boolean;
+  isFrench?: boolean;
 }
 
 export default function ChapterItem({
