@@ -36,6 +36,7 @@ export default function ChapterCollapse({
   onChapterStateChange,
   scriptLanguage,
   shots,
+  scenesForShotOrder,
 }: ChapterCollapseProps) {
   const [open, setOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
