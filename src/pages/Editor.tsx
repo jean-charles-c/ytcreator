@@ -1820,7 +1820,16 @@ export default function Editor() {
                                 )}
                               </div>
 
-                              {isRegenerating || isPendingGeneration ? (
+                              {hasMissing && (
+                                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+                                  <p className="text-xs font-medium text-destructive">⚠ Phrases du script sans shot correspondant :</p>
+                                  {missingSentences.map((sent: string, i: number) => (
+                                    <p key={i} className="text-xs text-destructive/80 italic pl-3 border-l-2 border-destructive/30">"{sent}"</p>
+                                  ))}
+                                  <p className="text-[10px] text-muted-foreground mt-1">→ Régénérez les shots de cette scène ou ajoutez un shot manuellement pour éviter un décalage audio/image.</p>
+                                </div>
+                              )}
+
                                 <div className="flex items-center justify-center py-8 gap-2">
                                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                   <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
