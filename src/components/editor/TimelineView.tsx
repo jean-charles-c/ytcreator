@@ -234,7 +234,7 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
     () => findSegmentAt(scaledSegments, currentTime + imageOffsetSec),
     [scaledSegments, currentTime, imageOffsetSec]
   );
-  const activeSegment = segments[activeIndex] ?? null;
+  const activeSegment = scaledSegments[activeIndex] ?? null;
 
   const waveformHeights = useMemo(
     () => Array.from({ length: 80 }, (_, i) => 20 + Math.sin(i * 0.7) * 35 + (Math.sin(i * 2.1) + 1) * 15),
