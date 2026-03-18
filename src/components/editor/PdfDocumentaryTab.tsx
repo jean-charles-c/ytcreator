@@ -146,7 +146,7 @@ export default function PdfDocumentaryTab({
   extractedText, onExtractedTextChange, pageCount, onPageCountChange, fileName, onFileNameChange,
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
-  narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation,
+  narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation, shots,
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
