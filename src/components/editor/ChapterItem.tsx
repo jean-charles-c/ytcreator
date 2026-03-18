@@ -37,6 +37,7 @@ export default function ChapterItem({
   onGenerateTitles,
   onSelectVariant,
   generating,
+  isFrench,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
