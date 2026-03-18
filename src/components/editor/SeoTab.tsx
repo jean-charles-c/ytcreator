@@ -3,9 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Youtube, Loader2, Trophy, Copy, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import ChapterCollapse from "./ChapterCollapse";
-import type { ChapterListState } from "./chapterTypes";
-import type { CanonicalScript } from "./canonicalScriptTypes";
 
 interface NarrativeAnalysis {
   central_mystery: string;
@@ -34,9 +31,6 @@ interface SeoTabProps {
   scriptLanguage: string;
   seoResults: SeoResults;
   onSeoResultsChange: (results: SeoResults) => void;
-  canonicalScript?: CanonicalScript | null;
-  chapterState?: ChapterListState | null;
-  onChapterStateChange?: (state: ChapterListState) => void;
 }
 
 const hookBadgeColor = (type: string) => {
@@ -54,9 +48,8 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
-export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange, canonicalScript, chapterState, onChapterStateChange }: SeoTabProps) {
+export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
-  const [localChapterState, setLocalChapterState] = useState<ChapterListState | null>(null);
 
   const youtubeTitles = seoResults?.titles ?? null;
   const youtubeDescription = seoResults?.description ?? null;
@@ -95,16 +88,8 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
         Générez des titres, description et tags YouTube optimisés.
       </p>
 
-      {/* Chapitres de la vidéo */}
-      <div className="mb-6">
-        <ChapterCollapse
-          canonicalScript={canonicalScript ?? null}
-          narration={narration}
-          chapterState={onChapterStateChange ? chapterState ?? null : localChapterState}
-          onChapterStateChange={onChapterStateChange ?? setLocalChapterState}
-          scriptLanguage={scriptLanguage}
-        />
-      </div>
+
+
 
       {!effectiveText ? (
         <div className="rounded-lg border border-border bg-card p-6 sm:p-8">

@@ -8,6 +8,8 @@ import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
 import { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
 import NarrativeScriptBlock, { type ScriptVersion } from "./NarrativeScriptBlock";
+import ChapterCollapse from "./ChapterCollapse";
+import type { ChapterListState } from "./chapterTypes";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -146,6 +148,7 @@ export default function PdfDocumentaryTab({
   narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation,
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
+  const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [targetChars, setTargetChars] = useState(15000);
@@ -646,7 +649,7 @@ export default function PdfDocumentaryTab({
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
       <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">
-        Script Narratif &amp; Voice Over
+        Aide à la génération de script narratif
       </h2>
       <p className="text-sm text-muted-foreground mb-6 sm:mb-8">
         Importez un dossier de recherche PDF pour générer un script documentaire complet.
@@ -1044,6 +1047,17 @@ export default function PdfDocumentaryTab({
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Chapitres de la vidéo */}
+      <div className="mt-6">
+        <ChapterCollapse
+          canonicalScript={null}
+          narration={narration}
+          chapterState={chapterState}
+          onChapterStateChange={setChapterState}
+          scriptLanguage={scriptLanguage}
+        />
+      </div>
 
     </div>
   );

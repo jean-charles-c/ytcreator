@@ -87,7 +87,7 @@ export default function Signup() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-10 rounded border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full h-11 sm:h-10 rounded border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="vous@exemple.com"
               />
             </div>
@@ -101,7 +101,7 @@ export default function Signup() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-10 rounded border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full h-11 sm:h-10 rounded border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="6 caractères minimum"
               />
             </div>
@@ -115,7 +115,7 @@ export default function Signup() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full h-10 rounded border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full h-11 sm:h-10 rounded border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="••••••••"
               />
             </div>
@@ -125,7 +125,7 @@ export default function Signup() {
             <p className="text-xs text-destructive">{error}</p>
           )}
 
-          <Button variant="hero" className="w-full" type="submit" disabled={loading}>
+          <Button variant="hero" className="w-full min-h-[44px]" type="submit" disabled={loading}>
             {loading ? "Création..." : "Créer mon compte"}
             <ArrowRight className="h-4 w-4 ml-1" />
           </Button>

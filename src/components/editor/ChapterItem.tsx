@@ -57,7 +57,7 @@ export default function ChapterItem({
   }, [chapter.id, tone, onGenerateTitles]);
 
   return (
-    <div className="rounded-lg border border-border bg-background p-3 transition-colors hover:bg-secondary/10 space-y-2">
+    <div className="rounded-lg border border-border bg-background p-3 sm:p-4 transition-colors hover:bg-secondary/10 space-y-2">
       {/* Row 1: checkbox + title */}
       <div className="flex items-start gap-3">
         <Checkbox
@@ -126,7 +126,7 @@ export default function ChapterItem({
           size="sm"
           disabled={generating}
           onClick={handleGenerate}
-          className="h-7 text-xs gap-1"
+          className="h-9 sm:h-7 text-xs gap-1 min-w-[44px]"
         >
           {generating ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -144,7 +144,7 @@ export default function ChapterItem({
             <button
               key={v.id}
               onClick={() => onSelectVariant(chapter.id, v.id)}
-              className={`flex items-center gap-2 w-full text-left rounded border px-2 py-1.5 text-xs transition-colors ${
+              className={`flex items-center gap-2 w-full text-left rounded border px-2 py-2.5 sm:py-1.5 text-xs transition-colors min-h-[44px] sm:min-h-0 ${
                 v.selected
                   ? "border-primary/40 bg-primary/5 text-foreground"
                   : "border-border bg-background text-muted-foreground hover:bg-secondary/30"
