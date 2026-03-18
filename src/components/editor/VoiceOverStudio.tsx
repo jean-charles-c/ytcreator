@@ -126,36 +126,75 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
     if (scriptSentences.length === 0) return shotEntries;
 
-    // Build a set of shot sentences (normalized) for fast lookup
-    const shotTextSet = new Set(shotEntries.map((e) => e.text.toLowerCase().trim()));
+    // Track which script sentences are already covered by a multi-sentence shot.
+    // A shot like "A city burns. Its clay tablets harden like brick." covers both
+    // individual sentences, so we must not inject the second one as _missing_.
+    const coveredScriptIndices = new Set<number>();
 
-    // Walk through script sentences and interleave missing ones before the next matching shot
+    // Pre-compute: for each shot, mark all script sentence indices whose text
+    // is contained within that shot's text (case-insensitive).
+    const shotTextsNorm = shotEntries.map((e) => e.text.toLowerCase().trim());
+    for (const shotNorm of shotTextsNorm) {
+      for (let si = 0; si < scriptSentences.length; si++) {
+        if (coveredScriptIndices.has(si)) continue;
+        const sentNorm = scriptSentences[si].toLowerCase().trim();
+        if (shotNorm.includes(sentNorm)) {
+          coveredScriptIndices.add(si);
+        }
+      }
+    }
+
+    // Walk through script sentences and interleave missing ones
     const result: { id: string; text: string; isNewScene?: boolean }[] = [];
     let shotIdx = 0;
+    const usedShotIds = new Set<string>();
 
-    for (const scriptSent of scriptSentences) {
+    for (let si = 0; si < scriptSentences.length; si++) {
+      const scriptSent = scriptSentences[si];
       const scriptNorm = scriptSent.toLowerCase().trim();
 
       // Check if this script sentence matches the current shot
       if (shotIdx < shotEntries.length) {
-        const shotNorm = shotEntries[shotIdx].text.toLowerCase().trim();
-        // Fuzzy match: script sentence starts with shot text or vice versa
+        const shotNorm = shotTextsNorm[shotIdx];
         if (scriptNorm === shotNorm || scriptNorm.startsWith(shotNorm) || shotNorm.startsWith(scriptNorm)) {
-          result.push(shotEntries[shotIdx]);
+          if (!usedShotIds.has(shotEntries[shotIdx].id)) {
+            result.push(shotEntries[shotIdx]);
+            usedShotIds.add(shotEntries[shotIdx].id);
+          }
           shotIdx++;
           continue;
         }
       }
 
-      // Not a shot match — check if it exists anywhere in shots (skip duplicates)
-      if (shotTextSet.has(scriptNorm)) {
-        // It's a shot sentence but out of order — find and push it
-        const found = shotEntries.find((e) => e.text.toLowerCase().trim() === scriptNorm);
-        if (found && !result.some((r) => r.id === found.id)) {
+      // Check if this sentence is already covered by a shot we already emitted
+      // (e.g. second sentence inside a multi-sentence shot text)
+      if (coveredScriptIndices.has(si)) {
+        // Check if the covering shot is already in the result — if so, skip silently
+        const coveringShot = shotEntries.find(
+          (e) => e.text.toLowerCase().trim().includes(scriptNorm) && usedShotIds.has(e.id)
+        );
+        if (coveringShot) continue;
+
+        // The covering shot hasn't been emitted yet — find and push it
+        const found = shotEntries.find(
+          (e) => e.text.toLowerCase().trim().includes(scriptNorm) && !usedShotIds.has(e.id)
+        );
+        if (found) {
           result.push(found);
-          // Advance shotIdx if this was the current shot
+          usedShotIds.add(found.id);
           if (shotIdx < shotEntries.length && shotEntries[shotIdx].id === found.id) shotIdx++;
+          continue;
         }
+      }
+
+      // Not a shot match — check exact match anywhere in shots (out of order)
+      const exactFound = shotEntries.find(
+        (e) => e.text.toLowerCase().trim() === scriptNorm && !usedShotIds.has(e.id)
+      );
+      if (exactFound) {
+        result.push(exactFound);
+        usedShotIds.add(exactFound.id);
+        if (shotIdx < shotEntries.length && shotEntries[shotIdx].id === exactFound.id) shotIdx++;
         continue;
       }
 
@@ -169,8 +208,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
     // Append any remaining shots that weren't matched
     while (shotIdx < shotEntries.length) {
-      if (!result.some((r) => r.id === shotEntries[shotIdx].id)) {
+      if (!usedShotIds.has(shotEntries[shotIdx].id)) {
         result.push(shotEntries[shotIdx]);
+        usedShotIds.add(shotEntries[shotIdx].id);
       }
       shotIdx++;
     }
