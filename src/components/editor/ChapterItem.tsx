@@ -40,6 +40,7 @@ export default function ChapterItem({
   onSelectVariant,
   generating,
   isFrench,
+  shots,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
