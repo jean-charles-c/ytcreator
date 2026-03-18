@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface ChapterItemProps {
   onSelectVariant: (chapterId: string, variantId: string) => void;
   generating?: boolean;
   isFrench?: boolean;
+  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
 }
 
 export default function ChapterItem({
@@ -39,6 +40,7 @@ export default function ChapterItem({
   onSelectVariant,
   generating,
   isFrench,
+  shots,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
@@ -52,6 +54,27 @@ export default function ChapterItem({
       setDraft(chapter.title);
     }
   };
+
+  /** Find the shot number matching the chapter's first sentence */
+  const matchingShotOrder = useMemo(() => {
+    if (!shots || shots.length === 0 || !chapter.startSentence) return null;
+    const startNorm = chapter.startSentence.toLowerCase().trim();
+    const match = shots.find((s) => {
+      const sent = (s.source_sentence || s.source_sentence_fr || "").toLowerCase().trim();
+      if (!sent) return false;
+      return sent.startsWith(startNorm.slice(0, 30)) || startNorm.startsWith(sent.slice(0, 30));
+    });
+    if (match) return match.shot_order;
+    if (chapter.sourceText) {
+      const srcNorm = chapter.sourceText.toLowerCase();
+      const found = shots.find((s) => {
+        const sent = (s.source_sentence || "").toLowerCase().trim();
+        return sent.length > 10 && srcNorm.includes(sent);
+      });
+      if (found) return found.shot_order;
+    }
+    return null;
+  }, [shots, chapter.startSentence, chapter.sourceText]);
 
   const handleGenerate = useCallback(() => {
     onGenerateTitles(chapter.id, tone);
@@ -106,6 +129,11 @@ export default function ChapterItem({
 
           {chapter.startSentence && (
             <p className="text-xs text-muted-foreground line-clamp-1 pl-7">
+              {matchingShotOrder != null && (
+                <span className="inline-flex items-center justify-center h-4 min-w-[1.25rem] px-1 rounded bg-accent text-accent-foreground text-[10px] font-bold mr-1.5 shrink-0">
+                  Shot {matchingShotOrder}
+                </span>
+              )}
               « {chapter.startSentence} »
             </p>
           )}

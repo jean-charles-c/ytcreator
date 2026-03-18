@@ -9,9 +9,10 @@ interface ChapterListProps {
   onSelectVariant: (chapterId: string, variantId: string) => void;
   generatingId?: string | null;
   isFrench?: boolean;
+  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
 }
 
-export default function ChapterList({ chapters, onToggleValidated, onTitleChange, onGenerateTitles, onSelectVariant, generatingId, isFrench }: ChapterListProps) {
+export default function ChapterList({ chapters, onToggleValidated, onTitleChange, onGenerateTitles, onSelectVariant, generatingId, isFrench, shots }: ChapterListProps) {
   if (chapters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
@@ -35,6 +36,7 @@ export default function ChapterList({ chapters, onToggleValidated, onTitleChange
           onSelectVariant={onSelectVariant}
           generating={generatingId === ch.id}
           isFrench={isFrench}
+          shots={shots}
         />
       ))}
     </div>

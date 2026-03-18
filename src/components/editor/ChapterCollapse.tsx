@@ -25,6 +25,7 @@ interface ChapterCollapseProps {
   chapterState: ChapterListState | null;
   onChapterStateChange: (state: ChapterListState) => void;
   scriptLanguage?: string;
+  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
 }
 
 export default function ChapterCollapse({
@@ -33,6 +34,7 @@ export default function ChapterCollapse({
   chapterState,
   onChapterStateChange,
   scriptLanguage,
+  shots,
 }: ChapterCollapseProps) {
   const [open, setOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
@@ -380,6 +382,7 @@ export default function ChapterCollapse({
           onSelectVariant={handleSelectVariant}
           generatingId={generatingId}
           isFrench={scriptLanguage === "fr"}
+          shots={shots}
         />
       </CollapsibleContent>
     </Collapsible>
