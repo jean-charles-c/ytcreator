@@ -220,7 +220,8 @@ export async function exportTimelineToXmlZip(
   // ── Generate XML with relative paths ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
   const exportUid = crypto.randomUUID().slice(0, 8);
-  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid);
+  const markersXml = chapters ? generateMarkerXml(buildChapterMarkers(chapters, timeline, fps), fps) : "";
+  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml);
   zip.file("timeline.xml", xml);
 
   // ── Generate ZIP ──
