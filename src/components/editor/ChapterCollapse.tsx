@@ -95,11 +95,12 @@ export default function ChapterCollapse({
         if (data?.error) { toast.error(data.error); return; }
 
         const newVariants: ChapterTitleVariant[] = (data.titles || []).map(
-          (t: { title: string; hookType: string }, i: number) => ({
+          (t: { title: string; hookType: string; titleFR?: string }, i: number) => ({
             id: `${id}-v${Date.now()}-${i}`,
             title: t.title,
             hookType: t.hookType,
             selected: false,
+            titleFR: t.titleFR || null,
           })
         );
 
