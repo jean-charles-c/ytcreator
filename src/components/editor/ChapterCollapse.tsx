@@ -175,6 +175,7 @@ export default function ChapterCollapse({
           onGenerateTitles={handleGenerateTitles}
           onSelectVariant={handleSelectVariant}
           generatingId={generatingId}
+          isFrench={scriptLanguage === "fr"}
         />
       </CollapsibleContent>
     </Collapsible>
