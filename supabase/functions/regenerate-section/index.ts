@@ -5,16 +5,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SECTION_ORDER = ["hook", "introduction", "act1", "act2", "act3", "climax", "conclusion"];
+const SECTION_ORDER = ["hook", "context", "promise", "act1", "act2", "act3", "climax", "insight", "conclusion"];
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
-  hook: "The HOOK — the opening 3-5 paragraphs that grab attention instantly. Must start with a surprising fact, paradox, or mystery. No greetings, no channel name. Pure curiosity trigger.",
-  introduction: "The INTRODUCTION — establishes the world and context. Concrete details: time, place, key characters or objects. Sets up the central question or mystery.",
-  act1: "ACT 1 (SETUP) — presents the main contradiction and first intriguing discoveries. Plants clues that will pay off later. Builds the viewer's mental picture.",
-  act2: "ACT 2 (ESCALATION) — the longest section. Unfolds the investigation step by step. Each revelation raises new questions. Alternate between evidence, meaning, surprise, and deeper mystery.",
-  act3: "ACT 3 (CLIMAX) — tensions converge. The key discovery or turning point. Maximum dramatic intensity.",
-  climax: "The REVELATION — the 'aha' moment. Reframes everything the viewer thought they knew. Surprising but logical.",
-  conclusion: "The CONCLUSION — resolves the narrative arc. Connects back to the hook. Leaves the viewer with a powerful final thought or image.",
+  hook: "The HOOK — the opening paragraphs that grab attention instantly. Must start with a surprising fact, paradox, or mystery. No greetings, no channel name. Pure curiosity trigger.",
+  context: "The CONTEXT — establishes the world with concrete details: time, place, key characters or objects. Transition from abstract hook to concrete reality.",
+  promise: "The PROMISE — teases what the viewer will discover. Plants curiosity hooks and open loops. Short and punchy.",
+  act1: "ACT 1 (SETUP) — the origin story. How it began, the invention, the founding moment. Presents key characters and motivations.",
+  act2: "ACT 2 (ESCALATION) — the longest section. Unfolds the investigation step by step. Each revelation raises new questions. The story gets BIGGER.",
+  act3: "ACT 3 (IMPACT) — consequences and real-world effects. Final complications before the climax. Builds toward resolution.",
+  climax: "The CLIMAX — threads converge into a powerful turning point. The key discovery or realization. Resolves the central mystery.",
+  insight: "The INSIGHT — the intellectual takeaway. What does this story teach us? Concrete and actionable, not philosophical.",
+  conclusion: "The CONCLUSION — a resonant final thought. No summary. End with a concrete image or fact that lingers.",
 };
 
 serve(async (req) => {
