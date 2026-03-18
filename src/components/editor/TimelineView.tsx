@@ -403,7 +403,7 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
       {/* ═══ VideoPreviewPlayer ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-          {segments.map((seg, idx) => {
+          {scaledSegments.map((seg, idx) => {
             const isActive = seg.id === activeSegment?.id;
             return seg.imageUrl ? (
               <img
