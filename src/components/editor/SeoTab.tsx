@@ -3,9 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Youtube, Loader2, Trophy, Copy, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import ChapterCollapse from "./ChapterCollapse";
-import type { ChapterListState } from "./chapterTypes";
-import type { CanonicalScript } from "./canonicalScriptTypes";
 
 interface NarrativeAnalysis {
   central_mystery: string;
