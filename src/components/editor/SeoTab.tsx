@@ -31,9 +31,6 @@ interface SeoTabProps {
   scriptLanguage: string;
   seoResults: SeoResults;
   onSeoResultsChange: (results: SeoResults) => void;
-  canonicalScript?: CanonicalScript | null;
-  chapterState?: ChapterListState | null;
-  onChapterStateChange?: (state: ChapterListState) => void;
 }
 
 const hookBadgeColor = (type: string) => {
