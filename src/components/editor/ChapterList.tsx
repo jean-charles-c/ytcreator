@@ -5,9 +5,12 @@ interface ChapterListProps {
   chapters: Chapter[];
   onToggleValidated: (id: string) => void;
   onTitleChange: (id: string, title: string) => void;
+  onGenerateTitles: (id: string, tone: string) => Promise<void>;
+  onSelectVariant: (chapterId: string, variantId: string) => void;
+  generatingId?: string | null;
 }
 
-export default function ChapterList({ chapters, onToggleValidated, onTitleChange }: ChapterListProps) {
+export default function ChapterList({ chapters, onToggleValidated, onTitleChange, onGenerateTitles, onSelectVariant, generatingId }: ChapterListProps) {
   if (chapters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
@@ -27,6 +30,9 @@ export default function ChapterList({ chapters, onToggleValidated, onTitleChange
           chapter={ch}
           onToggleValidated={onToggleValidated}
           onTitleChange={onTitleChange}
+          onGenerateTitles={onGenerateTitles}
+          onSelectVariant={onSelectVariant}
+          generating={generatingId === ch.id}
         />
       ))}
     </div>
