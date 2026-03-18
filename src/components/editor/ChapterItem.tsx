@@ -43,6 +43,7 @@ export default function ChapterItem({
   generating,
   isFrench,
   shots,
+  scenesForShotOrder,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
