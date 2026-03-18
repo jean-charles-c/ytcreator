@@ -108,11 +108,30 @@ function resolveKey(headerText: string): string {
   return "act2";
 }
 
-/** Reassemble sections back into a single script string */
+/** Tag map for reassembly — keeps tags so parseScriptIntoSections can round-trip */
+const SECTION_TAG_MAP: Record<string, string> = {
+  hook: "[[HOOK]]",
+  context: "[[CONTEXT]]",
+  promise: "[[PROMISE]]",
+  act1: "[[ACT1]]",
+  act2: "[[ACT2]]",
+  act3: "[[ACT3]]",
+  climax: "[[CLIMAX]]",
+  insight: "[[INSIGHT]]",
+  conclusion: "[[CONCLUSION]]",
+};
+
+/** Reassemble sections back into a single script string, preserving tags for round-trip parsing */
 export function reassembleSections(sections: NarrativeSection[]): string {
   return sections
     .filter((s) => s.content.trim())
-    .map((s) => s.content.trim())
+    .map((s) => {
+      const tag = SECTION_TAG_MAP[s.key] || "";
+      const body = s.content.trim();
+      // Don't double-add tag if content already starts with it
+      if (tag && body.startsWith(tag)) return body;
+      return tag ? `${tag}\n${body}` : body;
+    })
     .join("\n\n");
 }
 
