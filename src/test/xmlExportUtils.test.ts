@@ -143,6 +143,6 @@ describe("buildClipFrames", () => {
 
 describe("escapeXml", () => {
   it("removes invalid XML characters before escaping", () => {
-    expect(escapeXml("A\u0019 & <tag>"))toBe("A &amp; &lt;tag&gt;");
+    expect(escapeXml("A\u0019 & <tag>")).toBe("A &amp; &lt;tag&gt;");
   });
 });
