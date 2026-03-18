@@ -44,6 +44,7 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   const [fps, setFps] = useState<ExportFps>(24);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   // Always use the freshest timeline via ref to avoid stale closures
   const timelineRef = useRef(timeline);
