@@ -138,6 +138,7 @@ interface PdfDocumentaryTabProps {
   onRunSegmentation: () => void;
   segmenting: boolean;
   onStopSegmentation: () => void;
+  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
 }
 
 export default function PdfDocumentaryTab({
