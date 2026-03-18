@@ -37,18 +37,32 @@ export function buildChapterMarkers(
   const clipFrames = buildClipFrames(timeline, fps);
 
   return validated.map((ch) => {
-    let clipIndex = ch.index;
+    let clipIndex = 0;
 
-    if (ch.sectionType) {
-      const meta = SECTION_META[ch.sectionType];
-      if (meta) {
-        const found = segments.findIndex(
-          (seg) =>
-            seg.sceneTitle?.toLowerCase().includes(meta.label.toLowerCase()) ||
-            seg.sceneTitle?.toLowerCase().includes(ch.sectionType.toLowerCase())
-        );
-        if (found >= 0) clipIndex = found;
+    // Strategy 1: Match by sourceText — find first segment whose sentence is inside chapter sourceText
+    if (ch.sourceText) {
+      const srcNorm = ch.sourceText.toLowerCase().trim();
+      const found = segments.findIndex(
+        (seg) => seg.sentence && srcNorm.includes(seg.sentence.toLowerCase().trim())
+      );
+      if (found >= 0) {
+        clipIndex = found;
+      } else {
+        // Strategy 2: Match by startSentence — find segment whose sentence starts with chapter's startSentence
+        const startNorm = ch.startSentence.toLowerCase().trim();
+        if (startNorm) {
+          const found2 = segments.findIndex(
+            (seg) => seg.sentence && seg.sentence.toLowerCase().trim().startsWith(startNorm.slice(0, 40))
+          );
+          if (found2 >= 0) clipIndex = found2;
+        }
       }
+    }
+
+    // Strategy 3: If still 0 and chapter has an index, use proportional mapping
+    // ch.index is 0-8 for 9 sections; map to segment space proportionally
+    if (clipIndex === 0 && ch.index > 0 && segments.length > 0) {
+      clipIndex = Math.round((ch.index / 9) * segments.length);
     }
 
     clipIndex = Math.min(clipIndex, segments.length - 1);
