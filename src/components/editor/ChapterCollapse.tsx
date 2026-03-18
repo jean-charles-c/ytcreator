@@ -46,8 +46,20 @@ export default function ChapterCollapse({
 
   const chapters = chapterState?.chapters ?? [];
   const validatedCount = chapters.filter((c) => c.validated).length;
+  const allValidated = chapters.length > 0 && chapters.every((c) => c.validated);
 
-  const handleToggleValidated = useCallback(
+  const handleValidateAll = useCallback(() => {
+    if (!chapterState || chapters.length === 0) return;
+    const newVal = !allValidated;
+    onChapterStateChange({
+      ...chapterState,
+      chapters: chapterState.chapters.map((ch) => ({ ...ch, validated: newVal })),
+      lastUpdatedAt: new Date().toISOString(),
+    });
+    toast.success(newVal ? "Tous les chapitres validés" : "Validation retirée");
+  }, [chapterState, onChapterStateChange, allValidated, chapters.length]);
+
+
     (id: string) => {
       if (!chapterState) return;
       onChapterStateChange({
