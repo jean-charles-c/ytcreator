@@ -128,7 +128,14 @@ export default function ChapterItem({
           )}
 
           {chapter.startSentence && (
-            <ShotSentenceLabel startSentence={chapter.startSentence} sourceText={chapter.sourceText} shots={shots} />
+            <p className="text-xs text-muted-foreground line-clamp-1 pl-7">
+              {matchingShotOrder != null && (
+                <span className="inline-flex items-center justify-center h-4 min-w-[1.25rem] px-1 rounded bg-accent text-accent-foreground text-[10px] font-bold mr-1.5 shrink-0">
+                  Shot {matchingShotOrder}
+                </span>
+              )}
+              « {chapter.startSentence} »
+            </p>
           )}
         </div>
       </div>
