@@ -1,13 +1,22 @@
 import { useState, useCallback } from "react";
-import { ChevronDown, ListVideo, CheckCheck } from "lucide-react";
+import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ChapterList from "./ChapterList";
 import { detectChapters } from "./chapterDetection";
 import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
 import { SECTION_TYPES, type CanonicalScript } from "./canonicalScriptTypes";
 import { supabase } from "@/integrations/supabase/client";
+
+const TONES = [
+  { value: "curiosity", label: "🔍 Curiosité" },
+  { value: "dramatic", label: "🎭 Dramatique" },
+  { value: "informative", label: "📘 Informatif" },
+  { value: "contrarian", label: "⚡ Contrarien" },
+  { value: "mixed", label: "🎲 Mix (varié)" },
+] as const;
 
 interface ChapterCollapseProps {
   canonicalScript: CanonicalScript | null;
@@ -26,6 +35,8 @@ export default function ChapterCollapse({
 }: ChapterCollapseProps) {
   const [open, setOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchTone, setBatchTone] = useState("mixed");
 
   const normalizeChapterState = useCallback(
     (existingState: ChapterListState | null): ChapterListState => {
@@ -191,6 +202,29 @@ export default function ChapterCollapse({
     [chapterState, onChapterStateChange]
   );
 
+  const handleBatchGenerate = useCallback(async () => {
+    if (!chapterState || chapters.length === 0) return;
+    setBatchGenerating(true);
+    const toneOptions = ["curiosity", "dramatic", "informative", "contrarian"];
+    let errorCount = 0;
+
+    for (let i = 0; i < chapterState.chapters.length; i++) {
+      const ch = chapterState.chapters[i];
+      const tone = batchTone === "mixed" ? toneOptions[i % toneOptions.length] : batchTone;
+      setGeneratingId(ch.id);
+      try {
+        await handleGenerateTitles(ch.id, tone);
+      } catch {
+        errorCount++;
+      }
+    }
+
+    setGeneratingId(null);
+    setBatchGenerating(false);
+    if (errorCount === 0) toast.success("9 chapitres générés !");
+    else toast.warning(`${errorCount} erreur(s) sur 9`);
+  }, [chapterState, chapters.length, batchTone, handleGenerateTitles]);
+
   return (
     <Collapsible open={open} onOpenChange={handleOpenChange}>
       <CollapsibleTrigger asChild>
@@ -212,7 +246,29 @@ export default function ChapterCollapse({
 
       <CollapsibleContent className="mt-2 rounded-lg border border-border bg-card p-4 space-y-3">
         {chapters.length > 0 && (
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-2 flex-wrap">
+            <Select value={batchTone} onValueChange={setBatchTone} disabled={batchGenerating}>
+              <SelectTrigger className="h-7 w-[150px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TONES.map((t) => (
+                  <SelectItem key={t.value} value={t.value} className="text-xs">
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleBatchGenerate}
+              disabled={batchGenerating}
+              className="h-7 text-xs gap-1"
+            >
+              {batchGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Générer les 9 titres
+            </Button>
             <Button
               variant="outline"
               size="sm"
