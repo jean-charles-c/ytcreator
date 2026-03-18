@@ -540,7 +540,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
 
                 {/* Collapsible: Preview + Timeline */}
                 <CollapsibleSection title="Prévisualisation & Timeline" icon={Film} badge={`${timeline.segmentCount} segments`}>
-                  <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} />
+                  <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} imageOffsetMs={imageOffsetMs} onImageOffsetChange={setImageOffsetMs} />
                 </CollapsibleSection>
 
                 {/* Collapsible: Export Manager */}
