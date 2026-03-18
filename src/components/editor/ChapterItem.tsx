@@ -57,7 +57,7 @@ export default function ChapterItem({
   }, [chapter.id, tone, onGenerateTitles]);
 
   return (
-    <div className="rounded-lg border border-border bg-background p-3 transition-colors hover:bg-secondary/10 space-y-2">
+    <div className="rounded-lg border border-border bg-background p-3 sm:p-4 transition-colors hover:bg-secondary/10 space-y-2">
       {/* Row 1: checkbox + title */}
       <div className="flex items-start gap-3">
         <Checkbox
