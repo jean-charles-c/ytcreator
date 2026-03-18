@@ -841,7 +841,12 @@ serve(async (req) => {
       );
     }
 
-    const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0;
+    // Studio, Chirp-HD and Polyglot voices do NOT support <mark> SSML tags — fall back to proportional sync
+    const isRestrictedVoice = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
+    const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0 && !isRestrictedVoice;
+    if (isRestrictedVoice && syncMode === "shot_marked") {
+      console.log(`Skipping <mark> mode for restricted voice: ${resolvedVoiceName} — using proportional sync`);
+    }
     const MAX_CHARS = 4800;
 
     let audioBuffers: Uint8Array[] = [];
