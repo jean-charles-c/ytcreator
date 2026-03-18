@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Loader2, Sparkles } from "lucide-react";
 import type { Chapter, ChapterTitleVariant } from "./chapterTypes";
+import { SECTION_META, SECTION_TAGS, type SectionType } from "./canonicalScriptTypes";
 
 const TONES = [
   { value: "curiosity", label: "Curiosity" },
