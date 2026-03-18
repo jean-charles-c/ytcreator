@@ -531,13 +531,13 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
           <CollapsibleContent>
             <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
               <div className="px-1 py-1 space-y-0.5">
-                {segments.map((seg, globalIndex) => (
+                {scaledSegments.map((seg, globalIndex) => (
                   <div key={seg.id} data-seg-index={globalIndex}>
                     <EditableSegmentCard
                       segment={seg}
                       displayIndex={globalIndex + 1}
                       index={globalIndex}
-                      total={segments.length}
+                      total={scaledSegments.length}
                       isActive={seg.id === activeSegment?.id}
                       onSeek={() => seekTo(seg.startTime)}
                       onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
