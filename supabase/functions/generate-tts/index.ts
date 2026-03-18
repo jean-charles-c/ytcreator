@@ -799,8 +799,9 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    // Chirp-HD, Studio and Polyglot voices do not support pitch, volumeGainDb, or effectsProfileId
+    // Chirp-HD, Studio and Polyglot voices do not support pitch, volumeGainDb, effectsProfileId, or <emphasis> tags
     const isRestrictedVoice = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
+    const stripEmphasisTags = (ssml: string) => ssml.replace(/<\/?emphasis[^>]*>/g, "");
     const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate };
     if (!isRestrictedVoice) {
       if (pitch !== 0) audioConfig.pitch = pitch;
@@ -809,7 +810,8 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
-      const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation, mod.emphasisBoost);
+      let ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation, mod.emphasisBoost);
+      if (isRestrictedVoice) ssmlText = stripEmphasisTags(ssmlText);
       const isSsml = ssmlText.startsWith("<speak>");
       const result = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
@@ -954,7 +956,8 @@ serve(async (req) => {
       console.log(`Split into ${chunks.length} legacy chunks`);
 
       for (let ci = 0; ci < chunks.length; ci++) {
-        const chunk = chunks[ci];
+        let chunk = chunks[ci];
+        if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
         const chunkIsSsml = chunk.startsWith("<speak>");
         console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
 
