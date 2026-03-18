@@ -516,6 +516,20 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
+        // Load validated chapters from DB for marker injection
+        let chapters: Chapter[] | undefined;
+        try {
+          const { data: stateData } = await supabase
+            .from("project_scriptcreator_state")
+            .select("timeline_state")
+            .eq("project_id", params.projectId)
+            .single();
+          const chapterState = (stateData?.timeline_state as any)?.chapterState as ChapterListState | null;
+          if (chapterState?.chapters?.length) {
+            chapters = chapterState.chapters;
+          }
+        } catch { /* no chapters — export without markers */ }
+
         const blob = await exportTimelineToXmlZip(params.timeline, params.fps, (p) => {
           if (ac.signal.aborted) return;
           updateTask(key, {
@@ -525,7 +539,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               message: p.message,
             },
           });
-        });
+        }, chapters);
         if (ac.signal.aborted) return;
 
         const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.zip`;
