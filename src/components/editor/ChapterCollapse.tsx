@@ -1,13 +1,22 @@
 import { useState, useCallback } from "react";
-import { ChevronDown, ListVideo, CheckCheck } from "lucide-react";
+import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ChapterList from "./ChapterList";
 import { detectChapters } from "./chapterDetection";
 import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
 import { SECTION_TYPES, type CanonicalScript } from "./canonicalScriptTypes";
 import { supabase } from "@/integrations/supabase/client";
+
+const TONES = [
+  { value: "curiosity", label: "🔍 Curiosité" },
+  { value: "dramatic", label: "🎭 Dramatique" },
+  { value: "informative", label: "📘 Informatif" },
+  { value: "contrarian", label: "⚡ Contrarien" },
+  { value: "mixed", label: "🎲 Mix (varié)" },
+] as const;
 
 interface ChapterCollapseProps {
   canonicalScript: CanonicalScript | null;
