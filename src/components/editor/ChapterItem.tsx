@@ -3,7 +3,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Loader2, Sparkles } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Loader2, Sparkles, ChevronDown } from "lucide-react";
 import type { Chapter, ChapterTitleVariant } from "./chapterTypes";
 import { SECTION_META, SECTION_TAGS, type SectionType } from "./canonicalScriptTypes";
 
@@ -45,6 +46,7 @@ export default function ChapterItem({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
   const [tone, setTone] = useState("curiosity");
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const commitTitle = () => {
     setEditing(false);
@@ -55,26 +57,22 @@ export default function ChapterItem({
     }
   };
 
-  /** Find the shot number matching the chapter's first sentence */
+  /** Find the first shot whose source_sentence is contained within THIS chapter's sourceText */
   const matchingShotOrder = useMemo(() => {
-    if (!shots || shots.length === 0 || !chapter.startSentence) return null;
-    const startNorm = chapter.startSentence.toLowerCase().trim();
-    const match = shots.find((s) => {
-      const sent = (s.source_sentence || s.source_sentence_fr || "").toLowerCase().trim();
-      if (!sent) return false;
-      return sent.startsWith(startNorm.slice(0, 30)) || startNorm.startsWith(sent.slice(0, 30));
-    });
-    if (match) return match.shot_order;
-    if (chapter.sourceText) {
-      const srcNorm = chapter.sourceText.toLowerCase();
-      const found = shots.find((s) => {
-        const sent = (s.source_sentence || "").toLowerCase().trim();
-        return sent.length > 10 && srcNorm.includes(sent);
-      });
-      if (found) return found.shot_order;
+    if (!shots || shots.length === 0 || !chapter.sourceText) return null;
+    const srcNorm = chapter.sourceText.toLowerCase().trim();
+    if (!srcNorm) return null;
+
+    // Sort shots by shot_order to find the earliest matching one
+    const sorted = [...shots].sort((a, b) => a.shot_order - b.shot_order);
+
+    for (const shot of sorted) {
+      const sent = (shot.source_sentence || shot.source_sentence_fr || "").toLowerCase().trim();
+      if (sent.length < 5) continue;
+      if (srcNorm.includes(sent)) return shot.shot_order;
     }
     return null;
-  }, [shots, chapter.startSentence, chapter.sourceText]);
+  }, [shots, chapter.sourceText]);
 
   const handleGenerate = useCallback(() => {
     onGenerateTitles(chapter.id, tone);
@@ -82,7 +80,7 @@ export default function ChapterItem({
 
   return (
     <div className="rounded-lg border border-border bg-background p-3 sm:p-4 transition-colors hover:bg-secondary/10 space-y-2">
-      {/* Row 1: checkbox + title */}
+      {/* Row 1: checkbox + title + shot badge */}
       <div className="flex items-start gap-3">
         <Checkbox
           checked={chapter.validated}
@@ -140,63 +138,75 @@ export default function ChapterItem({
         </div>
       </div>
 
-      {/* Row 2: tone selector + generate button */}
-      <div className="flex items-center gap-2 pl-7">
-        <Select value={tone} onValueChange={setTone}>
-          <SelectTrigger className="h-7 w-[130px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TONES.map((t) => (
-              <SelectItem key={t.value} value={t.value} className="text-xs">
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Collapsible details: tone selector, generate button, variants */}
+      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-1 pl-7 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${detailsOpen ? "rotate-180" : ""}`} />
+            {detailsOpen ? "Masquer" : "Titres & options"}
+          </button>
+        </CollapsibleTrigger>
 
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={generating}
-          onClick={handleGenerate}
-          className="h-9 sm:h-7 text-xs gap-1 min-w-[44px]"
-        >
-          {generating ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Sparkles className="h-3 w-3" />
-          )}
-          Générer titres
-        </Button>
-      </div>
+        <CollapsibleContent className="space-y-2 pt-2">
+          {/* Tone selector + generate button */}
+          <div className="flex items-center gap-2 pl-7">
+            <Select value={tone} onValueChange={setTone}>
+              <SelectTrigger className="h-7 w-[130px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TONES.map((t) => (
+                  <SelectItem key={t.value} value={t.value} className="text-xs">
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-      {/* Row 3: variants */}
-      {chapter.variants.length > 0 && (
-        <div className="space-y-1 pl-7">
-          {chapter.variants.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => onSelectVariant(chapter.id, v.id)}
-              className={`flex items-center gap-2 w-full text-left rounded border px-2 py-2.5 sm:py-1.5 text-xs transition-colors min-h-[44px] sm:min-h-0 ${
-                v.selected
-                  ? "border-primary/40 bg-primary/5 text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-secondary/30"
-              }`}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={generating}
+              onClick={handleGenerate}
+              className="h-9 sm:h-7 text-xs gap-1 min-w-[44px]"
             >
-              <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${hookBadgeColor[v.hookType] || "bg-secondary text-muted-foreground border-border"}`}>
-                {v.hookType}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block truncate">{v.title}</span>
-                {!isFrench && v.titleFR && (
-                  <span className="block truncate text-[10px] text-muted-foreground/60 italic">🇫🇷 {v.titleFR}</span>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+              {generating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
+              Générer titres
+            </Button>
+          </div>
+
+          {/* Variants */}
+          {chapter.variants.length > 0 && (
+            <div className="space-y-1 pl-7">
+              {chapter.variants.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => onSelectVariant(chapter.id, v.id)}
+                  className={`flex items-center gap-2 w-full text-left rounded border px-2 py-2.5 sm:py-1.5 text-xs transition-colors min-h-[44px] sm:min-h-0 ${
+                    v.selected
+                      ? "border-primary/40 bg-primary/5 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:bg-secondary/30"
+                  }`}
+                >
+                  <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${hookBadgeColor[v.hookType] || "bg-secondary text-muted-foreground border-border"}`}>
+                    {v.hookType}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block truncate">{v.title}</span>
+                    {!isFrench && v.titleFR && (
+                      <span className="block truncate text-[10px] text-muted-foreground/60 italic">🇫🇷 {v.titleFR}</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
