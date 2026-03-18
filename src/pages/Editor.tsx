@@ -1830,6 +1830,7 @@ export default function Editor() {
                                 </div>
                               )}
 
+                              {isRegenerating || isPendingGeneration ? (
                                 <div className="flex items-center justify-center py-8 gap-2">
                                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                   <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
