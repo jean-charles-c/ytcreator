@@ -118,16 +118,23 @@ describe("buildChapterMarkers", () => {
 });
 
 describe("generateMarkerXml", () => {
-  it("emits sequence-level markers using Resolve-style start/duration/value attributes", () => {
+  it("emits XMEML markers with name/comment/in/out child elements in frames", () => {
     const xml = generateMarkerXml(
       [
-        { name: "HOOK", comment: "", clipIndex: 0, startFrame: 0, startSeconds: 0 },
-        { name: "Context & Setup", comment: "", clipIndex: 1, startFrame: 302, startSeconds: 12.58333 },
+        { name: "HOOK", comment: "FR: ACCROCHE", clipIndex: 0, startFrame: 0, startSeconds: 0 },
+        { name: "Context & Setup", comment: "Some comment", clipIndex: 1, startFrame: 302, startSeconds: 12.58333 },
       ],
       24
     );
 
-    expect(xml).toContain('<marker start="0s" duration="0s" value="HOOK" />');
-    expect(xml).toContain('<marker start="12.58333s" duration="0s" value="Context &amp; Setup" />');
+    expect(xml).toContain("<marker>");
+    expect(xml).toContain("<name>HOOK</name>");
+    expect(xml).toContain("<in>0</in>");
+    expect(xml).toContain("<out>0</out>");
+    expect(xml).toContain("<name>Context &amp; Setup</name>");
+    expect(xml).toContain("<in>302</in>");
+    expect(xml).toContain("<out>302</out>");
+    expect(xml).not.toContain('start="');
+    expect(xml).not.toContain('value="');
   });
 });
