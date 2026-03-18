@@ -290,15 +290,9 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
                   </p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <Button size="sm" onClick={() => handleDownload(entry)} disabled={downloadingIds.has(entry.id)} className="gap-1.5 h-8">
-                    {downloadingIds.has(entry.id) ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
+                  <Button size="sm" onClick={() => handleDownload(entry)} className="gap-1.5 h-8">
                       <Download className="h-3.5 w-3.5" />
-                    )}
-                    <span className="hidden sm:inline">
-                      {downloadingIds.has(entry.id) ? "Téléchargement…" : "Télécharger"}
-                    </span>
+                    <span className="hidden sm:inline">Télécharger</span>
                   </Button>
                   <Button
                     variant="outline"
