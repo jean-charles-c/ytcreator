@@ -799,7 +799,12 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, pitch, volumeGainDb };
+    // Chirp-HD, Studio and Polyglot voices do not support pitch parameters
+    const voiceNoPitch = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, volumeGainDb };
+    if (!voiceNoPitch && pitch !== 0) {
+      audioConfig.pitch = pitch;
+    }
     if (effectsProfileId) {
       audioConfig.effectsProfileId = [effectsProfileId];
     }
