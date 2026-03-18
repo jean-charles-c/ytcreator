@@ -1,14 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ChapterList from "./ChapterList";
-import { detectChapters } from "./chapterDetection";
-import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
-import { SECTION_TYPES, type CanonicalScript } from "./canonicalScriptTypes";
+import { type ChapterListState, type ChapterTitleVariant, type Chapter } from "./chapterTypes";
+import { SECTION_TYPES, SECTION_META, type SectionType } from "./canonicalScriptTypes";
 import { supabase } from "@/integrations/supabase/client";
+import type { NarrativeSection } from "./SectionCard";
 
 const TONES = [
   { value: "curiosity", label: "🔍 Curiosité" },
@@ -19,7 +19,8 @@ const TONES = [
 ] as const;
 
 interface ChapterCollapseProps {
-  canonicalScript: CanonicalScript | null;
+  /** Sections from NarrativeScriptBlock (preferred source of truth) */
+  scriptSections?: NarrativeSection[];
   narration?: string | null;
   chapterState: ChapterListState | null;
   onChapterStateChange: (state: ChapterListState) => void;
@@ -27,7 +28,7 @@ interface ChapterCollapseProps {
 }
 
 export default function ChapterCollapse({
-  canonicalScript,
+  scriptSections,
   narration,
   chapterState,
   onChapterStateChange,
@@ -38,32 +39,56 @@ export default function ChapterCollapse({
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchTone, setBatchTone] = useState("mixed");
 
+  /** Build chapters directly from NarrativeScriptBlock sections */
+  const chaptersFromSections = useMemo((): Chapter[] => {
+    return SECTION_TYPES.map((type, idx) => {
+      const meta = SECTION_META[type];
+      const section = scriptSections?.find((s) => s.key === type);
+      const text = section?.content?.trim() || "";
+      const firstSentence = text.split(/[.!?]\s/)[0]?.trim() || "";
+
+      return {
+        id: type,
+        index: idx,
+        sectionType: type,
+        startSentence: firstSentence.slice(0, 120),
+        summary: "",
+        title: `${meta.icon} ${meta.label}`,
+        variants: [],
+        titleFR: null,
+        validated: false,
+        sourceText: text,
+      };
+    });
+  }, [scriptSections]);
+
   const normalizeChapterState = useCallback(
     (existingState: ChapterListState | null): ChapterListState => {
-      const result = detectChapters(canonicalScript, narration);
-      const detectedChapters = result.chapters.map(chapterFromDetected);
+      const freshChapters = chaptersFromSections;
       const previousById = new Map((existingState?.chapters ?? []).map((chapter) => [chapter.id, chapter]));
 
       return {
-        chapters: detectedChapters.map((chapter) => {
+        chapters: freshChapters.map((chapter) => {
           const previous = previousById.get(chapter.id);
           if (!previous) return chapter;
 
           return {
             ...chapter,
+            // Keep user edits (title, variants, validation) but refresh sourceText
             title: previous.title || chapter.title,
             titleFR: previous.titleFR ?? chapter.titleFR,
             validated: previous.validated,
             variants: previous.variants ?? [],
             summary: previous.summary ?? chapter.summary,
             startSentence: chapter.startSentence || previous.startSentence,
+            sourceText: chapter.sourceText, // always use fresh text from sections
           };
         }),
-        method: result.method,
+        method: "tags",
         lastUpdatedAt: new Date().toISOString(),
       };
     },
-    [canonicalScript, narration]
+    [chaptersFromSections]
   );
 
   const isLegacyChapterState = useCallback((state: ChapterListState | null) => {
