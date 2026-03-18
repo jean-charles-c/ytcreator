@@ -16,6 +16,8 @@ export interface ChapterTitleVariant {
   hookType: string;
   /** Whether user selected this variant as active */
   selected: boolean;
+  /** French translation (null if script is already FR) */
+  titleFR: string | null;
 }
 
 /* ── Single chapter ───────────────────────────────── */
