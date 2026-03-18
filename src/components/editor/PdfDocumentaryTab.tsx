@@ -1051,8 +1051,8 @@ export default function PdfDocumentaryTab({
       {/* Chapitres de la vidéo */}
       <div className="mt-6">
         <ChapterCollapse
-          canonicalScript={null}
-          narration={script || narration}
+          scriptSections={sections}
+          narration={narration}
           chapterState={chapterState}
           onChapterStateChange={setChapterState}
           scriptLanguage={scriptLanguage}
