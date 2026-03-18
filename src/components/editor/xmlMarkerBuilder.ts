@@ -20,10 +20,6 @@ export interface ChapterMarker {
   startSeconds: number;
 }
 
-function formatMarkerSeconds(seconds: number): string {
-  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
-  return safeSeconds.toFixed(5).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
-}
 
 /**
  * Build markers from validated chapters, mapped to clip indices and timeline positions.
