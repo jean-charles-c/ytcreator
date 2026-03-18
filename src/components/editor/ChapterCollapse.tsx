@@ -1,16 +1,19 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { ChevronDown, ListVideo } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import ChapterList from "./ChapterList";
 import { detectChapters } from "./chapterDetection";
-import { chapterFromDetected, type Chapter, type ChapterListState } from "./chapterTypes";
+import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
 import type { CanonicalScript } from "./canonicalScriptTypes";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChapterCollapseProps {
   canonicalScript: CanonicalScript | null;
   narration?: string | null;
   chapterState: ChapterListState | null;
   onChapterStateChange: (state: ChapterListState) => void;
+  scriptLanguage?: string;
 }
 
 export default function ChapterCollapse({
@@ -18,10 +21,11 @@ export default function ChapterCollapse({
   narration,
   chapterState,
   onChapterStateChange,
+  scriptLanguage,
 }: ChapterCollapseProps) {
   const [open, setOpen] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
-  // Auto-detect chapters when opening if none exist
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
@@ -70,6 +74,78 @@ export default function ChapterCollapse({
     [chapterState, onChapterStateChange]
   );
 
+  const handleGenerateTitles = useCallback(
+    async (id: string, tone: string) => {
+      if (!chapterState) return;
+      const chapter = chapterState.chapters.find((ch) => ch.id === id);
+      if (!chapter) return;
+
+      setGeneratingId(id);
+      try {
+        const { data, error } = await supabase.functions.invoke("chapter-titles", {
+          body: {
+            chapterText: chapter.sourceText,
+            chapterLabel: chapter.title,
+            tone,
+            language: scriptLanguage || "en",
+          },
+        });
+
+        if (error) { toast.error("Erreur de génération"); console.error(error); return; }
+        if (data?.error) { toast.error(data.error); return; }
+
+        const newVariants: ChapterTitleVariant[] = (data.titles || []).map(
+          (t: { title: string; hookType: string }, i: number) => ({
+            id: `${id}-v${Date.now()}-${i}`,
+            title: t.title,
+            hookType: t.hookType,
+            selected: false,
+          })
+        );
+
+        // Merge with existing variants (keep history)
+        const existingVariants = chapter.variants.map((v) => ({ ...v, selected: false }));
+        const allVariants = [...newVariants, ...existingVariants].slice(0, 20);
+
+        onChapterStateChange({
+          ...chapterState,
+          chapters: chapterState.chapters.map((ch) =>
+            ch.id === id ? { ...ch, variants: allVariants } : ch
+          ),
+          lastUpdatedAt: new Date().toISOString(),
+        });
+
+        toast.success("Titres générés !");
+      } catch (e) {
+        console.error(e);
+        toast.error("Erreur inattendue");
+      } finally {
+        setGeneratingId(null);
+      }
+    },
+    [chapterState, onChapterStateChange, scriptLanguage]
+  );
+
+  const handleSelectVariant = useCallback(
+    (chapterId: string, variantId: string) => {
+      if (!chapterState) return;
+      onChapterStateChange({
+        ...chapterState,
+        chapters: chapterState.chapters.map((ch) => {
+          if (ch.id !== chapterId) return ch;
+          const selectedVariant = ch.variants.find((v) => v.id === variantId);
+          return {
+            ...ch,
+            title: selectedVariant?.title || ch.title,
+            variants: ch.variants.map((v) => ({ ...v, selected: v.id === variantId })),
+          };
+        }),
+        lastUpdatedAt: new Date().toISOString(),
+      });
+    },
+    [chapterState, onChapterStateChange]
+  );
+
   return (
     <Collapsible open={open} onOpenChange={handleOpenChange}>
       <CollapsibleTrigger asChild>
@@ -94,6 +170,9 @@ export default function ChapterCollapse({
           chapters={chapters}
           onToggleValidated={handleToggleValidated}
           onTitleChange={handleTitleChange}
+          onGenerateTitles={handleGenerateTitles}
+          onSelectVariant={handleSelectVariant}
+          generatingId={generatingId}
         />
       </CollapsibleContent>
     </Collapsible>
