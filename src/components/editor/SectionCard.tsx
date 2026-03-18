@@ -40,6 +40,7 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   }
 
   // Legacy fallback: header-based parsing
+  const cleaned = script.trim();
   const headerPattern = /^#{1,3}\s*(Hook|Context|Promise|Introduction|Act\s*1[^]*?|Act\s*2[^]*?|Act\s*3[^]*?|Climax|Insight|Révélation|Conclusion|Setup|Escalade)[^\n]*/gim;
   const headerMatches = [...cleaned.matchAll(headerPattern)];
 
