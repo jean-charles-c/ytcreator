@@ -203,19 +203,25 @@ export default function ChapterCollapse({
   );
 
   const handleBatchGenerate = useCallback(async () => {
-    if (!chapterState || chapters.length === 0) return;
+    if (chapters.length === 0) return;
     setBatchGenerating(true);
 
-    // For each chapter, call the edge function directly and collect results
+    // Use the normalized `chapters` (not chapterState.chapters which may be stale/legacy)
+    const chaptersToProcess = chapters;
     const variantsMap = new Map<string, ChapterTitleVariant[]>();
-    const selectedToneMap = new Map<string, string>(); // track which tone was the "preferred"
+    const selectedToneMap = new Map<string, string>();
     let errorCount = 0;
 
-    for (let i = 0; i < chapterState.chapters.length; i++) {
-      const ch = chapterState.chapters[i];
+    for (let i = 0; i < chaptersToProcess.length; i++) {
+      const ch = chaptersToProcess[i];
       setGeneratingId(ch.id);
 
-      // Always use "mixed" to generate all 4 tones; batchTone determines which gets pre-selected
+      if (!ch.sourceText?.trim()) {
+        console.warn(`Skipping chapter ${ch.id}: no sourceText`);
+        errorCount++;
+        continue;
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke("chapter-titles", {
           body: {
@@ -227,7 +233,7 @@ export default function ChapterCollapse({
         });
 
         if (error || data?.error) {
-          console.error(error || data?.error);
+          console.error("chapter-titles error for", ch.id, error || data?.error);
           errorCount++;
           continue;
         }
@@ -250,39 +256,41 @@ export default function ChapterCollapse({
       }
     }
 
-    // Single state update with all results — pre-select the variant matching batchTone
+    // Build updated chapters from the normalized list
+    const updatedChapters = chaptersToProcess.map((ch) => {
+      const newVars = variantsMap.get(ch.id);
+      if (!newVars) return ch;
+
+      const preferredTone = selectedToneMap.get(ch.id) || "";
+      const existingVariants = ch.variants.map((v) => ({ ...v, selected: false }));
+      const allVariants = [...newVars, ...existingVariants].slice(0, 20);
+
+      const matchIdx = preferredTone
+        ? allVariants.findIndex((v) => v.hookType === preferredTone)
+        : 0;
+      const selectedIdx = matchIdx >= 0 ? matchIdx : 0;
+      const selectedVariant = allVariants[selectedIdx];
+
+      return {
+        ...ch,
+        title: selectedVariant?.title || ch.title,
+        titleFR: selectedVariant?.titleFR || ch.titleFR,
+        variants: allVariants.map((v, vi) => ({ ...v, selected: vi === selectedIdx })),
+      };
+    });
+
     onChapterStateChange({
-      ...chapterState,
-      chapters: chapterState.chapters.map((ch) => {
-        const newVars = variantsMap.get(ch.id);
-        if (!newVars) return ch;
-
-        const preferredTone = selectedToneMap.get(ch.id) || "";
-        const existingVariants = ch.variants.map((v) => ({ ...v, selected: false }));
-        const allVariants = [...newVars, ...existingVariants].slice(0, 20);
-
-        // Auto-select the first variant matching the preferred tone
-        const matchIdx = preferredTone
-          ? allVariants.findIndex((v) => v.hookType === preferredTone)
-          : 0;
-        const selectedIdx = matchIdx >= 0 ? matchIdx : 0;
-        const selectedVariant = allVariants[selectedIdx];
-
-        return {
-          ...ch,
-          title: selectedVariant?.title || ch.title,
-          titleFR: selectedVariant?.titleFR || ch.titleFR,
-          variants: allVariants.map((v, vi) => ({ ...v, selected: vi === selectedIdx })),
-        };
-      }),
+      chapters: updatedChapters,
+      method: chapterState?.method || "tags",
       lastUpdatedAt: new Date().toISOString(),
     });
 
     setGeneratingId(null);
     setBatchGenerating(false);
     if (errorCount === 0) toast.success("9 chapitres générés !");
-    else toast.warning(`${errorCount} erreur(s) sur 9`);
-  }, [chapterState, chapters.length, batchTone, scriptLanguage, onChapterStateChange]);
+    else if (errorCount < chaptersToProcess.length) toast.warning(`${errorCount} erreur(s) sur ${chaptersToProcess.length}`);
+    else toast.error("Aucun titre généré — vérifiez que le script contient du texte.");
+  }, [chapters, batchTone, scriptLanguage, onChapterStateChange, chapterState?.method]);
 
   return (
     <Collapsible open={open} onOpenChange={handleOpenChange}>
