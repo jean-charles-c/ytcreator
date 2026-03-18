@@ -215,18 +215,22 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
   const [segmentsOpen, setSegmentsOpen] = useState(false);
 
   // ── Drift correction: scale segment times to match actual audio duration ──
+  // When precise TTS <mark> timepoints exist, use segments as-is (already accurate).
+  // Only apply proportional scaling as fallback when no timepoints are available.
   const scaledSegments = useMemo(() => {
+    const hasTimepoints = !!timeline.shotTimepoints && timeline.shotTimepoints.length > 0;
+    if (hasTimepoints) return segments;
+
     const estimatedDuration = timeline.totalDuration;
     if (!estimatedDuration || estimatedDuration <= 0 || !audioDuration || audioDuration <= 0) return segments;
     const scale = audioDuration / estimatedDuration;
-    // Only apply correction if drift is significant (>1%)
     if (Math.abs(scale - 1) < 0.01) return segments;
     return segments.map((seg) => ({
       ...seg,
       startTime: Math.round(seg.startTime * scale * 100) / 100,
       duration: Math.round(seg.duration * scale * 100) / 100,
     }));
-  }, [segments, audioDuration, timeline.totalDuration]);
+  }, [segments, audioDuration, timeline.totalDuration, timeline.shotTimepoints]);
 
   // Apply image offset (convert ms to seconds) for segment lookup
   const imageOffsetSec = imageOffsetMs / 1000;
