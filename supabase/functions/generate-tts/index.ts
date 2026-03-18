@@ -799,8 +799,9 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    // Chirp-HD, Studio and Polyglot voices do not support pitch, volumeGainDb, or effectsProfileId
+    // Chirp-HD, Studio and Polyglot voices do not support pitch, volumeGainDb, effectsProfileId, or <emphasis> tags
     const isRestrictedVoice = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
+    const stripEmphasisTags = (ssml: string) => ssml.replace(/<\/?emphasis[^>]*>/g, "");
     const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate };
     if (!isRestrictedVoice) {
       if (pitch !== 0) audioConfig.pitch = pitch;
