@@ -24,6 +24,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { assembleTimeline, type Timeline } from "./timelineAssembly";
 import TimelineView from "./TimelineView";
 import ExportManager from "./ExportManager";
+import { resolveSelectedAudioId } from "./audioSelection";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -96,7 +97,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-// ── AudioSelector ──────────────────────────────────────────────────
 function AudioSelector({
   audioFiles,
   selectedAudioId,
@@ -222,7 +222,6 @@ function AudioSelector({
   );
 }
 
-// ── Collapsible Section ────────────────────────────────────────────
 function CollapsibleSection({
   title,
   icon: Icon,
@@ -254,7 +253,6 @@ function CollapsibleSection({
   );
 }
 
-// ── VideoEditTab ───────────────────────────────────────────────────
 export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabProps) {
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(true);
@@ -262,13 +260,12 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [timeline, setTimeline] = useState<Timeline | null>(null);
   const [savingTimeline, setSavingTimeline] = useState(false);
   const [imageOffsetMs, setImageOffsetMs] = useState(0);
+  const previousAudioFilesRef = useRef<AudioFile[]>([]);
 
-  // ── Persist timeline to DB ──
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
     if (!projectId) return;
     setSavingTimeline(true);
     try {
-      // Preserve chapter and export metadata stored alongside timeline_state
       const { data } = await supabase
         .from("project_scriptcreator_state")
         .select("timeline_state")
@@ -293,7 +290,6 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     }
   }, [projectId]);
 
-  // ── Restore timeline from DB on mount ──
   useEffect(() => {
     if (!projectId) return;
     const restore = async () => {
@@ -333,11 +329,9 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s (${syncMode})`);
   }, [selectedAudioId, audioFiles, scenes, shots, saveTimelineToDb]);
 
-  // ── Auto-detect stale timeline and reassemble ──
   useEffect(() => {
     if (!timeline || !selectedAudioId || shots.length === 0) return;
 
-    // Check if the audio or shot count changed since the timeline was built
     const tlSegmentIds = new Set(timeline.videoTrack.segments.map((s) => s.id));
     const currentShotIds = new Set(shots.map((s) => s.id));
     const audioChanged = timeline.audioTrack.audioId !== selectedAudioId;
@@ -345,7 +339,6 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
       [...tlSegmentIds].some((id) => !currentShotIds.has(id));
 
     if (audioChanged || shotsChanged) {
-      // Auto-reassemble
       const audioFile = audioFiles.find((a) => a.id === selectedAudioId);
       if (!audioFile) return;
       const timepoints = (audioFile as any).shot_timepoints ?? null;
@@ -366,15 +359,22 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
 
     const fetchAudio = async () => {
       setLoadingAudio(true);
+      const previousAudioFiles = previousAudioFilesRef.current;
       const { data } = await supabase
         .from("vo_audio_history")
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
-      setAudioFiles(data ?? []);
-      if (data && data.length > 0 && !selectedAudioId) {
-        setSelectedAudioId(data[0].id);
-      }
+      const nextAudioFiles = data ?? [];
+      previousAudioFilesRef.current = nextAudioFiles;
+      setAudioFiles(nextAudioFiles);
+      setSelectedAudioId((currentSelectedId) =>
+        resolveSelectedAudioId({
+          currentSelectedAudioId: currentSelectedId,
+          previousAudioFiles,
+          nextAudioFiles,
+        })
+      );
       setLoadingAudio(false);
     };
 
