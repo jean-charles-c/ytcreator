@@ -81,6 +81,7 @@ Generate 4 title variants with tone: ${tone || "curiosity"}.`;
                       properties: {
                         title: { type: "string" },
                         hookType: { type: "string", enum: ["curiosity", "dramatic", "informative", "contrarian"] },
+                        titleFR: { type: "string", description: "French translation of the title (omit if language is already French)" },
                       },
                       required: ["title", "hookType"],
                       additionalProperties: false,
