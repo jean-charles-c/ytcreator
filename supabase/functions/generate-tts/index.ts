@@ -841,8 +841,8 @@ serve(async (req) => {
       );
     }
 
-    // Only Neural2, Standard and Wavenet voices support <mark> SSML tags
-    const supportsMarks = !resolvedVoiceName || /Neural2|Standard|Wavenet/i.test(resolvedVoiceName);
+    // Neural2, Standard, Wavenet and Journey voices support <mark> SSML tags
+    const supportsMarks = !resolvedVoiceName || /Neural2|Standard|Wavenet|Journey/i.test(resolvedVoiceName);
     const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0 && supportsMarks;
     if (!supportsMarks && syncMode === "shot_marked") {
       console.log(`Voice "${resolvedVoiceName}" does not support <mark> tags — falling back to proportional sync`);
