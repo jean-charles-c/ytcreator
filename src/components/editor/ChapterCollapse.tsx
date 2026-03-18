@@ -95,11 +95,12 @@ export default function ChapterCollapse({
         if (data?.error) { toast.error(data.error); return; }
 
         const newVariants: ChapterTitleVariant[] = (data.titles || []).map(
-          (t: { title: string; hookType: string }, i: number) => ({
+          (t: { title: string; hookType: string; titleFR?: string }, i: number) => ({
             id: `${id}-v${Date.now()}-${i}`,
             title: t.title,
             hookType: t.hookType,
             selected: false,
+            titleFR: t.titleFR || null,
           })
         );
 
@@ -137,6 +138,7 @@ export default function ChapterCollapse({
           return {
             ...ch,
             title: selectedVariant?.title || ch.title,
+            titleFR: selectedVariant?.titleFR || ch.titleFR,
             variants: ch.variants.map((v) => ({ ...v, selected: v.id === variantId })),
           };
         }),
@@ -173,6 +175,7 @@ export default function ChapterCollapse({
           onGenerateTitles={handleGenerateTitles}
           onSelectVariant={handleSelectVariant}
           generatingId={generatingId}
+          isFrench={scriptLanguage === "fr"}
         />
       </CollapsibleContent>
     </Collapsible>

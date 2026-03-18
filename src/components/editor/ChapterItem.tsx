@@ -27,6 +27,7 @@ interface ChapterItemProps {
   onGenerateTitles: (id: string, tone: string) => Promise<void>;
   onSelectVariant: (chapterId: string, variantId: string) => void;
   generating?: boolean;
+  isFrench?: boolean;
 }
 
 export default function ChapterItem({
@@ -36,6 +37,7 @@ export default function ChapterItem({
   onGenerateTitles,
   onSelectVariant,
   generating,
+  isFrench,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
@@ -88,6 +90,13 @@ export default function ChapterItem({
               </button>
             )}
           </div>
+
+          {/* French translation */}
+          {!isFrench && chapter.titleFR && (
+            <p className="text-xs text-muted-foreground/80 pl-7 italic">
+              🇫🇷 {chapter.titleFR}
+            </p>
+          )}
 
           {chapter.startSentence && (
             <p className="text-xs text-muted-foreground line-clamp-1 pl-7">
@@ -144,7 +153,12 @@ export default function ChapterItem({
               <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${hookBadgeColor[v.hookType] || "bg-secondary text-muted-foreground border-border"}`}>
                 {v.hookType}
               </span>
-              <span className="truncate">{v.title}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block truncate">{v.title}</span>
+                {!isFrench && v.titleFR && (
+                  <span className="block truncate text-[10px] text-muted-foreground/60 italic">🇫🇷 {v.titleFR}</span>
+                )}
+              </span>
             </button>
           ))}
         </div>
