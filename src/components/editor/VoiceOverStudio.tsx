@@ -87,7 +87,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     toast.success("Narration collée");
   };
 
-  // Build sorted shotSentences for marked sync mode
+  // Build sorted shotSentences for marked sync mode.
+  // Compares shot sentences against the voScript textarea (source of truth)
+  // to detect and inject any sentences present in the script but missing from shots.
   const buildShotSentences = (): { id: string; text: string; isNewScene?: boolean }[] | null => {
     if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return null;
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
@@ -98,7 +100,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       return a.shot_order - b.shot_order;
     });
     let lastSceneId = "";
-    const sentences = sorted
+    const shotEntries = sorted
       .map((s) => {
         const isNewScene = s.scene_id !== lastSceneId && lastSceneId !== "";
         lastSceneId = s.scene_id;
@@ -109,7 +111,71 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         };
       })
       .filter((s) => s.text.length > 0);
-    return sentences.length > 0 ? sentences : null;
+
+    if (shotEntries.length === 0) return null;
+
+    // ── Reconcile with voScript to find missing sentences ──
+    const scriptText = voScript.trim();
+    if (!scriptText) return shotEntries;
+
+    // Split script into sentences
+    const scriptSentences = scriptText
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (scriptSentences.length === 0) return shotEntries;
+
+    // Build a set of shot sentences (normalized) for fast lookup
+    const shotTextSet = new Set(shotEntries.map((e) => e.text.toLowerCase().trim()));
+
+    // Walk through script sentences and interleave missing ones before the next matching shot
+    const result: { id: string; text: string; isNewScene?: boolean }[] = [];
+    let shotIdx = 0;
+
+    for (const scriptSent of scriptSentences) {
+      const scriptNorm = scriptSent.toLowerCase().trim();
+
+      // Check if this script sentence matches the current shot
+      if (shotIdx < shotEntries.length) {
+        const shotNorm = shotEntries[shotIdx].text.toLowerCase().trim();
+        // Fuzzy match: script sentence starts with shot text or vice versa
+        if (scriptNorm === shotNorm || scriptNorm.startsWith(shotNorm) || shotNorm.startsWith(scriptNorm)) {
+          result.push(shotEntries[shotIdx]);
+          shotIdx++;
+          continue;
+        }
+      }
+
+      // Not a shot match — check if it exists anywhere in shots (skip duplicates)
+      if (shotTextSet.has(scriptNorm)) {
+        // It's a shot sentence but out of order — find and push it
+        const found = shotEntries.find((e) => e.text.toLowerCase().trim() === scriptNorm);
+        if (found && !result.some((r) => r.id === found.id)) {
+          result.push(found);
+          // Advance shotIdx if this was the current shot
+          if (shotIdx < shotEntries.length && shotEntries[shotIdx].id === found.id) shotIdx++;
+        }
+        continue;
+      }
+
+      // This sentence is NOT in any shot — inject it as an untracked sentence
+      result.push({
+        id: `_missing_${result.length}`,
+        text: scriptSent,
+        isNewScene: false,
+      });
+    }
+
+    // Append any remaining shots that weren't matched
+    while (shotIdx < shotEntries.length) {
+      if (!result.some((r) => r.id === shotEntries[shotIdx].id)) {
+        result.push(shotEntries[shotIdx]);
+      }
+      shotIdx++;
+    }
+
+    return result.length > 0 ? result : shotEntries;
   };
 
   const handleGenerate = async () => {
