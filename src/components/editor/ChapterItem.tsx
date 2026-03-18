@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Loader2, Sparkles } from "lucide-react";
 import type { Chapter, ChapterTitleVariant } from "./chapterTypes";
+import { SECTION_META, SECTION_TAGS, type SectionType } from "./canonicalScriptTypes";
 
 const TONES = [
   { value: "curiosity", label: "Curiosity" },
@@ -71,6 +72,11 @@ export default function ChapterItem({
             <span className="flex items-center justify-center h-5 w-5 rounded bg-primary/10 text-primary text-[10px] font-bold shrink-0">
               {chapter.index + 1}
             </span>
+            {chapter.sectionType && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border shrink-0">
+                {SECTION_TAGS[chapter.sectionType]}
+              </span>
+            )}
 
             {editing ? (
               <Input

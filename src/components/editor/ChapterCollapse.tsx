@@ -32,13 +32,11 @@ export default function ChapterCollapse({
       setOpen(isOpen);
       if (isOpen && (!chapterState || chapterState.chapters.length === 0)) {
         const result = detectChapters(canonicalScript, narration);
-        if (result.chapters.length > 0) {
-          onChapterStateChange({
-            chapters: result.chapters.map(chapterFromDetected),
-            method: result.method,
-            lastUpdatedAt: new Date().toISOString(),
-          });
-        }
+        onChapterStateChange({
+          chapters: result.chapters.map(chapterFromDetected),
+          method: result.method,
+          lastUpdatedAt: new Date().toISOString(),
+        });
       }
     },
     [canonicalScript, narration, chapterState, onChapterStateChange]

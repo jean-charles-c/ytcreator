@@ -40,23 +40,18 @@ export interface ChapterDetectionResult {
  * only if both are < 80 chars (e.g. short Promise).
  */
 function detectFromCanonical(script: CanonicalScript): DetectedChapter[] {
-  const chapters: DetectedChapter[] = [];
-
-  for (const section of script.sections) {
+  // Always produce exactly 9 chapters — one per canonical section
+  return script.sections.map((section, idx) => {
     const text = getDisplayText(section).trim();
-    if (!text) continue;
-
     const meta = SECTION_META[section.type];
-    chapters.push({
+    return {
       id: section.type,
       sectionType: section.type,
       label: `${meta.icon} ${meta.label}`,
-      text,
-      order: chapters.length,
-    });
-  }
-
-  return chapters;
+      text: text || "",
+      order: idx,
+    };
+  });
 }
 
 /* ── Semantic fallback ────────────────────────────── */
