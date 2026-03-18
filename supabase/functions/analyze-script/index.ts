@@ -145,9 +145,9 @@ CRITICAL RULES:
     }
 
     // Validate: must have 7 sections with correct keys
-    const expectedKeys = ["hook", "introduction", "act1", "act2", "act3", "climax", "conclusion"];
+    const expectedKeys = ["hook", "context", "promise", "act1", "act2", "act3", "climax", "insight", "conclusion"];
     const resultKeys = parsed.sections.map((s) => s.key);
-    const valid = expectedKeys.every((k) => resultKeys.includes(k)) && parsed.sections.length === 7;
+    const valid = expectedKeys.every((k) => resultKeys.includes(k)) && parsed.sections.length === 9;
 
     if (!valid) {
       console.error("Invalid section keys:", resultKeys);
