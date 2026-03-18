@@ -166,12 +166,15 @@ Act 1 narration...
 
 NARRATIVE ARCHITECTURE — 9 SECTIONS:
 
-SECTION 1 — [[HOOK]] (~7% of total = ~${Math.round(wordTarget * 0.07)} words):
+SECTION 1 — [[HOOK]] (STRICT: 100-200 characters, ±10% → 90-220 characters absolute):
+• ⚠️ The Hook MUST be between 100 and 200 characters (±10%). This is a HARD constraint.
+• It should be 1-3 SHORT sentences maximum. No more.
 • The hook is the MOST IMPORTANT part. It must grab attention INSTANTLY.
 • Structure: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
 • MODE: Abstract, mysterious, conceptual — create intrigue without concrete explanations.
 • Never start with greetings, channel name, or "today we will talk about".
 • Open with something that creates TENSION or CURIOSITY immediately.
+• SELF-CHECK: Count the characters of your Hook. If it exceeds 220 characters, CUT IT DOWN. If under 90 characters, EXPAND slightly.
 
 SECTION 2 — [[CONTEXT]] (~10% of total = ~${Math.round(wordTarget * 0.10)} words):
 • MODE SWITCH: Transition from abstract/mysterious to CONCRETE/factual.
