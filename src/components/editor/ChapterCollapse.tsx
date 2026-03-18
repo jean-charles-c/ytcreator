@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
-import { ChevronDown, ListVideo } from "lucide-react";
+import { ChevronDown, ListVideo, CheckCheck } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import ChapterList from "./ChapterList";
 import { detectChapters } from "./chapterDetection";
 import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
@@ -45,6 +46,18 @@ export default function ChapterCollapse({
 
   const chapters = chapterState?.chapters ?? [];
   const validatedCount = chapters.filter((c) => c.validated).length;
+  const allValidated = chapters.length > 0 && chapters.every((c) => c.validated);
+
+  const handleValidateAll = useCallback(() => {
+    if (!chapterState || chapters.length === 0) return;
+    const newVal = !allValidated;
+    onChapterStateChange({
+      ...chapterState,
+      chapters: chapterState.chapters.map((ch) => ({ ...ch, validated: newVal })),
+      lastUpdatedAt: new Date().toISOString(),
+    });
+    toast.success(newVal ? "Tous les chapitres validés" : "Validation retirée");
+  }, [chapterState, onChapterStateChange, allValidated, chapters.length]);
 
   const handleToggleValidated = useCallback(
     (id: string) => {
@@ -167,7 +180,20 @@ export default function ChapterCollapse({
         </button>
       </CollapsibleTrigger>
 
-      <CollapsibleContent className="mt-2 rounded-lg border border-border bg-card p-4">
+      <CollapsibleContent className="mt-2 rounded-lg border border-border bg-card p-4 space-y-3">
+        {chapters.length > 0 && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleValidateAll}
+              className="h-7 text-xs gap-1"
+            >
+              <CheckCheck className="h-3 w-3" />
+              {allValidated ? "Dévalider tout" : "Valider tout"}
+            </Button>
+          </div>
+        )}
         <ChapterList
           chapters={chapters}
           onToggleValidated={handleToggleValidated}
