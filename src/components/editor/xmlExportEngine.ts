@@ -2,6 +2,8 @@ import JSZip from "jszip";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 import { buildClipFrames, escapeXml } from "./xmlExportUtils";
+import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
+import type { Chapter } from "./chapterTypes";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
@@ -30,7 +32,8 @@ function generateXml(
   fps: ExportFps,
   imageFileNames: Map<number, string>,
   audioFileName: string,
-  exportUid: string
+  exportUid: string,
+  markersXml: string = ""
 ): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
@@ -121,7 +124,7 @@ function generateXml(
       <sequence>
         <name>Main Sequence</name>
         <duration>${totalFrames}</duration>
-        <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+        <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>${markersXml}
         <media>
           <video>
             <format>
@@ -176,7 +179,8 @@ export interface XmlExportProgress {
 export async function exportTimelineToXmlZip(
   timeline: Timeline,
   fps: ExportFps = 24,
-  onProgress?: (p: XmlExportProgress) => void
+  onProgress?: (p: XmlExportProgress) => void,
+  chapters?: Chapter[]
 ): Promise<Blob> {
   const zip = new JSZip();
   const mediaFolder = zip.folder("media")!;
@@ -216,7 +220,8 @@ export async function exportTimelineToXmlZip(
   // ── Generate XML with relative paths ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
   const exportUid = crypto.randomUUID().slice(0, 8);
-  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid);
+  const markersXml = chapters ? generateMarkerXml(buildChapterMarkers(chapters, timeline, fps), fps) : "";
+  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml);
   zip.file("timeline.xml", xml);
 
   // ── Generate ZIP ──
