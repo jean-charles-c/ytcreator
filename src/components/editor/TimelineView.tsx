@@ -450,8 +450,36 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
             </button>
             <button onClick={skipNext} className="h-11 w-11 sm:h-8 sm:w-8 flex items-center justify-center rounded hover:bg-muted transition-colors" aria-label="Suivant"><SkipForward className="h-5 w-5 sm:h-4 sm:w-4 text-foreground" /></button>
             <span className="text-[11px] font-mono text-muted-foreground ml-2">{formatTime(currentTime)} / {formatTime(audioDuration)}</span>
-            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{segments.length} segments</span>
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{scaledSegments.length} segments</span>
           </div>
+          {/* Image offset control */}
+          {onImageOffsetChange && (
+            <div className="flex items-center gap-2 pt-1">
+              <ImageIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">Calage image</span>
+              <input
+                type="range"
+                min={-1000}
+                max={1000}
+                step={50}
+                value={imageOffsetMs}
+                onChange={(e) => onImageOffsetChange(Number(e.target.value))}
+                className="flex-1 h-1 accent-primary"
+              />
+              <span className="text-[10px] font-mono text-muted-foreground w-14 text-right">
+                {imageOffsetMs === 0 ? "0 ms" : `${imageOffsetMs > 0 ? "+" : ""}${imageOffsetMs} ms`}
+              </span>
+              {imageOffsetMs !== 0 && (
+                <button
+                  onClick={() => onImageOffsetChange(0)}
+                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                  title="Réinitialiser"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
