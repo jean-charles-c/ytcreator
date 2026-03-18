@@ -106,7 +106,7 @@ function generateXml(
           <mastercomment1>${sentence}</mastercomment1>
           <mastercomment2>${description}</mastercomment2>
           <mastercomment3>Type: ${escapeXml(seg.shotType)}</mastercomment3>
-        </comments>${generateClipMarkerXml(clipMarkers, i)}
+        </comments>
       </clipitem>`;
   }).join("\n");
 
