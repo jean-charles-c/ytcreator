@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { ChevronDown, RotateCcw, Loader2, History, Clock, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { parseTaggedScript } from "./tagParser";
 
 export interface NarrativeSection {
   key: string;
@@ -28,28 +29,18 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
     return NARRATIVE_SECTIONS.map((s) => ({ ...s, content: "" }));
   }
 
-  const cleaned = script.trim();
+  // V3: Use deterministic tag parser (priority path)
+  const parsed = parseTaggedScript(script);
 
-  // V3: Parse [[TAG]] markers
-  const tagPattern = /\[\[(HOOK|CONTEXT|PROMISE|ACT1|ACT2|ACT3|CLIMAX|INSIGHT|CONCLUSION)\]\]/gi;
-  const tagMatches = [...cleaned.matchAll(tagPattern)];
-
-  if (tagMatches.length >= 3) {
-    const segments: { key: string; content: string }[] = [];
-    for (let i = 0; i < tagMatches.length; i++) {
-      const start = tagMatches[i].index! + tagMatches[i][0].length;
-      const end = i + 1 < tagMatches.length ? tagMatches[i + 1].index! : cleaned.length;
-      const key = tagMatches[i][1].toLowerCase();
-      segments.push({ key, content: cleaned.slice(start, end).trim() });
-    }
-
+  if (parsed.tagged) {
     return NARRATIVE_SECTIONS.map((s) => ({
       ...s,
-      content: segments.find((seg) => seg.key === s.key)?.content || "",
+      content: parsed.sections.find((seg) => seg.key === s.key)?.content || "",
     }));
   }
 
   // Legacy fallback: header-based parsing
+  const cleaned = script.trim();
   const headerPattern = /^#{1,3}\s*(Hook|Context|Promise|Introduction|Act\s*1[^]*?|Act\s*2[^]*?|Act\s*3[^]*?|Climax|Insight|Révélation|Conclusion|Setup|Escalade)[^\n]*/gim;
   const headerMatches = [...cleaned.matchAll(headerPattern)];
 
