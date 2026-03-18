@@ -138,6 +138,7 @@ export default function ChapterCollapse({
           return {
             ...ch,
             title: selectedVariant?.title || ch.title,
+            titleFR: selectedVariant?.titleFR || ch.titleFR,
             variants: ch.variants.map((v) => ({ ...v, selected: v.id === variantId })),
           };
         }),
