@@ -124,7 +124,7 @@ function generateXml(
       <sequence>
         <name>Main Sequence</name>
         <duration>${totalFrames}</duration>
-        <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+        <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>${markersXml}
         <media>
           <video>
             <format>
