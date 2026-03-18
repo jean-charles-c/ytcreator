@@ -247,7 +247,7 @@ export default function SectionCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               {/* Section number badge */}
               <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${accent.badge}`}>
-                {index + 1}/7
+                {index + 1}/9
               </span>
 
               {/* Char count or empty indicator */}
