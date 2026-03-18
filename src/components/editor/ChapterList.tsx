@@ -34,6 +34,7 @@ export default function ChapterList({ chapters, onToggleValidated, onTitleChange
           onGenerateTitles={onGenerateTitles}
           onSelectVariant={onSelectVariant}
           generating={generatingId === ch.id}
+          isFrench={isFrench}
         />
       ))}
     </div>
