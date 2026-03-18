@@ -173,7 +173,47 @@ export default function PdfDocumentaryTab({
   const inputRef = useRef<HTMLInputElement>(null);
   
 
-  // Derive generatingScript from background task state
+  // ── Hydrate chapterState from DB on mount ──
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const saved = (data?.timeline_state as any)?.chapterState as ChapterListState | null;
+      if (saved?.chapters?.length) {
+        setChapterState(saved);
+      }
+      chapterHydratedRef.current = true;
+    })();
+  }, [projectId]);
+
+  // ── Persist chapterState to DB (debounced) ──
+  useEffect(() => {
+    if (!projectId || !chapterHydratedRef.current || !chapterState) return;
+
+    if (chapterSaveTimeoutRef.current) window.clearTimeout(chapterSaveTimeoutRef.current);
+    chapterSaveTimeoutRef.current = window.setTimeout(async () => {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const currentState = (data?.timeline_state as any) ?? {};
+      await supabase
+        .from("project_scriptcreator_state")
+        .update({ timeline_state: { ...currentState, chapterState } as any })
+        .eq("project_id", projectId);
+    }, 1200);
+
+    return () => {
+      if (chapterSaveTimeoutRef.current) window.clearTimeout(chapterSaveTimeoutRef.current);
+    };
+  }, [projectId, chapterState]);
+
+
   const bgScriptTask = projectId ? getTask(projectId, "script") : undefined;
   const generatingScript = bgScriptTask?.status === "running";
 
