@@ -868,6 +868,7 @@ serve(async (req) => {
       const markedSsml = buildMarkedSsml(
         shotSentences!,
         pauseAfterSentences,
+        pauseBetweenParagraphs,
         sentenceStartBoost,
         sentenceEndSlow,
         pauseAfterComma,
