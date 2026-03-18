@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Play, Square, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { type VoiceSettings, getVoiceName, STYLE_PRESETS } from "./VoiceSettingsPanel";
+import { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 
 interface VoicePreviewTestProps {
   settings: VoiceSettings;
@@ -41,7 +41,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             text: previewText,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
-            voiceName: settings.voiceName || getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType),
+            voiceName: settings.voiceName || undefined,
             voiceType: settings.voiceType,
             speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
             pitch: (settings.pitch || 0) + (STYLE_PRESETS[settings.style]?.pitch || 0),
