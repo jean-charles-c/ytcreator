@@ -841,11 +841,11 @@ serve(async (req) => {
       );
     }
 
-    // Studio, Chirp-HD and Polyglot voices do NOT support <mark> SSML tags — fall back to proportional sync
-    const isRestrictedVoice = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
-    const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0 && !isRestrictedVoice;
-    if (isRestrictedVoice && syncMode === "shot_marked") {
-      console.log(`Skipping <mark> mode for restricted voice: ${resolvedVoiceName} — using proportional sync`);
+    // Only Neural2, Standard, Wavenet, and Journey voices support <mark> SSML tags
+    const supportsMarks = !resolvedVoiceName || /Neural2|Standard|Wavenet|Journey/i.test(resolvedVoiceName);
+    const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0 && supportsMarks;
+    if (!supportsMarks && syncMode === "shot_marked") {
+      console.log(`Voice "${resolvedVoiceName}" does not support <mark> tags — falling back to proportional sync`);
     }
     const MAX_CHARS = 4800;
 
