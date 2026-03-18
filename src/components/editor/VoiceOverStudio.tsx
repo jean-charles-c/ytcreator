@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
+import { alignShotSentencesToScript } from "./shotSentenceAlignment";
 
 interface VoiceOverStudioProps {
   narration: string;
