@@ -260,6 +260,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [timeline, setTimeline] = useState<Timeline | null>(null);
   const [savingTimeline, setSavingTimeline] = useState(false);
   const [imageOffsetMs, setImageOffsetMs] = useState(0);
+  const previousAudioFilesRef = useRef<AudioFile[]>([]);
 
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
     if (!projectId) return;
@@ -358,13 +359,14 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
 
     const fetchAudio = async () => {
       setLoadingAudio(true);
-      const previousAudioFiles = audioFiles;
+      const previousAudioFiles = previousAudioFilesRef.current;
       const { data } = await supabase
         .from("vo_audio_history")
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
       const nextAudioFiles = data ?? [];
+      previousAudioFilesRef.current = nextAudioFiles;
       setAudioFiles(nextAudioFiles);
       setSelectedAudioId((currentSelectedId) =>
         resolveSelectedAudioId({
@@ -377,7 +379,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     };
 
     fetchAudio();
-  }, [projectId, audioFiles]);
+  }, [projectId]);
 
   // Compute asset checks
   const shotsWithImage = shots.filter((s) => s.image_url);
