@@ -488,8 +488,8 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
             {/* Video track */}
             <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
               <div className="flex h-full">
-                {segments.map((seg, idx) => {
-                  const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
+                {scaledSegments.map((seg, idx) => {
+                  const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / scaledSegments.length;
                   const active = seg.id === activeSegment?.id;
                   return (
                     <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${idx + 1}`}>
