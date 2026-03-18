@@ -106,7 +106,7 @@ OUTPUT RULES:
 - Return ONLY the raw narration text for this section
 - NO headers, titles, markers, separators, or meta-commentary
 - The text must be immediately usable as voice-over
-- Target approximately ${targetChars} characters (±20%)`;
+- Target approximately ${targetChars} characters (±20%)${hookConstraint}`;
 
     const userMessage = [
       contextParts.length > 0 ? `SURROUNDING SECTIONS (for context and continuity — do NOT repeat their content):\n\n${contextParts.join("\n\n")}` : "",
