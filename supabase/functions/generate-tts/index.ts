@@ -312,8 +312,9 @@ const CONTINUITY_PAUSE_RATIO = 0.4; // reduce pause to 40% of normal
  * Returns SSML string with marks named "s_0", "s_1", etc.
  */
 function buildMarkedSsml(
-  shotSentences: { id: string; text: string }[],
+  shotSentences: { id: string; text: string; isNewScene?: boolean }[],
   pauseAfterSentences: number,
+  pauseBetweenParagraphs: number,
   sentenceStartBoost: number,
   sentenceEndSlow: number,
   commaPauseMs = 0,

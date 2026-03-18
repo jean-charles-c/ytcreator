@@ -88,7 +88,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   };
 
   // Build sorted shotSentences for marked sync mode
-  const buildShotSentences = (): { id: string; text: string }[] | null => {
+  const buildShotSentences = (): { id: string; text: string; isNewScene?: boolean }[] | null => {
     if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return null;
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
     const sorted = [...shots].sort((a, b) => {
@@ -97,11 +97,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       if (oa !== ob) return oa - ob;
       return a.shot_order - b.shot_order;
     });
+    let lastSceneId = "";
     const sentences = sorted
-      .map((s) => ({
-        id: s.id,
-        text: (s.source_sentence || s.source_sentence_fr || s.description || "").trim(),
-      }))
+      .map((s) => {
+        const isNewScene = s.scene_id !== lastSceneId && lastSceneId !== "";
+        lastSceneId = s.scene_id;
+        return {
+          id: s.id,
+          text: (s.source_sentence || s.source_sentence_fr || s.description || "").trim(),
+          isNewScene,
+        };
+      })
       .filter((s) => s.text.length > 0);
     return sentences.length > 0 ? sentences : null;
   };
