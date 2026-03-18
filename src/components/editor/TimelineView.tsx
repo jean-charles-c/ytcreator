@@ -199,7 +199,7 @@ function useImageReplacer(onImageSelected: (segId: string, url: string) => void)
 }
 
 // ── Main component ─────────────────────────────────────────────────
-export default function TimelineView({ timeline, onTimelineChange }: TimelineViewProps) {
+export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs = 0, onImageOffsetChange }: TimelineViewProps) {
   const { videoTrack, audioTrack } = timeline;
   const segments = videoTrack.segments;
 
@@ -214,7 +214,26 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const [zoomLevel, setZoomLevel] = useState(1); // 1x to 30x
   const [segmentsOpen, setSegmentsOpen] = useState(false);
 
-  const activeIndex = useMemo(() => findSegmentAt(segments, currentTime), [segments, currentTime]);
+  // ── Drift correction: scale segment times to match actual audio duration ──
+  const scaledSegments = useMemo(() => {
+    const estimatedDuration = timeline.totalDuration;
+    if (!estimatedDuration || estimatedDuration <= 0 || !audioDuration || audioDuration <= 0) return segments;
+    const scale = audioDuration / estimatedDuration;
+    // Only apply correction if drift is significant (>1%)
+    if (Math.abs(scale - 1) < 0.01) return segments;
+    return segments.map((seg) => ({
+      ...seg,
+      startTime: Math.round(seg.startTime * scale * 100) / 100,
+      duration: Math.round(seg.duration * scale * 100) / 100,
+    }));
+  }, [segments, audioDuration, timeline.totalDuration]);
+
+  // Apply image offset (convert ms to seconds) for segment lookup
+  const imageOffsetSec = imageOffsetMs / 1000;
+  const activeIndex = useMemo(
+    () => findSegmentAt(scaledSegments, currentTime + imageOffsetSec),
+    [scaledSegments, currentTime, imageOffsetSec]
+  );
   const activeSegment = segments[activeIndex] ?? null;
 
   const waveformHeights = useMemo(
