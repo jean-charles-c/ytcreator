@@ -75,7 +75,7 @@ export default function Login() {
             <p className="text-xs text-destructive">{error}</p>
           )}
 
-          <Button variant="hero" className="w-full" type="submit" disabled={loading}>
+          <Button variant="hero" className="w-full min-h-[44px]" type="submit" disabled={loading}>
             {loading ? "Connexion..." : "Se connecter"}
             <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
