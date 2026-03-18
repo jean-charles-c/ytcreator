@@ -340,15 +340,21 @@ function buildMarkedSsml(
     return { ssml: `${mark}${processed}`, text: shot.text.trim() };
   });
 
-  // Join with sentence pauses (with continuity awareness)
+  // Join with sentence pauses (with continuity and scene/paragraph awareness)
   const joined = parts.map((p, i) => {
-    if (i < parts.length - 1 && pauseAfterSentences > 0) {
-      let pause = jitterPause(pauseAfterSentences, dynamicPauseVariation, dynamicPauseEnabled);
-      // Reduce pause for prosodic continuity
-      if (shouldReducePause(p.text, parts[i + 1].text)) {
-        pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+    if (i < parts.length - 1) {
+      // Use paragraph pause at scene boundaries, sentence pause otherwise
+      const nextShot = shotSentences[i + 1];
+      const isSceneBreak = nextShot?.isNewScene === true;
+      const basePause = isSceneBreak ? pauseBetweenParagraphs : pauseAfterSentences;
+      if (basePause > 0) {
+        let pause = jitterPause(basePause, dynamicPauseVariation, dynamicPauseEnabled);
+        // Reduce pause for prosodic continuity (only for non-scene-breaks)
+        if (!isSceneBreak && shouldReducePause(p.text, parts[i + 1].text)) {
+          pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+        }
+        return `${p.ssml}<break time="${pause}ms"/>`;
       }
-      return `${p.ssml}<break time="${pause}ms"/>`;
     }
     return p.ssml;
   }).join(" ");
