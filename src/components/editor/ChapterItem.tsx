@@ -72,6 +72,11 @@ export default function ChapterItem({
             <span className="flex items-center justify-center h-5 w-5 rounded bg-primary/10 text-primary text-[10px] font-bold shrink-0">
               {chapter.index + 1}
             </span>
+            {chapter.sectionType && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border shrink-0">
+                {SECTION_TAGS[chapter.sectionType]}
+              </span>
+            )}
 
             {editing ? (
               <Input
