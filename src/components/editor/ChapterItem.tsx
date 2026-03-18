@@ -55,6 +55,27 @@ export default function ChapterItem({
     }
   };
 
+  /** Find the shot number matching the chapter's first sentence */
+  const matchingShotOrder = useMemo(() => {
+    if (!shots || shots.length === 0 || !chapter.startSentence) return null;
+    const startNorm = chapter.startSentence.toLowerCase().trim();
+    const match = shots.find((s) => {
+      const sent = (s.source_sentence || s.source_sentence_fr || "").toLowerCase().trim();
+      if (!sent) return false;
+      return sent.startsWith(startNorm.slice(0, 30)) || startNorm.startsWith(sent.slice(0, 30));
+    });
+    if (match) return match.shot_order;
+    if (chapter.sourceText) {
+      const srcNorm = chapter.sourceText.toLowerCase();
+      const found = shots.find((s) => {
+        const sent = (s.source_sentence || "").toLowerCase().trim();
+        return sent.length > 10 && srcNorm.includes(sent);
+      });
+      if (found) return found.shot_order;
+    }
+    return null;
+  }, [shots, chapter.startSentence, chapter.sourceText]);
+
   const handleGenerate = useCallback(() => {
     onGenerateTitles(chapter.id, tone);
   }, [chapter.id, tone, onGenerateTitles]);
