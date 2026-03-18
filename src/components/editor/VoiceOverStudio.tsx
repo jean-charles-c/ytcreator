@@ -6,7 +6,7 @@ import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLin
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import VoiceSettingsPanel, { type VoiceSettings, getVoiceName, STYLE_PRESETS } from "./VoiceSettingsPanel";
+import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 
@@ -139,7 +139,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             text: voScript,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
-            voiceName: settings.voiceName || getVoiceName(settings.languageCode, settings.voiceGender, settings.voiceType),
+            voiceName: settings.voiceName || undefined,
             voiceType: settings.voiceType,
             speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
             pitch: (settings.pitch || 0) + (STYLE_PRESETS[settings.style]?.pitch || 0),

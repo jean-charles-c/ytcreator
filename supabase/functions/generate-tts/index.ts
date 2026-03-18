@@ -166,16 +166,19 @@ async function resolveVoiceName(
   voiceType: string | undefined,
   voiceGender: "MALE" | "FEMALE" | "NEUTRAL"
 ): Promise<string | undefined> {
-  // If user explicitly selected a voice name, always respect it
-  if (requestedVoiceName && requestedVoiceName.trim().length > 0) {
-    console.log(`Using user-requested voice: ${requestedVoiceName}`);
-    return requestedVoiceName;
-  }
-
-  // No explicit voice name — resolve from type + gender
   try {
     const voices = await listGoogleVoices(apiKey, languageCode);
-    if (voices.length === 0) return undefined;
+    if (voices.length === 0) return requestedVoiceName?.trim() || undefined;
+
+    const trimmedRequestedVoiceName = requestedVoiceName?.trim();
+    if (trimmedRequestedVoiceName) {
+      const exactMatch = voices.find((voice) => voice.name === trimmedRequestedVoiceName);
+      if (exactMatch) {
+        console.log(`Using user-requested voice: ${trimmedRequestedVoiceName}`);
+        return exactMatch.name;
+      }
+      console.warn(`Requested voice unavailable for ${languageCode}: ${trimmedRequestedVoiceName}. Falling back to type resolution.`);
+    }
 
     const normalizedType = (voiceType || "Standard").toLowerCase();
 
@@ -192,14 +195,20 @@ async function resolveVoiceName(
         : normalizedType === "neural2"
           ? Math.floor(pool.length / 2)
           : 0;
-      return pool[Math.max(0, Math.min(idx, pool.length - 1))].name;
+      const resolvedVoice = pool[Math.max(0, Math.min(idx, pool.length - 1))].name;
+      console.log(`Resolved voice from type=${voiceType || "Standard"} gender=${voiceGender}: ${resolvedVoice}`);
+      return resolvedVoice;
     }
 
     const byGender = voices.filter((v) => v.ssmlGender === voiceGender);
-    return (byGender[0] || voices[0])?.name;
+    const fallbackVoice = (byGender[0] || voices[0])?.name;
+    if (fallbackVoice) {
+      console.log(`Falling back to available voice: ${fallbackVoice}`);
+    }
+    return fallbackVoice;
   } catch (error) {
     console.error("Voice resolve fallback:", error);
-    return undefined;
+    return requestedVoiceName?.trim() || undefined;
   }
 }
 
