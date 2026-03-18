@@ -59,7 +59,7 @@ export default function ChapterCollapse({
     toast.success(newVal ? "Tous les chapitres validés" : "Validation retirée");
   }, [chapterState, onChapterStateChange, allValidated, chapters.length]);
 
-
+  const handleToggleValidated = useCallback(
     (id: string) => {
       if (!chapterState) return;
       onChapterStateChange({
