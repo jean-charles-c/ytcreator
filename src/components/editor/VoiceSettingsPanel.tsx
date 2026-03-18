@@ -55,8 +55,7 @@ const VOICE_TYPES = [
   { value: "Wavenet", label: "WaveNet", desc: "Naturelle — haute qualité" },
   { value: "Neural2", label: "Neural2", desc: "Très naturelle — premium" },
   { value: "Studio", label: "Studio", desc: "Voix studio — très réaliste" },
-  { value: "Chirp3-HD", label: "Chirp3 HD", desc: "Dernière génération — expressif" },
-  { value: "Chirp-HD", label: "Chirp HD", desc: "Haute définition" },
+  { value: "Chirp-HD", label: "Chirp HD", desc: "Haute définition — expressif" },
   { value: "Polyglot", label: "Polyglot", desc: "Multilingue" },
 ];
 
@@ -641,13 +640,13 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
           <span className="text-xs font-mono text-muted-foreground">{settings.pauseAfterComma === 0 ? "Aucune" : `${settings.pauseAfterComma} ms`}</span>
         </div>
         <Slider
-          min={0} max={500} step={25}
+          min={0} max={1000} step={25}
           value={[settings.pauseAfterComma]}
           onValueChange={([v]) => update({ pauseAfterComma: v })}
           aria-label="Pause après virgule"
         />
         <div className="flex justify-between text-[10px] text-muted-foreground/60">
-          <span>Aucune</span><span>250ms</span><span>500ms</span>
+          <span>Aucune</span><span>500ms</span><span>1s</span>
         </div>
         <p className="text-[10px] text-muted-foreground/60">
           Ajoute un silence après chaque virgule pour un rythme plus posé et naturel.
