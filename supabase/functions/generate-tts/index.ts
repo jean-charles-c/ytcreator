@@ -799,14 +799,13 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    // Chirp-HD, Studio and Polyglot voices do not support pitch parameters
-    const voiceNoPitch = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
-    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate, volumeGainDb };
-    if (!voiceNoPitch && pitch !== 0) {
-      audioConfig.pitch = pitch;
-    }
-    if (effectsProfileId) {
-      audioConfig.effectsProfileId = [effectsProfileId];
+    // Chirp-HD, Studio and Polyglot voices do not support pitch, volumeGainDb, or effectsProfileId
+    const isRestrictedVoice = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate };
+    if (!isRestrictedVoice) {
+      if (pitch !== 0) audioConfig.pitch = pitch;
+      if (volumeGainDb !== 0) audioConfig.volumeGainDb = volumeGainDb;
+      if (effectsProfileId) audioConfig.effectsProfileId = [effectsProfileId];
     }
 
     if (mode === "preview") {
