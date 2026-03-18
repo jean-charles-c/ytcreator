@@ -157,13 +157,15 @@ export interface SectionHistoryEntry {
 /* ── Visual hierarchy per section type ─────────────── */
 
 const SECTION_ACCENTS: Record<string, { border: string; bg: string; badge: string }> = {
-  hook:         { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
-  introduction: { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
-  act1:         { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
-  act2:         { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
-  act3:         { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
-  climax:       { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
-  conclusion:   { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
+  hook:       { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+  context:    { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
+  promise:    { border: "border-l-cyan-500",    bg: "bg-cyan-500/5",    badge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400" },
+  act1:       { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
+  act2:       { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
+  act3:       { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
+  climax:     { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  insight:    { border: "border-l-teal-500",    bg: "bg-teal-500/5",    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400" },
+  conclusion: { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
 };
 
 const DEFAULT_ACCENT = { border: "border-l-border", bg: "", badge: "bg-muted text-muted-foreground" };
@@ -245,7 +247,7 @@ export default function SectionCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               {/* Section number badge */}
               <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${accent.badge}`}>
-                {index + 1}/7
+                {index + 1}/9
               </span>
 
               {/* Char count or empty indicator */}
