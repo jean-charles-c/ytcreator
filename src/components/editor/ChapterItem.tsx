@@ -91,6 +91,13 @@ export default function ChapterItem({
             )}
           </div>
 
+          {/* French translation */}
+          {!isFrench && chapter.titleFR && (
+            <p className="text-xs text-muted-foreground/80 pl-7 italic">
+              🇫🇷 {chapter.titleFR}
+            </p>
+          )}
+
           {chapter.startSentence && (
             <p className="text-xs text-muted-foreground line-clamp-1 pl-7">
               « {chapter.startSentence} »
