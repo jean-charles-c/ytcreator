@@ -2,6 +2,8 @@ import JSZip from "jszip";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 import { buildClipFrames, escapeXml } from "./xmlExportUtils";
+import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
+import type { Chapter } from "./chapterTypes";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
