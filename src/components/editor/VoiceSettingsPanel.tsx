@@ -641,13 +641,13 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
           <span className="text-xs font-mono text-muted-foreground">{settings.pauseAfterComma === 0 ? "Aucune" : `${settings.pauseAfterComma} ms`}</span>
         </div>
         <Slider
-          min={0} max={500} step={25}
+          min={0} max={1000} step={25}
           value={[settings.pauseAfterComma]}
           onValueChange={([v]) => update({ pauseAfterComma: v })}
           aria-label="Pause après virgule"
         />
         <div className="flex justify-between text-[10px] text-muted-foreground/60">
-          <span>Aucune</span><span>250ms</span><span>500ms</span>
+          <span>Aucune</span><span>500ms</span><span>1s</span>
         </div>
         <p className="text-[10px] text-muted-foreground/60">
           Ajoute un silence après chaque virgule pour un rythme plus posé et naturel.
