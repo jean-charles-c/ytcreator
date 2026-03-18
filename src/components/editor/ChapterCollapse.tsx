@@ -180,7 +180,20 @@ export default function ChapterCollapse({
         </button>
       </CollapsibleTrigger>
 
-      <CollapsibleContent className="mt-2 rounded-lg border border-border bg-card p-4">
+      <CollapsibleContent className="mt-2 rounded-lg border border-border bg-card p-4 space-y-3">
+        {chapters.length > 0 && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleValidateAll}
+              className="h-7 text-xs gap-1"
+            >
+              <CheckCheck className="h-3 w-3" />
+              {allValidated ? "Dévalider tout" : "Valider tout"}
+            </Button>
+          </div>
+        )}
         <ChapterList
           chapters={chapters}
           onToggleValidated={handleToggleValidated}
