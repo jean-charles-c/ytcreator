@@ -261,6 +261,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<Timeline | null>(null);
   const [savingTimeline, setSavingTimeline] = useState(false);
+  const [imageOffsetMs, setImageOffsetMs] = useState(0);
 
   // ── Persist timeline to DB ──
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
