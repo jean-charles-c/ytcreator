@@ -1743,8 +1743,24 @@ export default function Editor() {
                       const startIndex = globalShotIndex;
                       globalShotIndex += sceneShots.length;
                       const isOpen = openSceneIds.includes(scene.id);
+
+                      // ── Detect missing sentences ──
+                      const sceneSentences = (scene.source_text || "")
+                        .split(/(?<=[.!?])\s+/)
+                        .map((s: string) => s.trim().toLowerCase())
+                        .filter((s: string) => s.length > 3);
+                      const shotTexts = new Set(
+                        sceneShots.map((sh: any) =>
+                          (sh.source_sentence || sh.source_sentence_fr || sh.description || "").trim().toLowerCase()
+                        ).filter(Boolean)
+                      );
+                      const missingSentences = sceneSentences.filter((sent: string) =>
+                        !Array.from(shotTexts).some((st) => st.startsWith(sent) || sent.startsWith(st))
+                      );
+                      const hasMissing = sceneShots.length > 0 && missingSentences.length > 0;
+
                       return (
-                        <div key={scene.id} className="rounded border border-border bg-card overflow-hidden">
+                        <div key={scene.id} className={`rounded border ${hasMissing ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
                           <button
                             onClick={() =>
                               setOpenSceneIds((prev) =>
@@ -1759,6 +1775,11 @@ export default function Editor() {
                             <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
                             <span className="text-xs text-muted-foreground">—</span>
                             <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
+                            {hasMissing && (
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive font-medium" title={`${missingSentences.length} phrase(s) du script sans shot correspondant`}>
+                                ⚠ {missingSentences.length} phrase(s) orpheline(s)
+                              </span>
+                            )}
                             <span className="ml-auto shrink-0 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
                               {sceneShots.length > 0
                                 ? `SHOT ${Array.from({ length: sceneShots.length }, (_, i) => String(startIndex + i).padStart(4, "0")).join(" / ")}`
@@ -1798,6 +1819,16 @@ export default function Editor() {
                                   <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
                                 )}
                               </div>
+
+                              {hasMissing && (
+                                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+                                  <p className="text-xs font-medium text-destructive">⚠ Phrases du script sans shot correspondant :</p>
+                                  {missingSentences.map((sent: string, i: number) => (
+                                    <p key={i} className="text-xs text-destructive/80 italic pl-3 border-l-2 border-destructive/30">"{sent}"</p>
+                                  ))}
+                                  <p className="text-[10px] text-muted-foreground mt-1">→ Régénérez les shots de cette scène ou ajoutez un shot manuellement pour éviter un décalage audio/image.</p>
+                                </div>
+                              )}
 
                               {isRegenerating || isPendingGeneration ? (
                                 <div className="flex items-center justify-center py-8 gap-2">
