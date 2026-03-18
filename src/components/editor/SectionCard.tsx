@@ -13,11 +13,13 @@ export interface NarrativeSection {
 /** Fixed narrative structure — order matters */
 export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "hook", label: "Hook", icon: "🎣" },
-  { key: "introduction", label: "Introduction", icon: "📖" },
+  { key: "context", label: "Context", icon: "📖" },
+  { key: "promise", label: "Promise", icon: "🎯" },
   { key: "act1", label: "Act 1 — Setup", icon: "🏗️" },
   { key: "act2", label: "Act 2 — Escalade", icon: "⚡" },
-  { key: "act3", label: "Act 3 — Climax", icon: "🔥" },
-  { key: "climax", label: "Révélation", icon: "💡" },
+  { key: "act3", label: "Act 3 — Impact", icon: "🔥" },
+  { key: "climax", label: "Climax", icon: "💡" },
+  { key: "insight", label: "Insight", icon: "🧠" },
   { key: "conclusion", label: "Conclusion", icon: "🎬" },
 ];
 
