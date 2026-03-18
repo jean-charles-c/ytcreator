@@ -153,7 +153,12 @@ export default function ChapterItem({
               <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${hookBadgeColor[v.hookType] || "bg-secondary text-muted-foreground border-border"}`}>
                 {v.hookType}
               </span>
-              <span className="truncate">{v.title}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block truncate">{v.title}</span>
+                {!isFrench && v.titleFR && (
+                  <span className="block truncate text-[10px] text-muted-foreground/60 italic">🇫🇷 {v.titleFR}</span>
+                )}
+              </span>
             </button>
           ))}
         </div>
