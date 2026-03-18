@@ -1047,6 +1047,17 @@ export default function PdfDocumentaryTab({
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Chapitres de la vidéo */}
+      <div className="mt-6">
+        <ChapterCollapse
+          canonicalScript={null}
+          narration={narration}
+          chapterState={chapterState}
+          onChapterStateChange={setChapterState}
+          scriptLanguage={scriptLanguage}
+        />
+      </div>
+
     </div>
   );
 }
