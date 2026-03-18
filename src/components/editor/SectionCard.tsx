@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { ChevronDown, RotateCcw, Loader2, History, Clock, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { parseTaggedScript } from "./tagParser";
 
 export interface NarrativeSection {
   key: string;
