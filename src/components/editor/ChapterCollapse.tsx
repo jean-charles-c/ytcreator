@@ -385,6 +385,7 @@ export default function ChapterCollapse({
           generatingId={generatingId}
           isFrench={scriptLanguage === "fr"}
           shots={shots}
+          scenesForShotOrder={scenesForShotOrder}
         />
       </CollapsibleContent>
     </Collapsible>

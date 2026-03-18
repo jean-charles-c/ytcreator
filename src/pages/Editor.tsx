@@ -1382,6 +1382,7 @@ export default function Editor() {
               segmenting={segmenting}
               onStopSegmentation={stopSegmentation}
               shots={shots}
+              scenesForShotOrder={scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order }))}
             />
           </div>
         )}

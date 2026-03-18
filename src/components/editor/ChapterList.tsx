@@ -38,6 +38,7 @@ export default function ChapterList({ chapters, onToggleValidated, onTitleChange
           generating={generatingId === ch.id}
           isFrench={isFrench}
           shots={shots}
+          scenesForShotOrder={scenesForShotOrder}
         />
       ))}
     </div>
