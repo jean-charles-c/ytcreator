@@ -14,7 +14,7 @@ const timeline = {
         sceneId: "scene-1",
         sceneTitle: "Hook scene",
         sceneOrder: 1,
-        sentence: "A",
+        sentence: "A city burns in the night.",
         sentenceFr: null,
         imageUrl: null,
         shotType: "Wide",
@@ -28,7 +28,7 @@ const timeline = {
         sceneId: "scene-2",
         sceneTitle: "Context scene",
         sceneOrder: 2,
-        sentence: "B",
+        sentence: "The rivers feed the soil.",
         sentenceFr: null,
         imageUrl: null,
         shotType: "Wide",
@@ -42,7 +42,7 @@ const timeline = {
         sceneId: "scene-3",
         sceneTitle: "Climax scene",
         sceneOrder: 3,
-        sentence: "C",
+        sentence: "The silence breaks at last.",
         sentenceFr: null,
         imageUrl: null,
         shotType: "Wide",
@@ -70,31 +70,31 @@ const timeline = {
 } as any;
 
 describe("buildChapterMarkers", () => {
-  it("builds validated timeline markers with sequence start times", () => {
+  it("builds validated timeline markers matched by sourceText", () => {
     const chapters: Chapter[] = [
       {
         id: "hook",
         index: 0,
         sectionType: "hook",
-        startSentence: "Intro",
+        startSentence: "A city burns",
         summary: "",
         title: "HOOK",
         variants: [],
         titleFR: null,
         validated: true,
-        sourceText: "Intro",
+        sourceText: "A city burns in the night. The palace falls.",
       },
       {
         id: "context",
         index: 1,
         sectionType: "context",
-        startSentence: "Context",
+        startSentence: "The rivers feed",
         summary: "",
         title: "CONTEXT",
         variants: [],
         titleFR: null,
         validated: true,
-        sourceText: "Context",
+        sourceText: "The rivers feed the soil. The mud is rich.",
       },
       {
         id: "climax",
@@ -106,7 +106,7 @@ describe("buildChapterMarkers", () => {
         variants: [],
         titleFR: null,
         validated: false,
-        sourceText: "Peak",
+        sourceText: "Peak moment.",
       },
     ];
 
