@@ -102,6 +102,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
           narration={narration}
           chapterState={onChapterStateChange ? chapterState ?? null : localChapterState}
           onChapterStateChange={onChapterStateChange ?? setLocalChapterState}
+          scriptLanguage={scriptLanguage}
         />
       </div>
 
