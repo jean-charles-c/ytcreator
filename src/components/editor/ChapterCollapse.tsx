@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { ChevronDown, ListVideo, CheckCheck } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import ChapterList from "./ChapterList";
 import { detectChapters } from "./chapterDetection";
 import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
