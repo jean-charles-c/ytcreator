@@ -70,7 +70,12 @@ serve(async (req) => {
     }
 
     const currentCharCount = currentContent?.length || 0;
-    const targetChars = Math.max(500, currentCharCount || 1500);
+    // Hook has a strict 100-200 char limit (±10%)
+    const isHook = sectionKey === "hook";
+    const targetChars = isHook ? 150 : Math.max(500, currentCharCount || 1500);
+    const hookConstraint = isHook
+      ? `\n\n⚠️ STRICT HOOK LENGTH: The Hook MUST be between 100 and 200 characters (±10% → 90-220 absolute). Write 1-3 SHORT sentences maximum. Count your characters carefully. If over 220, CUT. If under 90, EXPAND slightly.`
+      : "";
 
     const systemPrompt = `You are an expert YouTube documentary narrator. ${styleInstruction}
 
@@ -101,7 +106,7 @@ OUTPUT RULES:
 - Return ONLY the raw narration text for this section
 - NO headers, titles, markers, separators, or meta-commentary
 - The text must be immediately usable as voice-over
-- Target approximately ${targetChars} characters (±20%)`;
+- Target approximately ${targetChars} characters (±20%)${hookConstraint}`;
 
     const userMessage = [
       contextParts.length > 0 ? `SURROUNDING SECTIONS (for context and continuity — do NOT repeat their content):\n\n${contextParts.join("\n\n")}` : "",
