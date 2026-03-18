@@ -179,7 +179,8 @@ export interface XmlExportProgress {
 export async function exportTimelineToXmlZip(
   timeline: Timeline,
   fps: ExportFps = 24,
-  onProgress?: (p: XmlExportProgress) => void
+  onProgress?: (p: XmlExportProgress) => void,
+  chapters?: Chapter[]
 ): Promise<Blob> {
   const zip = new JSZip();
   const mediaFolder = zip.folder("media")!;
