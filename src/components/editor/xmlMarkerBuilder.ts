@@ -1,67 +1,79 @@
 /**
- * XMLMarkerBuilder — Generates FCP XML <marker> elements from validated chapters.
- * Markers are injected per-clip for DaVinci Resolve compatibility.
+ * XMLMarkerBuilder — Generates sequence-level FCP XML <marker> elements from validated chapters.
+ * Markers are injected at the timeline level for DaVinci Resolve compatibility.
  */
 
 import type { Chapter } from "./chapterTypes";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
-import { escapeXml } from "./xmlExportUtils";
-import { SECTION_TYPES, SECTION_META } from "./canonicalScriptTypes";
+import { buildClipFrames, escapeXml } from "./xmlExportUtils";
+import { SECTION_META } from "./canonicalScriptTypes";
 
 export interface ChapterMarker {
   name: string;
   comment: string;
   /** Index of the clip/segment this marker belongs to */
   clipIndex: number;
+  /** Timeline start frame of the marker */
+  startFrame: number;
+  /** Timeline start in seconds */
+  startSeconds: number;
+}
+
+function formatMarkerSeconds(seconds: number): string {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  return safeSeconds.toFixed(5).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
 }
 
 /**
- * Build markers from validated chapters, mapped to clip indices.
+ * Build markers from validated chapters, mapped to clip indices and timeline positions.
  * Each chapter maps to the segment whose sectionType matches.
  */
 export function buildChapterMarkers(
   chapters: Chapter[],
   timeline: Timeline,
-  _fps: ExportFps
+  fps: ExportFps
 ): ChapterMarker[] {
   const validated = chapters.filter((ch) => ch.validated);
   if (validated.length === 0) return [];
 
   const segments = timeline.videoTrack.segments;
+  const clipFrames = buildClipFrames(timeline, fps);
 
   return validated.map((ch) => {
-    // Try to find segment by matching section type label in scene title
-    let clipIndex = ch.index; // default: use chapter index
+    let clipIndex = ch.index;
 
-    // Match by section type — find corresponding segment
     if (ch.sectionType) {
       const meta = SECTION_META[ch.sectionType];
       if (meta) {
         const found = segments.findIndex(
           (seg) =>
             seg.sceneTitle?.toLowerCase().includes(meta.label.toLowerCase()) ||
-            seg.sceneTitle?.toLowerCase().includes(ch.sectionType!.toLowerCase())
+            seg.sceneTitle?.toLowerCase().includes(ch.sectionType.toLowerCase())
         );
         if (found >= 0) clipIndex = found;
       }
     }
 
-    // Clamp to valid range
     clipIndex = Math.min(clipIndex, segments.length - 1);
     clipIndex = Math.max(0, clipIndex);
+
+    const startFrame = clipFrames[clipIndex]?.start ?? 0;
+    const startSeconds = startFrame / fps;
 
     return {
       name: ch.title,
       comment: ch.titleFR ? `FR: ${ch.titleFR}` : ch.startSentence.slice(0, 80),
       clipIndex,
+      startFrame,
+      startSeconds,
     };
   });
 }
 
 /**
- * Generate FCP XML marker string for a specific clip index.
- * Returns empty string if no markers target this clip.
+ * Generate legacy clip-level marker XML for a specific clip index.
+ * Kept as fallback, but Resolve import primarily relies on sequence-level markers.
  */
 export function generateClipMarkerXml(
   markers: ChapterMarker[],
@@ -84,7 +96,7 @@ export function generateClipMarkerXml(
 }
 
 /**
- * Generate sequence-level marker XML (kept as fallback).
+ * Generate sequence-level marker XML using explicit start/duration/value attributes.
  */
 export function generateMarkerXml(
   markers: ChapterMarker[],
@@ -95,12 +107,7 @@ export function generateMarkerXml(
   return markers
     .map(
       (m) => `
-        <marker>
-          <name>${escapeXml(m.name)}</name>
-          <comment>${escapeXml(m.comment)}</comment>
-          <in>0</in>
-          <out>0</out>
-        </marker>`
+        <marker start="${escapeXml(`${formatMarkerSeconds(m.startSeconds)}s`)}" duration="0s" value="${escapeXml(m.name)}" />`
     )
     .join("");
 }

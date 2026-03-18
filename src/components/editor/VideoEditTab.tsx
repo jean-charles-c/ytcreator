@@ -268,7 +268,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
     if (!projectId) return;
     setSavingTimeline(true);
     try {
-      // Preserve exports in timeline_state
+      // Preserve chapter and export metadata stored alongside timeline_state
       const { data } = await supabase
         .from("project_scriptcreator_state")
         .select("timeline_state")
@@ -277,7 +277,14 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
       const currentState = (data?.timeline_state as any) ?? {};
       await supabase
         .from("project_scriptcreator_state")
-        .update({ timeline_state: { ...tl, exports: currentState.exports } as any })
+        .update({
+          timeline_state: {
+            ...currentState,
+            ...tl,
+            exports: currentState.exports,
+            chapterState: currentState.chapterState,
+          } as any,
+        })
         .eq("project_id", projectId);
     } catch (e) {
       console.error("Failed to save timeline:", e);
