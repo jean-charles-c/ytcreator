@@ -44,6 +44,7 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   const [fps, setFps] = useState<ExportFps>(24);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   // Always use the freshest timeline via ref to avoid stale closures
   const timelineRef = useRef(timeline);
@@ -120,8 +121,8 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   }, [projectId, stopTask]);
 
   const handleDownload = useCallback(async (entry: ExportEntry) => {
+    setDownloadingIds((prev) => new Set(prev).add(entry.id));
     try {
-      // Use Supabase storage download to get the blob directly
       const { data, error } = await supabase.storage
         .from("video-exports")
         .download(entry.storagePath);
@@ -135,9 +136,16 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast.success("Téléchargement lancé !");
     } catch (err) {
       console.error("Download error:", err);
-      toast.error("Erreur lors du téléchargement.");
+      toast.error("Erreur lors du téléchargement. Vérifiez que le fichier existe encore.");
+    } finally {
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(entry.id);
+        return next;
+      });
     }
   }, []);
 
@@ -305,9 +313,15 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
                   </p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <Button size="sm" onClick={() => handleDownload(entry)} className="gap-1.5 h-8">
-                    <Download className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Télécharger</span>
+                  <Button size="sm" onClick={() => handleDownload(entry)} disabled={downloadingIds.has(entry.id)} className="gap-1.5 h-8">
+                    {downloadingIds.has(entry.id) ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {downloadingIds.has(entry.id) ? "Téléchargement…" : "Télécharger"}
+                    </span>
                   </Button>
                   <Button
                     variant="outline"
