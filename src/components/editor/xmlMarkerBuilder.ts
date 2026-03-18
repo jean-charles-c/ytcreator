@@ -1,6 +1,10 @@
 /**
  * XMLMarkerBuilder — Generates sequence-level FCP XML <marker> elements from validated chapters.
  * Markers are injected at the timeline level for DaVinci Resolve compatibility.
+ *
+ * Mapping strategy: each chapter's sourceText is matched against the timeline segments'
+ * sentences to find the first segment (= global shot) that belongs to this chapter.
+ * The segment index IS the clip index on the timeline track.
  */
 
 import type { Chapter } from "./chapterTypes";
@@ -21,8 +25,10 @@ export interface ChapterMarker {
 
 
 /**
- * Build markers from validated chapters, mapped to clip indices and timeline positions.
- * Each chapter maps to the segment whose sectionType matches.
+ * Build markers from validated chapters.
+ * Each chapter is mapped to the first timeline segment whose sentence appears
+ * in the chapter's sourceText. This gives a direct, reliable alignment because
+ * timeline segments are already sorted in global project order (scene_order × shot_order).
  */
 export function buildChapterMarkers(
   chapters: Chapter[],
@@ -38,28 +44,21 @@ export function buildChapterMarkers(
   return validated.map((ch) => {
     let clipIndex = 0;
 
-    // Strategy 1: Match by sourceText — find first segment whose sentence is inside chapter sourceText
     if (ch.sourceText) {
       const srcNorm = ch.sourceText.toLowerCase().trim();
-      const found = segments.findIndex(
-        (seg) => seg.sentence && srcNorm.includes(seg.sentence.toLowerCase().trim())
-      );
+
+      // Find the first segment whose sentence is contained in this chapter's source text
+      const found = segments.findIndex((seg) => {
+        const sent = (seg.sentence || "").toLowerCase().trim();
+        return sent.length >= 5 && srcNorm.includes(sent);
+      });
+
       if (found >= 0) {
         clipIndex = found;
-      } else {
-        // Strategy 2: Match by startSentence — find segment whose sentence starts with chapter's startSentence
-        const startNorm = ch.startSentence.toLowerCase().trim();
-        if (startNorm) {
-          const found2 = segments.findIndex(
-            (seg) => seg.sentence && seg.sentence.toLowerCase().trim().startsWith(startNorm.slice(0, 40))
-          );
-          if (found2 >= 0) clipIndex = found2;
-        }
       }
     }
 
-    // Strategy 3: If still 0 and chapter has an index, use proportional mapping
-    // ch.index is 0-8 for 9 sections; map to segment space proportionally
+    // Safety: fallback proportional mapping only if no text match and chapter is not the first
     if (clipIndex === 0 && ch.index > 0 && segments.length > 0) {
       clipIndex = Math.round((ch.index / 9) * segments.length);
     }
@@ -79,7 +78,6 @@ export function buildChapterMarkers(
     };
   });
 }
-
 /**
  * Generate legacy clip-level marker XML for a specific clip index.
  * Kept as fallback, but Resolve import primarily relies on sequence-level markers.
