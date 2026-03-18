@@ -1755,7 +1755,7 @@ export default function Editor() {
                         ).filter(Boolean)
                       );
                       const missingSentences = sceneSentences.filter((sent: string) =>
-                        !Array.from(shotTexts).some((st) => st.startsWith(sent) || sent.startsWith(st))
+                        !Array.from(shotTexts).some((st: string) => st.includes(sent) || sent.includes(st))
                       );
                       const hasMissing = sceneShots.length > 0 && missingSentences.length > 0;
 
