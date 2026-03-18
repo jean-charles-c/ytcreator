@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface ChapterItemProps {
   onSelectVariant: (chapterId: string, variantId: string) => void;
   generating?: boolean;
   isFrench?: boolean;
+  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
 }
 
 export default function ChapterItem({
