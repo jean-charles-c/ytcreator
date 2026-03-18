@@ -7,7 +7,6 @@ import type { Chapter } from "./chapterTypes";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 import { buildClipFrames, escapeXml } from "./xmlExportUtils";
-import { SECTION_META } from "./canonicalScriptTypes";
 
 export interface ChapterMarker {
   name: string;
