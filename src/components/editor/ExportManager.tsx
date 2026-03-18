@@ -120,33 +120,10 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
     toast.info("Export XML annulé.");
   }, [projectId, stopTask]);
 
-  const handleDownload = useCallback(async (entry: ExportEntry) => {
-    setDownloadingIds((prev) => new Set(prev).add(entry.id));
-    try {
-      const { data, error } = await supabase.storage
-        .from("video-exports")
-        .download(entry.storagePath);
-      if (error || !data) throw error;
-      const url = URL.createObjectURL(data);
-      const a = document.createElement("a");
-      a.href = url;
-      const ext = entry.type === "xml" ? "zip" : entry.type;
-      a.download = `export_${entry.fps}fps_${entry.id.slice(0, 8)}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      toast.success("Téléchargement lancé !");
-    } catch (err) {
-      console.error("Download error:", err);
-      toast.error("Erreur lors du téléchargement. Vérifiez que le fichier existe encore.");
-    } finally {
-      setDownloadingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(entry.id);
-        return next;
-      });
-    }
+  const handleDownload = useCallback((entry: ExportEntry) => {
+    // Use the public URL directly — programmatic blob downloads are blocked in sandboxed iframes
+    window.open(entry.publicUrl, "_blank");
+    toast.success("Téléchargement lancé dans un nouvel onglet !");
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
