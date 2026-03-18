@@ -92,7 +92,9 @@ export function generateClipMarkerXml(
 }
 
 /**
- * Generate sequence-level marker XML using explicit start/duration/value attributes.
+ * Generate sequence-level marker XML using proper XMEML child-element format.
+ * Per Apple FCP7 spec: <marker> contains <name>, <comment>, <in>, <out> (in frames).
+ * For a point marker (no range), in == out.
  */
 export function generateMarkerXml(
   markers: ChapterMarker[],
@@ -103,7 +105,12 @@ export function generateMarkerXml(
   return markers
     .map(
       (m) => `
-        <marker start="${escapeXml(`${formatMarkerSeconds(m.startSeconds)}s`)}" duration="0s" value="${escapeXml(m.name)}" />`
+        <marker>
+          <name>${escapeXml(m.name)}</name>
+          <comment>${escapeXml(m.comment)}</comment>
+          <in>${m.startFrame}</in>
+          <out>${m.startFrame}</out>
+        </marker>`
     )
     .join("");
 }
