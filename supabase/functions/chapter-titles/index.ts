@@ -29,7 +29,12 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const toneInstruction = TONE_LABELS[tone] || TONE_LABELS.curiosity;
-    const langLabel = language === "fr" ? "French" : language === "es" ? "Spanish" : "English";
+    const langLabel = language === "fr" ? "French" : language === "es" ? "Spanish" : language === "de" ? "German" : "English";
+    const isFrench = language === "fr";
+
+    const translationRule = isFrench
+      ? ""
+      : `\n- Also provide a "titleFR" field: a French translation of each title (for the creator's reference).`;
 
     const systemPrompt = `You are a YouTube SEO expert specializing in chapter titles.
 Generate exactly 4 chapter title variants for a video chapter.
@@ -37,10 +42,9 @@ Generate exactly 4 chapter title variants for a video chapter.
 Rules:
 - Each title must be ${toneInstruction}.
 - Titles must be in ${langLabel}.
-- Each title: 30-60 characters, punchy, optimized for YouTube engagement.
-- Return ONLY a JSON array of 4 objects with "title" and "hookType" fields.
+- Each title: 30-60 characters, punchy, optimized for YouTube engagement.${translationRule}
 - hookType must be one of: "curiosity", "dramatic", "informative", "contrarian".
-- No markdown, no explanation, just the JSON array.`;
+- No markdown, no explanation.`;
 
     const userPrompt = `Chapter label: "${chapterLabel || "Chapter"}"
 
