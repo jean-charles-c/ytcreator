@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import ChapterList from "./ChapterList";
 import { detectChapters } from "./chapterDetection";
 import { chapterFromDetected, type ChapterListState, type ChapterTitleVariant } from "./chapterTypes";
-import type { CanonicalScript } from "./canonicalScriptTypes";
+import { SECTION_TYPES, type CanonicalScript } from "./canonicalScriptTypes";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ChapterCollapseProps {
@@ -27,22 +27,55 @@ export default function ChapterCollapse({
   const [open, setOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
+  const normalizeChapterState = useCallback(
+    (existingState: ChapterListState | null): ChapterListState => {
+      const result = detectChapters(canonicalScript, narration);
+      const detectedChapters = result.chapters.map(chapterFromDetected);
+      const previousById = new Map((existingState?.chapters ?? []).map((chapter) => [chapter.id, chapter]));
+
+      return {
+        chapters: detectedChapters.map((chapter) => {
+          const previous = previousById.get(chapter.id);
+          if (!previous) return chapter;
+
+          return {
+            ...chapter,
+            title: previous.title || chapter.title,
+            titleFR: previous.titleFR ?? chapter.titleFR,
+            validated: previous.validated,
+            variants: previous.variants ?? [],
+            summary: previous.summary ?? chapter.summary,
+            startSentence: chapter.startSentence || previous.startSentence,
+          };
+        }),
+        method: result.method,
+        lastUpdatedAt: new Date().toISOString(),
+      };
+    },
+    [canonicalScript, narration]
+  );
+
+  const isLegacyChapterState = useCallback((state: ChapterListState | null) => {
+    if (!state) return true;
+    if (state.chapters.length !== SECTION_TYPES.length) return true;
+    return SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
+  }, []);
+
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
-      if (isOpen && (!chapterState || chapterState.chapters.length === 0)) {
-        const result = detectChapters(canonicalScript, narration);
-        onChapterStateChange({
-          chapters: result.chapters.map(chapterFromDetected),
-          method: result.method,
-          lastUpdatedAt: new Date().toISOString(),
-        });
+      if (!isOpen) return;
+
+      if (isLegacyChapterState(chapterState)) {
+        onChapterStateChange(normalizeChapterState(chapterState));
       }
     },
-    [canonicalScript, narration, chapterState, onChapterStateChange]
+    [chapterState, isLegacyChapterState, normalizeChapterState, onChapterStateChange]
   );
 
-  const chapters = chapterState?.chapters ?? [];
+  const chapters = isLegacyChapterState(chapterState)
+    ? normalizeChapterState(chapterState).chapters
+    : (chapterState?.chapters ?? []);
   const validatedCount = chapters.filter((c) => c.validated).length;
   const allValidated = chapters.length > 0 && chapters.every((c) => c.validated);
 
@@ -115,7 +148,6 @@ export default function ChapterCollapse({
           })
         );
 
-        // Merge with existing variants (keep history)
         const existingVariants = chapter.variants.map((v) => ({ ...v, selected: false }));
         const allVariants = [...newVariants, ...existingVariants].slice(0, 20);
 
