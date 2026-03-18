@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 import { buildClipFrames, escapeXml } from "./xmlExportUtils";
-import { buildChapterMarkers, generateClipMarkerXml, generateMarkerXml, type ChapterMarker } from "./xmlMarkerBuilder";
+import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 
 /**
