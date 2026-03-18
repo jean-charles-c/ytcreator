@@ -797,11 +797,10 @@ serve(async (req) => {
 
     if (mode === "preview") {
       const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation, mod.emphasisBoost);
-      console.log(`[DEBUG] Preview SSML (first 500 chars): ${ssmlText.slice(0, 500)}`);
       const isSsml = ssmlText.startsWith("<speak>");
       const result = await callGoogleTTS(ssmlText, GOOGLE_TTS_API_KEY, voice, audioConfig, isSsml);
       return new Response(
-        JSON.stringify({ audioContent: result.audioContent, usedVoiceName: resolvedVoiceName ?? null, debugSsml: ssmlText.slice(0, 1000) }),
+        JSON.stringify({ audioContent: result.audioContent, usedVoiceName: resolvedVoiceName ?? null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
