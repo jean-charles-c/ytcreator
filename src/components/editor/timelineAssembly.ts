@@ -157,7 +157,7 @@ export function assembleTimeline(
       },
       totalDuration,
       segmentCount: segments.length,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toLocaleString("fr-FR"),
       shotTimepoints,
     };
   }
@@ -216,7 +216,7 @@ export function assembleTimeline(
     },
     totalDuration,
     segmentCount: segments.length,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date().toLocaleString("fr-FR"),
   };
 }
 
