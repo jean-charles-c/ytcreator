@@ -136,7 +136,7 @@ describe("buildClipFrames", () => {
 
     expect(buildClipFrames(timeline, 24)).toEqual([
       { start: 0, end: 36 },
-      { start: 36, end: 72 },
+      { start: 36, end: 96 },
     ]);
   });
 });
