@@ -10,6 +10,7 @@ import {
 } from "@/components/editor/videoExportEngine";
 import { exportTimelineToXmlZip } from "@/components/editor/xmlExportEngine";
 import type { Timeline } from "@/components/editor/timelineAssembly";
+import type { Chapter, ChapterListState } from "@/components/editor/chapterTypes";
 
 // ─── Types ──────────────────────────────────────────────────────────
 export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml";
