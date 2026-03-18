@@ -62,11 +62,11 @@ Before writing ANY narration, you MUST first output an internal plan (inside a <
 - Target: ${charTarget.toLocaleString()} characters / ~${wordTarget.toLocaleString()} words / ~${paragraphEstimate} paragraphs
 - Minimum: ${charMin.toLocaleString()} characters / ~${wordMin.toLocaleString()} words
 - Maximum: ${charMax.toLocaleString()} characters / ~${wordMax.toLocaleString()} words
-- How many paragraphs you will write for each of the 7 sections (Hook, Introduction, Act 1, Act 2, Act 3, Climax, Conclusion)
-- Word budget per section following the prescribed percentages (8%, 12%, 15%, 25%, 20%, 12%, 8%)
+- How many paragraphs you will write for each of the 9 sections
+- Word budget per section following the prescribed percentages
 - A brief outline of what each section will cover
 
-After </plan>, write ONLY the raw narration text.
+After </plan>, write the narration with MANDATORY section tags.
 
 ---
 
@@ -119,71 +119,100 @@ BAD vs GOOD examples:
 
 ---
 
-OUTPUT FORMAT — STRICT RULES:
+OUTPUT FORMAT — MANDATORY TAGGED STRUCTURE:
 
-1. First output <plan>...</plan> with your planning (this will be stripped automatically).
-2. After </plan>, return ONLY raw narration text — a single continuous block of text.
-3. NEVER include section titles, headers, labels, markers, separators, or comments.
-4. NO "---", "###", "**", "HOOK", "ACT", "INTRODUCTION", "CONCLUSION" or similar markers.
-5. NO meta-commentary like "In this video..." or "Let's explore...".
-6. The text must be immediately usable as voice-over narration — nothing to remove.
+After </plan>, you MUST output the script with EXACTLY 9 section tags. Each tag marks the beginning of a section. The tags are:
+
+[[HOOK]]
+[[CONTEXT]]
+[[PROMISE]]
+[[ACT1]]
+[[ACT2]]
+[[ACT3]]
+[[CLIMAX]]
+[[INSIGHT]]
+[[CONCLUSION]]
+
+RULES:
+1. ALL 9 tags MUST appear, in this EXACT order.
+2. Each tag appears ALONE on its own line.
+3. The narration text follows IMMEDIATELY after each tag.
+4. There must be NO text before [[HOOK]] (except the <plan> block).
+5. The text between tags is pure narration — NO titles, headers, labels, or markers besides the tags.
+6. The tags will be stripped by the parser — the narration must flow seamlessly across sections.
+7. NO "---", "###", "**", or other formatting markers inside sections.
+8. NO meta-commentary like "In this video..." or "Let's explore...".
+
+EXAMPLE OUTPUT FORMAT:
+<plan>
+... planning ...
+</plan>
+[[HOOK]]
+A striking opening sentence.
+More hook narration...
+
+[[CONTEXT]]
+Context narration here...
+
+[[PROMISE]]
+Promise narration here...
+
+[[ACT1]]
+Act 1 narration...
+
+... and so on for all 9 tags.
 
 ---
 
-NARRATIVE ARCHITECTURE — 7 CANONICAL SECTIONS (invisible — never shown in output):
+NARRATIVE ARCHITECTURE — 9 SECTIONS:
 
-Internally, structure the script following these 7 sequential sections. They must flow seamlessly — the viewer should NEVER perceive section boundaries. No titles, no markers, no visible transitions between sections.
-
-SECTION 1 — HOOK (~8% of total = ~${Math.round(wordTarget * 0.08)} words):
-• The hook is the MOST IMPORTANT part of the script. It must grab attention INSTANTLY.
-• Minimum 2 sentences. Spans the first 3-5 paragraphs.
+SECTION 1 — [[HOOK]] (~7% of total = ~${Math.round(wordTarget * 0.07)} words):
+• The hook is the MOST IMPORTANT part. It must grab attention INSTANTLY.
 • Structure: (1) A surprising fact or striking image, (2) A contradiction or paradox, (3) A promise of explanation.
-• The hook must introduce a MYSTERY or PARADOX that makes the viewer NEED to keep watching.
 • MODE: Abstract, mysterious, conceptual — create intrigue without concrete explanations.
 • Never start with greetings, channel name, or "today we will talk about".
-• ABSOLUTELY NEVER include "Welcome to [channel name]", "Bienvenue sur [nom]", or ANY channel introduction ANYWHERE in the script.
-• Never open with a generic descriptive sentence.
 • Open with something that creates TENSION or CURIOSITY immediately.
 
-SECTION 2 — INTRODUCTION (~12% of total = ~${Math.round(wordTarget * 0.12)} words):
+SECTION 2 — [[CONTEXT]] (~10% of total = ~${Math.round(wordTarget * 0.10)} words):
 • MODE SWITCH: Transition from abstract/mysterious to CONCRETE/factual.
 • Establish the world with concrete details: time, place, objects, people.
-• Introduce the MAIN CONTRADICTION with clear, factual language.
-• Plant the first INTRIGUING DISCOVERIES as specific, tangible clues.
 • Help the viewer build a mental picture of the setting.
 
-SECTION 3 — ACT 1: SETUP (~15% of total = ~${Math.round(wordTarget * 0.15)} words):
+SECTION 3 — [[PROMISE]] (~5% of total = ~${Math.round(wordTarget * 0.05)} words):
+• Tease what the viewer will discover by staying.
+• Plant curiosity hooks and open loops.
+• Short and punchy — this is the "why you should keep watching" section.
+
+SECTION 4 — [[ACT1]] (~15% of total = ~${Math.round(wordTarget * 0.15)} words):
 • Origin story: how it all began, the invention, the first system, the founding moment.
 • Present key characters and their motivations.
 • Lay the groundwork for the escalation to come.
-• Concrete historical and factual content.
 
-SECTION 4 — ACT 2: ESCALATION (~25% of total = ~${Math.round(wordTarget * 0.25)} words — THE LONGEST SECTION):
-• This is the longest section — the investigation unfolds and EXPANDS here.
+SECTION 5 — [[ACT2]] (~25% of total = ~${Math.round(wordTarget * 0.25)} words — THE LONGEST):
+• The investigation unfolds and EXPANDS here.
 • Deploy each NARRATIVE TENSION one by one as escalating reveals.
 • Show expansion: spread, growth, scaling, mass adoption, complexification.
-• Show evidence concretely: who found it, where, what it looked like.
-• Alternate between: new evidence → what it means → why it's surprising → deeper mystery.
-• The viewer must feel the story is getting BIGGER, not smaller.
-• EXPAND this section generously. Add cinematic details, describe scenes vividly, explore implications.
+• The viewer must feel the story is getting BIGGER.
 
-SECTION 5 — ACT 3: IMPACT (~20% of total = ~${Math.round(wordTarget * 0.20)} words):
-• Consequences, effects, and real-world impact of what was established in Acts 1-2.
-• Show how the subject changed the world, affected people, or created new problems.
+SECTION 6 — [[ACT3]] (~18% of total = ~${Math.round(wordTarget * 0.18)} words):
+• Consequences, effects, and real-world impact.
 • Present the final complications and unresolved tensions before the climax.
-• Build toward the resolution — the viewer should feel the answer is coming.
+• Build toward the resolution.
 
-SECTION 6 — CLIMAX / REVELATION (~12% of total = ~${Math.round(wordTarget * 0.12)} words):
+SECTION 7 — [[CLIMAX]] (~10% of total = ~${Math.round(wordTarget * 0.10)} words):
 • Bring the threads together into a powerful turning point.
 • Present the key insight as a concrete discovery or realization.
-• Show the "aha moment" through specific facts, not abstract statements.
 • Resolve the central mystery introduced in the Hook.
 
-SECTION 7 — CONCLUSION (~8% of total = ~${Math.round(wordTarget * 0.08)} words):
+SECTION 8 — [[INSIGHT]] (~5% of total = ~${Math.round(wordTarget * 0.05)} words):
+• Deliver the intellectual value — the deeper meaning.
+• What does this story teach us? What principle emerges?
+• Concrete and actionable, not philosophical.
+
+SECTION 9 — [[CONCLUSION]] (~5% of total = ~${Math.round(wordTarget * 0.05)} words):
 • Leave the viewer with a resonant final thought.
 • Do NOT summarize the video.
-• End with a concrete image or fact that lingers — not a philosophical statement.
-• Open a broader perspective or hint at what remains unknown.
+• End with a concrete image or fact that lingers.
 
 ---
 
@@ -205,7 +234,6 @@ FORBIDDEN transitions:
 - "Let's now turn to..." / "Moving on to..."
 - "Another interesting fact is..."
 - Any mechanical, academic, or list-like transition.
-- Any poetic or metaphorical transition.
 
 ---
 
@@ -213,23 +241,18 @@ QUESTION USAGE — STRICT LIMITS:
 
 • Maximum ONE question every 8-12 sentences.
 • Questions must serve a real narrative mystery — never decorative.
-• FORBIDDEN: repetitive rhetorical questions, questions used as filler, chains of 2+ consecutive questions.
 • ALWAYS prefer strong declarative revelations over questions.
-• BAD: "How did these signs change the world?"
-• GOOD: "But these signs were about to change the world."
-• When tempted to write a question, rewrite it as a powerful affirmation or a teasing statement.
 
 ---
 
 REVELATION PATTERN — MANDATORY:
 
 The script MUST create regular revelation moments using this 3-step pattern:
-1. Introduce a specific, concrete element (an object, a place, a discovery).
+1. Introduce a specific, concrete element.
 2. Add details that seem to explain it one way.
 3. Reveal the unexpected truth that reframes everything.
 
 Apply this pattern at least 3-4 times across the script.
-Each revelation must feel earned — never abrupt, never telegraphed.
 
 ---
 
@@ -237,96 +260,13 @@ RHYTHM — CRITICAL:
 
 • Alternate between SHORT sentences (30-50 characters) and LONGER sentences (60-95 characters).
 • Never write 3 consecutive sentences of similar length.
-• Typical patterns: long + short + medium, or short + long + short.
-• Think like a film editor: quick cuts alternate with lingering shots.
-• Create natural pauses for the voice-over — avoid dense blocks of information.
-• Read each paragraph mentally — if it sounds monotonous, rewrite it.
 
-PARAGRAPH STRUCTURE — THIS IS THE SECOND MOST CRITICAL RULE (after length):
-
+PARAGRAPH STRUCTURE:
 ⚠️ WARNING: If you write only 2-sentence paragraphs, the script is REJECTED.
-
-You MUST follow this EXACT repeating cycle of paragraph lengths (sentences per paragraph):
 
 CYCLE: 2 → 2 → 2 → 3 → 2 → 1 → 3 → 2 → 4 → 2
 
-Here is what a correct script looks like (showing paragraph numbers and their required sentence counts):
-- Paragraph 1: 2 sentences
-- Paragraph 2: 2 sentences  
-- Paragraph 3: 2 sentences
-- Paragraph 4: 3 sentences ← MUST have exactly 3 sentences
-- Paragraph 5: 2 sentences
-- Paragraph 6: 1 sentence ← MUST be a single powerful sentence alone
-- Paragraph 7: 3 sentences ← MUST have exactly 3 sentences
-- Paragraph 8: 2 sentences
-- Paragraph 9: 4 sentences ← MUST have exactly 4 sentences (longest paragraph)
-- Paragraph 10: 2 sentences
-- Paragraph 11: restart cycle → 2 sentences
-- Paragraph 12: 2 sentences
-- ... and so on.
-
-CONCRETE EXAMPLE of correct paragraph 6 (1 sentence):
-"And that changes everything."
-
-CONCRETE EXAMPLE of correct paragraph 9 (4 sentences):
-"The tablet dates back to 3200 BCE. It was found buried beneath the temple floor. The symbols carved into it don't match any known writing system. For decades, no one could explain what they meant."
-
-The FIRST paragraph (hook opening) MUST have at least 2 sentences for impact.
 REPEAT this exact 10-paragraph cycle until you reach the target character count.
-
-NARRATIVE ROLES by paragraph length:
-• 1 sentence: Pure impact — punchline, revelation, dramatic transition.
-• 2 sentences: The workhorse — a fact and its consequence, a scene in two strokes.
-• 3 sentences: The development format — describe a scene in detail, explain a discovery, build a progression.
-• 4 sentences: Reserved for the script's most important moments — a major revelation that needs full development.
-
-STRICT RULES:
-• NEVER exceed 4 sentences in any paragraph.
-• NEVER skip a position in the cycle — especially the 1-sentence and 4-sentence paragraphs.
-• Separate paragraphs with empty lines.
-• The last cycle may be incomplete if the character target is reached mid-cycle.
-
----
-
-PACING & ENGAGEMENT:
-
-• Introduce a new idea every 5-8 seconds of narration.
-• Every 20-30 seconds, deliver a surprising fact or a narrative twist.
-• Maintain constant momentum — no filler, no repetition, no padding.
-• Reveal information gradually — never dump multiple facts in the same paragraph.
-• Every paragraph should make the viewer MORE curious, not less.
-
----
-
-INFORMATION SELECTION — CRITICAL:
-
-You are a CURATOR, not an encyclopedia. Your job is to SELECT the most powerful elements, not to include everything.
-
-PRIORITY HIERARCHY — include in this order:
-1. Major discoveries and turning points that change the story.
-2. Key characters and their decisive actions.
-3. Striking visual details that create mental images.
-4. Surprising facts that challenge assumptions.
-
-RUTHLESSLY CUT:
-• Secondary technical details that don't serve the narrative.
-• Redundant historical examples — pick the most dramatic one.
-• Dense explanations that slow the story — simplify or skip.
-
-CONDENSING RULE:
-• When multiple examples illustrate the same idea, choose the single most representative one.
-• Summarize the others in ONE sentence.
-• NEVER list more than 2 examples for the same concept.
-
-TECHNICAL SIMPLIFICATION:
-• Replace jargon with plain language the viewer can picture.
-• If a technical concept doesn't create tension, surprise, or visual interest — cut it.
-
-EVERY SENTENCE MUST EARN ITS PLACE:
-• Does it reveal something new?
-• Does it create a visual image?
-• Does it advance the story?
-• If not, cut it.
 
 ---
 
@@ -334,12 +274,8 @@ CONTENT RULES:
 
 1. USE ONLY information from the provided narrative elements and source text.
 2. NEVER invent facts, dates, names, or events not present in the inputs.
-3. Every claim must be traceable to the provided material.
-4. ZERO redundancy.
-5. ZERO filler.
-6. If the narrative elements are brief, enrich by exploring implications and visual descriptions — but NEVER fabricate new facts.
-7. Develop each discovery with cinematic detail.
-8. When the target length is short, be MORE selective.
+3. ZERO redundancy. ZERO filler.
+4. If the narrative elements are brief, enrich by exploring implications — but NEVER fabricate.
 
 ---
 
@@ -348,28 +284,19 @@ LENGTH — THIS IS THE MOST CRITICAL RULE OF ALL:
 Your script MUST be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (approximately ${wordMin.toLocaleString()} to ${wordMax.toLocaleString()} words).
 Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString()} words). Aim to EXCEED the target slightly rather than fall short.
 
-⚠️ A script UNDER ${charMin.toLocaleString()} characters is an AUTOMATIC FAILURE. This is the worst possible mistake.
+⚠️ A script UNDER ${charMin.toLocaleString()} characters is an AUTOMATIC FAILURE.
 ⚠️ A script OVER ${charMax.toLocaleString()} characters is also a failure but less severe.
+⚠️ The section tags ([[HOOK]], [[CONTEXT]], etc.) do NOT count toward the character limit.
 
-HOW TO HIT THE TARGET — CONCRETE STRATEGY:
-• You need approximately ${paragraphEstimate} paragraphs total following the 2-2-2-3-2-1-3-2-4-2 cycle.
-• That means approximately ${Math.round(paragraphEstimate / 10)} complete cycles of 10 paragraphs.
-• Act 2 (Escalation) should contain at least ${Math.round(paragraphEstimate * 0.25)} paragraphs — it's the longest section.
-• Act 3 (Impact) should contain at least ${Math.round(paragraphEstimate * 0.20)} paragraphs.
-• Act 1 (Setup) should contain at least ${Math.round(paragraphEstimate * 0.15)} paragraphs.
-• Average ~${Math.round(charTarget / paragraphEstimate)} characters per paragraph.
-
-WHEN YOU THINK YOU'RE DONE — KEEP WRITING:
-• LLMs systematically underestimate text length. You are almost certainly too short.
-• After finishing your first draft mentally, ADD 30% more content to Act 2 (Escalation) and Act 3 (Impact).
-• Develop scenes cinematically: describe what the place looks like, what the people are doing, what objects are present.
-• For each discovery, add: who found it, when, where exactly, what it looked like, why it was surprising.
-• If a fact is interesting, explore its IMPLICATIONS in the next paragraph.
+HOW TO HIT THE TARGET:
+• You need approximately ${paragraphEstimate} paragraphs total.
+• Act 2 should contain at least ${Math.round(paragraphEstimate * 0.25)} paragraphs — it's the longest section.
+• Act 3 should contain at least ${Math.round(paragraphEstimate * 0.18)} paragraphs.
 
 SELF-CHECK BEFORE OUTPUTTING:
-1. Estimate your word count. If under ~${wordMin.toLocaleString()} words, you MUST add more content.
-2. If under target by more than 10%, add an entire new development cycle with fresh details from the source.
-3. Verify paragraph cycle compliance: 2-2-2-3-2-1-3-2-4-2.
+1. Verify ALL 9 tags are present in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]].
+2. Estimate your word count. If under ~${wordMin.toLocaleString()} words, add more content.
+3. Verify paragraph cycle compliance.
 4. Only then output the script.`;
 
 }
@@ -407,7 +334,7 @@ function buildUserMessage(analysis: Record<string, unknown>, structure: unknown[
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output ONLY the narration text. No titles, no sections, no markers. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). DO NOT EXCEED ${charMax.toLocaleString()} characters. Every sentence under 100 characters. Alternate short (30-50 char) and long (60-95 char) sentences. Never 3 consecutive sentences of similar length.`);
+  parts.push(`CRITICAL REMINDER: Output the script with ALL 9 section tags: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]]. HARD LIMIT: between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit. Every sentence under 100 characters.`);
 
   return parts.join("\n\n");
 }

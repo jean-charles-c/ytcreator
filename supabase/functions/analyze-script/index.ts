@@ -24,25 +24,28 @@ serve(async (req) => {
 
     const systemPrompt = `You are a narrative structure analyst. You receive a complete YouTube documentary script written in ${langLabel}.
 
-Your task is to identify the EXACT boundaries of 7 canonical narrative sections within this script. The script was written to follow this internal structure, but without any visible markers.
+Your task is to identify the EXACT boundaries of 9 canonical narrative sections within this script. The script may contain [[TAG]] markers or may be unmarked.
 
-The 7 sections IN ORDER:
-1. hook — The opening mystery/intrigue. Abstract, conceptual, creates curiosity. Usually the first few paragraphs.
-2. introduction — Transition to concrete context. Establishes time, place, people, situation.
-3. act1 — The origin story. How it began, the invention, the founding moment.
-4. act2 — Escalation and expansion. Growth, spread, complexification. Usually the LONGEST section.
-5. act3 — Impact and consequences. Real-world effects, new problems created.
-6. climax — The revelation. Resolution of the central mystery, the "aha moment".
-7. conclusion — Final reflection. Broader perspective, lingering thought.
+The 9 sections IN ORDER:
+1. hook — The opening mystery/intrigue. Abstract, conceptual, creates curiosity.
+2. context — Transition to concrete context. Establishes time, place, people, situation.
+3. promise — The teaser. What will the viewer learn by staying?
+4. act1 — The origin story. How it began, the invention, the founding moment.
+5. act2 — Escalation and expansion. Growth, spread, complexification. Usually the LONGEST section.
+6. act3 — Impact and consequences. Real-world effects, new problems created.
+7. climax — The revelation. Resolution of the central mystery, the "aha moment".
+8. insight — The intellectual takeaway. The deeper meaning or principle.
+9. conclusion — Final reflection. Broader perspective, lingering thought.
 
 CRITICAL RULES:
-- You MUST return ALL 7 sections.
+- You MUST return ALL 9 sections.
 - Each section contains the EXACT text from the script — do NOT rewrite, summarize, or modify ANY word.
-- The concatenation of all 7 sections must reproduce the ENTIRE original script, preserving every character.
+- The concatenation of all 9 sections must reproduce the ENTIRE original script, preserving every character.
 - Sections must follow the ORIGINAL order of the text — no reordering.
 - Every paragraph of the script must belong to exactly ONE section.
 - Split at paragraph boundaries (double newlines) — NEVER split mid-paragraph.
-- If a section is not clearly present, assign it a minimal portion (at least 1 paragraph) to maintain the 7-section structure.`;
+- If [[TAG]] markers are present, use them as boundaries and strip the tags from the content.
+- If a section is not clearly present, assign it a minimal portion (at least 1 paragraph) to maintain the 9-section structure.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -72,7 +75,7 @@ CRITICAL RULES:
                       properties: {
                         key: {
                           type: "string",
-                          enum: ["hook", "introduction", "act1", "act2", "act3", "climax", "conclusion"],
+                        enum: ["hook", "context", "promise", "act1", "act2", "act3", "climax", "insight", "conclusion"],
                           description: "The canonical section identifier",
                         },
                         content: {
@@ -83,8 +86,8 @@ CRITICAL RULES:
                       required: ["key", "content"],
                       additionalProperties: false,
                     },
-                    minItems: 7,
-                    maxItems: 7,
+                    minItems: 9,
+                    maxItems: 9,
                   },
                 },
                 required: ["sections"],
@@ -142,9 +145,9 @@ CRITICAL RULES:
     }
 
     // Validate: must have 7 sections with correct keys
-    const expectedKeys = ["hook", "introduction", "act1", "act2", "act3", "climax", "conclusion"];
+    const expectedKeys = ["hook", "context", "promise", "act1", "act2", "act3", "climax", "insight", "conclusion"];
     const resultKeys = parsed.sections.map((s) => s.key);
-    const valid = expectedKeys.every((k) => resultKeys.includes(k)) && parsed.sections.length === 7;
+    const valid = expectedKeys.every((k) => resultKeys.includes(k)) && parsed.sections.length === 9;
 
     if (!valid) {
       console.error("Invalid section keys:", resultKeys);

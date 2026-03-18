@@ -15,26 +15,43 @@
 
 export const SECTION_TYPES = [
   "hook",
-  "introduction",
+  "context",
+  "promise",
   "act1",
   "act2",
   "act3",
   "climax",
+  "insight",
   "conclusion",
 ] as const;
 
 export type SectionType = (typeof SECTION_TYPES)[number];
 
+/** Tag markers used inside the generated script */
+export const SECTION_TAGS: Record<SectionType, string> = {
+  hook:       "[[HOOK]]",
+  context:    "[[CONTEXT]]",
+  promise:    "[[PROMISE]]",
+  act1:       "[[ACT1]]",
+  act2:       "[[ACT2]]",
+  act3:       "[[ACT3]]",
+  climax:     "[[CLIMAX]]",
+  insight:    "[[INSIGHT]]",
+  conclusion: "[[CONCLUSION]]",
+};
+
 /* ── Section metadata (labels & icons, display only) ── */
 
 export const SECTION_META: Record<SectionType, { label: string; icon: string }> = {
-  hook:         { label: "Hook",              icon: "🎣" },
-  introduction: { label: "Introduction",      icon: "📖" },
-  act1:         { label: "Act 1 — Setup",     icon: "🏗️" },
-  act2:         { label: "Act 2 — Escalade",  icon: "⚡" },
-  act3:         { label: "Act 3 — Climax",    icon: "🔥" },
-  climax:       { label: "Révélation",        icon: "💡" },
-  conclusion:   { label: "Conclusion",        icon: "🎬" },
+  hook:       { label: "Hook",                icon: "🎣" },
+  context:    { label: "Context",             icon: "📖" },
+  promise:    { label: "Promise",             icon: "🎯" },
+  act1:       { label: "Act 1 — Setup",       icon: "🏗️" },
+  act2:       { label: "Act 2 — Escalade",    icon: "⚡" },
+  act3:       { label: "Act 3 — Impact",      icon: "🔥" },
+  climax:     { label: "Climax",              icon: "💡" },
+  insight:    { label: "Insight",             icon: "🧠" },
+  conclusion: { label: "Conclusion",          icon: "🎬" },
 };
 
 /* ── History entry ─────────────────────────────────── */
