@@ -90,12 +90,15 @@ export function assembleTimeline(
 
   // ── Strategy 1: Precise timepoints from TTS marks ──
   if (shotTimepoints && shotTimepoints.length > 0) {
+    // Filter out phantom timepoints injected for missing sentences (_missing_*)
+    const realTimepoints = shotTimepoints.filter(tp => !tp.shotId.startsWith("_missing_"));
+
     // Build a map: shotId -> timeSeconds
     const timepointMap = new Map<string, number>();
     // Also build ordered array for sequential fallback
-    const orderedTimepoints = [...shotTimepoints].sort((a, b) => a.shotIndex - b.shotIndex);
+    const orderedTimepoints = [...realTimepoints].sort((a, b) => a.shotIndex - b.shotIndex);
 
-    for (const tp of shotTimepoints) {
+    for (const tp of realTimepoints) {
       timepointMap.set(tp.shotId, tp.timeSeconds);
     }
 
