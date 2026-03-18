@@ -956,7 +956,8 @@ serve(async (req) => {
       console.log(`Split into ${chunks.length} legacy chunks`);
 
       for (let ci = 0; ci < chunks.length; ci++) {
-        const chunk = chunks[ci];
+        let chunk = chunks[ci];
+        if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
         const chunkIsSsml = chunk.startsWith("<speak>");
         console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
 
