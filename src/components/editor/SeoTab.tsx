@@ -48,9 +48,8 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
-export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange, canonicalScript, chapterState, onChapterStateChange }: SeoTabProps) {
+export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
-  const [localChapterState, setLocalChapterState] = useState<ChapterListState | null>(null);
 
   const youtubeTitles = seoResults?.titles ?? null;
   const youtubeDescription = seoResults?.description ?? null;
