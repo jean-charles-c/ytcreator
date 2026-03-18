@@ -1,9 +1,7 @@
 import JSZip from "jszip";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
-
-const escapeXml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+import { buildClipFrames, escapeXml } from "./xmlExportUtils";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
@@ -40,22 +38,12 @@ function generateXml(
   // Handle frames: extra source frames before/after for transitions in NLEs
   const HANDLE_FRAMES = Math.round(fps * 2); // 2 seconds of handles on each side
 
-  // Build non-overlapping frame ranges ensuring each shot gets at least 1 frame
-  const MIN_FRAMES = 1;
-  const clipFrames: { start: number; end: number }[] = [];
-  let cursor = 0;
-
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const idealStart = Math.round(seg.startTime * fps);
-    const start = Math.max(idealStart, cursor);
-    const idealEnd = Math.round((seg.startTime + seg.duration) * fps);
-    const end = Math.max(idealEnd, start + MIN_FRAMES);
-    clipFrames.push({ start, end });
-    cursor = end;
-  }
-
-  const totalFrames = clipFrames.length > 0 ? clipFrames[clipFrames.length - 1].end : Math.ceil(totalDuration * fps);
+  // Build frame ranges from precise timepoints when available.
+  // This avoids cumulative drift caused by re-quantizing rounded timeline values.
+  const clipFrames = buildClipFrames(timeline, fps);
+  const totalFrames = clipFrames.length > 0
+    ? clipFrames[clipFrames.length - 1].end
+    : Math.ceil(totalDuration * fps);
 
   const clipItems = segments.map((seg, i) => {
     const { start: startFrame, end: endFrame } = clipFrames[i];
