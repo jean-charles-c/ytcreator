@@ -221,8 +221,9 @@ export async function exportTimelineToXmlZip(
   // ── Generate XML with relative paths ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
   const exportUid = crypto.randomUUID().slice(0, 8);
-  const markersXml = chapters ? generateMarkerXml(buildChapterMarkers(chapters, timeline, fps), fps) : "";
-  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml);
+  const clipMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
+  const markersXml = clipMarkers.length > 0 ? generateMarkerXml(clipMarkers, fps) : "";
+  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml, clipMarkers);
   zip.file("timeline.xml", xml);
 
   // ── Generate ZIP ──
