@@ -75,7 +75,7 @@ CRITICAL RULES:
                       properties: {
                         key: {
                           type: "string",
-                          enum: ["hook", "introduction", "act1", "act2", "act3", "climax", "conclusion"],
+                        enum: ["hook", "context", "promise", "act1", "act2", "act3", "climax", "insight", "conclusion"],
                           description: "The canonical section identifier",
                         },
                         content: {
@@ -86,8 +86,8 @@ CRITICAL RULES:
                       required: ["key", "content"],
                       additionalProperties: false,
                     },
-                    minItems: 7,
-                    maxItems: 7,
+                    minItems: 9,
+                    maxItems: 9,
                   },
                 },
                 required: ["sections"],
