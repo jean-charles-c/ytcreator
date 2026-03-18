@@ -95,6 +95,16 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
         Générez des titres, description et tags YouTube optimisés.
       </p>
 
+      {/* Chapitres de la vidéo */}
+      <div className="mb-6">
+        <ChapterCollapse
+          canonicalScript={canonicalScript ?? null}
+          narration={narration}
+          chapterState={onChapterStateChange ? chapterState ?? null : localChapterState}
+          onChapterStateChange={onChapterStateChange ?? setLocalChapterState}
+        />
+      </div>
+
       {!effectiveText ? (
         <div className="rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
