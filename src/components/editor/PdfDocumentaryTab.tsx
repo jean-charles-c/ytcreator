@@ -149,6 +149,8 @@ export default function PdfDocumentaryTab({
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
+  const chapterSaveTimeoutRef = useRef<number | null>(null);
+  const chapterHydratedRef = useRef(false);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [targetChars, setTargetChars] = useState(15000);
