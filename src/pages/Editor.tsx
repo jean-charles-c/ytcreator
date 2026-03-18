@@ -1381,6 +1381,7 @@ export default function Editor() {
               onRunSegmentation={runSegmentation}
               segmenting={segmenting}
               onStopSegmentation={stopSegmentation}
+              shots={shots}
             />
           </div>
         )}

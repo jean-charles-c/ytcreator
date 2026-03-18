@@ -1121,6 +1121,7 @@ export default function PdfDocumentaryTab({
           chapterState={chapterState}
           onChapterStateChange={setChapterState}
           scriptLanguage={scriptLanguage}
+          shots={shots}
         />
       </div>
 

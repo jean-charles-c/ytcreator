@@ -382,6 +382,7 @@ export default function ChapterCollapse({
           onSelectVariant={handleSelectVariant}
           generatingId={generatingId}
           isFrench={scriptLanguage === "fr"}
+          shots={shots}
         />
       </CollapsibleContent>
     </Collapsible>

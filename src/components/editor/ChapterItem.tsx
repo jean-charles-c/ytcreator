@@ -107,9 +107,7 @@ export default function ChapterItem({
           )}
 
           {chapter.startSentence && (
-            <p className="text-xs text-muted-foreground line-clamp-1 pl-7">
-              « {chapter.startSentence} »
-            </p>
+            <ShotSentenceLabel startSentence={chapter.startSentence} sourceText={chapter.sourceText} shots={shots} />
           )}
         </div>
       </div>
