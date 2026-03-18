@@ -1,84 +1,95 @@
 /**
  * XMLMarkerBuilder — Generates FCP XML <marker> elements from validated chapters.
- * Markers are injected into the <sequence> element for DaVinci Resolve import.
+ * Markers are injected per-clip for DaVinci Resolve compatibility.
  */
 
 import type { Chapter } from "./chapterTypes";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 import { escapeXml } from "./xmlExportUtils";
+import { SECTION_TYPES, SECTION_META } from "./canonicalScriptTypes";
 
 export interface ChapterMarker {
   name: string;
   comment: string;
-  /** Frame position in the timeline */
-  frame: number;
+  /** Index of the clip/segment this marker belongs to */
+  clipIndex: number;
 }
 
 /**
- * Match a chapter's startSentence to the closest shot segment in the timeline.
- * Returns the start frame of that segment.
- */
-function resolveChapterFrame(
-  chapter: Chapter,
-  timeline: Timeline,
-  fps: ExportFps
-): number {
-  const segments = timeline.videoTrack.segments;
-  const timepoints = timeline.shotTimepoints ?? [];
-  const needle = chapter.startSentence.toLowerCase().trim();
-
-  // Try matching by source sentence
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const sentLower = (seg.sentence || seg.sentenceFr || "").toLowerCase();
-    if (sentLower.includes(needle) || needle.includes(sentLower.slice(0, 40))) {
-      // Use precise timepoint if available
-      const tp = timepoints.find((t) => t.shotId === seg.id);
-      if (tp) return Math.round(tp.timeSeconds * fps);
-      return Math.round(seg.startTime * fps);
-    }
-  }
-
-  // Fallback: match by section type → find first segment of that scene type
-  if (chapter.sectionType) {
-    // Approximate: distribute chapters proportionally
-    const ratio = chapter.index / Math.max(1, segments.length);
-    const segIdx = Math.min(Math.floor(ratio * segments.length), segments.length - 1);
-    const seg = segments[segIdx];
-    const tp = timepoints.find((t) => t.shotId === seg.id);
-    if (tp) return Math.round(tp.timeSeconds * fps);
-    return Math.round(seg.startTime * fps);
-  }
-
-  // Last resort: proportional placement
-  const totalFrames = Math.ceil((timeline.totalDuration || 0) * fps);
-  return Math.round((chapter.index / Math.max(1, 9)) * totalFrames);
-}
-
-/**
- * Build markers from validated chapters.
+ * Build markers from validated chapters, mapped to clip indices.
+ * Each chapter maps to the segment whose sectionType matches.
  */
 export function buildChapterMarkers(
   chapters: Chapter[],
   timeline: Timeline,
-  fps: ExportFps
+  _fps: ExportFps
 ): ChapterMarker[] {
   const validated = chapters.filter((ch) => ch.validated);
   if (validated.length === 0) return [];
 
-  return validated.map((ch) => ({
-    name: ch.title,
-    comment: ch.titleFR ? `FR: ${ch.titleFR}` : ch.startSentence.slice(0, 80),
-    frame: resolveChapterFrame(ch, timeline, fps),
-  }));
+  const segments = timeline.videoTrack.segments;
+
+  return validated.map((ch) => {
+    // Try to find segment by matching section type label in scene title
+    let clipIndex = ch.index; // default: use chapter index
+
+    // Match by section type — find corresponding segment
+    if (ch.sectionType) {
+      const meta = SECTION_META[ch.sectionType];
+      if (meta) {
+        const found = segments.findIndex(
+          (seg) =>
+            seg.sceneTitle?.toLowerCase().includes(meta.label.toLowerCase()) ||
+            seg.sceneTitle?.toLowerCase().includes(ch.sectionType!.toLowerCase())
+        );
+        if (found >= 0) clipIndex = found;
+      }
+    }
+
+    // Clamp to valid range
+    clipIndex = Math.min(clipIndex, segments.length - 1);
+    clipIndex = Math.max(0, clipIndex);
+
+    return {
+      name: ch.title,
+      comment: ch.titleFR ? `FR: ${ch.titleFR}` : ch.startSentence.slice(0, 80),
+      clipIndex,
+    };
+  });
 }
 
 /**
- * Generate FCP XML marker elements string.
- * These should be inserted inside the <sequence> element.
+ * Generate FCP XML marker string for a specific clip index.
+ * Returns empty string if no markers target this clip.
  */
-export function generateMarkerXml(markers: ChapterMarker[], fps: ExportFps): string {
+export function generateClipMarkerXml(
+  markers: ChapterMarker[],
+  clipIndex: number
+): string {
+  const clipMarkers = markers.filter((m) => m.clipIndex === clipIndex);
+  if (clipMarkers.length === 0) return "";
+
+  return clipMarkers
+    .map(
+      (m) => `
+        <marker>
+          <name>${escapeXml(m.name)}</name>
+          <comment>${escapeXml(m.comment)}</comment>
+          <in>0</in>
+          <out>0</out>
+        </marker>`
+    )
+    .join("");
+}
+
+/**
+ * Generate sequence-level marker XML (kept as fallback).
+ */
+export function generateMarkerXml(
+  markers: ChapterMarker[],
+  _fps: ExportFps
+): string {
   if (markers.length === 0) return "";
 
   return markers
@@ -87,8 +98,8 @@ export function generateMarkerXml(markers: ChapterMarker[], fps: ExportFps): str
         <marker>
           <name>${escapeXml(m.name)}</name>
           <comment>${escapeXml(m.comment)}</comment>
-          <in>${m.frame}</in>
-          <out>${m.frame}</out>
+          <in>0</in>
+          <out>0</out>
         </marker>`
     )
     .join("");

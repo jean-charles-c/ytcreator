@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
 import { buildClipFrames, escapeXml } from "./xmlExportUtils";
-import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
+import { buildChapterMarkers, generateClipMarkerXml, generateMarkerXml, type ChapterMarker } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 
 /**
@@ -33,7 +33,8 @@ function generateXml(
   imageFileNames: Map<number, string>,
   audioFileName: string,
   exportUid: string,
-  markersXml: string = ""
+  markersXml: string = "",
+  clipMarkers: ChapterMarker[] = []
 ): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
@@ -106,7 +107,7 @@ function generateXml(
           <mastercomment1>${sentence}</mastercomment1>
           <mastercomment2>${description}</mastercomment2>
           <mastercomment3>Type: ${escapeXml(seg.shotType)}</mastercomment3>
-        </comments>
+        </comments>${generateClipMarkerXml(clipMarkers, i)}
       </clipitem>`;
   }).join("\n");
 
@@ -220,8 +221,9 @@ export async function exportTimelineToXmlZip(
   // ── Generate XML with relative paths ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
   const exportUid = crypto.randomUUID().slice(0, 8);
-  const markersXml = chapters ? generateMarkerXml(buildChapterMarkers(chapters, timeline, fps), fps) : "";
-  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml);
+  const clipMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
+  const markersXml = clipMarkers.length > 0 ? generateMarkerXml(clipMarkers, fps) : "";
+  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml, clipMarkers);
   zip.file("timeline.xml", xml);
 
   // ── Generate ZIP ──

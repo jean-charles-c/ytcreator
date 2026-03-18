@@ -190,12 +190,10 @@ export default function PdfDocumentaryTab({
     })();
   }, [projectId]);
 
-  // ── Persist chapterState to DB (debounced) ──
-  useEffect(() => {
-    if (!projectId || !chapterHydratedRef.current || !chapterState) return;
-
-    if (chapterSaveTimeoutRef.current) window.clearTimeout(chapterSaveTimeoutRef.current);
-    chapterSaveTimeoutRef.current = window.setTimeout(async () => {
+  // ── Persist chapterState to DB ──
+  const saveChapterState = useCallback(async (state: ChapterListState) => {
+    if (!projectId) return;
+    try {
       const { data } = await supabase
         .from("project_scriptcreator_state")
         .select("timeline_state")
@@ -204,14 +202,38 @@ export default function PdfDocumentaryTab({
       const currentState = (data?.timeline_state as any) ?? {};
       await supabase
         .from("project_scriptcreator_state")
-        .update({ timeline_state: { ...currentState, chapterState } as any })
+        .update({ timeline_state: { ...currentState, chapterState: state } as any })
         .eq("project_id", projectId);
-    }, 1200);
+    } catch (e) {
+      console.error("Failed to persist chapterState:", e);
+    }
+  }, [projectId]);
+
+  const pendingChapterSaveRef = useRef<ChapterListState | null>(null);
+
+  useEffect(() => {
+    if (!projectId || !chapterHydratedRef.current || !chapterState) return;
+
+    pendingChapterSaveRef.current = chapterState;
+    if (chapterSaveTimeoutRef.current) window.clearTimeout(chapterSaveTimeoutRef.current);
+    chapterSaveTimeoutRef.current = window.setTimeout(() => {
+      pendingChapterSaveRef.current = null;
+      saveChapterState(chapterState);
+    }, 600);
 
     return () => {
       if (chapterSaveTimeoutRef.current) window.clearTimeout(chapterSaveTimeoutRef.current);
     };
-  }, [projectId, chapterState]);
+  }, [projectId, chapterState, saveChapterState]);
+
+  // Flush pending save on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingChapterSaveRef.current && projectId) {
+        saveChapterState(pendingChapterSaveRef.current);
+      }
+    };
+  }, [projectId, saveChapterState]);
 
 
   const bgScriptTask = projectId ? getTask(projectId, "script") : undefined;
