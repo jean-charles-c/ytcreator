@@ -121,8 +121,8 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
   }, [projectId, stopTask]);
 
   const handleDownload = useCallback(async (entry: ExportEntry) => {
+    setDownloadingIds((prev) => new Set(prev).add(entry.id));
     try {
-      // Use Supabase storage download to get the blob directly
       const { data, error } = await supabase.storage
         .from("video-exports")
         .download(entry.storagePath);
@@ -136,9 +136,16 @@ export default function ExportManager({ timeline, projectId }: ExportManagerProp
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast.success("Téléchargement lancé !");
     } catch (err) {
       console.error("Download error:", err);
-      toast.error("Erreur lors du téléchargement.");
+      toast.error("Erreur lors du téléchargement. Vérifiez que le fichier existe encore.");
+    } finally {
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(entry.id);
+        return next;
+      });
     }
   }, []);
 
