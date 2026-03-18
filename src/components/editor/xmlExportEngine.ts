@@ -33,7 +33,8 @@ function generateXml(
   imageFileNames: Map<number, string>,
   audioFileName: string,
   exportUid: string,
-  markersXml: string = ""
+  markersXml: string = "",
+  clipMarkers: ChapterMarker[] = []
 ): string {
   const { videoTrack, audioTrack, totalDuration } = timeline;
   const segments = videoTrack.segments;
