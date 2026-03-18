@@ -261,6 +261,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<Timeline | null>(null);
   const [savingTimeline, setSavingTimeline] = useState(false);
+  const [imageOffsetMs, setImageOffsetMs] = useState(0);
 
   // ── Persist timeline to DB ──
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
@@ -539,7 +540,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
 
                 {/* Collapsible: Preview + Timeline */}
                 <CollapsibleSection title="Prévisualisation & Timeline" icon={Film} badge={`${timeline.segmentCount} segments`}>
-                  <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} />
+                  <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} imageOffsetMs={imageOffsetMs} onImageOffsetChange={setImageOffsetMs} />
                 </CollapsibleSection>
 
                 {/* Collapsible: Export Manager */}

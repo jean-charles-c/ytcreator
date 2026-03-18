@@ -25,6 +25,8 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 interface TimelineViewProps {
   timeline: Timeline;
   onTimelineChange?: (timeline: Timeline) => void;
+  imageOffsetMs?: number;
+  onImageOffsetChange?: (ms: number) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -197,7 +199,7 @@ function useImageReplacer(onImageSelected: (segId: string, url: string) => void)
 }
 
 // ── Main component ─────────────────────────────────────────────────
-export default function TimelineView({ timeline, onTimelineChange }: TimelineViewProps) {
+export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs = 0, onImageOffsetChange }: TimelineViewProps) {
   const { videoTrack, audioTrack } = timeline;
   const segments = videoTrack.segments;
 
@@ -212,8 +214,27 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   const [zoomLevel, setZoomLevel] = useState(1); // 1x to 30x
   const [segmentsOpen, setSegmentsOpen] = useState(false);
 
-  const activeIndex = useMemo(() => findSegmentAt(segments, currentTime), [segments, currentTime]);
-  const activeSegment = segments[activeIndex] ?? null;
+  // ── Drift correction: scale segment times to match actual audio duration ──
+  const scaledSegments = useMemo(() => {
+    const estimatedDuration = timeline.totalDuration;
+    if (!estimatedDuration || estimatedDuration <= 0 || !audioDuration || audioDuration <= 0) return segments;
+    const scale = audioDuration / estimatedDuration;
+    // Only apply correction if drift is significant (>1%)
+    if (Math.abs(scale - 1) < 0.01) return segments;
+    return segments.map((seg) => ({
+      ...seg,
+      startTime: Math.round(seg.startTime * scale * 100) / 100,
+      duration: Math.round(seg.duration * scale * 100) / 100,
+    }));
+  }, [segments, audioDuration, timeline.totalDuration]);
+
+  // Apply image offset (convert ms to seconds) for segment lookup
+  const imageOffsetSec = imageOffsetMs / 1000;
+  const activeIndex = useMemo(
+    () => findSegmentAt(scaledSegments, currentTime + imageOffsetSec),
+    [scaledSegments, currentTime, imageOffsetSec]
+  );
+  const activeSegment = scaledSegments[activeIndex] ?? null;
 
   const waveformHeights = useMemo(
     () => Array.from({ length: 80 }, (_, i) => 20 + Math.sin(i * 0.7) * 35 + (Math.sin(i * 2.1) + 1) * 15),
@@ -320,12 +341,12 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
   }, [audioDuration]);
 
   const skipPrev = useCallback(() => {
-    seekTo(activeIndex > 0 ? segments[activeIndex - 1].startTime : 0);
-  }, [activeIndex, segments, seekTo]);
+    seekTo(activeIndex > 0 ? scaledSegments[activeIndex - 1].startTime : 0);
+  }, [activeIndex, scaledSegments, seekTo]);
 
   const skipNext = useCallback(() => {
-    if (activeIndex < segments.length - 1) seekTo(segments[activeIndex + 1].startTime);
-  }, [activeIndex, segments, seekTo]);
+    if (activeIndex < scaledSegments.length - 1) seekTo(scaledSegments[activeIndex + 1].startTime);
+  }, [activeIndex, scaledSegments, seekTo]);
 
   // ── Scrubbing ──
   const scrubTargetRef = useRef<HTMLDivElement | null>(null);
@@ -382,7 +403,7 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
       {/* ═══ VideoPreviewPlayer ═══ */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-          {segments.map((seg, idx) => {
+          {scaledSegments.map((seg, idx) => {
             const isActive = seg.id === activeSegment?.id;
             return seg.imageUrl ? (
               <img
@@ -429,8 +450,36 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             </button>
             <button onClick={skipNext} className="h-11 w-11 sm:h-8 sm:w-8 flex items-center justify-center rounded hover:bg-muted transition-colors" aria-label="Suivant"><SkipForward className="h-5 w-5 sm:h-4 sm:w-4 text-foreground" /></button>
             <span className="text-[11px] font-mono text-muted-foreground ml-2">{formatTime(currentTime)} / {formatTime(audioDuration)}</span>
-            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{segments.length} segments</span>
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{scaledSegments.length} segments</span>
           </div>
+          {/* Image offset control */}
+          {onImageOffsetChange && (
+            <div className="flex items-center gap-2 pt-1">
+              <ImageIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">Calage image</span>
+              <input
+                type="range"
+                min={-1000}
+                max={1000}
+                step={50}
+                value={imageOffsetMs}
+                onChange={(e) => onImageOffsetChange(Number(e.target.value))}
+                className="flex-1 h-1 accent-primary"
+              />
+              <span className="text-[10px] font-mono text-muted-foreground w-14 text-right">
+                {imageOffsetMs === 0 ? "0 ms" : `${imageOffsetMs > 0 ? "+" : ""}${imageOffsetMs} ms`}
+              </span>
+              {imageOffsetMs !== 0 && (
+                <button
+                  onClick={() => onImageOffsetChange(0)}
+                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                  title="Réinitialiser"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -467,8 +516,8 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
             {/* Video track */}
             <div className="relative h-12 sm:h-10 rounded-md overflow-hidden border border-border cursor-pointer touch-none" onMouseDown={handleScrubStart} onTouchStart={handleScrubStart}>
               <div className="flex h-full">
-                {segments.map((seg, idx) => {
-                  const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / segments.length;
+                {scaledSegments.map((seg, idx) => {
+                  const widthPct = audioDuration > 0 ? (seg.duration / audioDuration) * 100 : 100 / scaledSegments.length;
                   const active = seg.id === activeSegment?.id;
                   return (
                     <div key={seg.id} className={`relative border-r border-border/30 last:border-r-0 overflow-hidden ${active ? "ring-1 ring-inset ring-primary/50" : ""} ${seg.imageUrl ? "" : "bg-muted"}`} style={{ width: `${widthPct}%`, minWidth: "3px" }} title={`Shot ${idx + 1}`}>
@@ -510,13 +559,13 @@ export default function TimelineView({ timeline, onTimelineChange }: TimelineVie
           <CollapsibleContent>
             <div ref={listRef} className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto divide-y divide-border/30 -webkit-overflow-scrolling-touch">
               <div className="px-1 py-1 space-y-0.5">
-                {segments.map((seg, globalIndex) => (
+                {scaledSegments.map((seg, globalIndex) => (
                   <div key={seg.id} data-seg-index={globalIndex}>
                     <EditableSegmentCard
                       segment={seg}
                       displayIndex={globalIndex + 1}
                       index={globalIndex}
-                      total={segments.length}
+                      total={scaledSegments.length}
                       isActive={seg.id === activeSegment?.id}
                       onSeek={() => seekTo(seg.startTime)}
                       onMoveUp={() => handleMoveSegment(globalIndex, globalIndex - 1)}
