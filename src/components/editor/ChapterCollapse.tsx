@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { ChevronDown, ListVideo } from "lucide-react";
+import { ChevronDown, ListVideo, CheckCheck } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import ChapterList from "./ChapterList";
