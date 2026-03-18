@@ -138,7 +138,8 @@ interface PdfDocumentaryTabProps {
   onRunSegmentation: () => void;
   segmenting: boolean;
   onStopSegmentation: () => void;
-  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
+  shots?: Array<{ id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
+  scenesForShotOrder?: Array<{ id: string; scene_order: number }>;
 }
 
 export default function PdfDocumentaryTab({
@@ -146,7 +147,7 @@ export default function PdfDocumentaryTab({
   extractedText, onExtractedTextChange, pageCount, onPageCountChange, fileName, onFileNameChange,
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
-  narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation, shots,
+  narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation, shots, scenesForShotOrder,
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
@@ -1122,6 +1123,7 @@ export default function PdfDocumentaryTab({
           onChapterStateChange={setChapterState}
           scriptLanguage={scriptLanguage}
           shots={shots}
+          scenesForShotOrder={scenesForShotOrder}
         />
       </div>
 

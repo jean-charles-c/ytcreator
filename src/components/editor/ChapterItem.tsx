@@ -30,7 +30,8 @@ interface ChapterItemProps {
   onSelectVariant: (chapterId: string, variantId: string) => void;
   generating?: boolean;
   isFrench?: boolean;
-  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
+  shots?: Array<{ id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
+  scenesForShotOrder?: Array<{ id: string; scene_order: number }>;
 }
 
 export default function ChapterItem({
@@ -42,6 +43,7 @@ export default function ChapterItem({
   generating,
   isFrench,
   shots,
+  scenesForShotOrder,
 }: ChapterItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(chapter.title);
@@ -57,22 +59,27 @@ export default function ChapterItem({
     }
   };
 
-  /** Find the first shot whose source_sentence is contained within THIS chapter's sourceText */
+  /** Find the first matching shot and convert it to the real global shot number in project order */
   const matchingShotOrder = useMemo(() => {
     if (!shots || shots.length === 0 || !chapter.sourceText) return null;
     const srcNorm = chapter.sourceText.toLowerCase().trim();
     if (!srcNorm) return null;
 
-    // Sort shots by shot_order to find the earliest matching one
-    const sorted = [...shots].sort((a, b) => a.shot_order - b.shot_order);
+    const sceneOrderMap = new Map((scenesForShotOrder || []).map((scene) => [scene.id, scene.scene_order]));
+    const globallySortedShots = [...shots].sort((a, b) => {
+      const sceneA = sceneOrderMap.get(a.scene_id) ?? Number.MAX_SAFE_INTEGER;
+      const sceneB = sceneOrderMap.get(b.scene_id) ?? Number.MAX_SAFE_INTEGER;
+      if (sceneA !== sceneB) return sceneA - sceneB;
+      return a.shot_order - b.shot_order;
+    });
 
-    for (const shot of sorted) {
+    const matchIndex = globallySortedShots.findIndex((shot) => {
       const sent = (shot.source_sentence || shot.source_sentence_fr || "").toLowerCase().trim();
-      if (sent.length < 5) continue;
-      if (srcNorm.includes(sent)) return shot.shot_order;
-    }
-    return null;
-  }, [shots, chapter.sourceText]);
+      return sent.length >= 5 && srcNorm.includes(sent);
+    });
+
+    return matchIndex >= 0 ? matchIndex + 1 : null;
+  }, [shots, scenesForShotOrder, chapter.sourceText]);
 
   const handleGenerate = useCallback(() => {
     onGenerateTitles(chapter.id, tone);

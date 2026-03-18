@@ -25,7 +25,8 @@ interface ChapterCollapseProps {
   chapterState: ChapterListState | null;
   onChapterStateChange: (state: ChapterListState) => void;
   scriptLanguage?: string;
-  shots?: Array<{ id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
+  shots?: Array<{ id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
+  scenesForShotOrder?: Array<{ id: string; scene_order: number }>;
 }
 
 export default function ChapterCollapse({
@@ -35,6 +36,7 @@ export default function ChapterCollapse({
   onChapterStateChange,
   scriptLanguage,
   shots,
+  scenesForShotOrder,
 }: ChapterCollapseProps) {
   const [open, setOpen] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
@@ -383,6 +385,7 @@ export default function ChapterCollapse({
           generatingId={generatingId}
           isFrench={scriptLanguage === "fr"}
           shots={shots}
+          scenesForShotOrder={scenesForShotOrder}
         />
       </CollapsibleContent>
     </Collapsible>
