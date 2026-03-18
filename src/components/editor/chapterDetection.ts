@@ -1,46 +1,37 @@
 /**
  * ChapterDetection — Détecte automatiquement les chapitres vidéo
  * à partir du CanonicalScript (tags [[HOOK]], [[ACT1]], etc.)
- * ou par fallback sémantique (découpage par paragraphes).
+ * ou par parsing des tags dans le texte brut.
+ * Toujours exactement 9 chapitres (1 par section canonique).
  */
 
 import {
   type CanonicalScript,
   type SectionType,
   SECTION_META,
+  SECTION_TYPES,
   getDisplayText,
 } from "./canonicalScriptTypes";
+import { parseTaggedScript } from "./tagParser";
 
 /* ── Types ────────────────────────────────────────── */
 
 export interface DetectedChapter {
-  /** Unique id (section type or generated) */
   id: string;
-  /** Source section type if tag-based, null if semantic */
   sectionType: SectionType | null;
-  /** Placeholder label (NOT the SEO title — generated later) */
   label: string;
-  /** Raw narration text for this chapter */
   text: string;
-  /** Order index (0-based) */
   order: number;
 }
 
 export interface ChapterDetectionResult {
-  /** Whether detection used canonical tags or semantic fallback */
   method: "tags" | "semantic";
   chapters: DetectedChapter[];
 }
 
-/* ── Tag-based detection ──────────────────────────── */
+/* ── Tag-based detection from CanonicalScript ─────── */
 
-/**
- * Map canonical sections → chapters.
- * Skips empty sections. Merges small adjacent sections
- * only if both are < 80 chars (e.g. short Promise).
- */
 function detectFromCanonical(script: CanonicalScript): DetectedChapter[] {
-  // Always produce exactly 9 chapters — one per canonical section
   return script.sections.map((section, idx) => {
     const text = getDisplayText(section).trim();
     const meta = SECTION_META[section.type];
@@ -54,84 +45,55 @@ function detectFromCanonical(script: CanonicalScript): DetectedChapter[] {
   });
 }
 
-/* ── Semantic fallback ────────────────────────────── */
+/* ── Tag-based detection from raw text ────────────── */
 
-/**
- * Splits raw text into chapters by double-newline paragraphs.
- * Groups small paragraphs together (min ~200 chars per chapter).
- */
-function detectSemantic(rawText: string): DetectedChapter[] {
-  const paragraphs = rawText
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+function detectFromRawTags(rawText: string): DetectedChapter[] {
+  const parsed = parseTaggedScript(rawText);
+  if (!parsed.tagged) return [];
 
-  if (paragraphs.length === 0) return [];
-
-  const MIN_CHAPTER_LENGTH = 200;
-  const chapters: DetectedChapter[] = [];
-  let buffer = "";
-
-  for (const para of paragraphs) {
-    buffer = buffer ? `${buffer}\n\n${para}` : para;
-
-    if (buffer.length >= MIN_CHAPTER_LENGTH) {
-      chapters.push({
-        id: `ch-${chapters.length}`,
-        sectionType: null,
-        label: `Chapitre ${chapters.length + 1}`,
-        text: buffer,
-        order: chapters.length,
-      });
-      buffer = "";
-    }
-  }
-
-  // Flush remaining buffer
-  if (buffer) {
-    if (chapters.length > 0) {
-      // Merge into last chapter if too short
-      const last = chapters[chapters.length - 1];
-      chapters[chapters.length - 1] = {
-        ...last,
-        text: `${last.text}\n\n${buffer}`,
-      };
-    } else {
-      chapters.push({
-        id: "ch-0",
-        sectionType: null,
-        label: "Chapitre 1",
-        text: buffer,
-        order: 0,
-      });
-    }
-  }
-
-  return chapters;
+  return parsed.sections.map((ps, idx) => {
+    const meta = SECTION_META[ps.key];
+    return {
+      id: ps.key,
+      sectionType: ps.key,
+      label: `${meta.icon} ${meta.label}`,
+      text: ps.content.trim(),
+      order: idx,
+    };
+  });
 }
 
 /* ── Public API ───────────────────────────────────── */
 
-/**
- * Detect chapters from a CanonicalScript (preferred)
- * or from raw narration text (fallback).
- */
 export function detectChapters(
   canonicalScript: CanonicalScript | null,
   rawNarration?: string | null
 ): ChapterDetectionResult {
-  // Try tag-based first
+  // Try canonical script first
   if (canonicalScript) {
-    const tagged = detectFromCanonical(canonicalScript);
-    if (tagged.length > 0) {
-      return { method: "tags", chapters: tagged };
+    return { method: "tags", chapters: detectFromCanonical(canonicalScript) };
+  }
+
+  // Try parsing tags from raw narration
+  if (rawNarration?.trim()) {
+    const fromTags = detectFromRawTags(rawNarration);
+    if (fromTags.length > 0) {
+      return { method: "tags", chapters: fromTags };
     }
   }
 
-  // Fallback to semantic
-  if (rawNarration?.trim()) {
-    return { method: "semantic", chapters: detectSemantic(rawNarration) };
-  }
-
-  return { method: "semantic", chapters: [] };
+  // Fallback: empty 9 sections
+  return {
+    method: "tags",
+    chapters: SECTION_TYPES.map((type, idx) => {
+      const meta = SECTION_META[type];
+      return {
+        id: type,
+        sectionType: type,
+        label: `${meta.icon} ${meta.label}`,
+        text: "",
+        order: idx,
+      };
+    }),
+  };
 }
