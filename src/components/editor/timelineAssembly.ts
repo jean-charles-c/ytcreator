@@ -87,6 +87,7 @@ export function assembleTimeline(
 
   const audioDuration = audioFile.duration_estimate ?? 0;
   const DEFAULT_SEGMENT_DURATION = 4;
+  const MAX_TIMECODE_DRIFT_FOR_ID_MATCH = 30;
 
   // ── Strategy 1: Precise timepoints from TTS marks ──
   if (shotTimepoints && shotTimepoints.length > 0) {
@@ -102,25 +103,28 @@ export function assembleTimeline(
       timepointMap.set(tp.shotId, tp.timeSeconds);
     }
 
+    const resolveStartTime = (shotId: string, index: number): number => {
+      const explicit = timepointMap.get(shotId);
+      const sequential = orderedTimepoints[index]?.timeSeconds;
+
+      if (explicit === undefined) return sequential ?? 0;
+      if (sequential === undefined) return explicit;
+
+      return Math.abs(explicit - sequential) > MAX_TIMECODE_DRIFT_FOR_ID_MATCH
+        ? sequential
+        : explicit;
+    };
+
     const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
       const scene = sceneMap.get(shot.scene_id);
-
-      // Try to get start time from timepoint map (by shotId or by index)
-      let startTime = timepointMap.get(shot.id);
-      if (startTime === undefined && idx < orderedTimepoints.length) {
-        startTime = orderedTimepoints[idx]?.timeSeconds ?? 0;
-      }
-      if (startTime === undefined) startTime = 0;
+      const startTime = resolveStartTime(shot.id, idx);
 
       // Duration = next shot's start time - this shot's start time
       let duration: number;
       if (idx < sortedShots.length - 1) {
         const nextShotId = sortedShots[idx + 1].id;
-        let nextStart = timepointMap.get(nextShotId);
-        if (nextStart === undefined && idx + 1 < orderedTimepoints.length) {
-          nextStart = orderedTimepoints[idx + 1]?.timeSeconds;
-        }
-        duration = nextStart !== undefined ? nextStart - startTime : DEFAULT_SEGMENT_DURATION;
+        const nextStart = resolveStartTime(nextShotId, idx + 1);
+        duration = nextStart - startTime;
       } else {
         // Last segment: extend to audio duration
         duration = audioDuration > 0 ? audioDuration - startTime : DEFAULT_SEGMENT_DURATION;

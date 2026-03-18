@@ -89,8 +89,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   };
 
   // Build sorted shotSentences for marked sync mode.
-  // Compares shot sentences against the voScript textarea (source of truth)
-  // to detect and inject any sentences present in the script but missing from shots.
+  // The textarea remains the source of truth, but each sentence block is now
+  // kept attached to the nearest shot in order so a paraphrased line cannot
+  // push a real shot to the end of the audio with a broken timecode.
   const buildShotSentences = (): { id: string; text: string; isNewScene?: boolean }[] | null => {
     if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return null;
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
@@ -100,6 +101,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       if (oa !== ob) return oa - ob;
       return a.shot_order - b.shot_order;
     });
+
     let lastSceneId = "";
     const shotEntries = sorted
       .map((s) => {
@@ -115,108 +117,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
     if (shotEntries.length === 0) return null;
 
-    // ── Reconcile with voScript to find missing sentences ──
-    const scriptText = voScript.trim();
-    if (!scriptText) return shotEntries;
-
-    // Split script into sentences
-    const scriptSentences = scriptText
-      .split(/(?<=[.!?])\s+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    if (scriptSentences.length === 0) return shotEntries;
-
-    // Track which script sentences are already covered by a multi-sentence shot.
-    // A shot like "A city burns. Its clay tablets harden like brick." covers both
-    // individual sentences, so we must not inject the second one as _missing_.
-    const coveredScriptIndices = new Set<number>();
-
-    // Pre-compute: for each shot, mark all script sentence indices whose text
-    // is contained within that shot's text (case-insensitive).
-    const shotTextsNorm = shotEntries.map((e) => e.text.toLowerCase().trim());
-    for (const shotNorm of shotTextsNorm) {
-      for (let si = 0; si < scriptSentences.length; si++) {
-        if (coveredScriptIndices.has(si)) continue;
-        const sentNorm = scriptSentences[si].toLowerCase().trim();
-        if (shotNorm.includes(sentNorm)) {
-          coveredScriptIndices.add(si);
-        }
-      }
-    }
-
-    // Walk through script sentences and interleave missing ones
-    const result: { id: string; text: string; isNewScene?: boolean }[] = [];
-    let shotIdx = 0;
-    const usedShotIds = new Set<string>();
-
-    for (let si = 0; si < scriptSentences.length; si++) {
-      const scriptSent = scriptSentences[si];
-      const scriptNorm = scriptSent.toLowerCase().trim();
-
-      // Check if this script sentence matches the current shot
-      if (shotIdx < shotEntries.length) {
-        const shotNorm = shotTextsNorm[shotIdx];
-        if (scriptNorm === shotNorm || scriptNorm.startsWith(shotNorm) || shotNorm.startsWith(scriptNorm)) {
-          if (!usedShotIds.has(shotEntries[shotIdx].id)) {
-            result.push(shotEntries[shotIdx]);
-            usedShotIds.add(shotEntries[shotIdx].id);
-          }
-          shotIdx++;
-          continue;
-        }
-      }
-
-      // Check if this sentence is already covered by a shot we already emitted
-      // (e.g. second sentence inside a multi-sentence shot text)
-      if (coveredScriptIndices.has(si)) {
-        // Check if the covering shot is already in the result — if so, skip silently
-        const coveringShot = shotEntries.find(
-          (e) => e.text.toLowerCase().trim().includes(scriptNorm) && usedShotIds.has(e.id)
-        );
-        if (coveringShot) continue;
-
-        // The covering shot hasn't been emitted yet — find and push it
-        const found = shotEntries.find(
-          (e) => e.text.toLowerCase().trim().includes(scriptNorm) && !usedShotIds.has(e.id)
-        );
-        if (found) {
-          result.push(found);
-          usedShotIds.add(found.id);
-          if (shotIdx < shotEntries.length && shotEntries[shotIdx].id === found.id) shotIdx++;
-          continue;
-        }
-      }
-
-      // Not a shot match — check exact match anywhere in shots (out of order)
-      const exactFound = shotEntries.find(
-        (e) => e.text.toLowerCase().trim() === scriptNorm && !usedShotIds.has(e.id)
-      );
-      if (exactFound) {
-        result.push(exactFound);
-        usedShotIds.add(exactFound.id);
-        if (shotIdx < shotEntries.length && shotEntries[shotIdx].id === exactFound.id) shotIdx++;
-        continue;
-      }
-
-      // This sentence is NOT in any shot — inject it as an untracked sentence
-      result.push({
-        id: `_missing_${result.length}`,
-        text: scriptSent,
-        isNewScene: false,
-      });
-    }
-
-    // Append any remaining shots that weren't matched
-    while (shotIdx < shotEntries.length) {
-      if (!usedShotIds.has(shotEntries[shotIdx].id)) {
-        result.push(shotEntries[shotIdx]);
-        usedShotIds.add(shotEntries[shotIdx].id);
-      }
-      shotIdx++;
-    }
-
-    return result.length > 0 ? result : shotEntries;
+    return alignShotSentencesToScript(shotEntries, voScript);
   };
 
   const handleGenerate = async () => {
