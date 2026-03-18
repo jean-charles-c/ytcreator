@@ -1761,7 +1761,7 @@ export default function Editor() {
                             <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
                             <span className="ml-auto shrink-0 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
                               {sceneShots.length > 0
-                                ? Array.from({ length: sceneShots.length }, (_, i) => `SHOT ${String(startIndex + i).padStart(4, "0")}`).join(" / ")
+                                ? `SHOT ${Array.from({ length: sceneShots.length }, (_, i) => String(startIndex + i).padStart(4, "0")).join(" / ")}`
                                 : "0 SHOT"}
                             </span>
                             {scene.validated && (
