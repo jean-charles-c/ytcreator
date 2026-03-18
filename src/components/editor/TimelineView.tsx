@@ -341,12 +341,12 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
   }, [audioDuration]);
 
   const skipPrev = useCallback(() => {
-    seekTo(activeIndex > 0 ? segments[activeIndex - 1].startTime : 0);
-  }, [activeIndex, segments, seekTo]);
+    seekTo(activeIndex > 0 ? scaledSegments[activeIndex - 1].startTime : 0);
+  }, [activeIndex, scaledSegments, seekTo]);
 
   const skipNext = useCallback(() => {
-    if (activeIndex < segments.length - 1) seekTo(segments[activeIndex + 1].startTime);
-  }, [activeIndex, segments, seekTo]);
+    if (activeIndex < scaledSegments.length - 1) seekTo(scaledSegments[activeIndex + 1].startTime);
+  }, [activeIndex, scaledSegments, seekTo]);
 
   // ── Scrubbing ──
   const scrubTargetRef = useRef<HTMLDivElement | null>(null);
