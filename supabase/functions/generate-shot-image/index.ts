@@ -187,26 +187,41 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + LOVABLE_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [{ role: "user", content: fullPrompt }],
-        modalities: ["image", "text"],
-      }),
-    });
+    const MAX_RETRIES = 3;
+    let aiResponse: Response | null = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + LOVABLE_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: [{ role: "user", content: fullPrompt }],
+          modalities: ["image", "text"],
+        }),
+      });
 
-    if (!aiResponse.ok) {
+      if (aiResponse.ok) break;
+
       const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
+      console.error(`AI error (attempt ${attempt}/${MAX_RETRIES}):`, aiResponse.status, errText);
+
       if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
       if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
+
+      if (aiResponse.status >= 500 && attempt < MAX_RETRIES) {
+        const delay = attempt * 3000;
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
       throw new Error("AI gateway error");
     }
+
+    if (!aiResponse || !aiResponse.ok) throw new Error("AI gateway error after retries");
 
     const aiData = await aiResponse.json();
     const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
