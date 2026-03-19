@@ -119,7 +119,7 @@ function checkTiming(timing: ManifestTiming | null): QaIssue[] {
         category: "timing",
         sceneOrder: entry.sceneOrder,
         shotOrder: entry.order,
-        message: `Shot ${entry.order} (scène ${entry.sceneOrder}) a une durée nulle — deux shots partagent le même timestamp audio. Re-générez d'abord les shots de la scène ${entry.sceneOrder}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
+        message: `Durée nulle — deux shots partagent le même timestamp audio.`,
       });
     }
   }
