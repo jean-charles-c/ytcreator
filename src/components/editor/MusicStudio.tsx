@@ -14,6 +14,9 @@ import {
   Trash2,
   CheckCircle2,
   CreditCard,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +59,8 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
   const [balanceMessage, setBalanceMessage] = useState<string | null>(null);
 
@@ -138,16 +143,17 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
   // Fetch history
   const fetchHistory = useCallback(async () => {
-    if (!projectId) return;
     setLoading(true);
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) { setLoading(false); return; }
     const { data } = await (supabase as any)
       .from("music_history")
       .select("*")
-      .eq("project_id", projectId)
+      .eq("user_id", session.session.user.id)
       .order("created_at", { ascending: false });
     setEntries(data ?? []);
     setLoading(false);
-  }, [projectId]);
+  }, []);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -262,6 +268,20 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     setSelectedId(entry.id);
     onMusicSelected?.(data.publicUrl, entry.file_name);
     toast.success(`"${entry.file_name}" sélectionné pour l'export`);
+  };
+
+  const handleRename = async (entry: MusicEntry) => {
+    const newName = editName.trim();
+    if (!newName || newName === entry.file_name) { setEditingId(null); return; }
+    try {
+      await (supabase as any).from("music_history").update({ file_name: newName }).eq("id", entry.id);
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, file_name: newName } : e));
+      toast.success("Nom mis à jour");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    } finally {
+      setEditingId(null);
+    }
   };
 
   return (
@@ -391,7 +411,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       <div className="space-y-2">
         <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
           <Clock className="h-3.5 w-3.5 text-primary" />
-          Historique des musiques
+          Bibliothèque musicale
         </h4>
 
         {loading && entries.length === 0 && (
@@ -402,7 +422,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
         {!loading && entries.length === 0 && (
           <p className="text-xs text-muted-foreground/50 text-center py-4">
-            Aucune musique générée pour ce projet.
+            Aucune musique générée.
           </p>
         )}
 
@@ -422,7 +442,30 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
                   <Play className="h-4 w-4 sm:h-3.5 sm:w-3.5 ml-0.5" />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">{entry.file_name}</p>
+                  {editingId === entry.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleRename(entry); if (e.key === "Escape") setEditingId(null); }}
+                        className="h-6 text-xs px-1.5 py-0"
+                        autoFocus
+                      />
+                      <button onClick={() => handleRename(entry)} className="h-5 w-5 flex items-center justify-center text-primary hover:text-primary/80"><Check className="h-3 w-3" /></button>
+                      <button onClick={() => setEditingId(null)} className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 group/name">
+                      <p className="text-xs font-medium text-foreground truncate">{entry.file_name}</p>
+                      <button
+                        onClick={() => { setEditingId(entry.id); setEditName(entry.file_name); }}
+                        className="h-4 w-4 flex items-center justify-center text-muted-foreground/50 hover:text-foreground opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0"
+                        title="Renommer"
+                      >
+                        <Pencil className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  )}
                   <p className="text-[10px] text-muted-foreground truncate mt-0.5">{entry.prompt}</p>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
                     <span>{formatDuration(entry.duration_seconds)}</span>

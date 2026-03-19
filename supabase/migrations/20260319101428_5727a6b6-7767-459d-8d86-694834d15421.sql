@@ -1,0 +1,1 @@
+CREATE POLICY "Users can update own music" ON public.music_history FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
