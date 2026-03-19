@@ -270,6 +270,20 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     toast.success(`"${entry.file_name}" sélectionné pour l'export`);
   };
 
+  const handleRename = async (entry: MusicEntry) => {
+    const newName = editName.trim();
+    if (!newName || newName === entry.file_name) { setEditingId(null); return; }
+    try {
+      await (supabase as any).from("music_history").update({ file_name: newName }).eq("id", entry.id);
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, file_name: newName } : e));
+      toast.success("Nom mis à jour");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    } finally {
+      setEditingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ElevenLabs Balance */}
