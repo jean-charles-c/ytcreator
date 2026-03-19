@@ -522,7 +522,8 @@ export default function Editor() {
         // Re-fetch shots from DB
         const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("scene_id", { ascending: true }).order("shot_order", { ascending: true });
         if (shotData) {
-          setShots(shotData);
+          const { reordered } = reorderShotsByReadingPosition(shotData as Shot[], scenes);
+          setShots(reordered);
           if (task.status === "done") {
             setShotVersions((prev) => {
               const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
@@ -577,7 +578,10 @@ export default function Editor() {
         const data = await response.json();
         if (!response.ok || data?.error) throw new Error(data?.error || "Erreur de génération");
         const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
-        if (shotData) setShots(shotData);
+        if (shotData) {
+          const { reordered } = reorderShotsByReadingPosition(shotData as Shot[], scenes);
+          setShots(reordered);
+        }
         toast.success(`${data?.shots_count ?? 0} shots générés`);
       } catch (e: any) {
         console.error(e);
@@ -694,7 +698,8 @@ export default function Editor() {
       if (freshShotsError) throw freshShotsError;
 
       setScenes(freshScenes ?? []);
-      setShots(freshShots ?? []);
+      const { reordered: reorderedShots } = reorderShotsByReadingPosition((freshShots ?? []) as Shot[], freshScenes ?? []);
+      setShots(reorderedShots);
       setPreviewSceneVersionId(null);
       toast.success("Scènes fusionnées");
     } catch (err: any) {
@@ -1035,8 +1040,11 @@ export default function Editor() {
     if (!projectId) return;
     return subscribe(projectId, "image-gen", (task) => {
       // Reload shots from DB to get updated image_urls
-      supabase.from("shots").select("*").eq("project_id", projectId).then(({ data }) => {
-        if (data) setShots(data as any);
+      supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true }).then(({ data }) => {
+        if (data) {
+          const { reordered } = reorderShotsByReadingPosition(data as Shot[], scenes);
+          setShots(reordered);
+        }
       });
     });
   }, [projectId, subscribe]);
