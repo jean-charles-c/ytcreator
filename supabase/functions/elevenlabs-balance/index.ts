@@ -21,14 +21,28 @@ serve(async (req) => {
       headers: { "xi-api-key": ELEVENLABS_API_KEY },
     });
 
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error ${response.status}`);
-    }
+    const rawBody = await response.text();
+    const data = rawBody ? JSON.parse(rawBody) : null;
 
-    const data = await response.json();
+    if (!response.ok) {
+      const detail = data?.detail;
+      if (response.status === 401 && detail?.status === "missing_permissions") {
+        return new Response(
+          JSON.stringify({
+            available: false,
+            message: "La clé ElevenLabs connectée peut générer de la musique, mais n'a pas la permission user_read pour afficher le solde.",
+            missing_permission: "user_read",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      throw new Error(`ElevenLabs API error ${response.status}: ${detail?.message || rawBody}`);
+    }
 
     return new Response(
       JSON.stringify({
+        available: true,
         character_count: data.character_count,
         character_limit: data.character_limit,
         tier: data.tier,

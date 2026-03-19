@@ -40,9 +40,11 @@ interface PlayerState {
 }
 
 interface ElevenLabsBalance {
+  available?: boolean;
   character_count: number;
   character_limit: number;
   tier: string;
+  message?: string;
 }
 
 export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioProps) {
@@ -55,6 +57,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
+  const [balanceMessage, setBalanceMessage] = useState<string | null>(null);
 
   // Player
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
@@ -95,12 +98,27 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
           },
         }
       );
-      if (res.ok) {
-        const data = await res.json();
-        setBalance(data);
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setBalance(null);
+        setBalanceMessage(data?.error || "Solde ElevenLabs indisponible.");
+        return;
       }
+
+      if (data?.available === false) {
+        setBalance(null);
+        setBalanceMessage(data?.message || "Solde ElevenLabs indisponible.");
+        return;
+      }
+
+      setBalance(data);
+      setBalanceMessage(null);
     } catch (e) {
       console.error("Balance fetch error:", e);
+      setBalance(null);
+      setBalanceMessage("Impossible de charger le solde ElevenLabs.");
     }
   }, []);
 
@@ -248,7 +266,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   return (
     <div className="space-y-4">
       {/* ElevenLabs Balance */}
-      {balance && (
+      {balance ? (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2">
           <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
@@ -268,7 +286,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
             </div>
           </div>
         </div>
-      )}
+      ) : balanceMessage ? (
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-card/50 px-3 py-2 text-xs text-muted-foreground">
+          <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+          <p>{balanceMessage}</p>
+        </div>
+      ) : null}
 
       {/* Prompt */}
       <div className="space-y-2">
