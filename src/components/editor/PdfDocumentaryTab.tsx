@@ -193,7 +193,42 @@ export default function PdfDocumentaryTab({
     })();
   }, [projectId]);
 
-  // ── Persist chapterState to DB ──
+  // ── Hydrate sectionTranslations from DB on mount ──
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const saved = (data?.timeline_state as any)?.sectionTranslations as Record<string, string> | null;
+      if (saved && Object.keys(saved).length > 0) {
+        setSectionTranslations(saved);
+      }
+      translationsHydratedRef.current = true;
+    })();
+  }, [projectId]);
+
+  // ── Persist sectionTranslations to DB ──
+  const saveTranslations = useCallback(async (translations: Record<string, string>) => {
+    if (!projectId || !translationsHydratedRef.current) return;
+    try {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const currentState = (data?.timeline_state as any) ?? {};
+      await supabase
+        .from("project_scriptcreator_state")
+        .update({ timeline_state: { ...currentState, sectionTranslations: translations } as any })
+        .eq("project_id", projectId);
+    } catch (e) {
+      console.error("Failed to persist sectionTranslations:", e);
+    }
+  }, [projectId]);
+
   const saveChapterState = useCallback(async (state: ChapterListState) => {
     if (!projectId) return;
     try {
