@@ -22,9 +22,14 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface MusicTrack {
+  url: string;
+  name: string;
+}
+
 interface MusicStudioProps {
   projectId: string | null;
-  onMusicSelected?: (audioUrl: string, fileName: string) => void;
+  onMusicSelected?: (tracks: MusicTrack[]) => void;
 }
 
 interface MusicEntry {
@@ -59,9 +64,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [entries, setEntries] = useState<MusicEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(() => {
-    if (!projectId) return null;
-    return localStorage.getItem(`music_selected_${projectId}`) || null;
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    if (!projectId) return new Set();
+    try {
+      const saved = localStorage.getItem(`music_selected_${projectId}`);
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -162,16 +170,22 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
     // Restore persisted selection and notify parent
     if (projectId) {
-      const savedId = localStorage.getItem(`music_selected_${projectId}`);
-      if (savedId) {
-        const found = list.find(e => e.id === savedId);
-        if (found) {
-          const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(found.file_path);
-          onMusicSelected?.(urlData.publicUrl, found.file_name);
-        } else {
-          localStorage.removeItem(`music_selected_${projectId}`);
-          setSelectedId(null);
-        }
+      try {
+        const saved = localStorage.getItem(`music_selected_${projectId}`);
+        const ids: string[] = saved ? JSON.parse(saved) : [];
+        const validIds = new Set(ids.filter(id => list.some(e => e.id === id)));
+        setSelectedIds(validIds);
+        // Notify parent with all selected tracks
+        const tracks = list
+          .filter(e => validIds.has(e.id))
+          .map(e => {
+            const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(e.file_path);
+            return { url: urlData.publicUrl, name: e.file_name };
+          });
+        if (tracks.length > 0) onMusicSelected?.(tracks);
+      } catch {
+        localStorage.removeItem(`music_selected_${projectId}`);
+        setSelectedIds(new Set());
       }
     }
 
@@ -277,9 +291,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       await supabase.storage.from("music-audio").remove([entry.file_path]);
       await (supabase as any).from("music_history").delete().eq("id", entry.id);
       setEntries(prev => prev.filter(e => e.id !== entry.id));
-      if (selectedId === entry.id) {
-        setSelectedId(null);
-        if (projectId) localStorage.removeItem(`music_selected_${projectId}`);
+      if (selectedIds.has(entry.id)) {
+        const next = new Set(selectedIds);
+        next.delete(entry.id);
+        setSelectedIds(next);
+        if (projectId) localStorage.setItem(`music_selected_${projectId}`, JSON.stringify([...next]));
+        notifyParent(entries.filter(e => e.id !== entry.id && next.has(e.id)));
       }
       toast.success("Musique supprimée");
     } catch (e: any) {
@@ -289,12 +306,24 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     }
   };
 
+  const notifyParent = (selected: MusicEntry[]) => {
+    const tracks = selected.map(e => {
+      const { data } = supabase.storage.from("music-audio").getPublicUrl(e.file_path);
+      return { url: data.publicUrl, name: e.file_name };
+    });
+    onMusicSelected?.(tracks);
+  };
+
   const handleSelect = (entry: MusicEntry) => {
-    const { data } = supabase.storage.from("music-audio").getPublicUrl(entry.file_path);
-    setSelectedId(entry.id);
-    if (projectId) localStorage.setItem(`music_selected_${projectId}`, entry.id);
-    onMusicSelected?.(data.publicUrl, entry.file_name);
-    toast.success(`"${entry.file_name}" sélectionné pour l'export`);
+    const next = new Set(selectedIds);
+    if (next.has(entry.id)) {
+      next.delete(entry.id);
+    } else {
+      next.add(entry.id);
+    }
+    setSelectedIds(next);
+    if (projectId) localStorage.setItem(`music_selected_${projectId}`, JSON.stringify([...next]));
+    notifyParent(entries.filter(e => next.has(e.id)));
   };
 
   const handleRename = async (entry: MusicEntry) => {
@@ -493,6 +522,11 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
           <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
             <Clock className="h-3.5 w-3.5 text-primary" />
             Bibliothèque musicale
+            {selectedIds.size > 0 && (
+              <span className="ml-1 text-[10px] font-normal text-primary">
+                ({selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""})
+              </span>
+            )}
           </h4>
           <div className="flex items-center gap-1">
             <input
@@ -533,7 +567,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
               <div
                 key={entry.id}
                 className={`flex items-center gap-2 rounded border p-3 sm:p-2.5 group hover:border-primary/30 transition-colors ${
-                  selectedId === entry.id ? "border-primary bg-primary/5" : "border-border bg-background"
+                  selectedIds.has(entry.id) ? "border-primary bg-primary/5" : "border-border bg-background"
                 }`}
               >
                 <button
@@ -578,11 +612,11 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
                   <button
                     onClick={() => handleSelect(entry)}
                     className={`h-9 w-9 sm:h-7 sm:w-7 flex items-center justify-center rounded transition-colors ${
-                      selectedId === entry.id
+                      selectedIds.has(entry.id)
                         ? "text-primary bg-primary/10"
                         : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                     }`}
-                    title="Sélectionner pour l'export"
+                    title={selectedIds.has(entry.id) ? "Retirer de l'export" : "Ajouter à l'export"}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
