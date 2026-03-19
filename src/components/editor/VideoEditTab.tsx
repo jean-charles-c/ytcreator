@@ -298,8 +298,9 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
         .select("timeline_state")
         .eq("project_id", projectId)
         .single();
-      if (data?.timeline_state) {
-        setTimeline(data.timeline_state as unknown as Timeline);
+      const tl = data?.timeline_state as any;
+      if (tl?.videoTrack?.segments && tl?.audioTrack) {
+        setTimeline(tl as unknown as Timeline);
       }
     };
     restore();
