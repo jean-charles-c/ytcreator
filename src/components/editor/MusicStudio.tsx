@@ -218,8 +218,8 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
           setPlayerState(prev => prev ? { ...prev, duration: audio.duration } : prev);
         }
       };
-      audio.ontimeupdate = () => { if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100); };
-      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); };
+      audio.ontimeupdate = () => { if (audio.duration) { setAudioProgress((audio.currentTime / audio.duration) * 100); setCurrentTime(audio.currentTime); } };
+      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); setCurrentTime(0); };
       audio.play();
       setIsPlaying(true);
     }, 100);
