@@ -224,8 +224,40 @@ serve(async (req) => {
     if (!aiResponse || !aiResponse.ok) throw new Error("AI gateway error after retries");
 
     const aiData = await aiResponse.json();
-    const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!imageData) throw new Error("No image generated");
+    console.log("AI response keys:", JSON.stringify(Object.keys(aiData)));
+    const msg = aiData.choices?.[0]?.message;
+    if (msg) {
+      console.log("Message keys:", JSON.stringify(Object.keys(msg)));
+      if (msg.content) {
+        const contentPreview = typeof msg.content === "string"
+          ? msg.content.substring(0, 200)
+          : JSON.stringify(msg.content).substring(0, 200);
+        console.log("Content preview:", contentPreview);
+      }
+      if (msg.images) console.log("Images structure:", JSON.stringify(msg.images).substring(0, 300));
+    }
+
+    // Try multiple known response formats
+    let imageData: string | undefined;
+    // Format 1: images array
+    imageData = msg?.images?.[0]?.image_url?.url;
+    // Format 2: content array with image parts
+    if (!imageData && Array.isArray(msg?.content)) {
+      const imagePart = msg.content.find((p: any) => p.type === "image_url" || p.type === "image");
+      imageData = imagePart?.image_url?.url || imagePart?.url || imagePart?.image?.url;
+    }
+    // Format 3: inline_data in content parts
+    if (!imageData && Array.isArray(msg?.content)) {
+      const inlinePart = msg.content.find((p: any) => p.inline_data?.mime_type?.startsWith("image/"));
+      if (inlinePart?.inline_data) {
+        imageData = `data:${inlinePart.inline_data.mime_type};base64,${inlinePart.inline_data.data}`;
+      }
+    }
+
+    if (!imageData) {
+      console.error("Full AI response:", JSON.stringify(aiData).substring(0, 1000));
+      throw new Error("No image generated");
+    }
 
     const rawImage = await decodeGeneratedImage(imageData);
     const normalizedImage = await enforceExactAspectRatio(rawImage.bytes, selectedAspectRatio);
