@@ -323,7 +323,7 @@ function buildMarkedSsml(
   emphasisBoost = 0
 ): string {
   const parts = shotSentences.map((shot, idx) => {
-    const mark = `<mark name="s_${idx}"/>`;
+    const mark = `<mark name="${shot.id}"/>`;
     let processed = escapeXml(shot.text.trim());
 
     // Prosody MUST run first on clean escaped text (splits by whitespace)
