@@ -578,7 +578,10 @@ export default function Editor() {
         const data = await response.json();
         if (!response.ok || data?.error) throw new Error(data?.error || "Erreur de génération");
         const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
-        if (shotData) setShots(shotData);
+        if (shotData) {
+          const { reordered } = reorderShotsByReadingPosition(shotData as Shot[], scenes);
+          setShots(reordered);
+        }
         toast.success(`${data?.shots_count ?? 0} shots générés`);
       } catch (e: any) {
         console.error(e);
