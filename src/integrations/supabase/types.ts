@@ -86,6 +86,83 @@ export type Database = {
         }
         Relationships: []
       }
+      music_history: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          genre: string | null
+          id: string
+          mood: string | null
+          project_id: string
+          prompt: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          genre?: string | null
+          id?: string
+          mood?: string | null
+          project_id: string
+          prompt: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          genre?: string | null
+          id?: string
+          mood?: string | null
+          project_id?: string
+          prompt?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      music_settings: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          prompt: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          prompt?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          prompt?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_scriptcreator_state: {
         Row: {
           analysis: Json | null
