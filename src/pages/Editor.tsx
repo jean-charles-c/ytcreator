@@ -1009,6 +1009,7 @@ export default function Editor() {
 
   const handleGenerateAllImages = async () => {
     if (!projectId || generatingAllImages) return;
+    cancelImageGenRef.current = false;
     setGeneratingAllImages(true);
     const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
     let count = 0;
@@ -1016,15 +1017,22 @@ export default function Editor() {
     for (const scene of sortedScenes) {
       const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
       for (const shot of sceneShots) {
+        if (cancelImageGenRef.current) break;
         if (shot.image_url) continue;
         if (shotIdx > 0) await new Promise((r) => setTimeout(r, 8000));
+        if (cancelImageGenRef.current) break;
         const url = await generateShotImage(shot.id);
         if (url) count++;
         shotIdx++;
       }
+      if (cancelImageGenRef.current) break;
     }
     setGeneratingAllImages(false);
-    toast.success(`${count} visuel(s) généré(s)`);
+    toast.success(cancelImageGenRef.current ? `Génération stoppée — ${count} visuel(s) créé(s)` : `${count} visuel(s) généré(s)`);
+  };
+
+  const stopImageGeneration = () => {
+    cancelImageGenRef.current = true;
   };
 
   const handleGenerateSceneImages = async (sceneId: string) => {
