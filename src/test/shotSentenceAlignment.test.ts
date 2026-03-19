@@ -23,10 +23,12 @@ describe("alignShotSentencesToScript", () => {
       {
         id: "shot-1",
         text: "A city burns. Its clay tablets harden like brick.",
+        isNewScene: false,
       },
       {
         id: "shot-2",
         text: "The palace falls with a roar.",
+        isNewScene: false,
       },
     ]);
   });
@@ -60,14 +62,17 @@ describe("alignShotSentencesToScript", () => {
       {
         id: "shot-48",
         text: "A small sign sits before a name.",
+        isNewScene: false,
       },
       {
         id: "shot-49",
         text: "It is not spoken aloud.",
+        isNewScene: false,
       },
       {
         id: "shot-50",
         text: "It warns you that a god or metal follows.",
+        isNewScene: false,
       },
     ]);
   });
@@ -93,6 +98,7 @@ describe("alignShotSentencesToScript", () => {
       {
         id: "shot-1",
         text: "A city burns in the night.",
+        isNewScene: false,
       },
       {
         id: "_missing_0",
@@ -102,7 +108,43 @@ describe("alignShotSentencesToScript", () => {
       {
         id: "shot-2",
         text: "The tablets survive the flames.",
+        isNewScene: false,
       },
     ]);
+  });
+
+  it("detects paragraph breaks (\\n\\n) in script text and sets isNewScene accordingly", () => {
+    const shots: ShotSentenceEntry[] = [
+      { id: "shot-1", text: "The sun rises over the valley." },
+      { id: "shot-2", text: "Birds begin to sing." },
+      { id: "shot-3", text: "A new chapter begins." },
+      { id: "shot-4", text: "The hero walks forward." },
+    ];
+
+    const result = alignShotSentencesToScript(
+      shots,
+      "The sun rises over the valley. Birds begin to sing.\n\nA new chapter begins. The hero walks forward."
+    );
+
+    expect(result).toEqual([
+      { id: "shot-1", text: "The sun rises over the valley.", isNewScene: false },
+      { id: "shot-2", text: "Birds begin to sing.", isNewScene: false },
+      { id: "shot-3", text: "A new chapter begins.", isNewScene: true },
+      { id: "shot-4", text: "The hero walks forward.", isNewScene: false },
+    ]);
+  });
+
+  it("paragraph break overrides shot isNewScene=false", () => {
+    const shots: ShotSentenceEntry[] = [
+      { id: "shot-1", text: "First sentence.", isNewScene: false },
+      { id: "shot-2", text: "Second sentence.", isNewScene: false },
+    ];
+
+    const result = alignShotSentencesToScript(
+      shots,
+      "First sentence.\n\nSecond sentence."
+    );
+
+    expect(result[1].isNewScene).toBe(true);
   });
 });
