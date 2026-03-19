@@ -277,7 +277,10 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       await supabase.storage.from("music-audio").remove([entry.file_path]);
       await (supabase as any).from("music_history").delete().eq("id", entry.id);
       setEntries(prev => prev.filter(e => e.id !== entry.id));
-      if (selectedId === entry.id) { setSelectedId(null); }
+      if (selectedId === entry.id) {
+        setSelectedId(null);
+        if (projectId) localStorage.removeItem(`music_selected_${projectId}`);
+      }
       toast.success("Musique supprimée");
     } catch (e: any) {
       toast.error(e?.message || "Erreur");
