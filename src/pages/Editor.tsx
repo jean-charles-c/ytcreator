@@ -1895,22 +1895,25 @@ export default function Editor() {
                 </div>
                 {/* Action history */}
                 {manifestHistory.length > 0 && (
-                  <details className="mt-6 rounded border border-border bg-secondary/30 p-3">
-                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                  <details className="mt-4 sm:mt-6 rounded border border-border bg-secondary/30 p-2 sm:p-3">
+                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
                       Historique des actions ({manifestHistory.length})
                     </summary>
-                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                    <div className="mt-2 space-y-1.5 sm:space-y-1 max-h-40 overflow-y-auto">
                       {[...manifestHistory].reverse().map((a, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border ${
-                            a.type === "merge" ? "bg-primary/10 text-primary border-primary/20" :
-                            a.type === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                            "bg-accent text-accent-foreground border-border"
-                          }`}>
-                            {a.type}
-                          </span>
-                          <span className="truncate">{a.description}</span>
-                          <span className="ml-auto shrink-0 text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
+                        <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border ${
+                              a.type === "merge" ? "bg-primary/10 text-primary border-primary/20" :
+                              a.type === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                              "bg-accent text-accent-foreground border-border"
+                            }`}>
+                              {a.type}
+                            </span>
+                            <span className="sm:hidden text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
+                          </div>
+                          <span className="truncate break-words">{a.description}</span>
+                          <span className="hidden sm:inline ml-auto shrink-0 text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
                         </div>
                       ))}
                     </div>
@@ -1918,8 +1921,8 @@ export default function Editor() {
                 )}
 
                 {/* QA Contrôle qualité */}
-                <details className="mt-6 rounded border border-border bg-card p-3" open>
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
+                <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     Contrôle qualité
                   </summary>
@@ -1933,8 +1936,8 @@ export default function Editor() {
                 </details>
 
                 {/* Manifest Timing */}
-                <details className="mt-4 rounded border border-border bg-card p-3">
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
                     Manifest Timing (synchronisation audio/image)
                   </summary>
                   <div className="mt-3">
@@ -1942,8 +1945,8 @@ export default function Editor() {
                   </div>
                 </details>
 
-                <div className="mt-8 flex gap-3">
-                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
+                <div className="mt-6 sm:mt-8 flex gap-3">
+                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
                     <Play className="h-4 w-4" /> Re-générer tous les shots
                   </Button>
                 </div>
