@@ -117,7 +117,7 @@ export function buildManifestTiming(
       level: "error",
       order: 0,
       shotId: "__audio__",
-      message: "Durée audio indisponible — impossible de construire un timing exact.",
+      message: "Aucun audio VO n'a été généré. Allez dans l'onglet Voice Over pour créer la narration audio.",
     });
     return {
       entries: [],
