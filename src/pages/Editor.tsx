@@ -1826,33 +1826,33 @@ export default function Editor() {
                                 )}
                               </button>
                               {isOpen && (
-                                <div className="px-4 pb-4 pt-2 border-t border-border space-y-4 animate-fade-in">
-                                  <div className="flex items-center flex-wrap gap-2 justify-end">
+                                <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
+                                  <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     <button
                                       onClick={() => handleGenerateSceneImages(scene.id)}
                                       disabled={generatingSceneImages === scene.id}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
                                       title="Générer les visuels de cette scène"
                                     >
-                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
                                       <span>Visuels</span>
                                     </button>
                                     <button
                                       onClick={() => runStoryboard(scene.id)}
                                       disabled={isRegenerating}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
                                       title="Régénérer les shots de cette scène"
                                     >
-                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                      {isRegenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                                       <span>Régénérer</span>
                                     </button>
                                   </div>
 
                                   {/* Scene source text */}
-                                  <div className="rounded border border-border bg-background p-4">
-                                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                                  <div className="rounded border border-border bg-background p-2.5 sm:p-4">
+                                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed italic break-words">"{scene.source_text}"</p>
                                     {(scene as any).source_text_fr && (
-                                      <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                                      <p className="text-xs sm:text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3 break-words">🇫🇷 "{(scene as any).source_text_fr}"</p>
                                     )}
                                   </div>
 
