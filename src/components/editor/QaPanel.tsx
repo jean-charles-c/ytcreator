@@ -89,7 +89,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
           <StatusIcon className="h-4 w-4" />
           <span className="text-xs font-semibold">{statusLabel}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {report.exportAllowed ? (
             <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
               Export autorisé
@@ -103,6 +103,11 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
             <RefreshCw className="h-3 w-3" /> Relancer
           </Button>
         </div>
+        {report.criticalCount > 0 && report.issues.some((i) => i.category === "timing") && (
+          <p className="text-[10px] text-muted-foreground bg-secondary/50 border border-border rounded px-2 py-1.5 leading-relaxed">
+            💡 <strong>Pour corriger :</strong> re-générez les shots de la scène concernée, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.
+          </p>
+        )}
       </div>
 
       {/* Issues list */}
