@@ -145,7 +145,7 @@ export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { startSegmentation: bgStartSegmentation, startStoryboard: bgStartStoryboard, getTask, subscribe, stopTask } = useBackgroundTasks();
+  const { startSegmentation: bgStartSegmentation, startStoryboard: bgStartStoryboard, startImageGen: bgStartImageGen, getTask, subscribe, stopTask } = useBackgroundTasks();
   const isNew = id === "new";
 
   const [title, setTitle] = useState("");
