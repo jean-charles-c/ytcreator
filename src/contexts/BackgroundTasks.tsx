@@ -47,6 +47,13 @@ export interface ExportXmlParams {
   fps: ExportFps;
 }
 
+export interface ImageGenParams {
+  projectId: string;
+  shotIds: string[];
+  model: string;
+  aspectRatio: string;
+}
+
 interface BackgroundTasksContextValue {
   tasks: Record<string, BackgroundTask>;
   startScriptGeneration: (params: ScriptGenParams) => void;
