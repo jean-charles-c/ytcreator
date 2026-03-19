@@ -275,7 +275,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     setAudioProgress(0);
   }, [playerState?.audioUrl]);
 
-  const [voOpen, setVoOpen] = useState(true);
+  const [voOpen, setVoOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
 
   return (
