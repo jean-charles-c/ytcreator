@@ -17,6 +17,7 @@ interface ManifestTimingPanelProps {
 export default function ManifestTimingPanel({ projectId, manifest }: ManifestTimingPanelProps) {
   const [loading, setLoading] = useState(true);
   const [timing, setTiming] = useState<ReturnType<typeof buildManifestTiming> | null>(null);
+  const [rawTimepoints, setRawTimepoints] = useState<ShotTimepoint[] | null>(null);
   const [audioLabel, setAudioLabel] = useState("");
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function ManifestTimingPanel({ projectId, manifest }: ManifestTim
 
       if (!audioFiles || audioFiles.length === 0) {
         setTiming(null);
+        setRawTimepoints(null);
         setAudioLabel("");
         setLoading(false);
         return;
@@ -47,6 +49,7 @@ export default function ManifestTimingPanel({ projectId, manifest }: ManifestTim
 
       const result = buildManifestTiming(manifest, timepoints, duration);
       setTiming(result);
+      setRawTimepoints(timepoints);
       setAudioLabel(`${audio.file_name} — ${duration.toFixed(1)}s`);
       setLoading(false);
     }
@@ -79,7 +82,7 @@ export default function ManifestTimingPanel({ projectId, manifest }: ManifestTim
           Audio : <span className="font-medium text-foreground">{audioLabel}</span>
         </p>
       )}
-      <ManifestTimingTable timing={timing} />
+      <ManifestTimingTable timing={timing} rawTimepoints={rawTimepoints} />
     </div>
   );
 }
