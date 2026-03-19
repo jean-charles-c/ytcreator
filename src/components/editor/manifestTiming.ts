@@ -9,13 +9,14 @@
  * Rules:
  *  - Only active shots appear
  *  - Order follows manifest (scene_order → shot local_order)
- *  - Timepoints matched by shotId (no fuzzy)
- *  - _missing_ timepoints are filtered out
- *  - Gaps/overlaps are detected as issues
+ *  - Timepoints matched by shotId only
+ *  - No proportional fallback
+ *  - Any mismatch blocks the timing manifest
  */
 
 import type { VisualPromptManifest, NormalisedShot } from "./visualPromptTypes";
 import type { ShotTimepoint } from "./timelineAssembly";
+import { validateExactShotTimepoints } from "./exactShotSync";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -54,17 +55,28 @@ export interface ManifestTiming {
   builtAt: string;
 }
 
-// ── Builder ────────────────────────────────────────────────────────
-
-const DEFAULT_SEGMENT_DURATION = 4;
+function pushUniqueIssue(
+  issues: ManifestTimingIssue[],
+  nextIssue: ManifestTimingIssue
+) {
+  const exists = issues.some(
+    (issue) =>
+      issue.order === nextIssue.order &&
+      issue.shotId === nextIssue.shotId &&
+      issue.message === nextIssue.message
+  );
+  if (!exists) {
+    issues.push(nextIssue);
+  }
+}
 
 /**
  * Build a ManifestTiming from a VisualPromptManifest + audio data.
  *
- * Strategy (in priority order):
- *  1. If timepoints exist and match shotIds → use exact timestamps
- *  2. If audio duration known → proportional by char count
- *  3. Fallback → 4s per shot
+ * Strategy:
+ *  1. Validate that every active shot has one exact timepoint
+ *  2. Build start/duration only from exact timestamps
+ *  3. Block the manifest if any mismatch exists
  */
 export function buildManifestTiming(
   manifest: VisualPromptManifest,
@@ -73,13 +85,12 @@ export function buildManifestTiming(
 ): ManifestTiming {
   const issues: ManifestTimingIssue[] = [];
 
-  // Collect all active shots in manifest order
   const activeShots: { shot: NormalisedShot; fragmentText: string; sceneOrder: number }[] = [];
   for (const scene of manifest.scenes) {
     for (const shot of scene.shots) {
       if (shot.status !== "active") continue;
       const fragTexts = shot.fragmentIds
-        .map((fid) => scene.fragments.find((f) => f.fragmentId === fid)?.text ?? "")
+        .map((fid) => scene.fragments.find((fragment) => fragment.fragmentId === fid)?.text ?? "")
         .filter(Boolean);
       activeShots.push({
         shot,
@@ -89,94 +100,115 @@ export function buildManifestTiming(
     }
   }
 
-  // Filter real timepoints (no _missing_)
+  const expectedShotIds = activeShots.map((item) => item.shot.shotId);
+  const orderMap = new Map(expectedShotIds.map((shotId, index) => [shotId, index + 1]));
+
+  if (activeShots.length === 0) {
+    return {
+      entries: [],
+      totalDuration: 0,
+      issues,
+      builtAt: new Date().toISOString(),
+    };
+  }
+
+  if (!(audioDuration > 0)) {
+    issues.push({
+      level: "error",
+      order: 0,
+      shotId: "__audio__",
+      message: "Durée audio indisponible — impossible de construire un timing exact.",
+    });
+    return {
+      entries: [],
+      totalDuration: 0,
+      issues,
+      builtAt: new Date().toISOString(),
+    };
+  }
+
+  const validation = validateExactShotTimepoints(expectedShotIds, timepoints ?? null);
+  for (const shotId of validation.missingIds) {
+    pushUniqueIssue(issues, {
+      level: "error",
+      order: orderMap.get(shotId) ?? 0,
+      shotId,
+      message: "Aucun timepoint exact trouvé pour ce shot.",
+    });
+  }
+
+  for (const shotId of validation.unexpectedIds) {
+    pushUniqueIssue(issues, {
+      level: "error",
+      order: 0,
+      shotId,
+      message: "Un timepoint référence un shot supprimé ou obsolète.",
+    });
+  }
+
+  for (const shotId of validation.placeholderIds) {
+    pushUniqueIssue(issues, {
+      level: "error",
+      order: 0,
+      shotId,
+      message: "Un marqueur fantôme (_missing_) a été détecté dans shot_timepoints.",
+    });
+  }
+
+  for (const shotId of validation.duplicateIds) {
+    pushUniqueIssue(issues, {
+      level: "error",
+      order: orderMap.get(shotId) ?? 0,
+      shotId,
+      message: "Ce shot possède plusieurs timepoints concurrents.",
+    });
+  }
+
+  if (!validation.ok && issues.length === 0) {
+    for (const message of validation.errors) {
+      pushUniqueIssue(issues, {
+        level: "error",
+        order: 0,
+        shotId: "__manifest__",
+        message,
+      });
+    }
+  }
+
+  if (!validation.ok) {
+    return {
+      entries: [],
+      totalDuration: Math.round(audioDuration * 100) / 100,
+      issues,
+      builtAt: new Date().toISOString(),
+    };
+  }
+
   const realTimepoints = (timepoints ?? []).filter((tp) => !tp.shotId.startsWith("_missing_"));
-  const timepointMap = new Map<string, number>();
-  for (const tp of realTimepoints) {
-    timepointMap.set(tp.shotId, tp.timeSeconds);
-  }
+  const timepointMap = new Map<string, number>(
+    realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
+  );
+  const roundedAudioDuration = Math.round(audioDuration * 100) / 100;
 
-  // Check how many shots have a matching timepoint
-  const matchCount = activeShots.filter((s) => timepointMap.has(s.shot.shotId)).length;
-  const useTimepoints = matchCount > 0 && matchCount >= activeShots.length * 0.5;
-  const useProportional = !useTimepoints && audioDuration > 0;
-
-  // For proportional: total chars
-  const totalChars = useProportional
-    ? activeShots.reduce((sum, s) => sum + Math.max(s.fragmentText.length, 10), 0)
-    : 0;
-
-  let currentTime = 0;
-
-  // Pre-compute rounded starts for all shots to ensure perfect continuity
-  const roundedStarts: number[] = activeShots.map((item) => {
-    if (useTimepoints) {
-      const tp = timepointMap.get(item.shot.shotId);
-      if (tp !== undefined && Number.isFinite(tp) && tp >= 0) {
-        return Math.round(tp * 100) / 100;
-      }
-    }
-    return -1; // placeholder, will be resolved below
+  const roundedStarts = activeShots.map((item) => {
+    const start = timepointMap.get(item.shot.shotId);
+    return Math.round((start ?? 0) * 100) / 100;
   });
-
-  // Fill in missing starts sequentially
-  for (let i = 0; i < roundedStarts.length; i++) {
-    if (roundedStarts[i] < 0) {
-      roundedStarts[i] = i === 0 ? 0 : roundedStarts[i - 1];
-    }
-  }
 
   const entries: ManifestTimingEntry[] = activeShots.map((item, idx) => {
     const order = idx + 1;
-    let start: number;
-    let duration: number;
-    let source: ManifestTimingEntry["source"];
+    const start = roundedStarts[idx];
+    const nextStart = idx < activeShots.length - 1 ? roundedStarts[idx + 1] : roundedAudioDuration;
+    const duration = Math.round((nextStart - start) * 100) / 100;
 
-    if (useTimepoints) {
-      const tp = timepointMap.get(item.shot.shotId);
-      if (tp !== undefined && Number.isFinite(tp) && tp >= 0) {
-        start = roundedStarts[idx];
-        source = "timepoint";
-      } else {
-        start = roundedStarts[idx];
-        source = "proportional";
-        issues.push({
-          level: "warning",
-          order,
-          shotId: item.shot.shotId,
-          message: `No timepoint found for shot — using accumulated time`,
-        });
-      }
-
-      // Duration = next shot's rounded start - this rounded start (ensures no micro-gaps)
-      if (idx < activeShots.length - 1) {
-        duration = roundedStarts[idx + 1] - start;
-        if (duration <= 0) {
-          // Fallback for edge case
-          const charWeight = Math.max(item.fragmentText.length, 10);
-          duration = audioDuration > 0
-            ? Math.round((charWeight / Math.max(totalChars, 1)) * audioDuration * 100) / 100
-            : DEFAULT_SEGMENT_DURATION;
-        }
-      } else {
-        duration = audioDuration > 0
-          ? Math.round((audioDuration - start) * 100) / 100
-          : DEFAULT_SEGMENT_DURATION;
-      }
-
-      duration = Math.max(0.1, duration);
-    } else if (useProportional) {
-      start = Math.round(currentTime * 100) / 100;
-      const charWeight = Math.max(item.fragmentText.length, 10);
-      duration = Math.round((charWeight / totalChars) * audioDuration * 100) / 100;
-      source = "proportional";
-    } else {
-      start = Math.round(currentTime * 100) / 100;
-      duration = DEFAULT_SEGMENT_DURATION;
-      source = "fixed";
+    if (!(duration > 0)) {
+      pushUniqueIssue(issues, {
+        level: "error",
+        order,
+        shotId: item.shot.shotId,
+        message: "Durée invalide détectée pour ce shot dans le manifest timing.",
+      });
     }
-
-    currentTime = start + duration;
 
     return {
       shotId: item.shot.shotId,
@@ -187,43 +219,13 @@ export function buildManifestTiming(
       audioSegmentKey: item.shot.shotId,
       start,
       duration,
-      source,
+      source: "timepoint",
     };
   });
 
-  // Validate continuity
-  for (let i = 1; i < entries.length; i++) {
-    const prev = entries[i - 1];
-    const curr = entries[i];
-    const expectedStart = Math.round((prev.start + prev.duration) * 100) / 100;
-    const gap = Math.round((curr.start - expectedStart) * 100) / 100;
-
-    if (gap > 0.5) {
-      issues.push({
-        level: "warning",
-        order: curr.order,
-        shotId: curr.shotId,
-        message: `Gap of ${gap}s detected before this shot`,
-      });
-    } else if (gap < -0.1) {
-      issues.push({
-        level: "error",
-        order: curr.order,
-        shotId: curr.shotId,
-        message: `Overlap of ${Math.abs(gap)}s detected with previous shot`,
-      });
-    }
-  }
-
-  const totalDuration = audioDuration > 0
-    ? audioDuration
-    : entries.length > 0
-      ? entries[entries.length - 1].start + entries[entries.length - 1].duration
-      : 0;
-
   return {
     entries,
-    totalDuration,
+    totalDuration: roundedAudioDuration,
     issues,
     builtAt: new Date().toISOString(),
   };

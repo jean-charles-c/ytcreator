@@ -1,4 +1,5 @@
 import type { Tables } from "@/integrations/supabase/types";
+import { validateExactShotTimepoints } from "./exactShotSync";
 
 type Shot = Tables<"shots">;
 type Scene = Tables<"scenes">;
@@ -51,19 +52,19 @@ export interface Timeline {
   totalDuration: number;
   segmentCount: number;
   createdAt: string;
-  /** If available, precise shot timepoints from TTS marks */
+  /** Exact shot timepoints from TTS marks */
   shotTimepoints?: ShotTimepoint[] | null;
 }
 
 // ── Assembly logic ─────────────────────────────────────────────────
 
 /**
- * Generates a Timeline from existing assets.
+ * Generates a Timeline from existing assets using exact shotId ↔ timepoint mapping only.
  *
- * Duration strategy (in priority order):
- * 1. If shotTimepoints are available from TTS marks, use precise timestamps
- * 2. If audio duration is known, distribute proportionally by char count
- * 3. Fallback: 4 seconds per segment
+ * Rules:
+ * 1. Every current shot must have exactly one matching timepoint
+ * 2. No _missing_ placeholder is tolerated
+ * 3. No proportional or fixed fallback is allowed
  */
 export function assembleTimeline(
   scenes: Scene[],
@@ -71,11 +72,9 @@ export function assembleTimeline(
   audioFile: AudioFile,
   shotTimepoints?: ShotTimepoint[] | null
 ): Timeline {
-  // Build a scene lookup
   const sceneMap = new Map<string, Scene>();
-  scenes.forEach((s) => sceneMap.set(s.id, s));
+  scenes.forEach((scene) => sceneMap.set(scene.id, scene));
 
-  // Sort shots chronologically: by scene order first, then shot_order
   const sortedShots = [...shots].sort((a, b) => {
     const sceneA = sceneMap.get(a.scene_id);
     const sceneB = sceneMap.get(b.scene_id);
@@ -86,81 +85,10 @@ export function assembleTimeline(
   });
 
   const audioDuration = audioFile.duration_estimate ?? 0;
-  const DEFAULT_SEGMENT_DURATION = 4;
-  const MAX_TIMECODE_DRIFT_FOR_ID_MATCH = 30;
-
-  // ── Strategy 1: Precise timepoints from TTS marks ──
-  if (shotTimepoints && shotTimepoints.length > 0) {
-    // Filter out phantom timepoints injected for missing sentences (_missing_*)
-    const realTimepoints = shotTimepoints.filter(tp => !tp.shotId.startsWith("_missing_"));
-
-    // Build a map: shotId -> timeSeconds
-    const timepointMap = new Map<string, number>();
-    // Also build ordered array for sequential fallback
-    const orderedTimepoints = [...realTimepoints].sort((a, b) => a.shotIndex - b.shotIndex);
-
-    for (const tp of realTimepoints) {
-      timepointMap.set(tp.shotId, tp.timeSeconds);
-    }
-
-    const isReasonableTime = (value: number | undefined): value is number => {
-      if (value === undefined || !Number.isFinite(value) || value < 0) return false;
-      return audioDuration <= 0 || value <= audioDuration + MAX_TIMECODE_DRIFT_FOR_ID_MATCH;
-    };
-
-    const resolveStartTime = (shotId: string, index: number): number => {
-      const explicit = timepointMap.get(shotId);
-      const sequential = orderedTimepoints[index]?.timeSeconds;
-
-      if (isReasonableTime(explicit) && !isReasonableTime(sequential)) return explicit;
-      if (!isReasonableTime(explicit) && isReasonableTime(sequential)) return sequential;
-      if (!isReasonableTime(explicit) && !isReasonableTime(sequential)) return 0;
-
-      return Math.abs(explicit - sequential) > MAX_TIMECODE_DRIFT_FOR_ID_MATCH
-        ? sequential
-        : explicit;
-    };
-
-    const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
-      const scene = sceneMap.get(shot.scene_id);
-      const startTime = resolveStartTime(shot.id, idx);
-
-      // Duration = next shot's start time - this shot's start time
-      let duration: number;
-      if (idx < sortedShots.length - 1) {
-        const nextShotId = sortedShots[idx + 1].id;
-        const nextStart = resolveStartTime(nextShotId, idx + 1);
-        duration = nextStart - startTime;
-      } else {
-        // Last segment: extend to audio duration
-        duration = audioDuration > 0 ? audioDuration - startTime : DEFAULT_SEGMENT_DURATION;
-      }
-
-      // Safety: minimum duration
-      duration = Math.max(0.3, duration);
-
-      return {
-        id: shot.id,
-        shotOrder: shot.shot_order,
-        sceneId: shot.scene_id,
-        sceneTitle: scene?.title ?? `Scène ${shot.scene_id.slice(0, 6)}`,
-        sceneOrder: scene?.scene_order ?? 0,
-        sentence: shot.source_sentence ?? "",
-        sentenceFr: shot.source_sentence_fr ?? null,
-        imageUrl: shot.image_url,
-        shotType: shot.shot_type,
-        description: shot.description,
-        duration: Math.round(duration * 100) / 100,
-        startTime: Math.round(startTime * 100) / 100,
-      };
-    });
-
-    const totalDuration = audioDuration > 0 ? audioDuration : (segments.length > 0 ? segments[segments.length - 1].startTime + segments[segments.length - 1].duration : 0);
-
+  if (sortedShots.length === 0) {
     const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vo-audio/${audioFile.file_path}`;
-
     return {
-      videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration },
+      videoTrack: { type: "video", label: "Piste vidéo", segments: [], totalDuration: 0 },
       audioTrack: {
         audioId: audioFile.id,
         fileName: audioFile.file_name,
@@ -168,33 +96,48 @@ export function assembleTimeline(
         durationEstimate: audioDuration,
         audioUrl,
       },
-      totalDuration,
-      segmentCount: segments.length,
+      totalDuration: 0,
+      segmentCount: 0,
       createdAt: new Date().toLocaleString("fr-FR"),
-      shotTimepoints,
+      shotTimepoints: shotTimepoints ?? null,
     };
   }
 
-  // ── Strategy 2 & 3: Proportional or fixed duration (legacy) ──
-  const totalChars = sortedShots.reduce((sum, shot) => {
-    const sentence = shot.source_sentence || shot.source_sentence_fr || shot.description;
-    return sum + Math.max(sentence.length, 10);
-  }, 0);
+  if (!(audioDuration > 0)) {
+    throw new Error("Sync audio bloquée — durée du fichier audio introuvable.");
+  }
 
-  const useProportional = audioDuration > 0 && totalChars > 0;
+  const expectedShotIds = sortedShots.map((shot) => shot.id);
+  const validation = validateExactShotTimepoints(expectedShotIds, shotTimepoints ?? null);
+  if (!validation.ok) {
+    throw new Error(`Sync audio bloquée — ${validation.errors[0] ?? "shot_timepoints exacts invalides."}`);
+  }
 
-  let currentTime = 0;
+  const realTimepoints = (shotTimepoints ?? []).filter((tp) => !tp.shotId.startsWith("_missing_"));
+  const timepointMap = new Map<string, number>(
+    realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
+  );
 
-  const segments: ShotSegment[] = sortedShots.map((shot) => {
+  const roundedAudioDuration = Math.round(audioDuration * 100) / 100;
+  const roundedStarts = sortedShots.map((shot) => {
+    const start = timepointMap.get(shot.id);
+    if (start === undefined) {
+      throw new Error(`Sync audio bloquée — timepoint manquant pour le shot ${shot.id.slice(0, 8)}.`);
+    }
+    return Math.round(start * 100) / 100;
+  });
+
+  const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
     const scene = sceneMap.get(shot.scene_id);
-    const sentence = shot.source_sentence || shot.source_sentence_fr || shot.description;
-    const charWeight = Math.max(sentence.length, 10);
+    const startTime = roundedStarts[idx];
+    const nextStart = idx < sortedShots.length - 1 ? roundedStarts[idx + 1] : roundedAudioDuration;
+    const duration = Math.round((nextStart - startTime) * 100) / 100;
 
-    const duration = useProportional
-      ? (charWeight / totalChars) * audioDuration
-      : DEFAULT_SEGMENT_DURATION;
+    if (!(duration > 0)) {
+      throw new Error(`Sync audio bloquée — durée invalide entre les shots ${idx + 1}${idx < sortedShots.length - 1 ? ` et ${idx + 2}` : " et la fin audio"}.`);
+    }
 
-    const segment: ShotSegment = {
+    return {
       id: shot.id,
       shotOrder: shot.shot_order,
       sceneId: shot.scene_id,
@@ -205,21 +148,15 @@ export function assembleTimeline(
       imageUrl: shot.image_url,
       shotType: shot.shot_type,
       description: shot.description,
-      duration: Math.round(duration * 100) / 100,
-      startTime: Math.round(currentTime * 100) / 100,
+      duration,
+      startTime,
     };
-
-    currentTime += duration;
-
-    return segment;
   });
-
-  const totalDuration = useProportional ? audioDuration : currentTime;
 
   const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vo-audio/${audioFile.file_path}`;
 
   return {
-    videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration },
+    videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration: roundedAudioDuration },
     audioTrack: {
       audioId: audioFile.id,
       fileName: audioFile.file_name,
@@ -227,9 +164,10 @@ export function assembleTimeline(
       durationEstimate: audioDuration,
       audioUrl,
     },
-    totalDuration,
+    totalDuration: roundedAudioDuration,
     segmentCount: segments.length,
     createdAt: new Date().toLocaleString("fr-FR"),
+    shotTimepoints: shotTimepoints ?? null,
   };
 }
 
