@@ -9,8 +9,10 @@ import {
   type ExportProgress,
 } from "@/components/editor/videoExportEngine";
 import { exportTimelineToXmlZip } from "@/components/editor/xmlExportEngine";
-import type { Timeline } from "@/components/editor/timelineAssembly";
+import type { Timeline, ShotTimepoint } from "@/components/editor/timelineAssembly";
 import type { Chapter, ChapterListState } from "@/components/editor/chapterTypes";
+import { buildManifest } from "@/components/editor/visualPromptTypes";
+import { buildManifestTiming } from "@/components/editor/manifestTiming";
 
 // ─── Types ──────────────────────────────────────────────────────────
 export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml" | "image-gen";
@@ -527,8 +529,10 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        // Load validated chapters from DB for marker injection
+        // Load validated chapters and build manifest timing for deterministic export
         let chapters: Chapter[] | undefined;
+        let manifestEntries: import("@/components/editor/manifestTiming").ManifestTimingEntry[] | undefined;
+
         try {
           const { data: stateData } = await supabase
             .from("project_scriptcreator_state")
@@ -541,6 +545,23 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           }
         } catch { /* no chapters — export without markers */ }
 
+        // Build manifest timing from scenes/shots + audio timepoints
+        try {
+          const [{ data: dbScenes }, { data: dbShots }, { data: audioFiles }] = await Promise.all([
+            supabase.from("scenes").select("*").eq("project_id", params.projectId),
+            supabase.from("shots").select("*").eq("project_id", params.projectId),
+            supabase.from("vo_audio_history").select("*").eq("project_id", params.projectId).order("created_at", { ascending: false }).limit(1),
+          ]);
+
+          if (dbScenes?.length && dbShots?.length && audioFiles?.length) {
+            const manifest = buildManifest(params.projectId, dbScenes, dbShots);
+            const timepoints = (audioFiles[0].shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
+            const duration = audioFiles[0].duration_estimate ?? 0;
+            const timing = buildManifestTiming(manifest, timepoints, duration);
+            manifestEntries = timing.entries;
+          }
+        } catch { /* fallback to legacy path */ }
+
         const blob = await exportTimelineToXmlZip(params.timeline, params.fps, (p) => {
           if (ac.signal.aborted) return;
           updateTask(key, {
@@ -550,7 +571,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               message: p.message,
             },
           });
-        }, chapters);
+        }, chapters, manifestEntries);
         if (ac.signal.aborted) return;
 
         const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.zip`;

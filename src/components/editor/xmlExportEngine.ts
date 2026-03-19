@@ -4,6 +4,7 @@ import type { ExportFps } from "./videoExportEngine";
 import { buildClipFrames, escapeXml } from "./xmlExportUtils";
 import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
+import type { ManifestTimingEntry } from "./manifestTiming";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
@@ -24,29 +25,65 @@ function getImageExtension(url: string): string {
   return "jpg";
 }
 
+// ── Frame calculation from ManifestTiming ──────────────────────────
+
+interface ClipFrame {
+  start: number;
+  end: number;
+}
+
+/**
+ * Build clip frame ranges directly from ManifestTiming entries.
+ * Each entry's start/duration is the single source of truth — no re-interpretation.
+ */
+function buildClipFramesFromManifest(
+  entries: ManifestTimingEntry[],
+  fps: ExportFps
+): ClipFrame[] {
+  if (entries.length === 0) return [];
+
+  const frames: ClipFrame[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const startFrame = Math.max(0, Math.round(entries[i].start * fps));
+    const endFrame = Math.round((entries[i].start + entries[i].duration) * fps);
+    // Ensure at least 1 frame and no overlap with previous
+    const prevEnd = frames.length > 0 ? frames[frames.length - 1].end : 0;
+    frames.push({
+      start: Math.max(startFrame, prevEnd),
+      end: Math.max(endFrame, Math.max(startFrame, prevEnd) + 1),
+    });
+  }
+  return frames;
+}
+
+// ── Segment info for XML generation ────────────────────────────────
+
+interface XmlSegment {
+  id: string;
+  sceneTitle: string;
+  description: string;
+  sentence: string;
+  sentenceFr: string | null;
+  imageUrl: string | null;
+  shotType: string;
+}
+
 /**
  * Generate FCP XML with local relative paths to bundled media.
+ * When manifestEntries are provided, they are the sole source of truth for timing.
  */
 function generateXml(
-  timeline: Timeline,
+  segments: XmlSegment[],
+  clipFrames: ClipFrame[],
+  totalFrames: number,
+  audioTrack: { fileName: string; durationEstimate: number },
   fps: ExportFps,
   imageFileNames: Map<number, string>,
   audioFileName: string,
   exportUid: string,
   markersXml: string = ""
 ): string {
-  const { videoTrack, audioTrack, totalDuration } = timeline;
-  const segments = videoTrack.segments;
-
-  // Handle frames: extra source frames before/after for transitions in NLEs
-  const HANDLE_FRAMES = Math.round(fps * 2); // 2 seconds of handles on each side
-
-  // Build frame ranges from precise timepoints when available.
-  // This avoids cumulative drift caused by re-quantizing rounded timeline values.
-  const clipFrames = buildClipFrames(timeline, fps);
-  const totalFrames = clipFrames.length > 0
-    ? clipFrames[clipFrames.length - 1].end
-    : Math.ceil(totalDuration * fps);
+  const HANDLE_FRAMES = Math.round(fps * 2);
 
   const clipItems = segments.map((seg, i) => {
     const { start: startFrame, end: endFrame } = clipFrames[i];
@@ -59,9 +96,7 @@ function generateXml(
     const localPath = imageFileNames.get(i) ?? "";
     const masterClipId = `masterclip-${exportUid}-img-${globalIndex}`;
     const fileId = `file-${exportUid}-img-${globalIndex}`;
-    // Source duration = visible duration + handles on both sides
     const fileDuration = dur + HANDLE_FRAMES * 2;
-    // in/out point into the source: start after the pre-handle
     const inPoint = HANDLE_FRAMES;
     const outPoint = HANDLE_FRAMES + dur;
 
@@ -111,7 +146,7 @@ function generateXml(
   }).join("\n");
 
   const audioEndFrame = Math.max(
-    Math.round((audioTrack.durationEstimate || totalDuration) * fps),
+    Math.round((audioTrack.durationEstimate || 0) * fps),
     totalFrames
   );
 
@@ -202,27 +237,42 @@ export interface XmlExportProgress {
 
 /**
  * Export timeline as a ZIP containing the FCP XML + all media files.
- * Returns a Blob of the ZIP.
+ *
+ * When manifestEntries are provided, they are the sole source of truth
+ * for timing (start/duration). The Timeline is only used for media URLs
+ * and audio track info.
  */
 export async function exportTimelineToXmlZip(
   timeline: Timeline,
   fps: ExportFps = 24,
   onProgress?: (p: XmlExportProgress) => void,
-  chapters?: Chapter[]
+  chapters?: Chapter[],
+  manifestEntries?: ManifestTimingEntry[]
 ): Promise<Blob> {
   const zip = new JSZip();
   const mediaFolder = zip.folder("media")!;
   const segments = timeline.videoTrack.segments;
 
+  // Determine which segments to export:
+  // If manifestEntries provided, only export shots that appear in the manifest (active only)
+  const useManifest = manifestEntries && manifestEntries.length > 0;
+  const manifestShotIds = useManifest ? new Set(manifestEntries.map((e) => e.shotId)) : null;
+  const exportSegments = manifestShotIds
+    ? segments.filter((seg) => manifestShotIds.has(seg.id))
+    : segments;
+
+  // Build segment index map (original index in segments array → export index)
+  const segmentOriginalIndices = exportSegments.map((seg) => segments.indexOf(seg));
+
   const imageFileNames = new Map<number, string>();
 
   // ── Download images ──
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
+  for (let i = 0; i < exportSegments.length; i++) {
+    const seg = exportSegments[i];
     onProgress?.({
       phase: "images",
-      percent: Math.round((i / segments.length) * 60),
-      message: `Téléchargement image ${i + 1}/${segments.length}…`,
+      percent: Math.round((i / exportSegments.length) * 60),
+      message: `Téléchargement image ${i + 1}/${exportSegments.length}…`,
     });
 
     if (seg.imageUrl) {
@@ -245,12 +295,51 @@ export async function exportTimelineToXmlZip(
     mediaFolder.file(audioFileName, audioData);
   }
 
-  // ── Generate XML with relative paths ──
+  // ── Build clip frames ──
+  let clipFrames: ClipFrame[];
+  let totalFrames: number;
+
+  if (useManifest) {
+    // PRIMARY PATH: frames from manifest timing (deterministic, no drift)
+    clipFrames = buildClipFramesFromManifest(manifestEntries, fps);
+    totalFrames = clipFrames.length > 0
+      ? clipFrames[clipFrames.length - 1].end
+      : Math.ceil(timeline.totalDuration * fps);
+  } else {
+    // LEGACY PATH: frames from timeline timepoints
+    clipFrames = buildClipFrames(timeline, fps);
+    totalFrames = clipFrames.length > 0
+      ? clipFrames[clipFrames.length - 1].end
+      : Math.ceil(timeline.totalDuration * fps);
+  }
+
+  // ── Build XML segments ──
+  const xmlSegments: XmlSegment[] = exportSegments.map((seg) => ({
+    id: seg.id,
+    sceneTitle: seg.sceneTitle,
+    description: seg.description,
+    sentence: seg.sentence,
+    sentenceFr: seg.sentenceFr,
+    imageUrl: seg.imageUrl,
+    shotType: seg.shotType,
+  }));
+
+  // ── Generate XML ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
   const exportUid = crypto.randomUUID().slice(0, 8);
   const timelineMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
   const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
-  const xml = generateXml(timeline, fps, imageFileNames, `media/${audioFileName}`, exportUid, markersXml);
+  const xml = generateXml(
+    xmlSegments,
+    clipFrames,
+    totalFrames,
+    { fileName: timeline.audioTrack.fileName, durationEstimate: timeline.audioTrack.durationEstimate },
+    fps,
+    imageFileNames,
+    `media/${audioFileName}`,
+    exportUid,
+    markersXml
+  );
   zip.file("timeline.xml", xml);
 
   // ── Generate ZIP ──
