@@ -351,7 +351,9 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
         <div className="rounded-lg border border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold text-foreground">Lecteur</h4>
-            <span className="text-[10px] text-muted-foreground font-mono">{formatDuration(playerState.duration)}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {formatDuration(currentTime)} / {formatDuration(playerState.duration)}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button
