@@ -1608,7 +1608,19 @@ export default function Editor() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">{shots.length} shots / {scenes.length} scènes — Cliquez pour éditer.</p>
+                {(() => {
+                  const shotsWithImage = shots.filter((s) => s.image_url).length;
+                  const sortedSc = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+                  const completedScenes = sortedSc.filter((sc) => {
+                    const scShots = shots.filter((s) => s.scene_id === sc.id);
+                    return scShots.length > 0 && scShots.every((s) => s.image_url);
+                  }).length;
+                  return (
+                    <p className="text-sm text-muted-foreground">
+                      Visuels générés pour : <span className="font-semibold text-foreground">{shotsWithImage} shot{shotsWithImage > 1 ? "s" : ""}</span> / <span className="font-semibold text-foreground">{completedScenes} scène{completedScenes > 1 ? "s" : ""}</span>
+                    </p>
+                  );
+                })()}
                 {shots.some((s) => s.generation_cost > 0) && (
                   <p className="text-xs font-medium text-primary mt-1">
                     Coût total Cloud + AI : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0).toFixed(2)} $
