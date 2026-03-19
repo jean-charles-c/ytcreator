@@ -28,6 +28,9 @@ export interface BackgroundTask {
   totalScenes?: number;
   /** Export progress */
   exportProgress?: ExportProgress;
+  /** Image gen progress */
+  completedShots?: number;
+  totalShots?: number;
 }
 
 type Listener = (task: BackgroundTask) => void;
