@@ -803,43 +803,35 @@ export default function Editor() {
 
   const handleShotMergeWithNext = async (shotId: string) => {
     try {
-      const shotIndex = shots.findIndex((s) => s.id === shotId);
-      if (shotIndex === -1) return;
-      const shot = shots[shotIndex];
+      const shot = shots.find((s) => s.id === shotId);
+      if (!shot) return;
 
-      // Find adjacent shots in the same scene, sorted by shot_order
-      const sceneShots = shots
-        .filter((s) => s.scene_id === shot.scene_id)
-        .sort((a, b) => a.shot_order - b.shot_order);
-      const posInScene = sceneShots.findIndex((s) => s.id === shotId);
-      if (posInScene === -1 || posInScene >= sceneShots.length - 1) {
+      const scene = scenes.find((sc) => sc.id === shot.scene_id);
+      if (!scene) return;
+
+      const sceneShots = shots.filter((s) => s.scene_id === shot.scene_id);
+      const mergeResult = computeMerge(sceneShots, shotId, scene);
+      if (!mergeResult) {
         toast.warning("Ce shot est le dernier de sa scène, pas de shot suivant à fusionner.");
         return;
       }
 
-      const nextShot = sceneShots[posInScene + 1];
-
-      // Combine source sentences
-      const mergedSentence = [shot.source_sentence, nextShot.source_sentence].filter(Boolean).join(" ");
-      const mergedSentenceFr = [shot.source_sentence_fr, nextShot.source_sentence_fr].filter(Boolean).join(" ") || null;
+      const { survivorUpdate, absorbedId, action } = mergeResult;
 
       // Update the surviving shot
       const { error: updateError } = await supabase
         .from("shots")
-        .update({
-          source_sentence: mergedSentence,
-          source_sentence_fr: mergedSentenceFr,
-        })
-        .eq("id", shot.id);
+        .update({ source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr })
+        .eq("id", survivorUpdate.id);
       if (updateError) { toast.error("Erreur lors de la fusion"); return; }
 
       // Delete the absorbed shot
-      const { error: deleteError } = await supabase.from("shots").delete().eq("id", nextShot.id);
+      const { error: deleteError } = await supabase.from("shots").delete().eq("id", absorbedId);
       if (deleteError) { toast.error("Erreur lors de la suppression du shot fusionné"); return; }
 
       // Reorder remaining shots in the scene
       const remainingSceneShots = sceneShots
-        .filter((s) => s.id !== nextShot.id)
+        .filter((s) => s.id !== absorbedId)
         .sort((a, b) => a.shot_order - b.shot_order);
       for (let i = 0; i < remainingSceneShots.length; i++) {
         if (remainingSceneShots[i].shot_order !== i + 1) {
@@ -850,13 +842,12 @@ export default function Editor() {
       // Update local state
       setShots((prev) => {
         const updated = prev
-          .filter((s) => s.id !== nextShot.id)
-          .map((s) => {
-            if (s.id === shot.id) {
-              return { ...s, source_sentence: mergedSentence, source_sentence_fr: mergedSentenceFr };
-            }
-            return s;
-          });
+          .filter((s) => s.id !== absorbedId)
+          .map((s) =>
+            s.id === survivorUpdate.id
+              ? { ...s, source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr }
+              : s
+          );
         // Fix shot_order locally
         const sceneId = shot.scene_id;
         const sceneGroup = updated.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
@@ -865,7 +856,8 @@ export default function Editor() {
         return updated.map((s) => orderMap.has(s.id) ? { ...s, shot_order: orderMap.get(s.id)! } : s);
       });
 
-      toast.success("Shots fusionnés — phrases combinées");
+      setManifestHistory((prev) => [...prev, action]);
+      toast.success("Shots fusionnés — fragments combinés");
     } catch (e) {
       console.error("Merge exception:", e);
       toast.error("Erreur lors de la fusion");
