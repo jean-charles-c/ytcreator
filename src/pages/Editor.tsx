@@ -32,7 +32,7 @@ import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import VisualGallery from "@/components/editor/VisualGallery";
 import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
-import { buildManifest, validateManifest } from "@/components/editor/visualPromptTypes";
+import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
