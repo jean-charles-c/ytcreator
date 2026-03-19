@@ -63,6 +63,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load saved settings
