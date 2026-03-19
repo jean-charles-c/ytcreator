@@ -1790,15 +1790,15 @@ export default function Editor() {
                                 className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-left hover:bg-secondary/50 transition-colors min-h-[48px]"
                               >
                                 <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
-                                <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
-                                <span className="text-xs text-muted-foreground">—</span>
-                                <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
+                                <span className="text-xs font-display font-medium text-primary whitespace-nowrap">S{scene.scene_order}</span>
+                                <span className="hidden sm:inline text-xs text-muted-foreground">—</span>
+                                <span className="text-xs sm:text-sm font-display text-foreground truncate">{scene.title}</span>
                                 {hasErrors && (
-                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive font-medium">
-                                    ⚠ Mapping incomplet
+                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium">
+                                    ⚠
                                   </span>
                                 )}
-                                <span className="ml-auto shrink-0 text-xs bg-secondary px-2 py-0.5 rounded-full">
+                                <span className="ml-auto shrink-0 text-[10px] sm:text-xs bg-secondary px-1.5 sm:px-2 py-0.5 rounded-full hidden sm:inline-flex">
                                   {sceneShots.length > 0
                                     ? <>
                                         <span className="text-muted-foreground">SHOT </span>
@@ -1813,10 +1813,14 @@ export default function Editor() {
                                           );
                                         })}
                                       </>
-                                    : <span className="text-muted-foreground">0 SHOT</span>}
+                                    : <span className="text-muted-foreground">0</span>}
+                                </span>
+                                {/* Mobile: compact shot count */}
+                                <span className="ml-auto shrink-0 text-[10px] bg-secondary px-1.5 py-0.5 rounded-full sm:hidden">
+                                  {sceneShots.length}
                                 </span>
                                 {scene.validated && (
-                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                                  <span className="shrink-0 hidden sm:inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
                                     <CheckCircle2 className="h-2.5 w-2.5" /> Validée
                                   </span>
                                 )}
