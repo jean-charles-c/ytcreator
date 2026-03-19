@@ -714,8 +714,22 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const NOOP = () => {};
+const NOOP_UNSUB = () => NOOP;
+const FALLBACK: BackgroundTasksContextValue = {
+  tasks: {},
+  startScriptGeneration: NOOP as any,
+  startSegmentation: NOOP as any,
+  startStoryboard: NOOP as any,
+  startExportMp4: NOOP as any,
+  startExportXml: NOOP as any,
+  startImageGen: NOOP as any,
+  stopTask: NOOP,
+  getTask: () => undefined,
+  subscribe: NOOP_UNSUB as any,
+};
+
 export function useBackgroundTasks() {
   const ctx = useContext(BackgroundTasksContext);
-  if (!ctx) throw new Error("useBackgroundTasks must be used within BackgroundTasksProvider");
-  return ctx;
+  return ctx ?? FALLBACK;
 }
