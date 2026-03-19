@@ -13,6 +13,7 @@ import {
   Download,
   Trash2,
   CheckCircle2,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
