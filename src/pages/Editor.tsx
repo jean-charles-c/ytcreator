@@ -1608,7 +1608,7 @@ export default function Editor() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
+                <p className="text-sm text-muted-foreground">{shots.length} shots / {scenes.length} scènes — Cliquez pour éditer.</p>
                 {shots.some((s) => s.generation_cost > 0) && (
                   <p className="text-xs font-medium text-primary mt-1">
                     Coût total Cloud + AI : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0).toFixed(2)} $
@@ -1626,12 +1626,16 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    {(() => {
+                    {generatingAllImages ? (
+                      <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
+                        <Square className="h-4 w-4" /> Stopper la génération
+                      </Button>
+                    ) : (() => {
                       const hasAnyImage = shots.some((s: any) => s.image_url);
                       const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
                       return (
-                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages || allHaveImages} className="min-h-[40px]">
-                          {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
+                          <ImageIcon className="h-4 w-4" />
                           {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
                         </Button>
                       );
