@@ -607,11 +607,11 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
                   <button
                     onClick={() => handleSelect(entry)}
                     className={`h-9 w-9 sm:h-7 sm:w-7 flex items-center justify-center rounded transition-colors ${
-                      selectedId === entry.id
+                      selectedIds.has(entry.id)
                         ? "text-primary bg-primary/10"
                         : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                     }`}
-                    title="Sélectionner pour l'export"
+                    title={selectedIds.has(entry.id) ? "Retirer de l'export" : "Ajouter à l'export"}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>

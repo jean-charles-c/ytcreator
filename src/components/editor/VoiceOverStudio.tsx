@@ -22,7 +22,7 @@ interface VoiceOverStudioProps {
   shots?: { id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
   /** Scenes with scene_order for sorting shots correctly */
   scenesForSort?: { id: string; scene_order: number }[];
-  onMusicSelected?: (audioUrl: string, fileName: string) => void;
+  onMusicSelected?: (tracks: { url: string; name: string }[]) => void;
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {
