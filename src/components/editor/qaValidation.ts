@@ -77,14 +77,14 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
       }
     }
 
-    // Broken order (globalOrder should be strictly increasing across scenes)
+    // Broken order (localOrder should be strictly increasing within scene)
     for (let i = 1; i < activeShots.length; i++) {
-      if (activeShots[i].globalOrder <= activeShots[i - 1].globalOrder) {
+      if (activeShots[i].localOrder <= activeShots[i - 1].localOrder) {
         issues.push({
           level: "warning",
           category: "structure",
           sceneOrder: scene.sceneOrder,
-          message: `Ordre des shots incohérent dans la scène ${scene.sceneOrder} (shot ${activeShots[i].globalOrder} ≤ ${activeShots[i - 1].globalOrder})`,
+          message: `Ordre des shots incohérent dans la scène ${scene.sceneOrder} (local_order ${activeShots[i].localOrder} ≤ ${activeShots[i - 1].localOrder})`,
         });
       }
     }
