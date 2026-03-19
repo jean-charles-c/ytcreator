@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.elevenlabs-music]
 verify_jwt = false
+
+[functions.elevenlabs-balance]
+verify_jwt = false
