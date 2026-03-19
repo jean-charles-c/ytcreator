@@ -129,11 +129,12 @@ export function buildManifestTiming(
 
   const validation = validateExactShotTimepoints(expectedShotIds, timepoints ?? null);
   for (const shotId of validation.missingIds) {
+    const shotOrder = orderMap.get(shotId) ?? 0;
     pushUniqueIssue(issues, {
       level: "error",
-      order: orderMap.get(shotId) ?? 0,
+      order: shotOrder,
       shotId,
-      message: "Aucun timepoint exact trouvé pour ce shot.",
+      message: `Le shot ${shotOrder > 0 ? shotOrder : '?'} n'a pas de marqueur audio. Régénérez la voix off (Voice Over) pour resynchroniser.`,
     });
   }
 
@@ -142,7 +143,7 @@ export function buildManifestTiming(
       level: "error",
       order: 0,
       shotId,
-      message: "Un timepoint référence un shot supprimé ou obsolète.",
+      message: `Un marqueur audio référence un shot supprimé (${shotId.slice(0, 8)}…). Régénérez la voix off pour nettoyer les données obsolètes.`,
     });
   }
 
@@ -151,16 +152,17 @@ export function buildManifestTiming(
       level: "error",
       order: 0,
       shotId,
-      message: "Un marqueur fantôme (_missing_) a été détecté dans shot_timepoints.",
+      message: `Un marqueur fantôme a été détecté. Régénérez les shots de la scène concernée puis la voix off.`,
     });
   }
 
   for (const shotId of validation.duplicateIds) {
+    const shotOrder = orderMap.get(shotId) ?? 0;
     pushUniqueIssue(issues, {
       level: "error",
-      order: orderMap.get(shotId) ?? 0,
+      order: shotOrder,
       shotId,
-      message: "Ce shot possède plusieurs timepoints concurrents.",
+      message: `Le shot ${shotOrder > 0 ? shotOrder : '?'} possède plusieurs marqueurs audio concurrents. Régénérez la voix off.`,
     });
   }
 
