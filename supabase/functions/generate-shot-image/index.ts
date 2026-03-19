@@ -71,48 +71,26 @@ const decodeGeneratedImage = async (imageData: string) => {
 };
 
 const enforceExactAspectRatio = async (imageBytes: Uint8Array, aspectRatio: string) => {
-  const target = ASPECT_RATIO_DIMENSIONS[aspectRatio] || ASPECT_RATIO_DIMENSIONS["16:9"];
+  const targetAR = ASPECT_RATIOS[aspectRatio] ?? ASPECT_RATIOS["16:9"];
   const decoded = await Image.decode(imageBytes);
-  const originalWidth = decoded.width;
-  const originalHeight = decoded.height;
-  const sourceAspectRatio = originalWidth / originalHeight;
-  const targetAspectRatio = target.width / target.height;
+  const origW = decoded.width;
+  const origH = decoded.height;
+  const srcAR = origW / origH;
 
-  if (Math.abs(sourceAspectRatio - targetAspectRatio) > 0.0001) {
-    if (sourceAspectRatio > targetAspectRatio) {
-      const cropWidth = Math.max(1, Math.round(originalHeight * targetAspectRatio));
-      const cropX = Math.max(0, Math.floor((originalWidth - cropWidth) / 2));
-      decoded.crop(cropX, 0, cropWidth, originalHeight);
+  // Only crop, never upscale — keeps file size small
+  if (Math.abs(srcAR - targetAR) > 0.01) {
+    if (srcAR > targetAR) {
+      const cw = Math.max(1, Math.round(origH * targetAR));
+      decoded.crop(Math.floor((origW - cw) / 2), 0, cw, origH);
     } else {
-      const cropHeight = Math.max(1, Math.round(originalWidth / targetAspectRatio));
-      const cropY = Math.max(0, Math.floor((originalHeight - cropHeight) / 2));
-      decoded.crop(0, cropY, originalWidth, cropHeight);
+      const ch = Math.max(1, Math.round(origW / targetAR));
+      decoded.crop(0, Math.floor((origH - ch) / 2), origW, ch);
     }
   }
 
-  if (decoded.width !== target.width || decoded.height !== target.height) {
-    decoded.resize(target.width, target.height);
-  }
-
-  console.log("Normalized generated image", {
-    aspectRatio,
-    originalWidth,
-    originalHeight,
-    outputWidth: decoded.width,
-    outputHeight: decoded.height,
-    targetWidth: target.width,
-    targetHeight: target.height,
-  });
-
+  console.log("Cropped image", { aspectRatio, origW, origH, outW: decoded.width, outH: decoded.height });
   const bytes = await decoded.encode(1);
-
-  return {
-    bytes,
-    mimeType: "image/png",
-    extension: "png",
-    width: decoded.width,
-    height: decoded.height,
-  };
+  return { bytes, mimeType: "image/png" as const, extension: "png" as const, width: decoded.width, height: decoded.height };
 };
 
 serve(async (req) => {
