@@ -117,7 +117,7 @@ function checkTiming(timing: ManifestTiming | null): QaIssue[] {
         level: "critical",
         category: "timing",
         shotOrder: entry.order,
-        message: `Shot ${entry.order} a une durée nulle ou négative (${entry.duration}s)`,
+        message: `Shot ${entry.order} (scène ${entry.sceneOrder}) a une durée nulle — deux shots partagent le même timestamp audio. Régénérez la voix off.`,
       });
     }
   }
