@@ -265,6 +265,7 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const hasContent = hasScript || hasSeo || hasPrompts;
 
   const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
+  const cleanedScriptVo = hasScript ? cleanScriptVoOnly(generatedScript!) : null;
   const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
 
   return (
