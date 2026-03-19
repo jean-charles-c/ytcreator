@@ -331,6 +331,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
 
   useEffect(() => {
     if (!timeline || !selectedAudioId || shots.length === 0) return;
+    if (!timeline.videoTrack?.segments || !timeline.audioTrack) return;
 
     const tlSegmentIds = new Set(timeline.videoTrack.segments.map((s) => s.id));
     const currentShotIds = new Set(shots.map((s) => s.id));
