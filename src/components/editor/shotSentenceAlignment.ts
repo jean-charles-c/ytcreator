@@ -62,12 +62,14 @@ function wordOverlapRatio(a: string, b: string): number {
 
 function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
   if (!shotTextNormalized || !scriptBlockNormalized) return false;
-  // Exact match
   if (shotTextNormalized === scriptBlockNormalized) return true;
-  // Bidirectional inclusion
+  // Shot text includes the script block (shot covers multiple sentences)
   if (shotTextNormalized.includes(scriptBlockNormalized)) return true;
-  if (scriptBlockNormalized.includes(shotTextNormalized)) return true;
-  // Fuzzy word overlap
+  // Reverse: script block includes shot text — only valid when sizes are comparable
+  // to prevent a 3-sentence block from "swallowing" a 1-sentence shot
+  const lenRatio = shotTextNormalized.length / scriptBlockNormalized.length;
+  if (scriptBlockNormalized.includes(shotTextNormalized) && lenRatio > 0.5) return true;
+  // Fuzzy word overlap for paraphrased content
   if (wordOverlapRatio(shotTextNormalized, scriptBlockNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
   return false;
 }
