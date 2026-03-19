@@ -108,6 +108,24 @@ export function buildManifestTiming(
 
   let currentTime = 0;
 
+  // Pre-compute rounded starts for all shots to ensure perfect continuity
+  const roundedStarts: number[] = activeShots.map((item) => {
+    if (useTimepoints) {
+      const tp = timepointMap.get(item.shot.shotId);
+      if (tp !== undefined && Number.isFinite(tp) && tp >= 0) {
+        return Math.round(tp * 100) / 100;
+      }
+    }
+    return -1; // placeholder, will be resolved below
+  });
+
+  // Fill in missing starts sequentially
+  for (let i = 0; i < roundedStarts.length; i++) {
+    if (roundedStarts[i] < 0) {
+      roundedStarts[i] = i === 0 ? 0 : roundedStarts[i - 1];
+    }
+  }
+
   const entries: ManifestTimingEntry[] = activeShots.map((item, idx) => {
     const order = idx + 1;
     let start: number;
@@ -117,11 +135,10 @@ export function buildManifestTiming(
     if (useTimepoints) {
       const tp = timepointMap.get(item.shot.shotId);
       if (tp !== undefined && Number.isFinite(tp) && tp >= 0) {
-        start = tp;
+        start = roundedStarts[idx];
         source = "timepoint";
       } else {
-        // Fallback: use currentTime accumulated so far
-        start = currentTime;
+        start = roundedStarts[idx];
         source = "proportional";
         issues.push({
           level: "warning",
@@ -131,36 +148,34 @@ export function buildManifestTiming(
         });
       }
 
-      // Duration = next shot's start - this start
+      // Duration = next shot's rounded start - this rounded start (ensures no micro-gaps)
       if (idx < activeShots.length - 1) {
-        const nextTp = timepointMap.get(activeShots[idx + 1].shot.shotId);
-        if (nextTp !== undefined && Number.isFinite(nextTp)) {
-          duration = nextTp - start;
-        } else {
-          // Estimate from char count
+        duration = roundedStarts[idx + 1] - start;
+        if (duration <= 0) {
+          // Fallback for edge case
           const charWeight = Math.max(item.fragmentText.length, 10);
           duration = audioDuration > 0
-            ? (charWeight / Math.max(totalChars, 1)) * audioDuration
+            ? Math.round((charWeight / Math.max(totalChars, 1)) * audioDuration * 100) / 100
             : DEFAULT_SEGMENT_DURATION;
         }
       } else {
-        duration = audioDuration > 0 ? audioDuration - start : DEFAULT_SEGMENT_DURATION;
+        duration = audioDuration > 0
+          ? Math.round((audioDuration - start) * 100) / 100
+          : DEFAULT_SEGMENT_DURATION;
       }
 
       duration = Math.max(0.1, duration);
     } else if (useProportional) {
-      start = currentTime;
+      start = Math.round(currentTime * 100) / 100;
       const charWeight = Math.max(item.fragmentText.length, 10);
-      duration = (charWeight / totalChars) * audioDuration;
+      duration = Math.round((charWeight / totalChars) * audioDuration * 100) / 100;
       source = "proportional";
     } else {
-      start = currentTime;
+      start = Math.round(currentTime * 100) / 100;
       duration = DEFAULT_SEGMENT_DURATION;
       source = "fixed";
     }
 
-    start = Math.round(start * 100) / 100;
-    duration = Math.round(duration * 100) / 100;
     currentTime = start + duration;
 
     return {
