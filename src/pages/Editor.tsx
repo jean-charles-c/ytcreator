@@ -952,6 +952,7 @@ export default function Editor() {
 
   // --- Image generation handlers ---
   const [generatingAllImages, setGeneratingAllImages] = useState(false);
+  const cancelImageGenRef = useRef(false);
   const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
@@ -1008,6 +1009,7 @@ export default function Editor() {
 
   const handleGenerateAllImages = async () => {
     if (!projectId || generatingAllImages) return;
+    cancelImageGenRef.current = false;
     setGeneratingAllImages(true);
     const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
     let count = 0;
@@ -1015,15 +1017,22 @@ export default function Editor() {
     for (const scene of sortedScenes) {
       const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
       for (const shot of sceneShots) {
+        if (cancelImageGenRef.current) break;
         if (shot.image_url) continue;
         if (shotIdx > 0) await new Promise((r) => setTimeout(r, 8000));
+        if (cancelImageGenRef.current) break;
         const url = await generateShotImage(shot.id);
         if (url) count++;
         shotIdx++;
       }
+      if (cancelImageGenRef.current) break;
     }
     setGeneratingAllImages(false);
-    toast.success(`${count} visuel(s) généré(s)`);
+    toast.success(cancelImageGenRef.current ? `Génération stoppée — ${count} visuel(s) créé(s)` : `${count} visuel(s) généré(s)`);
+  };
+
+  const stopImageGeneration = () => {
+    cancelImageGenRef.current = true;
   };
 
   const handleGenerateSceneImages = async (sceneId: string) => {
@@ -1599,7 +1608,7 @@ export default function Editor() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">SceneBlocks et ShotCards. Cliquez pour éditer.</p>
+                <p className="text-sm text-muted-foreground">{shots.length} shots / {scenes.length} scènes — Cliquez pour éditer.</p>
                 {shots.some((s) => s.generation_cost > 0) && (
                   <p className="text-xs font-medium text-primary mt-1">
                     Coût total Cloud + AI : {shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0).toFixed(2)} $
@@ -1617,12 +1626,16 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    {(() => {
+                    {generatingAllImages ? (
+                      <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
+                        <Square className="h-4 w-4" /> Stopper la génération
+                      </Button>
+                    ) : (() => {
                       const hasAnyImage = shots.some((s: any) => s.image_url);
                       const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
                       return (
-                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages || allHaveImages} className="min-h-[40px]">
-                          {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
+                          <ImageIcon className="h-4 w-4" />
                           {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
                         </Button>
                       );

@@ -215,7 +215,8 @@ export default function VisualGallery({
               <img
                 src={lightboxShot.shot.image_url!}
                 alt={`Shot ${lightboxShot.globalIndex}`}
-                className="max-w-full max-h-[75vh] object-contain rounded"
+                className="max-w-full max-h-[75vh] object-contain rounded cursor-pointer"
+                onClick={() => setLightboxIndex(null)}
               />
               <div className="text-white text-center space-y-1">
                 <p className="font-display font-semibold">SHOT {lightboxShot.globalIndex} — {lightboxShot.shot.shot_type}</p>
