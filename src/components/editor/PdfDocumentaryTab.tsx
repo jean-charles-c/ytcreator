@@ -518,7 +518,11 @@ export default function PdfDocumentaryTab({
 
       const data = await response.json();
       if (data.translated) {
-        setSectionTranslations((prev) => ({ ...prev, [sectionKey]: data.translated }));
+        setSectionTranslations((prev) => {
+          const next = { ...prev, [sectionKey]: data.translated };
+          saveTranslations(next);
+          return next;
+        });
         toast.success(`Section "${section.label}" traduite en français`);
       }
     } catch (e: any) {
