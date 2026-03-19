@@ -261,8 +261,8 @@ export function validateManifest(manifest: VisualPromptManifest): ManifestIssue[
     const sceneWords = wordSet(scene.sceneText);
     if (sceneWords.size > 0) {
       const fragWords = new Set<string>();
-      for (const ft of fragTexts) {
-        for (const w of wordSet(ft)) fragWords.add(w);
+      for (const frag of scene.fragments) {
+        for (const w of wordSet(frag.text)) fragWords.add(w);
       }
       let matched = 0;
       for (const w of sceneWords) if (fragWords.has(w)) matched++;
