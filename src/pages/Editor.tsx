@@ -1015,6 +1015,7 @@ export default function Editor() {
     for (const scene of sortedScenes) {
       const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
       for (const shot of sceneShots) {
+        if (shot.image_url) continue;
         if (shotIdx > 0) await new Promise((r) => setTimeout(r, 8000));
         const url = await generateShotImage(shot.id);
         if (url) count++;
@@ -1616,10 +1617,16 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages} className="min-h-[40px]">
-                      {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                      Créer tous les visuels
-                    </Button>
+                    {(() => {
+                      const hasAnyImage = shots.some((s: any) => s.image_url);
+                      const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
+                      return (
+                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages || allHaveImages} className="min-h-[40px]">
+                          {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                          {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
+                        </Button>
+                      );
+                    })()}
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
                     <ImageIcon className="h-4 w-4" /> Voir les visuels
@@ -1783,10 +1790,22 @@ export default function Editor() {
                                 ⚠ {missingSentences.length} phrase(s) orpheline(s)
                               </span>
                             )}
-                            <span className="ml-auto shrink-0 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                            <span className="ml-auto shrink-0 text-xs bg-secondary px-2 py-0.5 rounded-full">
                               {sceneShots.length > 0
-                                ? `SHOT ${Array.from({ length: sceneShots.length }, (_, i) => String(startIndex + i).padStart(4, "0")).join(" / ")}`
-                                : "0 SHOT"}
+                                ? <>
+                                    <span className="text-muted-foreground">SHOT </span>
+                                    {sceneShots.map((sh, i) => {
+                                      const shotNum = String(startIndex + i).padStart(4, "0");
+                                      const hasImage = !!sh.image_url;
+                                      return (
+                                        <span key={sh.id}>
+                                          {i > 0 && <span className="text-muted-foreground"> / </span>}
+                                          <span className={hasImage ? "text-green-500 font-semibold" : "text-muted-foreground"}>{shotNum}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </>
+                                : <span className="text-muted-foreground">0 SHOT</span>}
                             </span>
                             {scene.validated && (
                               <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
