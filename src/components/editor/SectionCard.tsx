@@ -208,19 +208,39 @@ interface SectionCardProps {
 
 export default function SectionCard({
   section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating,
-  history, onRestore, translation, translating, onTranslate, showTranslation, scriptLanguage,
+  history, onRestore, translation, translating, onTranslate, scriptLanguage,
 }: SectionCardProps) {
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [showFr, setShowFr] = useState(false);
 
   const accent = SECTION_ACCENTS[section.key] || DEFAULT_ACCENT;
   const isEmpty = !section.content.trim();
+  const isFrenchScript = scriptLanguage === "fr";
 
+  // Auto-trigger translation when section is opened with content but no translation
+  const autoTranslateTriggered = useRef(false);
   useEffect(() => {
-    if (translation && showTranslation) setShowFr(true);
-  }, [translation, showTranslation]);
+    if (
+      !isFrenchScript &&
+      section.content.trim() &&
+      !translation &&
+      !translating &&
+      onTranslate &&
+      isOpen &&
+      !autoTranslateTriggered.current
+    ) {
+      autoTranslateTriggered.current = true;
+      onTranslate(section.key);
+    }
+  }, [isFrenchScript, section.content, translation, translating, onTranslate, isOpen, section.key]);
+
+  // Reset auto-trigger when translation is invalidated
+  useEffect(() => {
+    if (!translation) {
+      autoTranslateTriggered.current = false;
+    }
+  }, [translation]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -235,7 +255,7 @@ export default function SectionCard({
     return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" });
   };
 
-  const isFrenchScript = scriptLanguage === "fr";
+  const langLabel = scriptLanguage === "en" ? "English" : scriptLanguage === "es" ? "Español" : scriptLanguage === "de" ? "Deutsch" : scriptLanguage === "pt" ? "Português" : scriptLanguage === "it" ? "Italiano" : scriptLanguage?.toUpperCase() || "Original";
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -252,24 +272,17 @@ export default function SectionCard({
         `}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          {/* Icon */}
           <span className="text-base leading-none shrink-0" role="img" aria-label={section.label}>
             {section.icon}
           </span>
-
-          {/* Title + metadata */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2.5 min-w-0">
             <span className="font-display text-sm font-semibold text-foreground truncate">
               {section.label}
             </span>
-
             <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Section number badge */}
               <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${accent.badge}`}>
                 {index + 1}/9
               </span>
-
-              {/* Char count or empty indicator */}
               {isEmpty ? (
                 <span className="text-[10px] text-muted-foreground/50 font-mono italic">vide</span>
               ) : (
@@ -277,20 +290,14 @@ export default function SectionCard({
                   {charCount.toLocaleString()} car.
                 </span>
               )}
-
-              {/* History count */}
               {history && history.length > 0 && (
                 <span className="text-[10px] text-muted-foreground font-mono">
                   · {history.length} ver.
                 </span>
               )}
-
-              {/* Translation indicator */}
-              {translation && (
-                <span className="text-[10px] text-primary font-mono">· FR</span>
+              {!isFrenchScript && translation && (
+                <span className="text-[10px] text-primary font-mono">· FR ✓</span>
               )}
-
-              {/* Loading indicators */}
               {regenerating && (
                 <span className="flex items-center gap-1 text-[10px] text-primary">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -306,7 +313,6 @@ export default function SectionCard({
             </div>
           </div>
         </div>
-
         <ChevronDown
           className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2 ${isOpen ? "rotate-180" : ""}`}
         />
@@ -318,26 +324,6 @@ export default function SectionCard({
 
           {/* Action buttons */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2 mb-2 flex-wrap">
-            {!isFrenchScript && onTranslate && section.content.trim() && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={translating}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (translation) {
-                    setShowFr(!showFr);
-                  } else {
-                    onTranslate(section.key);
-                  }
-                }}
-                className={`min-h-[36px] sm:h-7 text-[11px] gap-1 sm:gap-1.5 px-2 sm:px-3 ${showFr ? "border-primary/40 bg-primary/5" : ""}`}
-              >
-                {translating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
-                <span className="hidden sm:inline">{translation ? (showFr ? "Masquer FR" : "Voir FR") : "Traduire FR"}</span>
-                <span className="sm:hidden">FR</span>
-              </Button>
-            )}
             {history && history.length > 0 && onRestore && (
               <Button
                 variant="outline"
@@ -393,28 +379,49 @@ export default function SectionCard({
             </div>
           )}
 
-          {/* Translation panel */}
-          {showFr && translation && (
-            <div className="mb-3 rounded border border-primary/20 bg-primary/5 p-2 sm:p-3">
-              <p className="text-[10px] font-medium text-primary mb-2 flex items-center gap-1.5">
-                <Languages className="h-3 w-3" /> Traduction française
-              </p>
-              <p className="text-[13px] sm:text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-body">
-                {translation}
-              </p>
+          {/* ── Dual-block layout: Original + French ── */}
+          <div className={`${!isFrenchScript ? "grid grid-cols-1 lg:grid-cols-2 gap-3" : ""}`}>
+            {/* Block 1: Original language */}
+            <div className={!isFrenchScript ? "space-y-1" : ""}>
+              {!isFrenchScript && (
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  {langLabel}
+                </p>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={section.content}
+                onChange={(e) => onContentChange?.(section.key, e.target.value)}
+                placeholder="Saisissez le contenu de cette section…"
+                className="w-full min-h-[100px] sm:min-h-[120px] bg-transparent text-[13px] sm:text-sm text-foreground leading-relaxed resize-y font-body border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/40"
+                aria-label={`Édition section ${section.label}`}
+                disabled={regenerating}
+              />
             </div>
-          )}
 
-          {/* Editor textarea */}
-          <textarea
-            ref={textareaRef}
-            value={section.content}
-            onChange={(e) => onContentChange?.(section.key, e.target.value)}
-            placeholder="Saisissez le contenu de cette section…"
-            className="w-full min-h-[100px] sm:min-h-[120px] bg-transparent text-[13px] sm:text-sm text-foreground leading-relaxed resize-y font-body border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/40"
-            aria-label={`Édition section ${section.label}`}
-            disabled={regenerating}
-          />
+            {/* Block 2: French translation (always visible for non-FR scripts) */}
+            {!isFrenchScript && (
+              <div className="space-y-1 rounded border border-primary/15 bg-primary/5 p-2 sm:p-3">
+                <p className="text-[10px] font-medium text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Languages className="h-3 w-3" /> Français
+                </p>
+                {translating ? (
+                  <div className="flex items-center gap-2 py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground">Traduction en cours…</span>
+                  </div>
+                ) : translation ? (
+                  <p className="text-[13px] sm:text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-body">
+                    {translation}
+                  </p>
+                ) : isEmpty ? (
+                  <p className="text-xs text-muted-foreground/50 italic py-2">Aucun contenu à traduire</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground/50 italic py-2">Traduction en attente…</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>
