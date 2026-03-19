@@ -58,7 +58,7 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           level: "critical",
           category: "structure",
           sceneOrder: scene.sceneOrder,
-          message: `Fragment « ${frag.text.slice(0, 40)}… » référence un shot inexistant ou supprimé`,
+          message: `Un fragment orphelin référence un shot supprimé ou fusionné. Régénérez les shots de la scène ${scene.sceneOrder} pour corriger le mapping.`,
         });
       }
     }
