@@ -698,7 +698,8 @@ export default function Editor() {
       if (freshShotsError) throw freshShotsError;
 
       setScenes(freshScenes ?? []);
-      setShots(freshShots ?? []);
+      const { reordered: reorderedShots } = reorderShotsByReadingPosition((freshShots ?? []) as Shot[], freshScenes ?? []);
+      setShots(reorderedShots);
       setPreviewSceneVersionId(null);
       toast.success("Scènes fusionnées");
     } catch (err: any) {
