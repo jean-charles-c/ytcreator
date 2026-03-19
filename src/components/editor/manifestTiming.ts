@@ -45,6 +45,7 @@ export interface ManifestTimingIssue {
   level: "error" | "warning";
   order: number;
   shotId: string;
+  sceneOrder?: number;
   message: string;
 }
 
@@ -68,6 +69,32 @@ function pushUniqueIssue(
   if (!exists) {
     issues.push(nextIssue);
   }
+}
+
+function inferNearbySceneOrder(
+  targetShotId: string,
+  timepoints: ShotTimepoint[] | null | undefined,
+  shotToScene: Map<string, number>
+): number | undefined {
+  const tpList = timepoints ?? [];
+  const idx = tpList.findIndex((tp) => tp.shotId === targetShotId);
+
+  if (idx < 0) return undefined;
+
+  for (let delta = 1; delta <= 3; delta++) {
+    const prev = idx - delta >= 0 ? tpList[idx - delta] : null;
+    const next = idx + delta < tpList.length ? tpList[idx + delta] : null;
+
+    if (prev && shotToScene.has(prev.shotId)) {
+      return shotToScene.get(prev.shotId);
+    }
+
+    if (next && shotToScene.has(next.shotId)) {
+      return shotToScene.get(next.shotId);
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -102,6 +129,7 @@ export function buildManifestTiming(
 
   const expectedShotIds = activeShots.map((item) => item.shot.shotId);
   const orderMap = new Map(expectedShotIds.map((shotId, index) => [shotId, index + 1]));
+  const shotToScene = new Map(activeShots.map((item) => [item.shot.shotId, item.sceneOrder]));
 
   if (activeShots.length === 0) {
     return {
@@ -128,61 +156,59 @@ export function buildManifestTiming(
   }
 
   const validation = validateExactShotTimepoints(expectedShotIds, timepoints ?? null);
+
   for (const shotId of validation.missingIds) {
     const shotOrder = orderMap.get(shotId) ?? 0;
+    const sceneOrder = shotToScene.get(shotId);
+    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
+
     pushUniqueIssue(issues, {
       level: "error",
       order: shotOrder,
       shotId,
-      message: `Le shot ${shotOrder > 0 ? shotOrder : '?'} n'a pas de marqueur audio. Régénérez la voix off (Voice Over) pour resynchroniser.`,
+      sceneOrder,
+      message: `Le shot ${shotOrder > 0 ? shotOrder : "?"} n'a pas de marqueur audio. Ne relancez pas la voix off tout de suite : re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
     });
   }
 
   for (const shotId of validation.unexpectedIds) {
+    const sceneOrder = inferNearbySceneOrder(shotId, timepoints, shotToScene);
+    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
+
     pushUniqueIssue(issues, {
       level: "error",
       order: 0,
       shotId,
-      message: `Un marqueur audio référence un shot supprimé (${shotId.slice(0, 8)}…). Régénérez la voix off pour nettoyer les données obsolètes.`,
+      sceneOrder,
+      message: `L'audio contient encore un ancien marqueur vers un shot supprimé (${shotId.slice(0, 8)}…). Ne relancez pas la voix off tout de suite : re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
     });
   }
 
-  // For placeholder IDs, try to find the nearest real shot to identify the scene
-  const shotToScene = new Map<string, number>();
-  for (const item of activeShots) {
-    shotToScene.set(item.shot.shotId, item.sceneOrder);
-  }
-
   for (const shotId of validation.placeholderIds) {
-    // Find the position of this placeholder in timepoints and look at neighbors
-    const tpList = timepoints ?? [];
-    const idx = tpList.findIndex((tp) => tp.shotId === shotId);
-    let nearbyScene: number | null = null;
-    if (idx >= 0) {
-      // Check previous and next real shots
-      for (let delta = 1; delta <= 3; delta++) {
-        const prev = idx - delta >= 0 ? tpList[idx - delta] : null;
-        const next = idx + delta < tpList.length ? tpList[idx + delta] : null;
-        if (prev && shotToScene.has(prev.shotId)) { nearbyScene = shotToScene.get(prev.shotId)!; break; }
-        if (next && shotToScene.has(next.shotId)) { nearbyScene = shotToScene.get(next.shotId)!; break; }
-      }
-    }
-    const sceneHint = nearbyScene ? ` (à proximité de la scène ${nearbyScene})` : "";
+    const sceneOrder = inferNearbySceneOrder(shotId, timepoints, shotToScene);
+    const sceneHint = sceneOrder ? ` à proximité de la scène ${sceneOrder}` : "";
+    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
+
     pushUniqueIssue(issues, {
       level: "error",
       order: 0,
       shotId,
-      message: `Un marqueur fantôme a été détecté dans l'audio${sceneHint}. Régénérez la voix off pour corriger.`,
+      sceneOrder,
+      message: `Un marqueur fantôme a été détecté dans l'audio${sceneHint}. Ne relancez pas la voix off tout de suite : re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
     });
   }
 
   for (const shotId of validation.duplicateIds) {
     const shotOrder = orderMap.get(shotId) ?? 0;
+    const sceneOrder = shotToScene.get(shotId);
+    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
+
     pushUniqueIssue(issues, {
       level: "error",
       order: shotOrder,
       shotId,
-      message: `Le shot ${shotOrder > 0 ? shotOrder : '?'} possède plusieurs marqueurs audio concurrents. Régénérez la voix off.`,
+      sceneOrder,
+      message: `Le shot ${shotOrder > 0 ? shotOrder : "?"} possède plusieurs marqueurs audio concurrents. Re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
     });
   }
 
