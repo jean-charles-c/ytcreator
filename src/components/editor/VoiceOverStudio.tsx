@@ -2,14 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { alignShotSentencesToScript } from "./shotSentenceAlignment";
+import MusicStudio from "./MusicStudio";
 
 interface VoiceOverStudioProps {
   narration: string;
@@ -20,6 +22,7 @@ interface VoiceOverStudioProps {
   shots?: { id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
   /** Scenes with scene_order for sorting shots correctly */
   scenesForSort?: { id: string; scene_order: number }[];
+  onMusicSelected?: (audioUrl: string, fileName: string) => void;
 }
 
 const DEFAULT_SETTINGS: VoiceSettings = {

@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.analyze-script]
 verify_jwt = false
+
+[functions.elevenlabs-music]
+verify_jwt = false
