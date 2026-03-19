@@ -291,9 +291,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       await supabase.storage.from("music-audio").remove([entry.file_path]);
       await (supabase as any).from("music_history").delete().eq("id", entry.id);
       setEntries(prev => prev.filter(e => e.id !== entry.id));
-      if (selectedId === entry.id) {
-        setSelectedId(null);
-        if (projectId) localStorage.removeItem(`music_selected_${projectId}`);
+      if (selectedIds.has(entry.id)) {
+        const next = new Set(selectedIds);
+        next.delete(entry.id);
+        setSelectedIds(next);
+        if (projectId) localStorage.setItem(`music_selected_${projectId}`, JSON.stringify([...next]));
+        notifyParent(entries.filter(e => e.id !== entry.id && next.has(e.id)));
       }
       toast.success("Musique supprimée");
     } catch (e: any) {
@@ -303,12 +306,24 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     }
   };
 
+  const notifyParent = (selected: MusicEntry[]) => {
+    const tracks = selected.map(e => {
+      const { data } = supabase.storage.from("music-audio").getPublicUrl(e.file_path);
+      return { url: data.publicUrl, name: e.file_name };
+    });
+    onMusicSelected?.(tracks);
+  };
+
   const handleSelect = (entry: MusicEntry) => {
-    const { data } = supabase.storage.from("music-audio").getPublicUrl(entry.file_path);
-    setSelectedId(entry.id);
-    if (projectId) localStorage.setItem(`music_selected_${projectId}`, entry.id);
-    onMusicSelected?.(data.publicUrl, entry.file_name);
-    toast.success(`"${entry.file_name}" sélectionné pour l'export`);
+    const next = new Set(selectedIds);
+    if (next.has(entry.id)) {
+      next.delete(entry.id);
+    } else {
+      next.add(entry.id);
+    }
+    setSelectedIds(next);
+    if (projectId) localStorage.setItem(`music_selected_${projectId}`, JSON.stringify([...next]));
+    notifyParent(entries.filter(e => next.has(e.id)));
   };
 
   const handleRename = async (entry: MusicEntry) => {
