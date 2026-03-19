@@ -20,14 +20,14 @@ const ALLOWED_MODELS = [
   "google/gemini-3-pro-image-preview",
 ];
 
-const ASPECT_RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {
-  "16:9": { width: 1920, height: 1080 },
-  "9:16": { width: 1080, height: 1920 },
-  "1:1": { width: 1024, height: 1024 },
-  "4:3": { width: 1440, height: 1080 },
-  "3:2": { width: 1620, height: 1080 },
-  "3:4": { width: 1080, height: 1440 },
-  "2:3": { width: 1080, height: 1620 },
+const ASPECT_RATIOS: Record<string, number> = {
+  "16:9": 16 / 9,
+  "9:16": 9 / 16,
+  "1:1": 1,
+  "4:3": 4 / 3,
+  "3:2": 3 / 2,
+  "3:4": 3 / 4,
+  "2:3": 2 / 3,
 };
 
 const getExtensionFromMime = (mimeType: string) => {
