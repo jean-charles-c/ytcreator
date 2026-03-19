@@ -61,6 +61,7 @@ interface BackgroundTasksContextValue {
   startStoryboard: (params: StoryboardParams) => void;
   startExportMp4: (params: ExportMp4Params) => void;
   startExportXml: (params: ExportXmlParams) => void;
+  startImageGen: (params: ImageGenParams) => void;
   stopTask: (projectId: string, type: TaskType) => void;
   getTask: (projectId: string, type: TaskType) => BackgroundTask | undefined;
   subscribe: (projectId: string, type: TaskType, listener: Listener) => () => void;
