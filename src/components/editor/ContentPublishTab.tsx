@@ -268,6 +268,23 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const cleanedScriptVo = hasScript ? cleanScriptVoOnly(generatedScript!) : null;
   const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
 
+  const subtitlesText = useMemo(() => {
+    if (scenes.length === 0) return null;
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    return sortedScenes
+      .map((scene) => {
+        const text = (scene.source_text || "")
+          .replace(/\[\[[A-Z0-9_]+\]\]\s*/g, "")
+          .replace(/---+/g, "")
+          .replace(/^#.+$/gm, "")
+          .replace(/\n{2,}/g, " ")
+          .trim();
+        return text;
+      })
+      .filter((t) => t.length > 0)
+      .join("\n\n");
+  }, [scenes]);
+
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
       <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-2">
