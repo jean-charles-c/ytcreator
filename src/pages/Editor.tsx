@@ -636,7 +636,8 @@ export default function Editor() {
     const previousShots = shots;
     const current = scenes[idx];
     const next = scenes[idx + 1];
-    const mergedText = `${current.source_text} ${next.source_text}`.trim();
+    const stripTags = (t: string) => t.replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/g, "").trim();
+    const mergedText = `${stripTags(current.source_text)} ${stripTags(next.source_text)}`.trim();
     const mergedTitle = current.title;
     const mergedVisual = [current.visual_intention, next.visual_intention].filter(Boolean).join(" / ") || null;
     const mergedTextFr = [current.source_text_fr, next.source_text_fr].filter(Boolean).join(" ").trim() || null;
