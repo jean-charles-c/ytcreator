@@ -63,6 +63,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load saved settings
@@ -217,8 +218,8 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
           setPlayerState(prev => prev ? { ...prev, duration: audio.duration } : prev);
         }
       };
-      audio.ontimeupdate = () => { if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100); };
-      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); };
+      audio.ontimeupdate = () => { if (audio.duration) { setAudioProgress((audio.currentTime / audio.duration) * 100); setCurrentTime(audio.currentTime); } };
+      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); setCurrentTime(0); };
       audio.play();
       setIsPlaying(true);
     }, 100);
@@ -229,8 +230,8 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     if (!audioRef.current) {
       const audio = new Audio(playerState.audioUrl);
       audioRef.current = audio;
-      audio.ontimeupdate = () => { if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100); };
-      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); };
+      audio.ontimeupdate = () => { if (audio.duration) { setAudioProgress((audio.currentTime / audio.duration) * 100); setCurrentTime(audio.currentTime); } };
+      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); setCurrentTime(0); };
     }
     if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
     else { audioRef.current.play(); setIsPlaying(true); }
@@ -350,7 +351,9 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
         <div className="rounded-lg border border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold text-foreground">Lecteur</h4>
-            <span className="text-[10px] text-muted-foreground font-mono">{formatDuration(playerState.duration)}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {formatDuration(currentTime)} / {formatDuration(playerState.duration)}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button
