@@ -351,6 +351,17 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
                           ))}
                         </div>
                       </SubCollapsible>
+
+                      {/* SOUS-TITRES */}
+                      {subtitlesText && (
+                        <SubCollapsible icon={AlignLeft} title="SOUS-TITRES" badge={`${scenes.length} scènes`}>
+                          <CopyableBlock text={subtitlesText} label="Sous-titres">
+                            <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                              {subtitlesText}
+                            </pre>
+                          </CopyableBlock>
+                        </SubCollapsible>
+                      )}
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground italic py-4">
