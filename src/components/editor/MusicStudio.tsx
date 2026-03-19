@@ -14,6 +14,9 @@ import {
   Trash2,
   CheckCircle2,
   CreditCard,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
