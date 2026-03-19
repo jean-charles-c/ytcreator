@@ -202,6 +202,15 @@ function cleanScriptForExport(raw: string): string {
     .trim();
 }
 
+/** Strip section tags [[HOOK]], [[ACT1]] etc. to get pure VO text */
+function cleanScriptVoOnly(raw: string): string {
+  const withMarks = cleanScriptForExport(raw);
+  return withMarks
+    .replace(/\[\[[A-Z0-9_]+\]\]\s*/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function splitIntoVoiceOverBlocks(raw: string): string[] {
   const clean = cleanScriptForExport(raw);
   const sentences = clean.split(/(?<=\.)\s+/);
