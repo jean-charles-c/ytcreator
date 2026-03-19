@@ -1910,19 +1910,14 @@ export default function Editor() {
                 )}
 
                 {/* Manifest Timing */}
-                {(() => {
-                  // Rendered as a lazy-loaded detail to avoid extra queries when closed
-                  return (
-                    <details className="mt-6 rounded border border-border bg-card p-3">
-                      <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                        Manifest Timing (synchronisation audio/image)
-                      </summary>
-                      <div className="mt-3">
-                        <ManifestTimingPanel projectId={projectId!} manifest={manifest} />
-                      </div>
-                    </details>
-                  );
-                })()}
+                <details className="mt-6 rounded border border-border bg-card p-3">
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                    Manifest Timing (synchronisation audio/image)
+                  </summary>
+                  <div className="mt-3">
+                    <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
+                  </div>
+                </details>
 
                 <div className="mt-8 flex gap-3">
                   <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
