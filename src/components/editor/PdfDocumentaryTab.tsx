@@ -401,11 +401,12 @@ export default function PdfDocumentaryTab({
       if (prev[key]) {
         const next = { ...prev };
         delete next[key];
+        saveTranslations(next);
         return next;
       }
       return prev;
     });
-  }, [onScriptChange]);
+  }, [onScriptChange, saveTranslations]);
 
   // Restore a section from history
   const handleRestoreSection = useCallback((key: string, content: string) => {
