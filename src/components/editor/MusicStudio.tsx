@@ -266,7 +266,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   return (
     <div className="space-y-4">
       {/* ElevenLabs Balance */}
-      {balance && (
+      {balance ? (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2">
           <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
@@ -286,7 +286,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
             </div>
           </div>
         </div>
-      )}
+      ) : balanceMessage ? (
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-card/50 px-3 py-2 text-xs text-muted-foreground">
+          <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+          <p>{balanceMessage}</p>
+        </div>
+      ) : null}
 
       {/* Prompt */}
       <div className="space-y-2">
