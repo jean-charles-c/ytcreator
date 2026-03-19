@@ -13,7 +13,7 @@ import type { Timeline } from "@/components/editor/timelineAssembly";
 import type { Chapter, ChapterListState } from "@/components/editor/chapterTypes";
 
 // ─── Types ──────────────────────────────────────────────────────────
-export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml";
+export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml" | "image-gen";
 export type TaskStatus = "running" | "done" | "error";
 
 export interface BackgroundTask {
@@ -28,6 +28,9 @@ export interface BackgroundTask {
   totalScenes?: number;
   /** Export progress */
   exportProgress?: ExportProgress;
+  /** Image gen progress */
+  completedShots?: number;
+  totalShots?: number;
 }
 
 type Listener = (task: BackgroundTask) => void;
@@ -44,6 +47,13 @@ export interface ExportXmlParams {
   fps: ExportFps;
 }
 
+export interface ImageGenParams {
+  projectId: string;
+  shotIds: string[];
+  model: string;
+  aspectRatio: string;
+}
+
 interface BackgroundTasksContextValue {
   tasks: Record<string, BackgroundTask>;
   startScriptGeneration: (params: ScriptGenParams) => void;
@@ -51,6 +61,7 @@ interface BackgroundTasksContextValue {
   startStoryboard: (params: StoryboardParams) => void;
   startExportMp4: (params: ExportMp4Params) => void;
   startExportXml: (params: ExportXmlParams) => void;
+  startImageGen: (params: ImageGenParams) => void;
   stopTask: (projectId: string, type: TaskType) => void;
   getTask: (projectId: string, type: TaskType) => BackgroundTask | undefined;
   subscribe: (projectId: string, type: TaskType, listener: Listener) => () => void;
@@ -600,8 +611,83 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  // ─── Image Generation (batch) ───────────────────────────────────────
+  const startImageGen = useCallback((params: ImageGenParams) => {
+    const key = taskKey(params.projectId, "image-gen");
+    abortControllers.current[key]?.abort();
+
+    const ac = new AbortController();
+    abortControllers.current[key] = ac;
+
+    const total = params.shotIds.length;
+    setTask(key, {
+      projectId: params.projectId,
+      type: "image-gen",
+      status: "running",
+      completedShots: 0,
+      totalShots: total,
+    });
+
+    (async () => {
+      try {
+        const session = (await supabase.auth.getSession()).data.session;
+        let count = 0;
+
+        for (let i = 0; i < params.shotIds.length; i++) {
+          if (ac.signal.aborted) break;
+          if (i > 0) await new Promise((r) => setTimeout(r, 8000));
+          if (ac.signal.aborted) break;
+
+          try {
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session?.access_token}`,
+                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                },
+                body: JSON.stringify({
+                  shot_id: params.shotIds[i],
+                  model: params.model,
+                  aspect_ratio: params.aspectRatio,
+                }),
+                signal: ac.signal,
+              }
+            );
+            const data = await response.json();
+            if (response.ok && data.image_url) count++;
+          } catch (shotErr: any) {
+            if (shotErr?.name === "AbortError") break;
+            console.error(`Image gen failed for shot ${params.shotIds[i]}:`, shotErr);
+          }
+          updateTask(key, { completedShots: i + 1 });
+        }
+
+        if (ac.signal.aborted) {
+          toast.info(`Génération stoppée — ${count} visuel(s) créé(s)`);
+          removeTask(key);
+          return;
+        }
+
+        updateTask(key, { status: "done", completedShots: total });
+        toast.success(`${count} visuel(s) généré(s)`);
+      } catch (e: any) {
+        if (e?.name === "AbortError") {
+          toast.info("Génération des visuels annulée");
+          removeTask(key);
+          return;
+        }
+        console.error("Background image gen error:", e);
+        updateTask(key, { status: "error", error: e?.message || "Erreur inconnue" });
+        toast.error(e?.message || "Erreur de génération des visuels");
+      }
+    })();
+  }, []);
+
   return (
-    <BackgroundTasksContext.Provider value={{ tasks, startScriptGeneration, startSegmentation, startStoryboard, startExportMp4, startExportXml, stopTask, getTask, subscribe }}>
+    <BackgroundTasksContext.Provider value={{ tasks, startScriptGeneration, startSegmentation, startStoryboard, startExportMp4, startExportXml, startImageGen, stopTask, getTask, subscribe }}>
       {children}
     </BackgroundTasksContext.Provider>
   );
