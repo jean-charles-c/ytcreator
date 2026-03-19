@@ -42,7 +42,7 @@ serve(async (req) => {
     // Verify ownership and get script_language
     const { data: project } = await supabase
       .from("projects")
-      .select("id, script_language")
+      .select("id, script_language, title, subject")
       .eq("id", shot.project_id)
       .eq("user_id", user.id)
       .single();
