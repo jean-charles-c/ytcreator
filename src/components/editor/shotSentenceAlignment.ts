@@ -11,17 +11,37 @@ const MAX_LOOKAHEAD_SENTENCES = 3;
 function normalizeText(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[’`´]/g, "'")
+    .replace(/['`´]/g, "'")
     .replace(/[^\p{L}\p{N}'\s]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function splitScriptSentences(scriptText: string): string[] {
-  return scriptText
-    .split(SCRIPT_SENTENCE_SPLIT_REGEX)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence.length > 0);
+interface ScriptSentence {
+  text: string;
+  /** True if this sentence starts a new paragraph (after a \n\n break) */
+  isNewParagraph: boolean;
+}
+
+function splitScriptSentences(scriptText: string): ScriptSentence[] {
+  const paragraphs = scriptText.split(/\n\s*\n/).filter((p) => p.trim());
+  const result: ScriptSentence[] = [];
+
+  for (let pi = 0; pi < paragraphs.length; pi++) {
+    const sentences = paragraphs[pi]
+      .split(SCRIPT_SENTENCE_SPLIT_REGEX)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    for (let si = 0; si < sentences.length; si++) {
+      result.push({
+        text: sentences[si],
+        isNewParagraph: si === 0 && pi > 0,
+      });
+    }
+  }
+
+  return result;
 }
 
 function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
@@ -52,6 +72,23 @@ function getCoverageLength(
   return 0;
 }
 
+/**
+ * Determine if the entry at scriptIndex starts a new paragraph.
+ * Uses the paragraph info from scriptSentences, OR the shot's own isNewScene flag.
+ */
+function resolveIsNewScene(
+  shot: ShotSentenceEntry | null,
+  scriptSentences: ScriptSentence[],
+  scriptIndex: number
+): boolean {
+  // If the script sentence starts a new paragraph, always mark as scene break
+  if (scriptIndex < scriptSentences.length && scriptSentences[scriptIndex].isNewParagraph) {
+    return true;
+  }
+  // Otherwise fall back to the shot's own flag
+  return shot?.isNewScene === true;
+}
+
 export function alignShotSentencesToScript(
   shotEntries: ShotSentenceEntry[],
   scriptText: string
@@ -61,7 +98,7 @@ export function alignShotSentencesToScript(
   const scriptSentences = splitScriptSentences(scriptText);
   if (scriptSentences.length === 0) return shotEntries;
 
-  const normalizedScriptSentences = scriptSentences.map(normalizeText);
+  const normalizedScriptSentences = scriptSentences.map((s) => normalizeText(s.text));
   const result: ShotSentenceEntry[] = [];
   let scriptIndex = 0;
   let missingCounter = 0;
@@ -78,7 +115,8 @@ export function alignShotSentencesToScript(
     if (directCoverageLength > 0) {
       result.push({
         ...shot,
-        text: scriptSentences.slice(scriptIndex, scriptIndex + directCoverageLength).join(" "),
+        text: scriptSentences.slice(scriptIndex, scriptIndex + directCoverageLength).map((s) => s.text).join(" "),
+        isNewScene: resolveIsNewScene(shot, scriptSentences, scriptIndex),
       });
       scriptIndex += directCoverageLength;
       continue;
@@ -105,10 +143,11 @@ export function alignShotSentencesToScript(
 
     if (matchedLookahead) {
       for (let offset = 0; offset < matchedLookahead.offset; offset++) {
+        const si = scriptIndex + offset;
         result.push({
           id: `_missing_${missingCounter++}`,
-          text: scriptSentences[scriptIndex + offset],
-          isNewScene: false,
+          text: scriptSentences[si].text,
+          isNewScene: resolveIsNewScene(null, scriptSentences, si),
         });
       }
 
@@ -118,7 +157,9 @@ export function alignShotSentencesToScript(
         ...shot,
         text: scriptSentences
           .slice(scriptIndex, scriptIndex + matchedLookahead.coverageLength)
+          .map((s) => s.text)
           .join(" "),
+        isNewScene: resolveIsNewScene(shot, scriptSentences, scriptIndex),
       });
       scriptIndex += matchedLookahead.coverageLength;
       continue;
@@ -127,7 +168,8 @@ export function alignShotSentencesToScript(
     if (scriptIndex < scriptSentences.length) {
       result.push({
         ...shot,
-        text: scriptSentences[scriptIndex],
+        text: scriptSentences[scriptIndex].text,
+        isNewScene: resolveIsNewScene(shot, scriptSentences, scriptIndex),
       });
       scriptIndex += 1;
       continue;
@@ -139,8 +181,8 @@ export function alignShotSentencesToScript(
   while (scriptIndex < scriptSentences.length) {
     result.push({
       id: `_missing_${missingCounter++}`,
-      text: scriptSentences[scriptIndex],
-      isNewScene: false,
+      text: scriptSentences[scriptIndex].text,
+      isNewScene: resolveIsNewScene(null, scriptSentences, scriptIndex),
     });
     scriptIndex += 1;
   }
