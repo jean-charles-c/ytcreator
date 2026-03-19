@@ -143,16 +143,17 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
   // Fetch history
   const fetchHistory = useCallback(async () => {
-    if (!projectId) return;
     setLoading(true);
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) { setLoading(false); return; }
     const { data } = await (supabase as any)
       .from("music_history")
       .select("*")
-      .eq("project_id", projectId)
+      .eq("user_id", session.session.user.id)
       .order("created_at", { ascending: false });
     setEntries(data ?? []);
     setLoading(false);
-  }, [projectId]);
+  }, []);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
