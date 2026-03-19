@@ -522,6 +522,11 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
           <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
             <Clock className="h-3.5 w-3.5 text-primary" />
             Bibliothèque musicale
+            {selectedIds.size > 0 && (
+              <span className="ml-1 text-[10px] font-normal text-primary">
+                ({selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""})
+              </span>
+            )}
           </h4>
           <div className="flex items-center gap-1">
             <input
