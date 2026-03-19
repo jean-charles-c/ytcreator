@@ -160,55 +160,50 @@ export function buildManifestTiming(
   for (const shotId of validation.missingIds) {
     const shotOrder = orderMap.get(shotId) ?? 0;
     const sceneOrder = shotToScene.get(shotId);
-    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
 
     pushUniqueIssue(issues, {
       level: "error",
       order: shotOrder,
       shotId,
       sceneOrder,
-      message: `Le shot ${shotOrder > 0 ? shotOrder : "?"} n'a pas de marqueur audio. Ne relancez pas la voix off tout de suite : re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
+      message: `Le shot ${shotOrder > 0 ? shotOrder : "?"} n'a pas de marqueur audio.`,
     });
   }
 
   for (const shotId of validation.unexpectedIds) {
     const sceneOrder = inferNearbySceneOrder(shotId, timepoints, shotToScene);
-    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
 
     pushUniqueIssue(issues, {
       level: "error",
       order: 0,
       shotId,
       sceneOrder,
-      message: `L'audio contient encore un ancien marqueur vers un shot supprimé (${shotId.slice(0, 8)}…). Ne relancez pas la voix off tout de suite : re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
+      message: `L'audio contient un marqueur vers un shot supprimé (${shotId.slice(0, 8)}…).`,
     });
   }
 
   for (const shotId of validation.placeholderIds) {
     const sceneOrder = inferNearbySceneOrder(shotId, timepoints, shotToScene);
-    const sceneHint = sceneOrder ? ` à proximité de la scène ${sceneOrder}` : "";
-    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
 
     pushUniqueIssue(issues, {
       level: "error",
       order: 0,
       shotId,
       sceneOrder,
-      message: `Un marqueur fantôme a été détecté dans l'audio${sceneHint}. Ne relancez pas la voix off tout de suite : re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
+      message: `Marqueur fantôme détecté dans l'audio.`,
     });
   }
 
   for (const shotId of validation.duplicateIds) {
     const shotOrder = orderMap.get(shotId) ?? 0;
     const sceneOrder = shotToScene.get(shotId);
-    const sceneLabel = sceneOrder ? ` de la scène ${sceneOrder}` : " de la scène concernée";
 
     pushUniqueIssue(issues, {
       level: "error",
       order: shotOrder,
       shotId,
       sceneOrder,
-      message: `Le shot ${shotOrder > 0 ? shotOrder : "?"} possède plusieurs marqueurs audio concurrents. Re-générez d'abord les shots${sceneLabel}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
+      message: `Le shot ${shotOrder > 0 ? shotOrder : "?"} possède plusieurs marqueurs audio concurrents.`,
     });
   }
 
