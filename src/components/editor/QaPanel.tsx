@@ -10,7 +10,6 @@ import { runQaValidation, type QaReport, type QaIssue } from "./qaValidation";
 interface QaPanelProps {
   projectId: string;
   manifest: VisualPromptManifest;
-  /** Callback to inform parent whether export is allowed */
   onExportAllowedChange?: (allowed: boolean) => void;
 }
 
@@ -37,7 +36,6 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
   const runCheck = async () => {
     setLoading(true);
 
-    // Fetch latest VO audio for timing
     const { data: audioFiles } = await supabase
       .from("vo_audio_history")
       .select("*")
@@ -86,57 +84,94 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
   return (
     <div className="space-y-3">
       {/* Summary bar */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
         <div className={`flex items-center gap-1.5 ${statusColor}`}>
           <StatusIcon className="h-4 w-4" />
           <span className="text-xs font-semibold">{statusLabel}</span>
         </div>
-        {report.exportAllowed ? (
-          <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
-            Export autorisé
-          </span>
-        ) : (
-          <span className="text-[10px] font-medium text-destructive bg-destructive/10 border border-destructive/20 rounded-full px-2 py-0.5">
-            Export bloqué
-          </span>
-        )}
-        <Button variant="ghost" size="sm" onClick={runCheck} className="ml-auto h-6 px-2 text-[10px] gap-1">
-          <RefreshCw className="h-3 w-3" /> Relancer
-        </Button>
+        <div className="flex items-center gap-2">
+          {report.exportAllowed ? (
+            <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
+              Export autorisé
+            </span>
+          ) : (
+            <span className="text-[10px] font-medium text-destructive bg-destructive/10 border border-destructive/20 rounded-full px-2 py-0.5">
+              Export bloqué
+            </span>
+          )}
+          <Button variant="ghost" size="sm" onClick={runCheck} className="h-8 sm:h-6 px-2 text-[10px] gap-1 min-h-[44px] sm:min-h-0 ml-auto sm:ml-0">
+            <RefreshCw className="h-3 w-3" /> Relancer
+          </Button>
+        </div>
       </div>
 
       {/* Issues list */}
       {report.issues.length > 0 && (
-        <div className="rounded border border-border bg-secondary/30 p-2 space-y-1 max-h-48 overflow-y-auto">
+        <div className="rounded border border-border bg-secondary/30 p-2 space-y-1.5 max-h-48 overflow-y-auto">
           {report.issues.map((issue, i) => {
             const cfg = levelConfig[issue.level];
             return (
               <div
                 key={i}
-                className={`flex items-start gap-2 text-[10px] pl-2 border-l-2 py-0.5 ${cfg.row}`}
+                className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1 sm:py-0.5 ${cfg.row}`}
               >
-                <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
-                  {cfg.label}
-                </span>
-                <span className="text-muted-foreground">
-                  {issue.category === "structure" ? "Structure" : "Timing"}
-                  {issue.sceneOrder != null && ` • S${issue.sceneOrder}`}
-                  {issue.shotOrder != null && ` • Shot ${issue.shotOrder}`}
-                </span>
-                <span className="text-foreground">{issue.message}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
+                    {cfg.label}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {issue.category === "structure" ? "Structure" : "Timing"}
+                    {issue.sceneOrder != null && ` • S${issue.sceneOrder}`}
+                    {issue.shotOrder != null && ` • Shot ${issue.shotOrder}`}
+                  </span>
+                </div>
+                <span className="text-foreground break-words">{issue.message}</span>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Debug timing table */}
+      {/* Debug timing table — card layout on mobile, table on desktop */}
       {timing && timing.entries.length > 0 && (
         <details className="rounded border border-border bg-card">
-          <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2">
+          <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center">
             Debug Timing — {timing.entries.length} segments
           </summary>
-          <div className="overflow-x-auto">
+
+          {/* Mobile: card layout */}
+          <div className="sm:hidden p-2 space-y-2">
+            {timing.entries.map((entry, i) => {
+              const hasIssue = timing.issues.some((iss) => iss.shotId === entry.shotId);
+              return (
+                <div
+                  key={entry.shotId}
+                  className={`rounded border p-2 space-y-1 text-[10px] ${hasIssue ? "border-destructive/30 bg-destructive/5" : "border-border bg-secondary/20"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-muted-foreground">#{entry.order} • S{entry.sceneOrder}</span>
+                    <span className={`inline-flex rounded px-1 py-0.5 text-[9px] font-medium border ${
+                      entry.source === "timepoint"
+                        ? "bg-primary/10 text-primary border-primary/20"
+                        : entry.source === "proportional"
+                        ? "bg-accent text-accent-foreground border-border"
+                        : "bg-secondary text-muted-foreground border-border"
+                    }`}>
+                      {entry.source}
+                    </span>
+                  </div>
+                  <p className="text-foreground break-words">{entry.fragmentText.length > 80 ? entry.fragmentText.slice(0, 80) + "…" : entry.fragmentText}</p>
+                  <div className="flex gap-3 font-mono text-muted-foreground">
+                    <span>Start: {entry.start.toFixed(2)}s</span>
+                    <span>Dur: {entry.duration.toFixed(2)}s</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: table layout */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-[10px]">
               <thead>
                 <tr className="bg-secondary/50 text-muted-foreground">

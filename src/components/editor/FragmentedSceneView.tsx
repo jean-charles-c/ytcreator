@@ -16,9 +16,6 @@ interface FragmentedSceneViewProps {
 
 /**
  * Renders fragments and their linked shots for a single scene.
- * 
- * - Single shot scene: shows full scene text as one fragment
- * - Multi-shot scene: shows each fragment with its linked shot
  */
 export default function FragmentedSceneView({
   normalisedScene,
@@ -35,11 +32,11 @@ export default function FragmentedSceneView({
   const isSingle = normalisedScene.shots.length <= 1;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       {/* Fragment mapping header */}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-          {isSingle ? "1 fragment (phrase complète)" : `${normalisedScene.fragments.length} fragments`}
+          {isSingle ? "1 fragment" : `${normalisedScene.fragments.length} fragments`}
         </span>
         <span className="text-[10px] text-muted-foreground">→</span>
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -59,14 +56,14 @@ export default function FragmentedSceneView({
           : true;
 
         return (
-          <div key={frag.fragmentId} className="rounded border border-border/50 bg-secondary/20 p-3 space-y-2">
+          <div key={frag.fragmentId} className="rounded border border-border/50 bg-secondary/20 p-2 sm:p-3 space-y-2">
             {/* Fragment text */}
             <div className="flex items-start gap-2">
               <span className="shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary">
                 {fragIdx + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-foreground leading-relaxed italic">"{frag.text}"</p>
+                <p className="text-xs text-foreground leading-relaxed italic break-words">"{frag.text}"</p>
                 <span className="text-[9px] text-muted-foreground mt-0.5 block">
                   Fragment {frag.order + 1} • {normShot?.kind === "merged" ? "Merged" : normShot?.kind === "single" ? "Single" : "Split"}
                 </span>
@@ -75,11 +72,11 @@ export default function FragmentedSceneView({
 
             {/* Linked shot */}
             {dbShot ? (
-              <div className="pl-7">
+              <div className="sm:pl-7">
                 {renderShot(dbShot, globalIdx, isLastActive)}
               </div>
             ) : (
-              <div className="pl-7 rounded border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <div className="sm:pl-7 rounded border border-destructive/30 bg-destructive/5 px-3 py-2">
                 <p className="text-[10px] text-destructive">⚠ Aucun shot lié à ce fragment</p>
               </div>
             )}

@@ -10,9 +10,6 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toFixed(2).padStart(5, "0")}`;
 }
 
-/**
- * Read-only table showing the manifest timing entries for QA.
- */
 export default function ManifestTimingTable({ timing }: ManifestTimingTableProps) {
   const { entries, issues, totalDuration } = timing;
 
@@ -30,10 +27,10 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
   return (
     <div className="space-y-3">
       {/* Summary */}
-      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs text-muted-foreground">
         <span>{entries.length} segments</span>
-        <span>•</span>
-        <span>Durée totale : {formatTime(totalDuration)}</span>
+        <span className="hidden sm:inline">•</span>
+        <span>Durée : {formatTime(totalDuration)}</span>
         {errorCount > 0 && (
           <span className="text-destructive font-medium">⚠ {errorCount} erreur(s)</span>
         )}
@@ -48,7 +45,7 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
           {issues.map((issue, i) => (
             <p
               key={i}
-              className={`text-[10px] pl-2 border-l-2 ${
+              className={`text-[10px] pl-2 border-l-2 break-words ${
                 issue.level === "error"
                   ? "text-destructive border-destructive/40"
                   : "text-amber-600 border-amber-500/40"
@@ -60,8 +57,45 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded border border-border">
+      {/* Mobile: card layout */}
+      <div className="sm:hidden space-y-2">
+        {entries.map((entry, i) => {
+          const end = Math.round((entry.start + entry.duration) * 100) / 100;
+          const hasIssue = issues.some((iss) => iss.shotId === entry.shotId);
+          return (
+            <div
+              key={entry.shotId}
+              className={`rounded border p-2 space-y-1 text-[10px] ${
+                hasIssue ? "border-destructive/30 bg-destructive/5" : "border-border bg-secondary/20"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-muted-foreground">#{entry.order} • S{entry.sceneOrder}</span>
+                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium border ${
+                  entry.source === "timepoint"
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : entry.source === "proportional"
+                    ? "bg-accent text-accent-foreground border-border"
+                    : "bg-secondary text-muted-foreground border-border"
+                }`}>
+                  {entry.source}
+                </span>
+              </div>
+              <p className="text-foreground break-words">
+                {entry.fragmentText.length > 80 ? entry.fragmentText.slice(0, 80) + "…" : entry.fragmentText}
+              </p>
+              <div className="flex gap-3 font-mono text-muted-foreground">
+                <span>{formatTime(entry.start)}</span>
+                <span>{entry.duration.toFixed(2)}s</span>
+                <span>→ {formatTime(end)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: table layout */}
+      <div className="hidden sm:block overflow-x-auto rounded border border-border">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-secondary/50 text-muted-foreground">

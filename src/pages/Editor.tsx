@@ -1779,7 +1779,7 @@ export default function Editor() {
 
                           return (
                             <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
-                              <button
+                                <button
                                 onClick={() =>
                                   setOpenSceneIds((prev) =>
                                     prev.includes(scene.id)
@@ -1787,18 +1787,18 @@ export default function Editor() {
                                       : [...prev, scene.id]
                                   )
                                 }
-                                className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                                className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-left hover:bg-secondary/50 transition-colors min-h-[48px]"
                               >
                                 <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
-                                <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
-                                <span className="text-xs text-muted-foreground">—</span>
-                                <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
+                                <span className="text-xs font-display font-medium text-primary whitespace-nowrap">S{scene.scene_order}</span>
+                                <span className="hidden sm:inline text-xs text-muted-foreground">—</span>
+                                <span className="text-xs sm:text-sm font-display text-foreground truncate">{scene.title}</span>
                                 {hasErrors && (
-                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive font-medium">
-                                    ⚠ Mapping incomplet
+                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium">
+                                    ⚠
                                   </span>
                                 )}
-                                <span className="ml-auto shrink-0 text-xs bg-secondary px-2 py-0.5 rounded-full">
+                                <span className="ml-auto shrink-0 text-[10px] sm:text-xs bg-secondary px-1.5 sm:px-2 py-0.5 rounded-full hidden sm:inline-flex">
                                   {sceneShots.length > 0
                                     ? <>
                                         <span className="text-muted-foreground">SHOT </span>
@@ -1813,42 +1813,46 @@ export default function Editor() {
                                           );
                                         })}
                                       </>
-                                    : <span className="text-muted-foreground">0 SHOT</span>}
+                                    : <span className="text-muted-foreground">0</span>}
+                                </span>
+                                {/* Mobile: compact shot count */}
+                                <span className="ml-auto shrink-0 text-[10px] bg-secondary px-1.5 py-0.5 rounded-full sm:hidden">
+                                  {sceneShots.length}
                                 </span>
                                 {scene.validated && (
-                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                                  <span className="shrink-0 hidden sm:inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
                                     <CheckCircle2 className="h-2.5 w-2.5" /> Validée
                                   </span>
                                 )}
                               </button>
                               {isOpen && (
-                                <div className="px-4 pb-4 pt-2 border-t border-border space-y-4 animate-fade-in">
-                                  <div className="flex items-center flex-wrap gap-2 justify-end">
+                                <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
+                                  <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     <button
                                       onClick={() => handleGenerateSceneImages(scene.id)}
                                       disabled={generatingSceneImages === scene.id}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
                                       title="Générer les visuels de cette scène"
                                     >
-                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
                                       <span>Visuels</span>
                                     </button>
                                     <button
                                       onClick={() => runStoryboard(scene.id)}
                                       disabled={isRegenerating}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
                                       title="Régénérer les shots de cette scène"
                                     >
-                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                      {isRegenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                                       <span>Régénérer</span>
                                     </button>
                                   </div>
 
                                   {/* Scene source text */}
-                                  <div className="rounded border border-border bg-background p-4">
-                                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                                  <div className="rounded border border-border bg-background p-2.5 sm:p-4">
+                                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed italic break-words">"{scene.source_text}"</p>
                                     {(scene as any).source_text_fr && (
-                                      <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                                      <p className="text-xs sm:text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3 break-words">🇫🇷 "{(scene as any).source_text_fr}"</p>
                                     )}
                                   </div>
 
@@ -1891,22 +1895,25 @@ export default function Editor() {
                 </div>
                 {/* Action history */}
                 {manifestHistory.length > 0 && (
-                  <details className="mt-6 rounded border border-border bg-secondary/30 p-3">
-                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                  <details className="mt-4 sm:mt-6 rounded border border-border bg-secondary/30 p-2 sm:p-3">
+                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
                       Historique des actions ({manifestHistory.length})
                     </summary>
-                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                    <div className="mt-2 space-y-1.5 sm:space-y-1 max-h-40 overflow-y-auto">
                       {[...manifestHistory].reverse().map((a, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border ${
-                            a.type === "merge" ? "bg-primary/10 text-primary border-primary/20" :
-                            a.type === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                            "bg-accent text-accent-foreground border-border"
-                          }`}>
-                            {a.type}
-                          </span>
-                          <span className="truncate">{a.description}</span>
-                          <span className="ml-auto shrink-0 text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
+                        <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border ${
+                              a.type === "merge" ? "bg-primary/10 text-primary border-primary/20" :
+                              a.type === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                              "bg-accent text-accent-foreground border-border"
+                            }`}>
+                              {a.type}
+                            </span>
+                            <span className="sm:hidden text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
+                          </div>
+                          <span className="truncate break-words">{a.description}</span>
+                          <span className="hidden sm:inline ml-auto shrink-0 text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
                         </div>
                       ))}
                     </div>
@@ -1914,8 +1921,8 @@ export default function Editor() {
                 )}
 
                 {/* QA Contrôle qualité */}
-                <details className="mt-6 rounded border border-border bg-card p-3" open>
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
+                <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     Contrôle qualité
                   </summary>
@@ -1929,8 +1936,8 @@ export default function Editor() {
                 </details>
 
                 {/* Manifest Timing */}
-                <details className="mt-4 rounded border border-border bg-card p-3">
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
                     Manifest Timing (synchronisation audio/image)
                   </summary>
                   <div className="mt-3">
@@ -1938,8 +1945,8 @@ export default function Editor() {
                   </div>
                 </details>
 
-                <div className="mt-8 flex gap-3">
-                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
+                <div className="mt-6 sm:mt-8 flex gap-3">
+                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
                     <Play className="h-4 w-4" /> Re-générer tous les shots
                   </Button>
                 </div>

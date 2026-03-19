@@ -82,60 +82,68 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       .eq("id", shot.id);
     setSaving(false);
     if (error) {
-      toast.error("Erreur de sauvegarde");
+      toast.error("Erreur lors de la mise à jour.");
       return;
     }
     onUpdate({ ...shot, shot_type: editType, description: editDesc.trim(), prompt_export: editPrompt.trim() || null });
     setEditing(false);
-    toast.success("Shot mis à jour");
-  };
-
-  const copyPrompt = () => {
-    const text = shot.prompt_export || shot.description;
-    navigator.clipboard.writeText(text);
-    toast.success("Prompt copié");
+    toast.success("Shot mis à jour !");
   };
 
   const handleRegenerate = async () => {
-    if (onRegenerate) {
-      setRegenerating(true);
-      try { await onRegenerate(shot.id); } finally { setRegenerating(false); }
+    if (!onRegenerate) return;
+    setRegenerating(true);
+    try {
+      await onRegenerate(shot.id);
+    } finally {
+      setRegenerating(false);
     }
   };
 
   const handleGenerateImage = async () => {
-    if (onGenerateImage) {
-      setGeneratingImage(true);
-      try { await onGenerateImage(shot.id); } finally { setGeneratingImage(false); }
+    if (!onGenerateImage) return;
+    setGeneratingImage(true);
+    try {
+      await onGenerateImage(shot.id);
+    } finally {
+      setGeneratingImage(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!onDelete || deleting) return;
+    if (!onDelete) return;
     setDeleting(true);
-    try { await onDelete(shot.id); setDeleteDialogOpen(false); } finally { setDeleting(false); }
+    try {
+      await onDelete(shot.id);
+      setDeleteDialogOpen(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleMerge = async () => {
-    if (!onMergeWithNext || merging) return;
+    if (!onMergeWithNext) return;
     setMerging(true);
-    try { await onMergeWithNext(shot.id); } finally { setMerging(false); }
+    try {
+      await onMergeWithNext(shot.id);
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const copyPrompt = () => {
+    const text = shot.prompt_export || shot.description;
+    navigator.clipboard.writeText(text).then(() => toast.success("Prompt copié"));
   };
 
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Veuillez sélectionner une image.");
-      return;
-    }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${shot.project_id}/${shot.id}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("shot-images")
-        .upload(path, file, { upsert: true, contentType: file.type });
+      const path = `${shot.project_id}/${shot.id}_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("shot-images").upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("shot-images").getPublicUrl(path);
@@ -162,18 +170,18 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   if (editing) {
     return (
-      <div className="rounded border border-primary/30 bg-card p-4 space-y-2">
-        <select value={editType} onChange={(e) => setEditType(e.target.value)} className={inputClass}>
+      <div className="rounded border border-primary/30 bg-card p-3 sm:p-4 space-y-2">
+        <select value={editType} onChange={(e) => setEditType(e.target.value)} className={`${inputClass} min-h-[44px] sm:min-h-0`}>
           {SHOT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           {!SHOT_TYPES.includes(editType) && <option value={editType}>{editType}</option>}
         </select>
         <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className={`${inputClass} min-h-[60px] resize-y`} placeholder="Description" />
         <textarea value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} className={`${inputClass} min-h-[80px] resize-y font-mono`} placeholder="Prompt export" />
         <div className="flex gap-2">
-          <Button size="sm" onClick={saveEdit} disabled={saving}>
+          <Button size="sm" onClick={saveEdit} disabled={saving} className="min-h-[44px] sm:min-h-0">
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} OK
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+          <Button size="sm" variant="outline" onClick={() => setEditing(false)} className="min-h-[44px] sm:min-h-0">
             <X className="h-3 w-3" />
           </Button>
         </div>
@@ -183,7 +191,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   return (
     <>
-      <div className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative">
+      <div className="group rounded border border-border bg-card p-3 sm:p-4 transition-colors hover:border-primary/30 relative">
         {imageUrl && (
           <div
             className="mb-3 rounded overflow-hidden border border-border cursor-pointer"
@@ -193,7 +201,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
           </div>
         )}
 
-      <div className="flex items-center justify-between mb-2 gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
           <div className="flex flex-col gap-1 min-w-0">
             <span className="text-xs font-display font-medium text-primary">{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
             {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
@@ -201,49 +209,49 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               Coût IA : {formatUsd(cost)}
             </span>
           </div>
-          <div className="flex gap-1 shrink-0">
+          <div className="flex gap-0.5 sm:gap-1 shrink-0 flex-wrap">
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
-            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Uploader une image">
-              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Uploader une image">
+              {uploading ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
             </button>
-            <button onClick={handleGenerateImage} disabled={generatingImage} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
-              {generatingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+            <button onClick={handleGenerateImage} disabled={generatingImage} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
+              {generatingImage ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <ImageIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
             </button>
-            <button onClick={handleRegenerate} disabled={regenerating} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Regénérer ce shot">
-              {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            <button onClick={handleRegenerate} disabled={regenerating} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Regénérer ce shot">
+              {regenerating ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <RefreshCw className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
             </button>
-            <button onClick={copyPrompt} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copier le prompt">
-              <Copy className="h-3.5 w-3.5" />
+            <button onClick={copyPrompt} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Copier le prompt">
+              <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
-            <button onClick={startEdit} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Éditer">
-              <Pencil className="h-3.5 w-3.5" />
+            <button onClick={startEdit} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Éditer">
+              <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
             {onMergeWithNext && !isLastInScene && (
-              <button onClick={handleMerge} disabled={merging} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50" title="Fusionner avec le shot suivant">
-                {merging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Merge className="h-3.5 w-3.5" />}
+              <button onClick={handleMerge} disabled={merging} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Fusionner avec le shot suivant">
+                {merging ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
               </button>
             )}
-            <button onClick={() => setDeleteDialogOpen(true)} className="p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Supprimer ce shot">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button onClick={() => setDeleteDialogOpen(true)} className="p-2 sm:p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Supprimer ce shot">
+              <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
           </div>
         </div>
         {shot.source_sentence && (
-          <div className="mb-2 rounded bg-secondary/50 border border-border px-3 py-2">
+          <div className="mb-2 rounded bg-secondary/50 border border-border px-2 sm:px-3 py-2">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
-            <p className="text-xs text-foreground leading-relaxed mt-0.5 italic">"{shot.source_sentence}"</p>
+            <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
             {shot.source_sentence_fr && (
-              <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1">🇫🇷 "{shot.source_sentence_fr}"</p>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1 break-words">🇫🇷 "{shot.source_sentence_fr}"</p>
             )}
           </div>
         )}
-        <p className="text-xs text-muted-foreground leading-relaxed mb-2">{shot.description}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed mb-2 break-words">{shot.description}</p>
         {shot.prompt_export && (
           <details className="group/details">
-            <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors">
+            <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
               Prompt visuel (EN)
             </summary>
-            <pre className="mt-1 rounded bg-background border border-border p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text">
+            <pre className="mt-1 rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
               {shot.prompt_export}
             </pre>
           </details>
@@ -252,11 +260,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
       {lightboxOpen && imageUrl && (
         <div
-          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightboxOpen(false)}
         >
           <button
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
             onClick={() => setLightboxOpen(false)}
           >
             <X className="h-6 w-6" />
@@ -269,7 +277,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               onClick={() => setLightboxOpen(false)}
             />
             <div className="text-white text-center space-y-1">
-              <p className="font-display font-semibold">SHOT {globalIndex} — {shot.shot_type}</p>
+              <p className="font-display font-semibold text-sm sm:text-base">SHOT {globalIndex} — {shot.shot_type}</p>
               <p className="text-xs text-white/70">Coût IA cumulé : {formatUsd(cost)}</p>
             </div>
           </div>
@@ -277,16 +285,16 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer ce shot ?</AlertDialogTitle>
             <AlertDialogDescription>
               Cette action est définitive.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={deleting} className="min-h-[44px]">Annuler</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="min-h-[44px]">
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
             </Button>
           </AlertDialogFooter>
