@@ -323,7 +323,7 @@ function buildMarkedSsml(
   emphasisBoost = 0
 ): string {
   const parts = shotSentences.map((shot, idx) => {
-    const mark = `<mark name="s_${idx}"/>`;
+    const mark = `<mark name="${shot.id}"/>`;
     let processed = escapeXml(shot.text.trim());
 
     // Prosody MUST run first on clean escaped text (splits by whitespace)
@@ -658,85 +658,60 @@ function chunkTextForLegacySsml(rawText: string, options: LegacyChunkOptions): s
 
 /**
  * Split marked SSML into chunks of ~MAX_CHARS, keeping mark+sentence pairs together.
- * Returns array of {ssml, markIndices} where markIndices tracks which s_N marks are in each chunk.
+ * Marks are named with shot IDs (UUIDs or _missing_N).
+ * Returns array of {ssml, shotIds} where shotIds tracks which shot IDs are in each chunk.
  */
 function chunkMarkedSsml(
   ssml: string,
   maxChars: number
-): { ssml: string; markIndices: number[] }[] {
-  // Extract inner content between <speak> and </speak>
+): { ssml: string; shotIds: string[] }[] {
   const inner = ssml.replace(/^<speak>/, "").replace(/<\/speak>$/, "");
 
-  // Split by marks: each segment starts with <mark name="s_N"/> or <mark name="__end"/>
-  const markPattern = /(<mark name="[^"]+"\/>)/g;
-  const parts: string[] = [];
-  let lastIdx = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = markPattern.exec(inner)) !== null) {
-    if (match.index > lastIdx) {
-      // Content before the first mark (shouldn't happen but safety)
-      parts.push(inner.slice(lastIdx, match.index));
-    }
-    lastIdx = match.index;
-  }
-  if (lastIdx < inner.length) {
-    parts.push(inner.slice(lastIdx));
-  }
-
-  // Now split into mark+content pairs
-  const segments: { mark: string; content: string; index: number }[] = [];
-  const segPattern = /<mark name="(s_(\d+)|__end)"\/>([^<]*(?:<(?!mark)[^<]*)*)/g;
-  let segMatch: RegExpExecArray | null;
-  const fullContent = inner;
-
-  // Simpler approach: split by mark tags
-  const markRegex = /<mark name="(s_\d+|__end)"\/>/g;
+  // Find all marks (shot IDs or __end)
+  const markRegex = /<mark name="([^"]+)"\/>/g;
   const allMarks: { name: string; pos: number }[] = [];
-  while ((segMatch = markRegex.exec(fullContent)) !== null) {
+  let segMatch: RegExpExecArray | null;
+  while ((segMatch = markRegex.exec(inner)) !== null) {
     allMarks.push({ name: segMatch[1], pos: segMatch.index });
   }
 
   // Build segments: each is mark + text until next mark
-  const segmentPairs: { markName: string; text: string; idx: number }[] = [];
+  const segmentPairs: { markName: string; text: string; isShotMark: boolean }[] = [];
   for (let i = 0; i < allMarks.length; i++) {
     const markTag = `<mark name="${allMarks[i].name}"/>`;
     const startAfterMark = allMarks[i].pos + markTag.length;
-    const endPos = i + 1 < allMarks.length ? allMarks[i].pos + markTag.length + (allMarks[i + 1].pos - startAfterMark) : fullContent.length;
-    const text = fullContent.slice(startAfterMark, i + 1 < allMarks.length ? allMarks[i + 1].pos : fullContent.length);
-    const idx = allMarks[i].name.startsWith("s_") ? parseInt(allMarks[i].name.replace("s_", "")) : -1;
-    segmentPairs.push({ markName: allMarks[i].name, text, idx });
+    const text = inner.slice(startAfterMark, i + 1 < allMarks.length ? allMarks[i + 1].pos : inner.length);
+    const isShotMark = allMarks[i].name !== "__end" && allMarks[i].name !== "__chunk_end";
+    segmentPairs.push({ markName: allMarks[i].name, text, isShotMark });
   }
 
-  // Now chunk: group segments into chunks under maxChars
-  const chunks: { ssml: string; markIndices: number[] }[] = [];
+  // Group segments into chunks under maxChars
+  const chunks: { ssml: string; shotIds: string[] }[] = [];
   let currentParts: string[] = [];
-  let currentIndices: number[] = [];
+  let currentIds: string[] = [];
   let currentLen = "<speak></speak>".length;
 
   for (const seg of segmentPairs) {
     const segText = `<mark name="${seg.markName}"/>${seg.text}`;
     if (currentLen + segText.length > maxChars && currentParts.length > 0) {
-      // Add chunk end marker for duration measurement
       currentParts.push(`<mark name="__chunk_end"/>`);
       chunks.push({
         ssml: `<speak>${currentParts.join("")}</speak>`,
-        markIndices: currentIndices,
+        shotIds: currentIds,
       });
       currentParts = [];
-      currentIndices = [];
+      currentIds = [];
       currentLen = "<speak></speak>".length;
     }
     currentParts.push(segText);
-    if (seg.idx >= 0) currentIndices.push(seg.idx);
+    if (seg.isShotMark) currentIds.push(seg.markName);
     currentLen += segText.length;
   }
 
   if (currentParts.length > 0) {
-    // Don't need chunk_end on last chunk since __end is already there
     chunks.push({
       ssml: `<speak>${currentParts.join("")}</speak>`,
-      markIndices: currentIndices,
+      shotIds: currentIds,
     });
   }
 
@@ -885,11 +860,13 @@ serve(async (req) => {
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
       console.log(`Split into ${chunks.length} chunks, total shots: ${shotSentences!.length}`);
 
-      // cumulativeOffset is declared at outer scope
+      // Build index map: shotId -> sequential index in shotSentences
+      const shotIdToIndex = new Map<string, number>();
+      shotSentences!.forEach((s, i) => shotIdToIndex.set(s.id, i));
 
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
-        console.log(`Chunk ${ci + 1}: marks=[${chunk.markIndices.join(",")}], ${chunk.ssml.length} chars`);
+        console.log(`Chunk ${ci + 1}: shotIds=[${chunk.shotIds.map(id => id.slice(0, 8)).join(",")}], ${chunk.ssml.length} chars`);
 
         const result = await callGoogleTTS(
           chunk.ssml,
@@ -904,7 +881,7 @@ serve(async (req) => {
         const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
         audioBuffers.push(raw);
 
-        // Process timepoints
+        // Process timepoints — mark names ARE the shot IDs
         let chunkDuration = 0;
         const chunkTimepoints: { name: string; time: number }[] = [];
         if (result.timepoints) {
@@ -914,27 +891,26 @@ serve(async (req) => {
               chunkDuration = tp.timeSeconds;
               continue;
             }
-            if (tp.markName.startsWith("s_")) {
-              const idx = parseInt(tp.markName.replace("s_", ""));
+            // Mark name is directly the shot ID — no index parsing needed
+            const shotIndex = shotIdToIndex.get(tp.markName) ?? -1;
+            if (shotIndex >= 0) {
               allTimepoints.push({
-                shotIndex: idx,
+                shotIndex,
                 timeSeconds: Math.round((tp.timeSeconds + cumulativeOffset) * 1000) / 1000,
-                shotId: shotSentences![idx]?.id ?? "",
+                shotId: tp.markName,
               });
             }
           }
         }
 
-        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints)}`);
+        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
 
         // If no end marker found, estimate from audio byte size (MP3 ~16kbps)
         if (chunkDuration === 0) {
-          // Use last timepoint + 2s as fallback
           if (result.timepoints && result.timepoints.length > 0) {
             const lastTp = result.timepoints[result.timepoints.length - 1];
             chunkDuration = lastTp.timeSeconds + 2;
           } else {
-            // Very rough: MP3 at ~128kbps = 16KB/s
             chunkDuration = raw.length / 16000;
           }
         }
