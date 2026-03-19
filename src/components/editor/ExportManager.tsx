@@ -189,6 +189,8 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
     );
   };
 
+  const lastExport = exports.length > 0 ? exports[exports.length - 1] : null;
+
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       {/* Header */}
@@ -199,6 +201,21 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
           <span className="text-[10px] text-muted-foreground ml-auto">{exports.length} export{exports.length > 1 ? "s" : ""}</span>
         )}
       </div>
+
+      {/* Quick download last export */}
+      {lastExport && !isAnyExporting && (
+        <div className="px-4 pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDownload(lastExport)}
+            className="w-full gap-2 border-emerald-400/40 text-emerald-500 hover:bg-emerald-400/10 min-h-[40px]"
+          >
+            <Download className="h-4 w-4" />
+            Télécharger le dernier export ({lastExport.type === "xml" ? "XML+Médias" : "MP4"} — {lastExport.date})
+          </Button>
+        </div>
+      )}
 
       <div className="p-4 space-y-4">
         {/* FPS selector */}
