@@ -1796,22 +1796,33 @@ export default function Editor() {
                     return (
                       <>
                         {/* Manifest validation summary */}
-                        {errorIssues.length > 0 && (
-                          <div className="rounded border border-destructive/30 bg-destructive/5 p-3 mb-4 space-y-1">
-                            <p className="text-xs font-medium text-destructive">⚠ {errorIssues.length} erreur(s) de mapping détectée(s)</p>
-                            {errorIssues.slice(0, 5).map((issue, i) => (
-                              <p key={i} className="text-[10px] text-destructive/80 pl-3 border-l-2 border-destructive/30">{issue.message}</p>
-                            ))}
-                          </div>
-                        )}
-                        {warningIssues.length > 0 && errorIssues.length === 0 && (
-                          <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 mb-4 space-y-1">
-                            <p className="text-xs font-medium text-amber-600">⚠ {warningIssues.length} avertissement(s)</p>
-                            {warningIssues.slice(0, 3).map((issue, i) => (
-                              <p key={i} className="text-[10px] text-amber-600/80 pl-3 border-l-2 border-amber-500/30">{issue.message}</p>
-                            ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const sceneOrderMap = new Map(manifest.scenes.map((s) => [s.sceneId, s.sceneOrder]));
+                          const formatIssue = (issue: { sceneId?: string; message: string }) => {
+                            const order = issue.sceneId ? sceneOrderMap.get(issue.sceneId) : undefined;
+                            return order !== undefined ? `Scène ${order} — ${issue.message}` : issue.message;
+                          };
+                          return (
+                            <>
+                              {errorIssues.length > 0 && (
+                                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 mb-4 space-y-1">
+                                  <p className="text-xs font-medium text-destructive">⚠ {errorIssues.length} erreur(s) de mapping détectée(s)</p>
+                                  {errorIssues.slice(0, 5).map((issue, i) => (
+                                    <p key={i} className="text-[10px] text-destructive/80 pl-3 border-l-2 border-destructive/30">{formatIssue(issue)}</p>
+                                  ))}
+                                </div>
+                              )}
+                              {warningIssues.length > 0 && errorIssues.length === 0 && (
+                                <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 mb-4 space-y-1">
+                                  <p className="text-xs font-medium text-amber-600">⚠ {warningIssues.length} avertissement(s)</p>
+                                  {warningIssues.slice(0, 3).map((issue, i) => (
+                                    <p key={i} className="text-[10px] text-amber-600/80 pl-3 border-l-2 border-amber-500/30">{formatIssue(issue)}</p>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         {manifest.scenes.map((normScene) => {
                           const scene = scenes.find((s) => s.id === normScene.sceneId)!;
