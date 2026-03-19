@@ -202,6 +202,15 @@ function cleanScriptForExport(raw: string): string {
     .trim();
 }
 
+/** Strip section tags [[HOOK]], [[ACT1]] etc. to get pure VO text */
+function cleanScriptVoOnly(raw: string): string {
+  const withMarks = cleanScriptForExport(raw);
+  return withMarks
+    .replace(/\[\[[A-Z0-9_]+\]\]\s*/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function splitIntoVoiceOverBlocks(raw: string): string[] {
   const clean = cleanScriptForExport(raw);
   const sentences = clean.split(/(?<=\.)\s+/);
@@ -256,6 +265,7 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const hasContent = hasScript || hasSeo || hasPrompts;
 
   const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
+  const cleanedScriptVo = hasScript ? cleanScriptVoOnly(generatedScript!) : null;
   const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
 
   return (
@@ -293,9 +303,18 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
                   {hasScript ? (
                     <>
-                      {/* SCRIPT sub-collapsible */}
+                      {/* SCRIPT pur VO */}
                       <SubCollapsible icon={ScrollText} title="SCRIPT">
-                        <CopyableBlock text={cleanedScript!} label="Script complet">
+                        <CopyableBlock text={cleanedScriptVo!} label="Script">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {cleanedScriptVo}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+
+                      {/* SCRIPT avec Marks des chapitres */}
+                      <SubCollapsible icon={ScrollText} title="SCRIPT AVEC MARKS DES CHAPITRES">
+                        <CopyableBlock text={cleanedScript!} label="Script avec marks">
                           <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                             {cleanedScript}
                           </pre>
