@@ -1647,6 +1647,7 @@ export default function Editor() {
                     {generatingAllImages ? (
                       <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
                         <Square className="h-4 w-4" /> Stopper la génération
+                        {imageGenTask?.completedShots != null && imageGenTask?.totalShots ? ` (${imageGenTask.completedShots}/${imageGenTask.totalShots})` : ""}
                       </Button>
                     ) : (() => {
                       const hasAnyImage = shots.some((s: any) => s.image_url);
