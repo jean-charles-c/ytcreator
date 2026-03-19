@@ -22,9 +22,14 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+interface MusicTrack {
+  url: string;
+  name: string;
+}
+
 interface MusicStudioProps {
   projectId: string | null;
-  onMusicSelected?: (audioUrl: string, fileName: string) => void;
+  onMusicSelected?: (tracks: MusicTrack[]) => void;
 }
 
 interface MusicEntry {
