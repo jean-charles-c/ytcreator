@@ -1005,33 +1005,41 @@ export default function Editor() {
     if (url) toast.success("Visuel généré");
   };
 
-  const handleGenerateAllImages = async () => {
+  const imageGenTask = getTask(projectId ?? "", "image-gen");
+  const generatingAllImages = imageGenTask?.status === "running";
+
+  const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
-    cancelImageGenRef.current = false;
-    setGeneratingAllImages(true);
-    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
-    let count = 0;
-    let shotIdx = 0;
-    for (const scene of sortedScenes) {
-      const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
-      for (const shot of sceneShots) {
-        if (cancelImageGenRef.current) break;
-        if (shot.image_url) continue;
-        if (shotIdx > 0) await new Promise((r) => setTimeout(r, 8000));
-        if (cancelImageGenRef.current) break;
-        const url = await generateShotImage(shot.id);
-        if (url) count++;
-        shotIdx++;
-      }
-      if (cancelImageGenRef.current) break;
-    }
-    setGeneratingAllImages(false);
-    toast.success(cancelImageGenRef.current ? `Génération stoppée — ${count} visuel(s) créé(s)` : `${count} visuel(s) généré(s)`);
+    const missingShots = shots
+      .filter((s) => !s.image_url)
+      .sort((a, b) => {
+        const scA = scenes.find((sc) => sc.id === a.scene_id)?.scene_order ?? 0;
+        const scB = scenes.find((sc) => sc.id === b.scene_id)?.scene_order ?? 0;
+        return scA !== scB ? scA - scB : a.shot_order - b.shot_order;
+      });
+    if (missingShots.length === 0) return;
+    bgStartImageGen({
+      projectId,
+      shotIds: missingShots.map((s) => s.id),
+      model: imageModel,
+      aspectRatio: imageAspectRatio,
+    });
   };
 
   const stopImageGeneration = () => {
-    cancelImageGenRef.current = true;
+    if (projectId) stopTask(projectId, "image-gen");
   };
+
+  // Refresh shots when image gen task completes or progresses
+  useEffect(() => {
+    if (!projectId) return;
+    return subscribe(projectId, "image-gen", (task) => {
+      // Reload shots from DB to get updated image_urls
+      supabase.from("shots").select("*").eq("project_id", projectId).then(({ data }) => {
+        if (data) setShots(data as any);
+      });
+    });
+  }, [projectId, subscribe]);
 
   const handleGenerateSceneImages = async (sceneId: string) => {
     if (generatingSceneImages) return;
