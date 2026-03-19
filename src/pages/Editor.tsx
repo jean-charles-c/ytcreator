@@ -1969,6 +1969,7 @@ export default function Editor() {
               </div>
             </>
             )}
+          </div>
         {/* Export tab */}
         {!showSetup && activeTab === "export" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
