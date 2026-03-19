@@ -11,6 +11,7 @@ import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSe
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { alignShotSentencesToScript } from "./shotSentenceAlignment";
+import { validateExactAlignedShotSentences } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 
 interface VoiceOverStudioProps {
