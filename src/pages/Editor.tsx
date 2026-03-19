@@ -1039,8 +1039,11 @@ export default function Editor() {
     if (!projectId) return;
     return subscribe(projectId, "image-gen", (task) => {
       // Reload shots from DB to get updated image_urls
-      supabase.from("shots").select("*").eq("project_id", projectId).then(({ data }) => {
-        if (data) setShots(data as any);
+      supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true }).then(({ data }) => {
+        if (data) {
+          const { reordered } = reorderShotsByReadingPosition(data as Shot[], scenes);
+          setShots(reordered);
+        }
       });
     });
   }, [projectId, subscribe]);
