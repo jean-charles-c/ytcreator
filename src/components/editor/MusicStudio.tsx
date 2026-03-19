@@ -362,7 +362,17 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
             >
               {isPlaying ? <Pause className="h-4 w-4 sm:h-3 sm:w-3" /> : <Play className="h-4 w-4 sm:h-3 sm:w-3 ml-0.5" />}
             </button>
-            <div className="flex-1">
+            <div
+              className="flex-1 cursor-pointer"
+              onClick={(e) => {
+                if (!audioRef.current) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                audioRef.current.currentTime = ratio * (audioRef.current.duration || 0);
+                setAudioProgress(ratio * 100);
+                setCurrentTime(audioRef.current.currentTime);
+              }}
+            >
               <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                 <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${audioProgress}%` }} />
               </div>
