@@ -355,7 +355,7 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
 
                       {/* SOUS-TITRES */}
                       {subtitlesText && (
-                        <SubCollapsible icon={AlignLeft} title="SOUS-TITRES" badge={`${scenes.length} scènes`}>
+                        <SubCollapsible icon={AlignLeft} title="SOUS-TITRES" badge={`${shots.length} shots`}>
                           <CopyableBlock text={subtitlesText} label="Sous-titres">
                             <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                               {subtitlesText}
