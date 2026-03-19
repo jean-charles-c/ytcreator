@@ -1790,10 +1790,22 @@ export default function Editor() {
                                 ⚠ {missingSentences.length} phrase(s) orpheline(s)
                               </span>
                             )}
-                            <span className="ml-auto shrink-0 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                            <span className="ml-auto shrink-0 text-xs bg-secondary px-2 py-0.5 rounded-full">
                               {sceneShots.length > 0
-                                ? `SHOT ${Array.from({ length: sceneShots.length }, (_, i) => String(startIndex + i).padStart(4, "0")).join(" / ")}`
-                                : "0 SHOT"}
+                                ? <>
+                                    <span className="text-muted-foreground">SHOT </span>
+                                    {sceneShots.map((sh, i) => {
+                                      const shotNum = String(startIndex + i).padStart(4, "0");
+                                      const hasImage = !!sh.image_url;
+                                      return (
+                                        <span key={sh.id}>
+                                          {i > 0 && <span className="text-muted-foreground"> / </span>}
+                                          <span className={hasImage ? "text-green-500 font-semibold" : "text-muted-foreground"}>{shotNum}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </>
+                                : <span className="text-muted-foreground">0 SHOT</span>}
                             </span>
                             {scene.validated && (
                               <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
