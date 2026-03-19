@@ -52,7 +52,7 @@ interface PlayerState {
   realDuration: number | null;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort, onMusicSelected }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [generating, setGenerating] = useState(false);
