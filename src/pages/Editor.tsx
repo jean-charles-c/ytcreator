@@ -963,6 +963,7 @@ export default function Editor() {
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+  const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
   const IMAGE_MODELS = [
     { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "0.02 $" },
