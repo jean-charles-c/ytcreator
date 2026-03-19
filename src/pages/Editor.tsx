@@ -1884,6 +1884,30 @@ export default function Editor() {
                     );
                   })()}
                 </div>
+                {/* Action history */}
+                {manifestHistory.length > 0 && (
+                  <details className="mt-6 rounded border border-border bg-secondary/30 p-3">
+                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      Historique des actions ({manifestHistory.length})
+                    </summary>
+                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                      {[...manifestHistory].reverse().map((a, i) => (
+                        <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border ${
+                            a.type === "merge" ? "bg-primary/10 text-primary border-primary/20" :
+                            a.type === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                            "bg-accent text-accent-foreground border-border"
+                          }`}>
+                            {a.type}
+                          </span>
+                          <span className="truncate">{a.description}</span>
+                          <span className="ml-auto shrink-0 text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
                 <div className="mt-8 flex gap-3">
                   <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
                     <Play className="h-4 w-4" /> Re-générer tous les shots
