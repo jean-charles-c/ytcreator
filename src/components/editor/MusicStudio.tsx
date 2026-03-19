@@ -157,9 +157,26 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       .select("*")
       .eq("user_id", session.session.user.id)
       .order("created_at", { ascending: false });
-    setEntries(data ?? []);
+    const list: MusicEntry[] = data ?? [];
+    setEntries(list);
+
+    // Restore persisted selection and notify parent
+    if (projectId) {
+      const savedId = localStorage.getItem(`music_selected_${projectId}`);
+      if (savedId) {
+        const found = list.find(e => e.id === savedId);
+        if (found) {
+          const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(found.file_path);
+          onMusicSelected?.(urlData.publicUrl, found.file_name);
+        } else {
+          localStorage.removeItem(`music_selected_${projectId}`);
+          setSelectedId(null);
+        }
+      }
+    }
+
     setLoading(false);
-  }, []);
+  }, [projectId, onMusicSelected]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
