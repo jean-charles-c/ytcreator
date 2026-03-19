@@ -287,6 +287,59 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     }
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) { toast.error("Fichier audio uniquement"); return; }
+    if (file.size > 50 * 1024 * 1024) { toast.error("Fichier trop volumineux (max 50 MB)"); return; }
+
+    setUploading(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) { toast.error("Connectez-vous."); return; }
+      const userId = session.user.id;
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const timeStr = new Date().toISOString().slice(11, 16).replace(":", "h");
+      const storagePath = `${userId}/imports/${dateStr}_${timeStr}_${file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("music-audio")
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw new Error(uploadError.message);
+
+      // Get duration via temporary Audio element
+      let durationSeconds = 0;
+      try {
+        const tempUrl = URL.createObjectURL(file);
+        durationSeconds = await new Promise<number>((resolve) => {
+          const a = new Audio(tempUrl);
+          a.onloadedmetadata = () => { resolve(Math.round(a.duration)); URL.revokeObjectURL(tempUrl); };
+          a.onerror = () => { resolve(0); URL.revokeObjectURL(tempUrl); };
+        });
+      } catch { /* ignore */ }
+
+      await (supabase as any).from("music_history").insert({
+        project_id: projectId || "00000000-0000-0000-0000-000000000000",
+        user_id: userId,
+        file_name: file.name,
+        file_path: storagePath,
+        file_size: file.size,
+        duration_seconds: durationSeconds,
+        prompt: "Import",
+      });
+
+      fetchHistory();
+      toast.success(`"${file.name}" importé dans la bibliothèque`);
+    } catch (err: any) {
+      console.error("Import error:", err);
+      toast.error(err?.message || "Erreur d'import");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ElevenLabs Balance */}
