@@ -411,7 +411,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       <div className="space-y-2">
         <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
           <Clock className="h-3.5 w-3.5 text-primary" />
-          Historique des musiques
+          Bibliothèque musicale
         </h4>
 
         {loading && entries.length === 0 && (
@@ -422,7 +422,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
         {!loading && entries.length === 0 && (
           <p className="text-xs text-muted-foreground/50 text-center py-4">
-            Aucune musique générée pour ce projet.
+            Aucune musique générée.
           </p>
         )}
 
