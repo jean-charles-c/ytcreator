@@ -126,7 +126,7 @@ serve(async (req) => {
     const selectedModel = ALLOWED_MODELS.includes(model)
       ? model
       : "google/gemini-2.5-flash-image";
-    const selectedAspectRatio = Object.keys(ASPECT_RATIO_DIMENSIONS).includes(aspect_ratio)
+    const selectedAspectRatio = Object.keys(ASPECT_RATIOS).includes(aspect_ratio)
       ? aspect_ratio
       : "16:9";
 
