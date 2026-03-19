@@ -522,7 +522,8 @@ export default function Editor() {
         // Re-fetch shots from DB
         const { data: shotData } = await supabase.from("shots").select("*").eq("project_id", projectId).order("scene_id", { ascending: true }).order("shot_order", { ascending: true });
         if (shotData) {
-          setShots(shotData);
+          const { reordered } = reorderShotsByReadingPosition(shotData as Shot[], scenes);
+          setShots(reordered);
           if (task.status === "done") {
             setShotVersions((prev) => {
               const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
