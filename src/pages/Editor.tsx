@@ -1911,8 +1911,23 @@ export default function Editor() {
                   </details>
                 )}
 
+                {/* QA Contrôle qualité */}
+                <details className="mt-6 rounded border border-border bg-card p-3" open>
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Contrôle qualité
+                  </summary>
+                  <div className="mt-3">
+                    <QaPanel
+                      projectId={projectId!}
+                      manifest={buildManifest(projectId!, scenes, shots)}
+                      onExportAllowedChange={setQaExportAllowed}
+                    />
+                  </div>
+                </details>
+
                 {/* Manifest Timing */}
-                <details className="mt-6 rounded border border-border bg-card p-3">
+                <details className="mt-4 rounded border border-border bg-card p-3">
                   <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
                     Manifest Timing (synchronisation audio/image)
                   </summary>
