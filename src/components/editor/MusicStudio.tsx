@@ -13,6 +13,7 @@ import {
   Download,
   Trash2,
   CheckCircle2,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,12 @@ interface PlayerState {
   duration: number;
 }
 
+interface ElevenLabsBalance {
+  character_count: number;
+  character_limit: number;
+  tier: string;
+}
+
 export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioProps) {
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState(30);
@@ -47,6 +54,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
 
   // Player
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
@@ -71,6 +79,32 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     };
     loadSettings();
   }, []);
+
+  // Fetch ElevenLabs balance
+  const fetchBalance = useCallback(async () => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) return;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-balance`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setBalance(data);
+      }
+    } catch (e) {
+      console.error("Balance fetch error:", e);
+    }
+  }, []);
+
+  useEffect(() => { fetchBalance(); }, [fetchBalance]);
 
   // Save settings on change
   const saveSettings = useCallback(async (newPrompt: string, newDuration: number) => {
@@ -139,6 +173,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
       setPlayerState({ audioUrl: data.audioUrl, fileName: data.fileName, duration: data.durationSeconds });
       fetchHistory();
+      fetchBalance();
       saveSettings(prompt, duration);
 
       toast.success(`Musique générée — ${data.fileName} (${formatSize(data.fileSize)})`);
@@ -212,6 +247,29 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
   return (
     <div className="space-y-4">
+      {/* ElevenLabs Balance */}
+      {balance && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2">
+          <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                Crédits ElevenLabs <span className="text-foreground font-medium capitalize">({balance.tier})</span>
+              </span>
+              <span className="font-mono text-foreground">
+                {balance.character_count.toLocaleString()} / {balance.character_limit.toLocaleString()}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${Math.min((balance.character_count / balance.character_limit) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Prompt */}
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground">
