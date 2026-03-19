@@ -22,6 +22,7 @@ import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 interface ExportManagerProps {
   timeline: Timeline;
   projectId: string;
+  exportBlocked?: boolean;
 }
 
 export interface ExportEntry {
