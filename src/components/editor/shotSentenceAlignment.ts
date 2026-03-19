@@ -60,20 +60,19 @@ function wordOverlapRatio(a: string, b: string): number {
   return overlap / Math.max(wordsA.size, wordsB.size);
 }
 
-/** Strict matching: exact or substring inclusion (for multi-sentence blocks) */
+/** Strict matching: exact or shot-includes-script (for multi-sentence blocks) */
 function strictMatch(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
   if (!shotTextNormalized || !scriptBlockNormalized) return false;
   if (shotTextNormalized === scriptBlockNormalized) return true;
   if (shotTextNormalized.includes(scriptBlockNormalized)) return true;
-  // Reverse inclusion only when sizes are comparable
-  const lenRatio = shotTextNormalized.length / scriptBlockNormalized.length;
-  if (scriptBlockNormalized.includes(shotTextNormalized) && lenRatio > 0.5) return true;
   return false;
 }
 
-/** Fuzzy matching: includes strict + word overlap (for single sentences only) */
+/** Fuzzy matching: includes strict + reverse inclusion + word overlap (single sentences) */
 function fuzzyMatch(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
   if (strictMatch(shotTextNormalized, scriptSentenceNormalized)) return true;
+  // Reverse inclusion: script contains shot text (shot is shortened version)
+  if (scriptSentenceNormalized.includes(shotTextNormalized) && shotTextNormalized.length > 10) return true;
   if (wordOverlapRatio(shotTextNormalized, scriptSentenceNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
   return false;
 }
