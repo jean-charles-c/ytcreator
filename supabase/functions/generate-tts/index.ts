@@ -827,12 +827,11 @@ serve(async (req) => {
     }
 
     // ── Strict shot-sync validation ──
-    // Fetch current shots from DB to validate alignment
+    // Fetch current shots from DB to validate alignment (must match frontend sort: scene_order → shot_order)
     const { data: dbShots, error: shotsError } = await supabaseAdmin
       .from("shots")
       .select("id, shot_order, scene_id")
-      .eq("project_id", projectId)
-      .order("shot_order", { ascending: true });
+      .eq("project_id", projectId);
 
     if (shotsError) {
       console.error("Failed to fetch project shots:", shotsError);
@@ -842,7 +841,21 @@ serve(async (req) => {
       );
     }
 
-    const expectedShotIds = (dbShots ?? []).map((s: any) => s.id);
+    // Fetch scenes to get scene_order for proper sorting
+    const { data: dbScenes } = await supabaseAdmin
+      .from("scenes")
+      .select("id, scene_order")
+      .eq("project_id", projectId);
+
+    const sceneOrderMap = new Map((dbScenes ?? []).map((s: any) => [s.id, s.scene_order as number]));
+    const sortedShots = (dbShots ?? []).sort((a: any, b: any) => {
+      const oa = sceneOrderMap.get(a.scene_id) ?? 0;
+      const ob = sceneOrderMap.get(b.scene_id) ?? 0;
+      if (oa !== ob) return oa - ob;
+      return a.shot_order - b.shot_order;
+    });
+
+    const expectedShotIds = sortedShots.map((s: any) => s.id);
 
     // Neural2, Standard, Wavenet and Journey voices support <mark> SSML tags
     const supportsMarks = !resolvedVoiceName || /Neural2|Standard|Wavenet|Journey/i.test(resolvedVoiceName);
