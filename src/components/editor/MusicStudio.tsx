@@ -64,9 +64,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [entries, setEntries] = useState<MusicEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(() => {
-    if (!projectId) return null;
-    return localStorage.getItem(`music_selected_${projectId}`) || null;
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    if (!projectId) return new Set();
+    try {
+      const saved = localStorage.getItem(`music_selected_${projectId}`);
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
