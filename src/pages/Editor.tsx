@@ -167,6 +167,7 @@ export default function Editor() {
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedMusicTracks, setSelectedMusicTracks] = useState<{ url: string; name: string }[]>([]);
+  const [qaExportAllowed, setQaExportAllowed] = useState(true);
   const storyAbortRef = useRef<AbortController | null>(null);
 
   // Derive loading states from background tasks
