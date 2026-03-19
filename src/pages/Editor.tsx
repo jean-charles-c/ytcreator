@@ -952,6 +952,7 @@ export default function Editor() {
 
   // --- Image generation handlers ---
   const [generatingAllImages, setGeneratingAllImages] = useState(false);
+  const cancelImageGenRef = useRef(false);
   const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
