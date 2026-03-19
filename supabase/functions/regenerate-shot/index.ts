@@ -111,7 +111,10 @@ Images must be photorealistic historical documentary style. Never illustration o
               role: "user",
               content: `Regenerate a new visual shot for this sentence from a documentary narration.
 
-Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
+PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
+Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}${scene.location ? ` — Location: ${scene.location}` : ""}${scene.characters ? ` — Characters: ${scene.characters}` : ""}
+
+IMPORTANT: The visual prompt MUST be grounded in the specific historical period, geographic location, and cultural context of this project. Architecture, clothing, objects, vegetation, and lighting must be accurate to that era and place. Never use generic or anachronistic elements.
 
 Sentence to illustrate: "${sourceText}"
 ${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST also provide "source_sentence_fr": a faithful French translation of the sentence above.` : ""}
@@ -120,7 +123,7 @@ PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
 - Previous shot type: ${shot.shot_type}
 - Previous prompt: "${shot.prompt_export || shot.description}"
 
-CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version. The new prompt must produce a visually distinct image. Use a different camera type from the Visual Camera Grid. Change the lighting direction, time of day feel, or perspective height.`,
+CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version. The new prompt must produce a visually distinct image. Use a different camera type from the Visual Camera Grid. Change the lighting direction, time of day feel, or perspective height. The prompt_export MUST explicitly mention the historical period and geographic location.`,
             },
           ],
           tools: [
