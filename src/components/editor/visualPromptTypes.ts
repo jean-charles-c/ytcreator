@@ -255,20 +255,25 @@ export function validateManifest(manifest: VisualPromptManifest): ManifestIssue[
     }
 
     // Fragments should cover the scene text (warning only)
-    // Use a lenient check: all fragment text tokens should appear in scene text
+    // Use word-level overlap: ≥80% of scene words should appear across fragments
     const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
-    const sceneNorm = normalize(scene.sceneText);
-    const fragTexts = scene.fragments.map((f) => f.text);
-    const allFragsPresent = fragTexts.every((ft) => {
-      const ftNorm = normalize(ft);
-      return ftNorm.length === 0 || sceneNorm.includes(ftNorm);
-    });
-    if (!allFragsPresent) {
-      issues.push({
-        level: "warning",
-        sceneId: scene.sceneId,
-        message: "Fragments do not reconstruct full scene text",
-      });
+    const wordSet = (s: string) => new Set(normalize(s).split(/[\s.,;:!?()«»""''\-–—]+/).filter(Boolean));
+    const sceneWords = wordSet(scene.sceneText);
+    if (sceneWords.size > 0) {
+      const fragWords = new Set<string>();
+      for (const ft of fragTexts) {
+        for (const w of wordSet(ft)) fragWords.add(w);
+      }
+      let matched = 0;
+      for (const w of sceneWords) if (fragWords.has(w)) matched++;
+      const coverage = matched / sceneWords.size;
+      if (coverage < 0.8) {
+        issues.push({
+          level: "warning",
+          sceneId: scene.sceneId,
+          message: `Fragments do not reconstruct full scene text (${Math.round(coverage * 100)}% coverage)`,
+        });
+      }
     }
   }
 

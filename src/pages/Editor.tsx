@@ -1776,9 +1776,10 @@ export default function Editor() {
                           // Use manifest validation instead of fuzzy matching
                           const sceneIssues = issues.filter((i) => i.sceneId === normScene.sceneId);
                           const hasErrors = sceneIssues.some((i) => i.level === "error");
+                          const hasWarnings = !hasErrors && sceneIssues.some((i) => i.level === "warning");
 
                           return (
-                            <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
+                            <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : hasWarnings ? "border-amber-500/60" : "border-border"} bg-card overflow-hidden`}>
                                 <button
                                 onClick={() =>
                                   setOpenSceneIds((prev) =>
