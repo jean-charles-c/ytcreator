@@ -42,7 +42,7 @@ export default function ManifestTimingPanel({ projectId, manifest }: ManifestTim
       }
 
       const audio = audioFiles[0];
-      const timepoints = (audio.shot_timepoints as ShotTimepoint[] | null) ?? null;
+      const timepoints = (audio.shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
       const duration = audio.duration_estimate ?? 0;
 
       const result = buildManifestTiming(manifest, timepoints, duration);
