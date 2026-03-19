@@ -237,17 +237,25 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
 
         {/* Export buttons */}
         {!isAnyExporting && (
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleExportMp4} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
-              <Film className="h-4 w-4" />
-              Exporter MP4
-              <span className="text-[10px] opacity-70 ml-1">H.264 / AAC</span>
-            </Button>
-            <Button onClick={handleExportXml} variant="outline" className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
-              <FileCode2 className="h-4 w-4" />
-              Exporter XML + Médias
-              <span className="text-[10px] opacity-70 ml-1">ZIP</span>
-            </Button>
+          <div className="space-y-2">
+            {exportBlocked && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">Export bloqué — corrigez les erreurs critiques dans le panneau Contrôle qualité (onglet VisualPrompts).</p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={handleExportMp4} disabled={exportBlocked} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
+                <Film className="h-4 w-4" />
+                Exporter MP4
+                <span className="text-[10px] opacity-70 ml-1">H.264 / AAC</span>
+              </Button>
+              <Button onClick={handleExportXml} variant="outline" disabled={exportBlocked} className="flex-1 gap-2 min-h-[48px] sm:min-h-[36px]">
+                <FileCode2 className="h-4 w-4" />
+                Exporter XML + Médias
+                <span className="text-[10px] opacity-70 ml-1">ZIP</span>
+              </Button>
+            </div>
           </div>
         )}
 
