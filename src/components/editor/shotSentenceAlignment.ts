@@ -45,12 +45,31 @@ function splitScriptSentences(scriptText: string): ScriptSentence[] {
   return result;
 }
 
+function extractWords(normalized: string): Set<string> {
+  return new Set(normalized.split(/\s+/).filter(w => w.length > 2));
+}
+
+function wordOverlapRatio(a: string, b: string): number {
+  const wordsA = extractWords(a);
+  const wordsB = extractWords(b);
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let overlap = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) overlap++;
+  }
+  return overlap / Math.max(wordsA.size, wordsB.size);
+}
+
 function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
   if (!shotTextNormalized || !scriptBlockNormalized) return false;
-  return (
-    shotTextNormalized === scriptBlockNormalized ||
-    shotTextNormalized.includes(scriptBlockNormalized)
-  );
+  // Exact match
+  if (shotTextNormalized === scriptBlockNormalized) return true;
+  // Bidirectional inclusion
+  if (shotTextNormalized.includes(scriptBlockNormalized)) return true;
+  if (scriptBlockNormalized.includes(shotTextNormalized)) return true;
+  // Fuzzy word overlap
+  if (wordOverlapRatio(shotTextNormalized, scriptBlockNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
+  return false;
 }
 
 function getCoverageLength(
