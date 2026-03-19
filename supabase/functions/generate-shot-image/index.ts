@@ -20,14 +20,14 @@ const ALLOWED_MODELS = [
   "google/gemini-3-pro-image-preview",
 ];
 
-const ASPECT_RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {
-  "16:9": { width: 1920, height: 1080 },
-  "9:16": { width: 1080, height: 1920 },
-  "1:1": { width: 1024, height: 1024 },
-  "4:3": { width: 1440, height: 1080 },
-  "3:2": { width: 1620, height: 1080 },
-  "3:4": { width: 1080, height: 1440 },
-  "2:3": { width: 1080, height: 1620 },
+const ASPECT_RATIOS: Record<string, number> = {
+  "16:9": 16 / 9,
+  "9:16": 9 / 16,
+  "1:1": 1,
+  "4:3": 4 / 3,
+  "3:2": 3 / 2,
+  "3:4": 3 / 4,
+  "2:3": 2 / 3,
 };
 
 const getExtensionFromMime = (mimeType: string) => {
@@ -71,48 +71,26 @@ const decodeGeneratedImage = async (imageData: string) => {
 };
 
 const enforceExactAspectRatio = async (imageBytes: Uint8Array, aspectRatio: string) => {
-  const target = ASPECT_RATIO_DIMENSIONS[aspectRatio] || ASPECT_RATIO_DIMENSIONS["16:9"];
+  const targetAR = ASPECT_RATIOS[aspectRatio] ?? ASPECT_RATIOS["16:9"];
   const decoded = await Image.decode(imageBytes);
-  const originalWidth = decoded.width;
-  const originalHeight = decoded.height;
-  const sourceAspectRatio = originalWidth / originalHeight;
-  const targetAspectRatio = target.width / target.height;
+  const origW = decoded.width;
+  const origH = decoded.height;
+  const srcAR = origW / origH;
 
-  if (Math.abs(sourceAspectRatio - targetAspectRatio) > 0.0001) {
-    if (sourceAspectRatio > targetAspectRatio) {
-      const cropWidth = Math.max(1, Math.round(originalHeight * targetAspectRatio));
-      const cropX = Math.max(0, Math.floor((originalWidth - cropWidth) / 2));
-      decoded.crop(cropX, 0, cropWidth, originalHeight);
+  // Only crop, never upscale — keeps file size small
+  if (Math.abs(srcAR - targetAR) > 0.01) {
+    if (srcAR > targetAR) {
+      const cw = Math.max(1, Math.round(origH * targetAR));
+      decoded.crop(Math.floor((origW - cw) / 2), 0, cw, origH);
     } else {
-      const cropHeight = Math.max(1, Math.round(originalWidth / targetAspectRatio));
-      const cropY = Math.max(0, Math.floor((originalHeight - cropHeight) / 2));
-      decoded.crop(0, cropY, originalWidth, cropHeight);
+      const ch = Math.max(1, Math.round(origW / targetAR));
+      decoded.crop(0, Math.floor((origH - ch) / 2), origW, ch);
     }
   }
 
-  if (decoded.width !== target.width || decoded.height !== target.height) {
-    decoded.resize(target.width, target.height);
-  }
-
-  console.log("Normalized generated image", {
-    aspectRatio,
-    originalWidth,
-    originalHeight,
-    outputWidth: decoded.width,
-    outputHeight: decoded.height,
-    targetWidth: target.width,
-    targetHeight: target.height,
-  });
-
+  console.log("Cropped image", { aspectRatio, origW, origH, outW: decoded.width, outH: decoded.height });
   const bytes = await decoded.encode(1);
-
-  return {
-    bytes,
-    mimeType: "image/png",
-    extension: "png",
-    width: decoded.width,
-    height: decoded.height,
-  };
+  return { bytes, mimeType: "image/png" as const, extension: "png" as const, width: decoded.width, height: decoded.height };
 };
 
 serve(async (req) => {
@@ -148,11 +126,10 @@ serve(async (req) => {
     const selectedModel = ALLOWED_MODELS.includes(model)
       ? model
       : "google/gemini-2.5-flash-image";
-    const selectedAspectRatio = Object.keys(ASPECT_RATIO_DIMENSIONS).includes(aspect_ratio)
+    const selectedAspectRatio = Object.keys(ASPECT_RATIOS).includes(aspect_ratio)
       ? aspect_ratio
       : "16:9";
 
-    const target = ASPECT_RATIO_DIMENSIONS[selectedAspectRatio];
     const fallbackCost = MODEL_COSTS[selectedModel] ?? 0;
 
     const { data: shot, error: shotErr } = await supabase
@@ -178,9 +155,7 @@ serve(async (req) => {
     const fullPrompt = [
       "Generate one single cinematic image.",
       `Mandatory aspect ratio: ${selectedAspectRatio}.`,
-      `Mandatory output canvas: exactly ${target.width}x${target.height} pixels.`,
-      `The final image must fully fill a ${selectedAspectRatio} frame and must not be square unless the ratio is 1:1.`,
-      "Compose the framing to work natively in that canvas without letterboxing or white borders.",
+      "Compose the framing to work natively in that ratio without letterboxing or white borders.",
       prompt,
     ].join("\n");
 
