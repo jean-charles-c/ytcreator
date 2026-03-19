@@ -60,17 +60,21 @@ function wordOverlapRatio(a: string, b: string): number {
   return overlap / Math.max(wordsA.size, wordsB.size);
 }
 
-function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
+/** Strict matching: exact or substring inclusion (for multi-sentence blocks) */
+function strictMatch(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
   if (!shotTextNormalized || !scriptBlockNormalized) return false;
   if (shotTextNormalized === scriptBlockNormalized) return true;
-  // Shot text includes the script block (shot covers multiple sentences)
   if (shotTextNormalized.includes(scriptBlockNormalized)) return true;
-  // Reverse: script block includes shot text — only valid when sizes are comparable
-  // to prevent a 3-sentence block from "swallowing" a 1-sentence shot
+  // Reverse inclusion only when sizes are comparable
   const lenRatio = shotTextNormalized.length / scriptBlockNormalized.length;
   if (scriptBlockNormalized.includes(shotTextNormalized) && lenRatio > 0.5) return true;
-  // Fuzzy word overlap for paraphrased content
-  if (wordOverlapRatio(shotTextNormalized, scriptBlockNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
+  return false;
+}
+
+/** Fuzzy matching: includes strict + word overlap (for single sentences only) */
+function fuzzyMatch(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
+  if (strictMatch(shotTextNormalized, scriptSentenceNormalized)) return true;
+  if (wordOverlapRatio(shotTextNormalized, scriptSentenceNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
   return false;
 }
 
@@ -86,8 +90,12 @@ function getCoverageLength(
 
   for (let length = maxLength; length >= 1; length--) {
     const combined = normalizedScriptSentences.slice(startIndex, startIndex + length).join(" ");
-    if (shotCoversScriptBlock(shotTextNormalized, combined)) {
-      return length;
+    if (length === 1) {
+      // Single sentence: use fuzzy matching
+      if (fuzzyMatch(shotTextNormalized, combined)) return length;
+    } else {
+      // Multi-sentence: use strict matching only
+      if (strictMatch(shotTextNormalized, combined)) return length;
     }
   }
 
