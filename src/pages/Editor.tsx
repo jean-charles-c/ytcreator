@@ -1617,10 +1617,16 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages} className="min-h-[40px]">
-                      {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                      Créer tous les visuels
-                    </Button>
+                    {(() => {
+                      const hasAnyImage = shots.some((s: any) => s.image_url);
+                      const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
+                      return (
+                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={generatingAllImages || allHaveImages} className="min-h-[40px]">
+                          {generatingAllImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                          {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
+                        </Button>
+                      );
+                    })()}
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
                     <ImageIcon className="h-4 w-4" /> Voir les visuels
