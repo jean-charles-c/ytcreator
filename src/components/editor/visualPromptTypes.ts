@@ -70,6 +70,20 @@ export interface NormalisedScene {
   shots: NormalisedShot[];
 }
 
+// ── Action History ─────────────────────────────────────────────────
+
+export type ManifestActionType = "merge" | "delete" | "reassign";
+
+export interface ManifestAction {
+  type: ManifestActionType;
+  timestamp: string;
+  sceneId: string;
+  /** IDs of shots involved */
+  shotIds: string[];
+  /** Human-readable description */
+  description: string;
+}
+
 // ── Full manifest ──────────────────────────────────────────────────
 
 export interface VisualPromptManifest {
@@ -80,6 +94,8 @@ export interface VisualPromptManifest {
   totalShots: number;
   /** Timestamp of last build */
   builtAt: string;
+  /** Action history log */
+  history: ManifestAction[];
 }
 
 // ── Builder helper ─────────────────────────────────────────────────
@@ -174,6 +190,7 @@ export function buildManifest(
     scenes,
     totalShots: globalOrder,
     builtAt: new Date().toISOString(),
+    history: [],
   };
 }
 
@@ -253,4 +270,117 @@ export function validateManifest(manifest: VisualPromptManifest): ManifestIssue[
   }
 
   return issues;
+}
+
+// ── Mutation helpers ───────────────────────────────────────────────
+
+/**
+ * Compute the merged source_sentence and source_sentence_fr when merging
+ * a shot with the next one in the same scene.
+ * Returns the DB updates to apply + a ManifestAction for history.
+ */
+export function computeMerge(
+  sceneShots: DBShot[],
+  shotId: string,
+  scene: DBScene
+): {
+  survivorUpdate: { id: string; source_sentence: string; source_sentence_fr: string | null };
+  absorbedId: string;
+  action: ManifestAction;
+} | null {
+  const sorted = [...sceneShots].sort((a, b) => a.shot_order - b.shot_order);
+  const idx = sorted.findIndex((s) => s.id === shotId);
+  if (idx === -1 || idx >= sorted.length - 1) return null;
+
+  const shot = sorted[idx];
+  const next = sorted[idx + 1];
+
+  const mergedSentence = [shot.source_sentence, next.source_sentence].filter(Boolean).join(" ");
+  const mergedSentenceFr = [shot.source_sentence_fr, next.source_sentence_fr].filter(Boolean).join(" ") || null;
+
+  return {
+    survivorUpdate: {
+      id: shot.id,
+      source_sentence: mergedSentence,
+      source_sentence_fr: mergedSentenceFr,
+    },
+    absorbedId: next.id,
+    action: {
+      type: "merge",
+      timestamp: new Date().toISOString(),
+      sceneId: scene.id,
+      shotIds: [shot.id, next.id],
+      description: `Shot merged: absorbed shot ${next.shot_order} into shot ${shot.shot_order} in scene "${scene.title}"`,
+    },
+  };
+}
+
+/**
+ * Compute text redistribution when deleting a shot from a scene.
+ * Returns the DB updates to apply + a ManifestAction for history.
+ */
+export function computeDeleteRedistribution(
+  sceneShots: DBShot[],
+  deletedShotId: string,
+  scene: DBScene
+): {
+  updates: { id: string; source_sentence: string; source_sentence_fr: string | null }[];
+  action: ManifestAction;
+} | null {
+  const remaining = sceneShots
+    .filter((s) => s.id !== deletedShotId)
+    .sort((a, b) => a.shot_order - b.shot_order);
+
+  if (remaining.length === 0) return null;
+
+  const sceneText = scene.source_text;
+  const sceneTextFr = scene.source_text_fr || null;
+
+  const updates: { id: string; source_sentence: string; source_sentence_fr: string | null }[] = [];
+
+  if (remaining.length === 1) {
+    // Single remaining shot gets full scene text
+    updates.push({
+      id: remaining[0].id,
+      source_sentence: sceneText,
+      source_sentence_fr: sceneTextFr,
+    });
+  } else {
+    // Split scene text across remaining shots by sentence boundaries
+    const sentences = sceneText.match(/[^.!?]+[.!?]+/g) || [sceneText];
+    const sentencesFr = sceneTextFr
+      ? sceneTextFr.match(/[^.!?]+[.!?]+/g) || [sceneTextFr]
+      : null;
+    const perShot = Math.max(1, Math.ceil(sentences.length / remaining.length));
+
+    for (let i = 0; i < remaining.length; i++) {
+      const start = i * perShot;
+      const chunk =
+        i === remaining.length - 1
+          ? sentences.slice(start).join("").trim()
+          : sentences.slice(start, start + perShot).join("").trim();
+      const chunkFr =
+        sentencesFr
+          ? i === remaining.length - 1
+            ? sentencesFr.slice(start).join("").trim()
+            : sentencesFr.slice(start, start + perShot).join("").trim()
+          : null;
+      updates.push({
+        id: remaining[i].id,
+        source_sentence: chunk || sceneText,
+        source_sentence_fr: chunkFr,
+      });
+    }
+  }
+
+  return {
+    updates,
+    action: {
+      type: "delete",
+      timestamp: new Date().toISOString(),
+      sceneId: scene.id,
+      shotIds: [deletedShotId],
+      description: `Shot deleted and text reassigned across ${remaining.length} remaining shot(s) in scene "${scene.title}"`,
+    },
+  };
 }

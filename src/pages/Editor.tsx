@@ -32,7 +32,7 @@ import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import VisualGallery from "@/components/editor/VisualGallery";
 import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
-import { buildManifest, validateManifest } from "@/components/editor/visualPromptTypes";
+import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
@@ -751,108 +751,50 @@ export default function Editor() {
 
   const handleShotDelete = async (shotId: string) => {
     try {
-      // Find the shot to delete and its scene
       const deletedShot = shots.find((s) => s.id === shotId);
       if (!deletedShot) return;
 
-      // Prevent deleting the last shot of a scene
       const sceneShotCount = shots.filter((s) => s.scene_id === deletedShot.scene_id).length;
       if (sceneShotCount <= 1) {
         toast.warning("Impossible de supprimer le dernier plan d'une scène. Il doit rester au moins un plan par scène.");
         return;
       }
 
-      const { error } = await supabase.from("shots").delete().eq("id", shotId);
-      if (error) {
-        console.error("Delete error:", error);
-        toast.error("Erreur de suppression");
-        return;
-      }
-
-      // Get remaining shots for this scene
-      const remainingSceneShots = shots
-        .filter((s) => s.scene_id === deletedShot.scene_id && s.id !== shotId)
-        .sort((a, b) => a.shot_order - b.shot_order);
-
-      // Find the scene to get its full text
       const scene = scenes.find((sc) => sc.id === deletedShot.scene_id);
+      if (!scene) return;
 
-      if (scene && remainingSceneShots.length > 0) {
-        const sceneText = scene.source_text;
-        const sceneTextFr = scene.source_text_fr || null;
+      const sceneShots = shots.filter((s) => s.scene_id === deletedShot.scene_id);
+      const redistribution = computeDeleteRedistribution(sceneShots, shotId, scene);
 
-        if (remainingSceneShots.length === 1) {
-          // Single remaining shot gets the full scene text
-          const solo = remainingSceneShots[0];
+      const { error } = await supabase.from("shots").delete().eq("id", shotId);
+      if (error) { toast.error("Erreur de suppression"); return; }
+
+      if (redistribution) {
+        for (const u of redistribution.updates) {
           await supabase
             .from("shots")
-            .update({ source_sentence: sceneText, source_sentence_fr: sceneTextFr })
-            .eq("id", solo.id);
-          setShots((prev) =>
-            prev
-              .filter((s) => s.id !== shotId)
-              .map((s) =>
-                s.id === solo.id
-                  ? { ...s, source_sentence: sceneText, source_sentence_fr: sceneTextFr }
-                  : s
-              )
-          );
-        } else {
-          // Multiple remaining shots: split scene sentences across them
-          const sentences = sceneText.match(/[^.!?]+[.!?]+/g) || [sceneText];
-          const sentencesFr = sceneTextFr
-            ? sceneTextFr.match(/[^.!?]+[.!?]+/g) || [sceneTextFr]
-            : null;
+            .update({ source_sentence: u.source_sentence, source_sentence_fr: u.source_sentence_fr })
+            .eq("id", u.id);
+        }
 
-          // Distribute sentences across shots
-          const updates: { id: string; source_sentence: string; source_sentence_fr: string | null }[] = [];
-          const perShot = Math.max(1, Math.ceil(sentences.length / remainingSceneShots.length));
-
-          for (let i = 0; i < remainingSceneShots.length; i++) {
-            const start = i * perShot;
-            const end = Math.min(start + perShot, sentences.length);
-            // Last shot gets everything remaining
-            const chunk =
-              i === remainingSceneShots.length - 1
-                ? sentences.slice(start).join("").trim()
-                : sentences.slice(start, end).join("").trim();
-            const chunkFr =
-              sentencesFr
-                ? i === remainingSceneShots.length - 1
-                  ? sentencesFr.slice(start).join("").trim()
-                  : sentencesFr.slice(start, end).join("").trim()
-                : null;
-            updates.push({
-              id: remainingSceneShots[i].id,
-              source_sentence: chunk || sceneText,
-              source_sentence_fr: chunkFr,
-            });
-          }
-
-          // Batch update
-          for (const u of updates) {
-            await supabase
-              .from("shots")
-              .update({ source_sentence: u.source_sentence, source_sentence_fr: u.source_sentence_fr })
-              .eq("id", u.id);
-          }
-
-          setShots((prev) => {
-            const filtered = prev.filter((s) => s.id !== shotId);
-            const updateMap = new Map(updates.map((u) => [u.id, u]));
-            return filtered.map((s) => {
+        const updateMap = new Map(redistribution.updates.map((u) => [u.id, u]));
+        setShots((prev) =>
+          prev
+            .filter((s) => s.id !== shotId)
+            .map((s) => {
               const upd = updateMap.get(s.id);
               return upd
                 ? { ...s, source_sentence: upd.source_sentence, source_sentence_fr: upd.source_sentence_fr }
                 : s;
-            });
-          });
-        }
+            })
+        );
+
+        setManifestHistory((prev) => [...prev, redistribution.action]);
       } else {
         setShots((prev) => prev.filter((s) => s.id !== shotId));
       }
 
-      toast.success("Shot supprimé — phrases redistribuées");
+      toast.success("Shot supprimé — fragments redistribués");
     } catch (e) {
       console.error("Delete exception:", e);
       toast.error("Erreur de suppression");
@@ -861,43 +803,35 @@ export default function Editor() {
 
   const handleShotMergeWithNext = async (shotId: string) => {
     try {
-      const shotIndex = shots.findIndex((s) => s.id === shotId);
-      if (shotIndex === -1) return;
-      const shot = shots[shotIndex];
+      const shot = shots.find((s) => s.id === shotId);
+      if (!shot) return;
 
-      // Find adjacent shots in the same scene, sorted by shot_order
-      const sceneShots = shots
-        .filter((s) => s.scene_id === shot.scene_id)
-        .sort((a, b) => a.shot_order - b.shot_order);
-      const posInScene = sceneShots.findIndex((s) => s.id === shotId);
-      if (posInScene === -1 || posInScene >= sceneShots.length - 1) {
+      const scene = scenes.find((sc) => sc.id === shot.scene_id);
+      if (!scene) return;
+
+      const sceneShots = shots.filter((s) => s.scene_id === shot.scene_id);
+      const mergeResult = computeMerge(sceneShots, shotId, scene);
+      if (!mergeResult) {
         toast.warning("Ce shot est le dernier de sa scène, pas de shot suivant à fusionner.");
         return;
       }
 
-      const nextShot = sceneShots[posInScene + 1];
-
-      // Combine source sentences
-      const mergedSentence = [shot.source_sentence, nextShot.source_sentence].filter(Boolean).join(" ");
-      const mergedSentenceFr = [shot.source_sentence_fr, nextShot.source_sentence_fr].filter(Boolean).join(" ") || null;
+      const { survivorUpdate, absorbedId, action } = mergeResult;
 
       // Update the surviving shot
       const { error: updateError } = await supabase
         .from("shots")
-        .update({
-          source_sentence: mergedSentence,
-          source_sentence_fr: mergedSentenceFr,
-        })
-        .eq("id", shot.id);
+        .update({ source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr })
+        .eq("id", survivorUpdate.id);
       if (updateError) { toast.error("Erreur lors de la fusion"); return; }
 
       // Delete the absorbed shot
-      const { error: deleteError } = await supabase.from("shots").delete().eq("id", nextShot.id);
+      const { error: deleteError } = await supabase.from("shots").delete().eq("id", absorbedId);
       if (deleteError) { toast.error("Erreur lors de la suppression du shot fusionné"); return; }
 
       // Reorder remaining shots in the scene
       const remainingSceneShots = sceneShots
-        .filter((s) => s.id !== nextShot.id)
+        .filter((s) => s.id !== absorbedId)
         .sort((a, b) => a.shot_order - b.shot_order);
       for (let i = 0; i < remainingSceneShots.length; i++) {
         if (remainingSceneShots[i].shot_order !== i + 1) {
@@ -908,13 +842,12 @@ export default function Editor() {
       // Update local state
       setShots((prev) => {
         const updated = prev
-          .filter((s) => s.id !== nextShot.id)
-          .map((s) => {
-            if (s.id === shot.id) {
-              return { ...s, source_sentence: mergedSentence, source_sentence_fr: mergedSentenceFr };
-            }
-            return s;
-          });
+          .filter((s) => s.id !== absorbedId)
+          .map((s) =>
+            s.id === survivorUpdate.id
+              ? { ...s, source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr }
+              : s
+          );
         // Fix shot_order locally
         const sceneId = shot.scene_id;
         const sceneGroup = updated.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
@@ -923,7 +856,8 @@ export default function Editor() {
         return updated.map((s) => orderMap.has(s.id) ? { ...s, shot_order: orderMap.get(s.id)! } : s);
       });
 
-      toast.success("Shots fusionnés — phrases combinées");
+      setManifestHistory((prev) => [...prev, action]);
+      toast.success("Shots fusionnés — fragments combinés");
     } catch (e) {
       console.error("Merge exception:", e);
       toast.error("Erreur lors de la fusion");
@@ -963,6 +897,7 @@ export default function Editor() {
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+  const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
   const IMAGE_MODELS = [
     { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "0.02 $" },
@@ -1949,6 +1884,30 @@ export default function Editor() {
                     );
                   })()}
                 </div>
+                {/* Action history */}
+                {manifestHistory.length > 0 && (
+                  <details className="mt-6 rounded border border-border bg-secondary/30 p-3">
+                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      Historique des actions ({manifestHistory.length})
+                    </summary>
+                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                      {[...manifestHistory].reverse().map((a, i) => (
+                        <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className={`shrink-0 inline-flex items-center rounded px-1.5 py-0.5 font-medium border ${
+                            a.type === "merge" ? "bg-primary/10 text-primary border-primary/20" :
+                            a.type === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                            "bg-accent text-accent-foreground border-border"
+                          }`}>
+                            {a.type}
+                          </span>
+                          <span className="truncate">{a.description}</span>
+                          <span className="ml-auto shrink-0 text-[9px] opacity-60">{new Date(a.timestamp).toLocaleTimeString("fr-FR")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
                 <div className="mt-8 flex gap-3">
                   <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
                     <Play className="h-4 w-4" /> Re-générer tous les shots
