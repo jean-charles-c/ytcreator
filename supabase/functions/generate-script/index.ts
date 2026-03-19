@@ -93,11 +93,14 @@ Rules:
 ## SECTION ARCHITECTURE
 
 ### [[HOOK]] — The Opening (STRICT: 100–200 characters, hard limit 90–220)
-- 1 to 3 SHORT sentences. This is the most critical moment.
-- Open with a striking image, a paradox, or a surprising fact that creates instant tension.
-- Tone: mysterious, intriguing — raise a question the viewer needs answered.
+The hook is the single most important moment. It must accomplish THREE things in 1–3 sentences:
+1. A CONCRETE striking image or fact — something specific, visual, and unexpected.
+2. A CONTRADICTION or unresolved tension — two things that don't seem to fit together.
+3. A SENSE that an explanation is coming — the viewer must feel a mystery has been opened.
+All three elements are mandatory. A hook that is only mysterious but vague FAILS. A hook that states a cool fact but creates no tension FAILS.
 - NEVER start with greetings, channel names, or "today we will talk about…".
-- Self-check: if your hook exceeds 220 characters, cut it. If under 90, expand slightly.
+- NEVER open with a generic question like "Have you ever wondered…".
+- Self-check: count your hook characters. Hard floor: 90. Hard ceiling: 220. If outside, rewrite.
 
 ### [[CONTEXT]] — Setting the Stage (~10% of total ≈ ${Math.round(wordTarget * 0.10)} words)
 - Transition from the abstract hook to CONCRETE reality: time, place, people, objects.
@@ -133,44 +136,49 @@ Rules:
 
 ---
 
-## WRITING PRINCIPLES
+## WRITING RULES
 
-### Clarity & Concreteness
-- Write like you speak. No literary flourishes, no academic jargon.
-- Every sentence should be VISUALIZABLE — the viewer should be able to picture it.
-- Active voice preferred. Concrete nouns and strong verbs.
-- Spoken ${langLabel} suitable for voice-over — natural, never literary.
+### 1. SENTENCE RHYTHM (replaces rigid character limits)
+This is a voice-over script meant to be READ ALOUD. Sentence length must serve oral delivery.
+- Most sentences should be short to medium (40–90 characters). This is the natural sweet spot for spoken narration.
+- Occasional longer sentences (up to ~120 characters) are fine when they carry a single flowing thought and read well aloud.
+- Short punchy sentences (under 40 characters) create emphasis. Use them deliberately — after a buildup, before a reveal, or to land a key fact.
+- NEVER write 3+ consecutive sentences of similar length. Vary the rhythm.
+- Read your sentences aloud mentally. If you need to take a breath mid-sentence, it's too long.
+- Do NOT optimize for a character count per sentence. Optimize for how it SOUNDS.
 
-### Sentence Length
-- AIM for sentences under 100 characters, but this is a guideline, not a wall.
-- Occasional sentences up to 120 characters are acceptable if they read naturally aloud.
-- Vary rhythm: alternate short punchy sentences (30–50 chars) with medium ones (60–95 chars).
-- NEVER write 3+ consecutive sentences of similar length.
+### 2. INFORMATION DENSITY (replaces "one idea per sentence")
+The goal is CLARITY FOR THE EAR, not minimalism for its own sake.
+- Each sentence should carry ONE dominant idea that the viewer can absorb in real time.
+- A natural compound sentence with two closely related ideas is acceptable if it reads smoothly aloud. Example: "The city grew rapidly, and with it came new problems."
+- SPLIT a sentence when it packs unrelated concepts, requires re-reading, or lists 3+ distinct items.
+- BAD: "The system combines logograms, syllables, and determinatives in a complex hierarchy that evolved over centuries across multiple regions."
+- GOOD: "Some signs represent whole words. Others capture sounds. And a few are never spoken aloud — they exist only to guide the reader."
+- Think of each sentence as one camera shot. If it would require cutting to a different visual, it should be a different sentence.
 
-### Information Density
-- Strongly prefer ONE main idea per sentence.
-- If a sentence packs 2+ distinct concepts, consider splitting — but only if it improves clarity.
-- BAD: "The system combines logograms, syllables, and determinatives in a complex hierarchy."
-- BETTER: "Some signs represent words. Others represent sounds. And some are never spoken aloud."
-- Use your judgment: a natural compound sentence is fine if it flows well when read aloud.
+### 3. FACTUAL INTEGRITY (strict — zero tolerance for broken output)
+- Use ONLY facts, dates, names, and statistics present in the provided source material.
+- NEVER invent or hallucinate data. If a specific number, date, or name is not in the source, do NOT include one.
+- NEVER leave a factual slot empty or broken. No "[date]", no "in 19XX", no "approximately N", no trailing ellipses where data should be.
+- If you lack a specific detail: REWRITE the sentence to avoid needing it. State the idea differently, use a relative timeframe ("decades later"), or omit the claim entirely.
+- NEVER use vague placeholder attributions: "experts say", "studies show", "scientists believe", "according to researchers" — unless a specific expert or study is named in the source.
+- Every factual claim must be traceable to the provided inputs.
 
-### Paragraph Structure
-- Vary paragraph lengths organically: mix 1-sentence, 2-sentence, 3-sentence, and occasional 4-sentence paragraphs.
-- NEVER fall into a pattern of uniform 2-sentence paragraphs — this sounds robotic.
-- A good rhythm: 2 → 3 → 1 → 2 → 4 → 2 → 3 → 1 (vary naturally, don't follow mechanically).
+### 4. NARRATIVE FLOW (anti-list, pro-progression)
+The script must feel like a STORY unfolding, not a report being delivered.
+- NEVER enumerate facts in sequence ("First… Second… Third…" or "One example… Another example… Yet another…").
+- Every fact must be CONNECTED to what comes before and after. Use cause-and-effect, tension, surprise, or consequence to link ideas.
+- Pattern to follow: FACT → IMPLICATION → TENSION → REVEAL. Each piece of information should raise a question or create a consequence that pulls the viewer forward.
+- If you catch yourself writing 3+ consecutive sentences that each introduce a new standalone fact with no linking thread, STOP and restructure as a narrative sequence.
+- Transitions must be organic and story-driven, never mechanical ("Let's now turn to…", "Another interesting aspect is…", "Moving on…").
 
-### What to AVOID
-- Complex metaphors or poetic abstractions ("Knowledge weaves itself into the fabric of civilization")
-- Dense academic sentences with multiple subordinate clauses
-- Abstract concepts that cannot be filmed or illustrated
-- List-like enumeration disguised as narration ("First… Second… Third… Fourth…")
-- Mechanical transitions ("Let's now turn to…", "Another interesting fact is…", "Moving on to…")
-
-### What to PREFER
-- Describing actions: "The scribe carves symbols into wet clay."
-- Showing discoveries: "Inside the tomb, archaeologists find 42 intact tablets."
-- Stating facts clearly: "This technique spreads across the entire region in less than a century."
-- Naming specifics: "In the ruins of Uruk, a small clay tablet changes everything."
+### 5. PARAGRAPH STRUCTURE (flexible but stable)
+- The default paragraph is 2–3 sentences. This is the backbone.
+- Use 1-sentence paragraphs sparingly for dramatic emphasis — a reveal, a turning point, a punchline.
+- Use 4-sentence paragraphs occasionally when developing a complex scene or argument that needs room.
+- NEVER write more than 3 consecutive paragraphs of the same length. If you've written three 2-sentence paragraphs in a row, the next must be different.
+- NEVER write a paragraph longer than 5 sentences.
+- Each paragraph should feel like a complete narrative beat — a small unit with its own arc.
 
 ---
 
@@ -196,13 +204,19 @@ Insert a short transition that relaunches curiosity. Examples (adapt to ${langLa
 
 ---
 
-## FACTUAL INTEGRITY — CRITICAL
+## STYLE GUARDRAILS
 
-- Use ONLY information from the provided narrative elements and source text.
-- NEVER invent facts, dates, names, statistics, or events not present in the inputs.
-- If the source material is thin, explore implications and connections — but NEVER fabricate.
-- If you lack specific data for a claim, either omit it or phrase it as a general trend supported by the source.
-- NEVER use placeholder phrases like "experts say", "studies show", "according to researchers" unless a specific source is provided.
+### AVOID:
+- Complex metaphors or poetic abstractions ("Knowledge weaves itself into the fabric of civilization")
+- Dense academic sentences with multiple subordinate clauses
+- Abstract concepts that cannot be filmed or illustrated
+- Mechanical or template-sounding transitions
+
+### PREFER:
+- Describing actions: "The scribe carves symbols into wet clay."
+- Showing discoveries: "Inside the tomb, archaeologists find 42 intact tablets."
+- Stating facts with context: "This technique spreads across the entire region in less than a century."
+- Naming specifics: "In the ruins of Uruk, a small clay tablet changes everything."
 
 ---
 
@@ -219,12 +233,13 @@ Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString(
 ## FINAL SELF-CHECK (before outputting)
 
 1. All 9 tags present in order.
-2. Hook is 90–220 characters.
+2. Hook contains all 3 required elements (concrete image + contradiction + promise of explanation) and is 90–220 characters.
 3. Estimated total within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters.
-4. No fabricated facts. No placeholder attributions.
-5. Paragraph lengths vary naturally.
-6. No 3+ consecutive sentences of similar length.
-7. Narration flows like spoken storytelling, not a written essay.`;
+4. No fabricated facts, no broken dates, no placeholder attributions.
+5. No sequence of 3+ facts presented as a list without narrative connection.
+6. Paragraph lengths vary (no 3+ same-length paragraphs in a row).
+7. Sentences vary in length. No telegraphic choppy rhythm. No run-on sentences.
+8. Every sentence reads naturally aloud as spoken ${langLabel}.`;
 
 }
 
