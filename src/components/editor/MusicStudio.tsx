@@ -463,12 +463,33 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
         </div>
       )}
 
-      {/* History */}
+      {/* Library */}
       <div className="space-y-2">
-        <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <Clock className="h-3.5 w-3.5 text-primary" />
-          Bibliothèque musicale
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <Clock className="h-3.5 w-3.5 text-primary" />
+            Bibliothèque musicale
+          </h4>
+          <div className="flex items-center gap-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={handleImport}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] gap-1"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+              Importer
+            </Button>
+          </div>
+        </div>
 
         {loading && entries.length === 0 && (
           <div className="flex items-center justify-center py-4">
