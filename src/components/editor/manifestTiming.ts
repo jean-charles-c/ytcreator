@@ -147,12 +147,32 @@ export function buildManifestTiming(
     });
   }
 
+  // For placeholder IDs, try to find the nearest real shot to identify the scene
+  const shotToScene = new Map<string, number>();
+  for (const item of activeShots) {
+    shotToScene.set(item.shot.shotId, item.sceneOrder);
+  }
+
   for (const shotId of validation.placeholderIds) {
+    // Find the position of this placeholder in timepoints and look at neighbors
+    const tpList = timepoints ?? [];
+    const idx = tpList.findIndex((tp) => tp.shotId === shotId);
+    let nearbyScene: number | null = null;
+    if (idx >= 0) {
+      // Check previous and next real shots
+      for (let delta = 1; delta <= 3; delta++) {
+        const prev = idx - delta >= 0 ? tpList[idx - delta] : null;
+        const next = idx + delta < tpList.length ? tpList[idx + delta] : null;
+        if (prev && shotToScene.has(prev.shotId)) { nearbyScene = shotToScene.get(prev.shotId)!; break; }
+        if (next && shotToScene.has(next.shotId)) { nearbyScene = shotToScene.get(next.shotId)!; break; }
+      }
+    }
+    const sceneHint = nearbyScene ? ` (à proximité de la scène ${nearbyScene})` : "";
     pushUniqueIssue(issues, {
       level: "error",
       order: 0,
       shotId,
-      message: `Un marqueur fantôme a été détecté. Régénérez les shots de la scène concernée puis la voix off.`,
+      message: `Un marqueur fantôme a été détecté dans l'audio${sceneHint}. Régénérez la voix off pour corriger.`,
     });
   }
 
