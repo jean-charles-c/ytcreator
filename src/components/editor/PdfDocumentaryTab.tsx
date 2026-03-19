@@ -171,6 +171,7 @@ export default function PdfDocumentaryTab({
   const [sectionHistory, setSectionHistory] = useState<Record<string, SectionHistoryEntry[]>>({});
   const [sectionTranslations, setSectionTranslations] = useState<Record<string, string>>({});
   const [translatingSections, setTranslatingSections] = useState<Set<string>>(new Set());
+  const translationsHydratedRef = useRef(false);
   const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -192,7 +193,42 @@ export default function PdfDocumentaryTab({
     })();
   }, [projectId]);
 
-  // ── Persist chapterState to DB ──
+  // ── Hydrate sectionTranslations from DB on mount ──
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const saved = (data?.timeline_state as any)?.sectionTranslations as Record<string, string> | null;
+      if (saved && Object.keys(saved).length > 0) {
+        setSectionTranslations(saved);
+      }
+      translationsHydratedRef.current = true;
+    })();
+  }, [projectId]);
+
+  // ── Persist sectionTranslations to DB ──
+  const saveTranslations = useCallback(async (translations: Record<string, string>) => {
+    if (!projectId || !translationsHydratedRef.current) return;
+    try {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const currentState = (data?.timeline_state as any) ?? {};
+      await supabase
+        .from("project_scriptcreator_state")
+        .update({ timeline_state: { ...currentState, sectionTranslations: translations } as any })
+        .eq("project_id", projectId);
+    } catch (e) {
+      console.error("Failed to persist sectionTranslations:", e);
+    }
+  }, [projectId]);
+
   const saveChapterState = useCallback(async (state: ChapterListState) => {
     if (!projectId) return;
     try {
@@ -365,11 +401,12 @@ export default function PdfDocumentaryTab({
       if (prev[key]) {
         const next = { ...prev };
         delete next[key];
+        saveTranslations(next);
         return next;
       }
       return prev;
     });
-  }, [onScriptChange]);
+  }, [onScriptChange, saveTranslations]);
 
   // Restore a section from history
   const handleRestoreSection = useCallback((key: string, content: string) => {
@@ -481,7 +518,11 @@ export default function PdfDocumentaryTab({
 
       const data = await response.json();
       if (data.translated) {
-        setSectionTranslations((prev) => ({ ...prev, [sectionKey]: data.translated }));
+        setSectionTranslations((prev) => {
+          const next = { ...prev, [sectionKey]: data.translated };
+          saveTranslations(next);
+          return next;
+        });
         toast.success(`Section "${section.label}" traduite en français`);
       }
     } catch (e: any) {
@@ -494,7 +535,7 @@ export default function PdfDocumentaryTab({
         return next;
       });
     }
-  }, [sections, scriptLanguage]);
+  }, [sections, scriptLanguage, saveTranslations]);
 
 
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
