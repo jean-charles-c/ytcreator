@@ -31,6 +31,8 @@ import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import VisualGallery from "@/components/editor/VisualGallery";
+import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
+import { buildManifest, validateManifest } from "@/components/editor/visualPromptTypes";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
@@ -1785,132 +1787,155 @@ export default function Editor() {
                 })()}
                 <div className="space-y-2">
                   {(() => {
+                    const manifest = buildManifest(projectId!, scenes, shots);
+                    const issues = validateManifest(manifest);
+                    const errorIssues = issues.filter((i) => i.level === "error");
+                    const warningIssues = issues.filter((i) => i.level === "warning");
+
                     let globalShotIndex = 1;
-                    return scenes.map((scene) => {
-                      const sceneShots = getShotsForScene(scene.id);
-                      const isRegenerating = regeneratingSceneId === scene.id;
-                      const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
-                      const startIndex = globalShotIndex;
-                      globalShotIndex += sceneShots.length;
-                      const isOpen = openSceneIds.includes(scene.id);
+                    return (
+                      <>
+                        {/* Manifest validation summary */}
+                        {errorIssues.length > 0 && (
+                          <div className="rounded border border-destructive/30 bg-destructive/5 p-3 mb-4 space-y-1">
+                            <p className="text-xs font-medium text-destructive">⚠ {errorIssues.length} erreur(s) de mapping détectée(s)</p>
+                            {errorIssues.slice(0, 5).map((issue, i) => (
+                              <p key={i} className="text-[10px] text-destructive/80 pl-3 border-l-2 border-destructive/30">{issue.message}</p>
+                            ))}
+                          </div>
+                        )}
+                        {warningIssues.length > 0 && errorIssues.length === 0 && (
+                          <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 mb-4 space-y-1">
+                            <p className="text-xs font-medium text-amber-600">⚠ {warningIssues.length} avertissement(s)</p>
+                            {warningIssues.slice(0, 3).map((issue, i) => (
+                              <p key={i} className="text-[10px] text-amber-600/80 pl-3 border-l-2 border-amber-500/30">{issue.message}</p>
+                            ))}
+                          </div>
+                        )}
 
-                      // ── Detect missing sentences ──
-                      const sceneSentences = (scene.source_text || "")
-                        .split(/(?<=[.!?])\s+/)
-                        .map((s: string) => s.trim().toLowerCase())
-                        .filter((s: string) => s.length > 3);
-                      const shotTexts = new Set(
-                        sceneShots.map((sh: any) =>
-                          (sh.source_sentence || sh.source_sentence_fr || sh.description || "").trim().toLowerCase()
-                        ).filter(Boolean)
-                      );
-                      const missingSentences = sceneSentences.filter((sent: string) =>
-                        !Array.from(shotTexts).some((st: string) => st.includes(sent) || sent.includes(st))
-                      );
-                      const hasMissing = sceneShots.length > 0 && missingSentences.length > 0;
+                        {manifest.scenes.map((normScene) => {
+                          const scene = scenes.find((s) => s.id === normScene.sceneId)!;
+                          const sceneShots = getShotsForScene(scene.id);
+                          const isRegenerating = regeneratingSceneId === scene.id;
+                          const isPendingGeneration = generatingStoryboard && sceneShots.length === 0;
+                          const startIndex = globalShotIndex;
+                          globalShotIndex += sceneShots.length;
+                          const isOpen = openSceneIds.includes(scene.id);
 
-                      return (
-                        <div key={scene.id} className={`rounded border ${hasMissing ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
-                          <button
-                            onClick={() =>
-                              setOpenSceneIds((prev) =>
-                                prev.includes(scene.id)
-                                  ? prev.filter((id) => id !== scene.id)
-                                  : [...prev, scene.id]
-                              )
-                            }
-                            className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
-                          >
-                            <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
-                            <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
-                            <span className="text-xs text-muted-foreground">—</span>
-                            <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
-                            {hasMissing && (
-                              <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive font-medium" title={`${missingSentences.length} phrase(s) du script sans shot correspondant`}>
-                                ⚠ {missingSentences.length} phrase(s) orpheline(s)
-                              </span>
-                            )}
-                            <span className="ml-auto shrink-0 text-xs bg-secondary px-2 py-0.5 rounded-full">
-                              {sceneShots.length > 0
-                                ? <>
-                                    <span className="text-muted-foreground">SHOT </span>
-                                    {sceneShots.map((sh, i) => {
-                                      const shotNum = String(startIndex + i).padStart(4, "0");
-                                      const hasImage = !!sh.image_url;
-                                      return (
-                                        <span key={sh.id}>
-                                          {i > 0 && <span className="text-muted-foreground"> / </span>}
-                                          <span className={hasImage ? "text-green-500 font-semibold" : "text-muted-foreground"}>{shotNum}</span>
-                                        </span>
-                                      );
-                                    })}
-                                  </>
-                                : <span className="text-muted-foreground">0 SHOT</span>}
-                            </span>
-                            {scene.validated && (
-                              <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
-                                <CheckCircle2 className="h-2.5 w-2.5" /> Validée
-                              </span>
-                            )}
-                          </button>
-                          {isOpen && (
-                            <div className="px-4 pb-4 pt-2 border-t border-border space-y-4 animate-fade-in">
-                              <div className="flex items-center flex-wrap gap-2 justify-end">
-                                <button
-                                  onClick={() => handleGenerateSceneImages(scene.id)}
-                                  disabled={generatingSceneImages === scene.id}
-                                  className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                                  title="Générer les visuels de cette scène"
-                                >
-                                  {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
-                                  <span>Visuels</span>
-                                </button>
-                                <button
-                                  onClick={() => runStoryboard(scene.id)}
-                                  disabled={isRegenerating}
-                                  className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
-                                  title="Régénérer les shots de cette scène"
-                                >
-                                  {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                                  <span>Régénérer</span>
-                                </button>
-                              </div>
-                              <div className="rounded border border-border bg-background p-4">
-                                <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
-                                {(scene as any).source_text_fr && (
-                                  <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                          // Use manifest validation instead of fuzzy matching
+                          const sceneIssues = issues.filter((i) => i.sceneId === normScene.sceneId);
+                          const hasErrors = sceneIssues.some((i) => i.level === "error");
+
+                          return (
+                            <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
+                              <button
+                                onClick={() =>
+                                  setOpenSceneIds((prev) =>
+                                    prev.includes(scene.id)
+                                      ? prev.filter((id) => id !== scene.id)
+                                      : [...prev, scene.id]
+                                  )
+                                }
+                                className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                              >
+                                <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
+                                <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
+                                <span className="text-xs text-muted-foreground">—</span>
+                                <span className="text-sm font-display text-foreground truncate">{scene.title}</span>
+                                {hasErrors && (
+                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive font-medium">
+                                    ⚠ Mapping incomplet
+                                  </span>
                                 )}
-                              </div>
+                                <span className="ml-auto shrink-0 text-xs bg-secondary px-2 py-0.5 rounded-full">
+                                  {sceneShots.length > 0
+                                    ? <>
+                                        <span className="text-muted-foreground">SHOT </span>
+                                        {sceneShots.map((sh, i) => {
+                                          const shotNum = String(startIndex + i).padStart(4, "0");
+                                          const hasImage = !!sh.image_url;
+                                          return (
+                                            <span key={sh.id}>
+                                              {i > 0 && <span className="text-muted-foreground"> / </span>}
+                                              <span className={hasImage ? "text-green-500 font-semibold" : "text-muted-foreground"}>{shotNum}</span>
+                                            </span>
+                                          );
+                                        })}
+                                      </>
+                                    : <span className="text-muted-foreground">0 SHOT</span>}
+                                </span>
+                                {scene.validated && (
+                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+                                    <CheckCircle2 className="h-2.5 w-2.5" /> Validée
+                                  </span>
+                                )}
+                              </button>
+                              {isOpen && (
+                                <div className="px-4 pb-4 pt-2 border-t border-border space-y-4 animate-fade-in">
+                                  <div className="flex items-center flex-wrap gap-2 justify-end">
+                                    <button
+                                      onClick={() => handleGenerateSceneImages(scene.id)}
+                                      disabled={generatingSceneImages === scene.id}
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                      title="Générer les visuels de cette scène"
+                                    >
+                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                      <span>Visuels</span>
+                                    </button>
+                                    <button
+                                      onClick={() => runStoryboard(scene.id)}
+                                      disabled={isRegenerating}
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[36px]"
+                                      title="Régénérer les shots de cette scène"
+                                    >
+                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                      <span>Régénérer</span>
+                                    </button>
+                                  </div>
 
-                              {hasMissing && (
-                                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 space-y-1">
-                                  <p className="text-xs font-medium text-destructive">⚠ Phrases du script sans shot correspondant :</p>
-                                  {missingSentences.map((sent: string, i: number) => (
-                                    <p key={i} className="text-xs text-destructive/80 italic pl-3 border-l-2 border-destructive/30">"{sent}"</p>
-                                  ))}
-                                  <p className="text-[10px] text-muted-foreground mt-1">→ Régénérez les shots de cette scène ou ajoutez un shot manuellement pour éviter un décalage audio/image.</p>
-                                </div>
-                              )}
+                                  {/* Scene source text */}
+                                  <div className="rounded border border-border bg-background p-4">
+                                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{scene.source_text}"</p>
+                                    {(scene as any).source_text_fr && (
+                                      <p className="text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3">🇫🇷 "{(scene as any).source_text_fr}"</p>
+                                    )}
+                                  </div>
 
-                              {isRegenerating || isPendingGeneration ? (
-                                <div className="flex items-center justify-center py-8 gap-2">
-                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                  <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
-                                </div>
-                              ) : sceneShots.length === 0 && !generatingStoryboard ? (
-                                <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
-                              ) : (
-                                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                                  {sceneShots.map((shot, shotIdx) => (
-                                    <ShotCard key={shot.id} shot={shot} globalIndex={startIndex + shotIdx} sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`} isLastInScene={shotIdx === sceneShots.length - 1} onUpdate={handleShotUpdate} onDelete={handleShotDelete} onRegenerate={handleShotRegenerate} onGenerateImage={handleGenerateShotImage} onMergeWithNext={handleShotMergeWithNext} />
-                                  ))}
+                                  {isRegenerating || isPendingGeneration ? (
+                                    <div className="flex items-center justify-center py-8 gap-2">
+                                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                      <p className="text-xs text-muted-foreground">{isRegenerating ? "Régénération des shots..." : "En attente..."}</p>
+                                    </div>
+                                  ) : sceneShots.length === 0 && !generatingStoryboard ? (
+                                    <p className="text-xs text-muted-foreground italic">Aucun shot généré pour cette scène.</p>
+                                  ) : (
+                                    <FragmentedSceneView
+                                      normalisedScene={normScene}
+                                      dbShots={sceneShots}
+                                      startGlobalIndex={startIndex}
+                                      renderShot={(shot, globalIdx, isLast) => (
+                                        <ShotCard
+                                          key={shot.id}
+                                          shot={shot}
+                                          globalIndex={globalIdx}
+                                          sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
+                                          isLastInScene={isLast}
+                                          onUpdate={handleShotUpdate}
+                                          onDelete={handleShotDelete}
+                                          onRegenerate={handleShotRegenerate}
+                                          onGenerateImage={handleGenerateShotImage}
+                                          onMergeWithNext={handleShotMergeWithNext}
+                                        />
+                                      )}
+                                    />
+                                  )}
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    });
+                          );
+                        })}
+                      </>
+                    );
                   })()}
                 </div>
                 <div className="mt-8 flex gap-3">
