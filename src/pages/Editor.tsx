@@ -1799,6 +1799,11 @@ export default function Editor() {
                                     ⚠
                                   </span>
                                 )}
+                                {hasWarnings && (
+                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-amber-600 font-medium">
+                                    ⚠
+                                  </span>
+                                )}
                                 <span className="ml-auto shrink-0 text-[10px] sm:text-xs bg-secondary px-1.5 sm:px-2 py-0.5 rounded-full hidden sm:inline-flex">
                                   {sceneShots.length > 0
                                     ? <>
