@@ -1967,7 +1967,6 @@ export default function Editor() {
                     <Play className="h-4 w-4" /> Re-générer tous les shots
                   </Button>
                 </div>
-              </>
             )}
           </div>
           <VisualGallery
