@@ -1,8 +1,11 @@
-import type { ManifestTiming } from "./manifestTiming";
+import { useState } from "react";
+import type { ManifestTiming, ManifestTimingEntry } from "./manifestTiming";
+import type { ShotTimepoint } from "./timelineAssembly";
 
 interface ManifestTimingTableProps {
   timing: ManifestTiming;
   fps?: number;
+  rawTimepoints?: ShotTimepoint[] | null;
 }
 
 /** Format seconds as timecode mm:ss:ff (frame-accurate) */
@@ -20,8 +23,35 @@ function toFrame(seconds: number, fps: number): number {
   return Math.round(seconds * fps);
 }
 
-export default function ManifestTimingTable({ timing, fps = 24 }: ManifestTimingTableProps) {
+// ── Replicate exact XML export frame logic ────────────────────────
+
+interface XmlClipFrame {
+  start: number;
+  end: number;
+}
+
+/**
+ * Exact replica of buildClipFramesFromManifest from xmlExportEngine.ts
+ * so we can compare what the XML will actually produce.
+ */
+function simulateXmlFrames(entries: ManifestTimingEntry[], fps: number): XmlClipFrame[] {
+  if (entries.length === 0) return [];
+  const frames: XmlClipFrame[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const startFrame = Math.max(0, Math.round(entries[i].start * fps));
+    const endFrame = Math.round((entries[i].start + entries[i].duration) * fps);
+    const prevEnd = frames.length > 0 ? frames[frames.length - 1].end : 0;
+    frames.push({
+      start: Math.max(startFrame, prevEnd),
+      end: Math.max(endFrame, Math.max(startFrame, prevEnd) + 1),
+    });
+  }
+  return frames;
+}
+
+export default function ManifestTimingTable({ timing, fps = 24, rawTimepoints }: ManifestTimingTableProps) {
   const { entries, issues, totalDuration } = timing;
+  const [showComparison, setShowComparison] = useState(false);
 
   if (entries.length === 0) {
     return (
@@ -33,6 +63,28 @@ export default function ManifestTimingTable({ timing, fps = 24 }: ManifestTiming
 
   const errorCount = issues.filter((i) => i.level === "error").length;
   const warningCount = issues.filter((i) => i.level === "warning").length;
+
+  // Build raw timepoint lookup
+  const rawTpMap = new Map<string, number>();
+  if (rawTimepoints) {
+    for (const tp of rawTimepoints) {
+      if (!tp.shotId.startsWith("_missing_")) {
+        rawTpMap.set(tp.shotId, tp.timeSeconds);
+      }
+    }
+  }
+
+  // Simulate XML frames
+  const xmlFrames = simulateXmlFrames(entries, fps);
+
+  // Count drifts
+  const drifts = entries.reduce((count, entry, i) => {
+    const rawSec = rawTpMap.get(entry.shotId);
+    if (rawSec === undefined) return count;
+    const idealFrame = toFrame(rawSec, fps);
+    const xmlFrame = xmlFrames[i]?.start ?? 0;
+    return xmlFrame !== idealFrame ? count + 1 : count;
+  }, 0);
 
   return (
     <div className="space-y-3">
@@ -66,6 +118,98 @@ export default function ManifestTimingTable({ timing, fps = 24 }: ManifestTiming
               Shot #{issue.order} — {issue.message}
             </p>
           ))}
+        </div>
+      )}
+
+      {/* Toggle comparison mode */}
+      {rawTimepoints && rawTimepoints.length > 0 && (
+        <button
+          onClick={() => setShowComparison((v) => !v)}
+          className="text-[10px] font-medium text-primary hover:underline"
+        >
+          {showComparison ? "◂ Masquer comparaison TTS vs XML" : "▸ Comparaison TTS brut vs XML export"}
+          {drifts > 0 && !showComparison && (
+            <span className="ml-1.5 text-destructive">({drifts} décalage{drifts > 1 ? "s" : ""})</span>
+          )}
+        </button>
+      )}
+
+      {/* ── Comparison table TTS vs XML ── */}
+      {showComparison && (
+        <div className="overflow-x-auto rounded border border-border">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="bg-secondary/50 text-muted-foreground">
+                <th className="px-2 py-1.5 text-left font-medium">#</th>
+                <th className="px-2 py-1.5 text-left font-medium">S</th>
+                <th className="px-2 py-1.5 text-right font-medium">TTS brut (s)</th>
+                <th className="px-2 py-1.5 text-right font-medium">TTS → Frame</th>
+                <th className="px-2 py-1.5 text-right font-medium">TTS → TC</th>
+                <th className="px-2 py-1.5 text-right font-medium">Manifest (s)</th>
+                <th className="px-2 py-1.5 text-right font-medium">Manifest → Frame</th>
+                <th className="px-2 py-1.5 text-right font-medium">XML Frame</th>
+                <th className="px-2 py-1.5 text-right font-medium">XML TC</th>
+                <th className="px-2 py-1.5 text-center font-medium">Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, i) => {
+                const rawSec = rawTpMap.get(entry.shotId);
+                const ttsFrame = rawSec !== undefined ? toFrame(rawSec, fps) : null;
+                const ttsTc = rawSec !== undefined ? formatTimecode(rawSec, fps) : "—";
+                const manifestFrame = toFrame(entry.start, fps);
+                const xmlFrame = xmlFrames[i]?.start ?? 0;
+                const xmlTc = formatTimecode(xmlFrame / fps, fps);
+                const delta = ttsFrame !== null ? xmlFrame - ttsFrame : null;
+                const hasDrift = delta !== null && delta !== 0;
+                return (
+                  <tr
+                    key={entry.shotId}
+                    className={`border-t border-border ${
+                      hasDrift ? "bg-destructive/5" : i % 2 === 0 ? "bg-card" : "bg-secondary/20"
+                    }`}
+                  >
+                    <td className="px-2 py-1 font-mono text-muted-foreground">{entry.order}</td>
+                    <td className="px-2 py-1 text-muted-foreground">S{entry.sceneOrder}</td>
+                    <td className="px-2 py-1 text-right font-mono">
+                      {rawSec !== undefined ? rawSec.toFixed(3) : "—"}
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono">
+                      {ttsFrame !== null ? ttsFrame : "—"}
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono">{ttsTc}</td>
+                    <td className="px-2 py-1 text-right font-mono">{entry.start.toFixed(2)}</td>
+                    <td className="px-2 py-1 text-right font-mono">{manifestFrame}</td>
+                    <td className={`px-2 py-1 text-right font-mono font-semibold ${hasDrift ? "text-destructive" : ""}`}>
+                      {xmlFrame}
+                    </td>
+                    <td className={`px-2 py-1 text-right font-mono ${hasDrift ? "text-destructive" : ""}`}>
+                      {xmlTc}
+                    </td>
+                    <td className="px-2 py-1 text-center font-mono">
+                      {delta === null ? "—" : delta === 0 ? (
+                        <span className="text-emerald-500">✓</span>
+                      ) : (
+                        <span className="text-destructive font-semibold">{delta > 0 ? `+${delta}` : delta}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Drift summary */}
+          <div className="px-3 py-2 bg-secondary/30 border-t border-border text-[10px] text-muted-foreground">
+            {drifts === 0 ? (
+              <span className="text-emerald-500 font-medium">✓ Aucun décalage : TTS brut et XML export sont parfaitement alignés.</span>
+            ) : (
+              <span className="text-destructive font-medium">
+                ⚠ {drifts} shot{drifts > 1 ? "s" : ""} décalé{drifts > 1 ? "s" : ""} entre TTS brut et XML export.
+                Le décalage vient du Math.max(startFrame, prevEnd) dans la construction des frames XML.
+              </span>
+            )}
+          </div>
         </div>
       )}
 
