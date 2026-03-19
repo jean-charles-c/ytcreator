@@ -39,6 +39,12 @@ interface PlayerState {
   duration: number;
 }
 
+interface ElevenLabsBalance {
+  character_count: number;
+  character_limit: number;
+  tier: string;
+}
+
 export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioProps) {
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState(30);
@@ -48,6 +54,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
 
   // Player
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
