@@ -170,16 +170,22 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
     // Restore persisted selection and notify parent
     if (projectId) {
-      const savedId = localStorage.getItem(`music_selected_${projectId}`);
-      if (savedId) {
-        const found = list.find(e => e.id === savedId);
-        if (found) {
-          const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(found.file_path);
-          onMusicSelected?.(urlData.publicUrl, found.file_name);
-        } else {
-          localStorage.removeItem(`music_selected_${projectId}`);
-          setSelectedId(null);
-        }
+      try {
+        const saved = localStorage.getItem(`music_selected_${projectId}`);
+        const ids: string[] = saved ? JSON.parse(saved) : [];
+        const validIds = new Set(ids.filter(id => list.some(e => e.id === id)));
+        setSelectedIds(validIds);
+        // Notify parent with all selected tracks
+        const tracks = list
+          .filter(e => validIds.has(e.id))
+          .map(e => {
+            const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(e.file_path);
+            return { url: urlData.publicUrl, name: e.file_name };
+          });
+        if (tracks.length > 0) onMusicSelected?.(tracks);
+      } catch {
+        localStorage.removeItem(`music_selected_${projectId}`);
+        setSelectedIds(new Set());
       }
     }
 
