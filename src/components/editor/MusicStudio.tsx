@@ -246,6 +246,29 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
   return (
     <div className="space-y-4">
+      {/* ElevenLabs Balance */}
+      {balance && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2">
+          <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                Crédits ElevenLabs <span className="text-foreground font-medium capitalize">({balance.tier})</span>
+              </span>
+              <span className="font-mono text-foreground">
+                {balance.character_count.toLocaleString()} / {balance.character_limit.toLocaleString()}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${Math.min((balance.character_count / balance.character_limit) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Prompt */}
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground">
