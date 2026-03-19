@@ -254,7 +254,7 @@ function CollapsibleSection({
   );
 }
 
-export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabProps) {
+export default function VideoEditTab({ projectId, scenes, shots, exportBlocked }: VideoEditTabProps) {
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(true);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
