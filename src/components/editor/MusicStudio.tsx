@@ -173,6 +173,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
       setPlayerState({ audioUrl: data.audioUrl, fileName: data.fileName, duration: data.durationSeconds });
       fetchHistory();
+      fetchBalance();
       saveSettings(prompt, duration);
 
       toast.success(`Musique générée — ${data.fileName} (${formatSize(data.fileSize)})`);
