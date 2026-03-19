@@ -105,7 +105,8 @@ function checkTiming(timing: ManifestTiming | null): QaIssue[] {
     issues.push({
       level: ti.level === "error" ? "critical" : "warning",
       category: "timing",
-      shotOrder: ti.order,
+      sceneOrder: ti.sceneOrder,
+      shotOrder: ti.order > 0 ? ti.order : undefined,
       message: ti.message,
     });
   }
@@ -116,8 +117,9 @@ function checkTiming(timing: ManifestTiming | null): QaIssue[] {
       issues.push({
         level: "critical",
         category: "timing",
+        sceneOrder: entry.sceneOrder,
         shotOrder: entry.order,
-        message: `Shot ${entry.order} (scène ${entry.sceneOrder}) a une durée nulle — deux shots partagent le même timestamp audio. Régénérez la voix off.`,
+        message: `Shot ${entry.order} (scène ${entry.sceneOrder}) a une durée nulle — deux shots partagent le même timestamp audio. Re-générez d'abord les shots de la scène ${entry.sceneOrder}, puis dans Voice Over cliquez sur « Coller le script généré », puis relancez la voix off.`,
       });
     }
   }
