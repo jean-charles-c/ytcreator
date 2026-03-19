@@ -967,6 +967,21 @@ serve(async (req) => {
 
       console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
       console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
+
+      // ── Post-generation strict validation: all shots must have a timepoint ──
+      const postValidation = validateExactShotTimepoints(expectedShotIds, allTimepoints);
+      if (!postValidation.ok) {
+        console.error("Post-generation timepoint validation FAILED:", postValidation.errors);
+        return new Response(
+          JSON.stringify({
+            error: `Génération audio terminée mais synchronisation incomplète — ${postValidation.errors[0]}. L'audio n'a pas été sauvegardé. Réessayez.`,
+            validationErrors: postValidation.errors,
+            missingIds: postValidation.missingIds,
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log("Post-generation timepoint validation PASSED ✓");
     } else {
       // ── Legacy mode: no marks, plain text/SSML ──
       const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation);
