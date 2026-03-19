@@ -289,6 +289,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const handleSelect = (entry: MusicEntry) => {
     const { data } = supabase.storage.from("music-audio").getPublicUrl(entry.file_path);
     setSelectedId(entry.id);
+    if (projectId) localStorage.setItem(`music_selected_${projectId}`, entry.id);
     onMusicSelected?.(data.publicUrl, entry.file_name);
     toast.success(`"${entry.file_name}" sélectionné pour l'export`);
   };
