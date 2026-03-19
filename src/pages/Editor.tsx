@@ -1703,6 +1703,16 @@ export default function Editor() {
             )}
 
             {scenes.length > 0 && (
+              <Collapsible defaultOpen className="space-y-0">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium text-foreground min-h-[44px] sm:min-h-0 group">
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                    <Layers className="h-4 w-4 text-primary" />
+                    Scènes &amp; Shots
+                    <span className="ml-auto text-[10px] text-muted-foreground">{scenes.length} scène{scenes.length > 1 ? "s" : ""} • {shots.length} shot{shots.length > 1 ? "s" : ""}</span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border border-t-0 border-border rounded-b p-3 sm:p-4 space-y-4">
               <>
                 {generatingStoryboard && (
                   <div className="flex items-center gap-2 mb-6 p-3 rounded border border-primary/20 bg-primary/5">
