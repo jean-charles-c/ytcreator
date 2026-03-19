@@ -33,6 +33,7 @@ import ShotCard from "@/components/editor/ShotCard";
 import VisualGallery from "@/components/editor/VisualGallery";
 import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
 import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
+import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
@@ -1907,6 +1908,16 @@ export default function Editor() {
                     </div>
                   </details>
                 )}
+
+                {/* Manifest Timing */}
+                <details className="mt-6 rounded border border-border bg-card p-3">
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                    Manifest Timing (synchronisation audio/image)
+                  </summary>
+                  <div className="mt-3">
+                    <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
+                  </div>
+                </details>
 
                 <div className="mt-8 flex gap-3">
                   <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard}>
