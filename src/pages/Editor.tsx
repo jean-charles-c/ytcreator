@@ -1713,7 +1713,6 @@ export default function Editor() {
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="border border-t-0 border-border rounded-b p-3 sm:p-4 space-y-4">
-              <>
                 {generatingStoryboard && (
                   <div className="flex items-center gap-2 mb-6 p-3 rounded border border-primary/20 bg-primary/5">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
