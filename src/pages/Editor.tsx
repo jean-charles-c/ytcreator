@@ -1705,7 +1705,7 @@ export default function Editor() {
 
             {scenes.length > 0 && (
               <>
-              <Collapsible defaultOpen className="space-y-0">
+              <Collapsible className="space-y-0">
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium text-foreground min-h-[44px] sm:min-h-0 group">
                     <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />

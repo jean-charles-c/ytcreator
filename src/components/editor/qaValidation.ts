@@ -72,7 +72,7 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           category: "structure",
           sceneOrder: scene.sceneOrder,
           shotOrder: shot.globalOrder,
-          message: `Shot ${shot.globalOrder} n'a aucun fragment associé`,
+          message: `Shot ${shot.globalOrder} (scène ${scene.sceneOrder}) n'a aucun fragment de texte associé. Régénérez les shots de cette scène pour recréer le mapping.`,
         });
       }
     }
