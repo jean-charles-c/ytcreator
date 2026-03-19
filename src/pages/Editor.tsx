@@ -1776,9 +1776,10 @@ export default function Editor() {
                           // Use manifest validation instead of fuzzy matching
                           const sceneIssues = issues.filter((i) => i.sceneId === normScene.sceneId);
                           const hasErrors = sceneIssues.some((i) => i.level === "error");
+                          const hasWarnings = !hasErrors && sceneIssues.some((i) => i.level === "warning");
 
                           return (
-                            <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
+                            <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : hasWarnings ? "border-amber-500/60" : "border-border"} bg-card overflow-hidden`}>
                                 <button
                                 onClick={() =>
                                   setOpenSceneIds((prev) =>
@@ -1795,6 +1796,11 @@ export default function Editor() {
                                 <span className="text-xs sm:text-sm font-display text-foreground truncate">{scene.title}</span>
                                 {hasErrors && (
                                   <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium">
+                                    ⚠
+                                  </span>
+                                )}
+                                {hasWarnings && (
+                                  <span className="shrink-0 inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-amber-600 font-medium">
                                     ⚠
                                   </span>
                                 )}
