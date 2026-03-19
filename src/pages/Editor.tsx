@@ -1935,6 +1935,8 @@ export default function Editor() {
                     </div>
                   </details>
                 )}
+                </CollapsibleContent>
+              </Collapsible>
 
                 {/* QA Contrôle qualité */}
                 <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
