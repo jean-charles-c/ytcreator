@@ -545,23 +545,25 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           }
         } catch { /* no chapters — export without markers */ }
 
-        // Build manifest timing from scenes/shots + audio timepoints
+        // Build manifest timing from scenes/shots + the exact audio currently selected in the timeline
         try {
-          const [{ data: dbScenes }, { data: dbShots }, { data: audioFiles }] = await Promise.all([
+          const [{ data: dbScenes }, { data: dbShots }, { data: selectedAudio }] = await Promise.all([
             supabase.from("scenes").select("*").eq("project_id", params.projectId),
             supabase.from("shots").select("*").eq("project_id", params.projectId),
-            supabase.from("vo_audio_history").select("*").eq("project_id", params.projectId).order("created_at", { ascending: false }).limit(1),
+            supabase.from("vo_audio_history").select("*").eq("id", params.timeline.audioTrack.audioId).maybeSingle(),
           ]);
 
-          if (dbScenes?.length && dbShots?.length && audioFiles?.length) {
+          if (dbScenes?.length && dbShots?.length && selectedAudio) {
             const manifest = buildManifest(params.projectId, dbScenes, dbShots);
-            const timepoints = (audioFiles[0].shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
-            const duration = audioFiles[0].duration_estimate ?? 0;
+            const timepoints = (selectedAudio.shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
+            const duration = selectedAudio.duration_estimate ?? 0;
             const timing = buildManifestTiming(manifest, timepoints, duration);
             if (timing.issues.some((issue) => issue.level === "error") || timing.entries.length === 0) {
               throw new Error(timing.issues[0]?.message ?? "Export XML bloqué — manifest timing exact invalide.");
             }
             manifestEntries = timing.entries;
+          } else {
+            throw new Error("Export XML bloqué — audio sélectionné introuvable pour construire le manifest timing exact.");
           }
         } catch (error) {
           throw error instanceof Error ? error : new Error("Export XML bloqué — impossible de valider le manifest timing exact.");
