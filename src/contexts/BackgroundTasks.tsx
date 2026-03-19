@@ -13,7 +13,7 @@ import type { Timeline } from "@/components/editor/timelineAssembly";
 import type { Chapter, ChapterListState } from "@/components/editor/chapterTypes";
 
 // ─── Types ──────────────────────────────────────────────────────────
-export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml";
+export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml" | "image-gen";
 export type TaskStatus = "running" | "done" | "error";
 
 export interface BackgroundTask {
