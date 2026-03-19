@@ -149,13 +149,41 @@ ${clipItems}
                 <end>${audioEndFrame}</end>
                 <in>0</in>
                 <out>${audioEndFrame}</out>
+                <sourcetrack>
+                  <mediatype>audio</mediatype>
+                  <trackindex>1</trackindex>
+                </sourcetrack>
                 <file id="audio-file-${exportUid}-1">
                   <name>${escapeXml(audioTrack.fileName)}</name>
                   <pathurl>${escapeXml(audioFileName)}</pathurl>
                   <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
                   <duration>${audioEndFrame}</duration>
-                  <media><audio><channelcount>2</channelcount></audio></media>
+                  <media>
+                    <audio>
+                      <channelcount>2</channelcount>
+                      <samplecharacteristics>
+                        <depth>16</depth>
+                        <samplerate>48000</samplerate>
+                      </samplecharacteristics>
+                    </audio>
+                  </media>
                 </file>
+              </clipitem>
+            </track>
+            <track>
+              <clipitem id="audio-clip-${exportUid}-2">
+                <name>${escapeXml(audioTrack.fileName)}</name>
+                <duration>${audioEndFrame}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>0</start>
+                <end>${audioEndFrame}</end>
+                <in>0</in>
+                <out>${audioEndFrame}</out>
+                <sourcetrack>
+                  <mediatype>audio</mediatype>
+                  <trackindex>2</trackindex>
+                </sourcetrack>
+                <file id="audio-file-${exportUid}-1"/>
               </clipitem>
             </track>
           </audio>
