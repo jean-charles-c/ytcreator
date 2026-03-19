@@ -269,21 +269,22 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
 
   const subtitlesText = useMemo(() => {
-    if (scenes.length === 0) return null;
+    if (scenes.length === 0 || shots.length === 0) return null;
     const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
-    return sortedScenes
-      .map((scene) => {
-        const text = (scene.source_text || "")
+    const lines: string[] = [];
+    sortedScenes.forEach((scene) => {
+      const sceneShots = shots
+        .filter((s) => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      sceneShots.forEach((shot) => {
+        const text = (shot.source_sentence || "")
           .replace(/\[\[[A-Z0-9_]+\]\]\s*/g, "")
-          .replace(/---+/g, "")
-          .replace(/^#.+$/gm, "")
-          .replace(/\n{2,}/g, " ")
           .trim();
-        return text;
-      })
-      .filter((t) => t.length > 0)
-      .join("\n\n");
-  }, [scenes]);
+        if (text) lines.push(text);
+      });
+    });
+    return lines.length > 0 ? lines.join("\n\n") : null;
+  }, [scenes, shots]);
 
   return (
     <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
@@ -354,7 +355,7 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
 
                       {/* SOUS-TITRES */}
                       {subtitlesText && (
-                        <SubCollapsible icon={AlignLeft} title="SOUS-TITRES" badge={`${scenes.length} scènes`}>
+                        <SubCollapsible icon={AlignLeft} title="SOUS-TITRES" badge={`${shots.length} shots`}>
                           <CopyableBlock text={subtitlesText} label="Sous-titres">
                             <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                               {subtitlesText}
