@@ -6,7 +6,8 @@ export interface ShotSentenceEntry {
 
 const SCRIPT_SENTENCE_SPLIT_REGEX = /(?<=[.!?])\s+/;
 const MAX_MULTI_SENTENCES_PER_SHOT = 3;
-const MAX_LOOKAHEAD_SENTENCES = 3;
+const MAX_LOOKAHEAD_SENTENCES = 5;
+const FUZZY_WORD_OVERLAP_THRESHOLD = 0.45;
 
 function normalizeText(value: string): string {
   return value
@@ -44,12 +45,36 @@ function splitScriptSentences(scriptText: string): ScriptSentence[] {
   return result;
 }
 
-function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
+function extractWords(normalized: string): Set<string> {
+  return new Set(normalized.split(/\s+/).filter(w => w.length > 2));
+}
+
+function wordOverlapRatio(a: string, b: string): number {
+  const wordsA = extractWords(a);
+  const wordsB = extractWords(b);
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let overlap = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) overlap++;
+  }
+  return overlap / Math.max(wordsA.size, wordsB.size);
+}
+
+/** Strict matching: exact or shot-includes-script (for multi-sentence blocks) */
+function strictMatch(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
   if (!shotTextNormalized || !scriptBlockNormalized) return false;
-  return (
-    shotTextNormalized === scriptBlockNormalized ||
-    shotTextNormalized.includes(scriptBlockNormalized)
-  );
+  if (shotTextNormalized === scriptBlockNormalized) return true;
+  if (shotTextNormalized.includes(scriptBlockNormalized)) return true;
+  return false;
+}
+
+/** Fuzzy matching: includes strict + reverse inclusion + word overlap (single sentences) */
+function fuzzyMatch(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
+  if (strictMatch(shotTextNormalized, scriptSentenceNormalized)) return true;
+  // Reverse inclusion: script contains shot text (shot is shortened version)
+  if (scriptSentenceNormalized.includes(shotTextNormalized) && shotTextNormalized.length > 10) return true;
+  if (wordOverlapRatio(shotTextNormalized, scriptSentenceNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
+  return false;
 }
 
 function getCoverageLength(
@@ -64,8 +89,12 @@ function getCoverageLength(
 
   for (let length = maxLength; length >= 1; length--) {
     const combined = normalizedScriptSentences.slice(startIndex, startIndex + length).join(" ");
-    if (shotCoversScriptBlock(shotTextNormalized, combined)) {
-      return length;
+    if (length === 1) {
+      // Single sentence: use fuzzy matching
+      if (fuzzyMatch(shotTextNormalized, combined)) return length;
+    } else {
+      // Multi-sentence: use strict matching only
+      if (strictMatch(shotTextNormalized, combined)) return length;
     }
   }
 
