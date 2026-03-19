@@ -233,9 +233,22 @@ serve(async (req) => {
     const scriptLang = project.script_language || "fr";
     const needsTranslation = scriptLang.toLowerCase() !== "fr";
 
+    // Build a global context block from the project metadata
+    const projectContext = [
+      `PROJECT TITLE: "${project.title}"`,
+      project.subject ? `PROJECT SUBJECT / HISTORICAL CONTEXT: ${project.subject}` : null,
+      `SCRIPT LANGUAGE: ${scriptLang}`,
+    ].filter(Boolean).join("\n");
+
     const sceneDescriptions = scenes.map((s: any) => {
       const shotCount = calcShotCount(s.source_text);
-      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+      const meta = [
+        s.location ? `Location: ${s.location}` : null,
+        s.characters ? `Characters: ${s.characters}` : null,
+        s.scene_type ? `Scene type: ${s.scene_type}` : null,
+        s.continuity ? `Continuity: ${s.continuity}` : null,
+      ].filter(Boolean).join(" | ");
+      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""} — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
