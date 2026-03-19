@@ -130,7 +130,6 @@ serve(async (req) => {
       ? aspect_ratio
       : "16:9";
 
-    const target = ASPECT_RATIO_DIMENSIONS[selectedAspectRatio];
     const fallbackCost = MODEL_COSTS[selectedModel] ?? 0;
 
     const { data: shot, error: shotErr } = await supabase
