@@ -43,6 +43,7 @@ interface VideoEditTabProps {
   projectId: string | null;
   scenes: Scene[];
   shots: Shot[];
+  exportBlocked?: boolean;
 }
 
 const STATUS_CONFIG = {
@@ -253,7 +254,7 @@ function CollapsibleSection({
   );
 }
 
-export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabProps) {
+export default function VideoEditTab({ projectId, scenes, shots, exportBlocked }: VideoEditTabProps) {
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(true);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
@@ -554,7 +555,7 @@ export default function VideoEditTab({ projectId, scenes, shots }: VideoEditTabP
 
                 {/* Collapsible: Export Manager */}
                 <CollapsibleSection title="Export Manager" icon={Film}>
-                  <ExportManager timeline={timeline} projectId={projectId!} />
+                  <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={exportBlocked} />
                 </CollapsibleSection>
               </>
             )}

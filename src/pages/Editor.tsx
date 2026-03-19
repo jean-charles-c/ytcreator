@@ -22,6 +22,7 @@ import {
   Search,
   ImageIcon,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +35,7 @@ import VisualGallery from "@/components/editor/VisualGallery";
 import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
 import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
+import QaPanel from "@/components/editor/QaPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
@@ -166,6 +168,7 @@ export default function Editor() {
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedMusicTracks, setSelectedMusicTracks] = useState<{ url: string; name: string }[]>([]);
+  const [qaExportAllowed, setQaExportAllowed] = useState(true);
   const storyAbortRef = useRef<AbortController | null>(null);
 
   // Derive loading states from background tasks
@@ -1396,6 +1399,7 @@ export default function Editor() {
             projectId={projectId}
             scenes={scenes}
             shots={shots}
+            exportBlocked={!qaExportAllowed}
           />
         )}
 
@@ -1909,8 +1913,23 @@ export default function Editor() {
                   </details>
                 )}
 
+                {/* QA Contrôle qualité */}
+                <details className="mt-6 rounded border border-border bg-card p-3" open>
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Contrôle qualité
+                  </summary>
+                  <div className="mt-3">
+                    <QaPanel
+                      projectId={projectId!}
+                      manifest={buildManifest(projectId!, scenes, shots)}
+                      onExportAllowedChange={setQaExportAllowed}
+                    />
+                  </div>
+                </details>
+
                 {/* Manifest Timing */}
-                <details className="mt-6 rounded border border-border bg-card p-3">
+                <details className="mt-4 rounded border border-border bg-card p-3">
                   <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
                     Manifest Timing (synchronisation audio/image)
                   </summary>
