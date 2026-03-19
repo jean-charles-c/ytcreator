@@ -64,7 +64,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         prompt,
-        duration_seconds: durationSeconds,
+        music_length_ms: durationSeconds * 1000,
       }),
     });
 
