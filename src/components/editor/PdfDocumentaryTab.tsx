@@ -535,7 +535,7 @@ export default function PdfDocumentaryTab({
         return next;
       });
     }
-  }, [sections, scriptLanguage]);
+  }, [sections, scriptLanguage, saveTranslations]);
 
 
   const extractAndAnalyze = useCallback(async (pdfFile: File) => {
