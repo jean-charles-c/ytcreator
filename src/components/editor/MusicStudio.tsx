@@ -59,7 +59,10 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [entries, setEntries] = useState<MusicEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (!projectId) return null;
+    return localStorage.getItem(`music_selected_${projectId}`) || null;
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [uploading, setUploading] = useState(false);
