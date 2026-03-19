@@ -1015,6 +1015,7 @@ export default function Editor() {
     for (const scene of sortedScenes) {
       const sceneShots = shots.filter((s) => s.scene_id === scene.id).sort((a, b) => a.shot_order - b.shot_order);
       for (const shot of sceneShots) {
+        if (shot.image_url) continue;
         if (shotIdx > 0) await new Promise((r) => setTimeout(r, 8000));
         const url = await generateShotImage(shot.id);
         if (url) count++;
