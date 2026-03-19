@@ -826,11 +826,56 @@ serve(async (req) => {
       );
     }
 
+    // ── Strict shot-sync validation ──
+    // Fetch current shots from DB to validate alignment
+    const { data: dbShots, error: shotsError } = await supabaseAdmin
+      .from("shots")
+      .select("id, shot_order, scene_id")
+      .eq("project_id", projectId)
+      .order("shot_order", { ascending: true });
+
+    if (shotsError) {
+      console.error("Failed to fetch project shots:", shotsError);
+      return new Response(
+        JSON.stringify({ error: "Impossible de vérifier les shots du projet." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const expectedShotIds = (dbShots ?? []).map((s: any) => s.id);
+
     // Neural2, Standard, Wavenet and Journey voices support <mark> SSML tags
     const supportsMarks = !resolvedVoiceName || /Neural2|Standard|Wavenet|Journey/i.test(resolvedVoiceName);
+
+    // STRICT: shot_marked mode REQUIRES mark-compatible voice — no silent fallback
+    if (syncMode === "shot_marked" && !supportsMarks) {
+      return new Response(
+        JSON.stringify({
+          error: `La voix "${resolvedVoiceName}" ne supporte pas les balises <mark> requises pour la synchronisation exacte. Utilisez une voix Neural2, Standard, Wavenet ou Journey.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0 && supportsMarks;
-    if (!supportsMarks && syncMode === "shot_marked") {
-      console.log(`Voice "${resolvedVoiceName}" does not support <mark> tags — falling back to proportional sync`);
+
+    // STRICT: validate shotSentences match DB shots exactly before generating
+    if (useMarkedMode) {
+      const sentenceValidation = validateExactShotSentences(expectedShotIds, shotSentences!);
+      if (!sentenceValidation.ok) {
+        console.error("Shot-sentence validation failed:", sentenceValidation.errors);
+        return new Response(
+          JSON.stringify({
+            error: `Synchronisation bloquée — ${sentenceValidation.errors[0]}`,
+            validationErrors: sentenceValidation.errors,
+            missingIds: sentenceValidation.missingIds,
+            unexpectedIds: sentenceValidation.unexpectedIds,
+            placeholderIds: sentenceValidation.placeholderIds,
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log(`Shot-sentence validation passed: ${expectedShotIds.length} shots aligned`);
     }
     const MAX_CHARS = 4800;
 
@@ -922,6 +967,21 @@ serve(async (req) => {
 
       console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
       console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
+
+      // ── Post-generation strict validation: all shots must have a timepoint ──
+      const postValidation = validateExactShotTimepoints(expectedShotIds, allTimepoints);
+      if (!postValidation.ok) {
+        console.error("Post-generation timepoint validation FAILED:", postValidation.errors);
+        return new Response(
+          JSON.stringify({
+            error: `Génération audio terminée mais synchronisation incomplète — ${postValidation.errors[0]}. L'audio n'a pas été sauvegardé. Réessayez.`,
+            validationErrors: postValidation.errors,
+            missingIds: postValidation.missingIds,
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log("Post-generation timepoint validation PASSED ✓");
     } else {
       // ── Legacy mode: no marks, plain text/SSML ──
       const ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation);
