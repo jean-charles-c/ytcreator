@@ -1399,6 +1399,7 @@ export default function Editor() {
             projectId={projectId}
             scenes={scenes}
             shots={shots}
+            exportBlocked={!qaExportAllowed}
           />
         )}
 
