@@ -70,6 +70,20 @@ export interface NormalisedScene {
   shots: NormalisedShot[];
 }
 
+// ── Action History ─────────────────────────────────────────────────
+
+export type ManifestActionType = "merge" | "delete" | "reassign";
+
+export interface ManifestAction {
+  type: ManifestActionType;
+  timestamp: string;
+  sceneId: string;
+  /** IDs of shots involved */
+  shotIds: string[];
+  /** Human-readable description */
+  description: string;
+}
+
 // ── Full manifest ──────────────────────────────────────────────────
 
 export interface VisualPromptManifest {
@@ -80,6 +94,8 @@ export interface VisualPromptManifest {
   totalShots: number;
   /** Timestamp of last build */
   builtAt: string;
+  /** Action history log */
+  history: ManifestAction[];
 }
 
 // ── Builder helper ─────────────────────────────────────────────────
