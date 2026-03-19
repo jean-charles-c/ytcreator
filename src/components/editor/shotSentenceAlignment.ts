@@ -11,17 +11,37 @@ const MAX_LOOKAHEAD_SENTENCES = 3;
 function normalizeText(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[’`´]/g, "'")
+    .replace(/['`´]/g, "'")
     .replace(/[^\p{L}\p{N}'\s]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function splitScriptSentences(scriptText: string): string[] {
-  return scriptText
-    .split(SCRIPT_SENTENCE_SPLIT_REGEX)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence.length > 0);
+interface ScriptSentence {
+  text: string;
+  /** True if this sentence starts a new paragraph (after a \n\n break) */
+  isNewParagraph: boolean;
+}
+
+function splitScriptSentences(scriptText: string): ScriptSentence[] {
+  const paragraphs = scriptText.split(/\n\s*\n/).filter((p) => p.trim());
+  const result: ScriptSentence[] = [];
+
+  for (let pi = 0; pi < paragraphs.length; pi++) {
+    const sentences = paragraphs[pi]
+      .split(SCRIPT_SENTENCE_SPLIT_REGEX)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    for (let si = 0; si < sentences.length; si++) {
+      result.push({
+        text: sentences[si],
+        isNewParagraph: si === 0 && pi > 0,
+      });
+    }
+  }
+
+  return result;
 }
 
 function shotCoversScriptBlock(shotTextNormalized: string, scriptBlockNormalized: string): boolean {
