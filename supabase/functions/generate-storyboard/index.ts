@@ -233,9 +233,22 @@ serve(async (req) => {
     const scriptLang = project.script_language || "fr";
     const needsTranslation = scriptLang.toLowerCase() !== "fr";
 
+    // Build a global context block from the project metadata
+    const projectContext = [
+      `PROJECT TITLE: "${project.title}"`,
+      project.subject ? `PROJECT SUBJECT / HISTORICAL CONTEXT: ${project.subject}` : null,
+      `SCRIPT LANGUAGE: ${scriptLang}`,
+    ].filter(Boolean).join("\n");
+
     const sceneDescriptions = scenes.map((s: any) => {
       const shotCount = calcShotCount(s.source_text);
-      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}" — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+      const meta = [
+        s.location ? `Location: ${s.location}` : null,
+        s.characters ? `Characters: ${s.characters}` : null,
+        s.scene_type ? `Scene type: ${s.scene_type}` : null,
+        s.continuity ? `Continuity: ${s.continuity}` : null,
+      ].filter(Boolean).join(" | ");
+      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""} — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
@@ -255,7 +268,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `Generate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence).\n2. Each shot must correspond to one sentence from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.${translationRule}\n\n${sceneDescriptions}` },
+            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by requested_shots for each scene (one shot per sentence).\n2. Each shot must correspond to one sentence from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly mention the historical period/era and geographic location relevant to the scene.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
