@@ -70,8 +70,45 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     text.replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2")
         .replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2"); // second pass for millions+
 
+  const buildScriptFromCurrentShots = () => {
+    const sorted = getSortedShots();
+    if (sorted.length === 0) return "";
+
+    const sceneBlocks: string[] = [];
+    let currentSceneId: string | null = null;
+    let currentLines: string[] = [];
+
+    for (const shot of sorted) {
+      const text = (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
+      if (!text) continue;
+
+      if (currentSceneId !== null && shot.scene_id !== currentSceneId) {
+        if (currentLines.length > 0) {
+          sceneBlocks.push(currentLines.join(" "));
+        }
+        currentLines = [];
+      }
+
+      currentSceneId = shot.scene_id;
+      currentLines.push(text);
+    }
+
+    if (currentLines.length > 0) {
+      sceneBlocks.push(currentLines.join(" "));
+    }
+
+    return stripThousandSeparators(sceneBlocks.join("\n\n"));
+  };
+
   const handlePasteFromScript = () => {
-    // Priority: use generated script with scene structure
+    const currentShotScript = buildScriptFromCurrentShots();
+    if (currentShotScript) {
+      setVoScript(currentShotScript);
+      toast.success("Script VO reconstruit depuis les shots actuels");
+      return;
+    }
+
+    // Priority fallback: use generated script with scene structure
     if (generatedScript?.trim()) {
       // If we have scenes, build structured text with scene breaks
       if (scenes && scenes.length > 0) {
