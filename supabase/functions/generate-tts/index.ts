@@ -860,11 +860,13 @@ serve(async (req) => {
       const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
       console.log(`Split into ${chunks.length} chunks, total shots: ${shotSentences!.length}`);
 
-      // cumulativeOffset is declared at outer scope
+      // Build index map: shotId -> sequential index in shotSentences
+      const shotIdToIndex = new Map<string, number>();
+      shotSentences!.forEach((s, i) => shotIdToIndex.set(s.id, i));
 
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
-        console.log(`Chunk ${ci + 1}: marks=[${chunk.markIndices.join(",")}], ${chunk.ssml.length} chars`);
+        console.log(`Chunk ${ci + 1}: shotIds=[${chunk.shotIds.map(id => id.slice(0, 8)).join(",")}], ${chunk.ssml.length} chars`);
 
         const result = await callGoogleTTS(
           chunk.ssml,
@@ -879,7 +881,7 @@ serve(async (req) => {
         const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
         audioBuffers.push(raw);
 
-        // Process timepoints
+        // Process timepoints — mark names ARE the shot IDs
         let chunkDuration = 0;
         const chunkTimepoints: { name: string; time: number }[] = [];
         if (result.timepoints) {
@@ -889,27 +891,26 @@ serve(async (req) => {
               chunkDuration = tp.timeSeconds;
               continue;
             }
-            if (tp.markName.startsWith("s_")) {
-              const idx = parseInt(tp.markName.replace("s_", ""));
+            // Mark name is directly the shot ID — no index parsing needed
+            const shotIndex = shotIdToIndex.get(tp.markName) ?? -1;
+            if (shotIndex >= 0) {
               allTimepoints.push({
-                shotIndex: idx,
+                shotIndex,
                 timeSeconds: Math.round((tp.timeSeconds + cumulativeOffset) * 1000) / 1000,
-                shotId: shotSentences![idx]?.id ?? "",
+                shotId: tp.markName,
               });
             }
           }
         }
 
-        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints)}`);
+        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
 
         // If no end marker found, estimate from audio byte size (MP3 ~16kbps)
         if (chunkDuration === 0) {
-          // Use last timepoint + 2s as fallback
           if (result.timepoints && result.timepoints.length > 0) {
             const lastTp = result.timepoints[result.timepoints.length - 1];
             chunkDuration = lastTp.timeSeconds + 2;
           } else {
-            // Very rough: MP3 at ~128kbps = 16KB/s
             chunkDuration = raw.length / 16000;
           }
         }
