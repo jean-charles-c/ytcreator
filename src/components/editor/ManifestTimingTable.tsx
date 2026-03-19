@@ -33,17 +33,19 @@ interface XmlClipFrame {
 /**
  * Exact replica of buildClipFramesFromManifest from xmlExportEngine.ts
  * so we can compare what the XML will actually produce.
+ * Key rule: endFrame of clip i = startFrame of clip i+1 (no cumulative drift).
  */
 function simulateXmlFrames(entries: ManifestTimingEntry[], fps: number): XmlClipFrame[] {
   if (entries.length === 0) return [];
   const frames: XmlClipFrame[] = [];
   for (let i = 0; i < entries.length; i++) {
     const startFrame = Math.max(0, Math.round(entries[i].start * fps));
-    const endFrame = Math.round((entries[i].start + entries[i].duration) * fps);
-    const prevEnd = frames.length > 0 ? frames[frames.length - 1].end : 0;
+    const endFrame = i < entries.length - 1
+      ? Math.round(entries[i + 1].start * fps)
+      : Math.round((entries[i].start + entries[i].duration) * fps);
     frames.push({
-      start: Math.max(startFrame, prevEnd),
-      end: Math.max(endFrame, Math.max(startFrame, prevEnd) + 1),
+      start: startFrame,
+      end: Math.max(endFrame, startFrame + 1),
     });
   }
   return frames;
