@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ShieldCheck,
 } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -1704,6 +1705,16 @@ export default function Editor() {
 
             {scenes.length > 0 && (
               <>
+              <Collapsible defaultOpen className="space-y-0">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center gap-2 px-3 py-2 rounded-t border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium text-foreground min-h-[44px] sm:min-h-0 group">
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
+                    <Layers className="h-4 w-4 text-primary" />
+                    Scènes &amp; Shots
+                    <span className="ml-auto text-[10px] text-muted-foreground">{scenes.length} scène{scenes.length > 1 ? "s" : ""} • {shots.length} shot{shots.length > 1 ? "s" : ""}</span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border border-t-0 border-border rounded-b p-3 sm:p-4 space-y-4">
                 {generatingStoryboard && (
                   <div className="flex items-center gap-2 mb-6 p-3 rounded border border-primary/20 bg-primary/5">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -1925,55 +1936,44 @@ export default function Editor() {
                     </div>
                   </details>
                 )}
+                </CollapsibleContent>
+              </Collapsible>
 
-                {/* QA Contrôle qualité */}
-                <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Contrôle qualité
-                  </summary>
-                  <div className="mt-3">
-                    <QaPanel
-                      projectId={projectId!}
-                      manifest={buildManifest(projectId!, scenes, shots)}
-                      onExportAllowedChange={setQaExportAllowed}
-                    />
-                  </div>
-                </details>
-
-                {/* Manifest Timing */}
-                <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
-                    Manifest Timing (synchronisation audio/image)
-                  </summary>
-                  <div className="mt-3">
-                    <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
-                  </div>
-                </details>
-
-                <div className="mt-6 sm:mt-8 flex gap-3">
-                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
-                    <Play className="h-4 w-4" /> Re-générer tous les shots
-                  </Button>
+              {/* QA Contrôle qualité */}
+              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Contrôle qualité
+                </summary>
+                <div className="mt-3">
+                  <QaPanel
+                    projectId={projectId!}
+                    manifest={buildManifest(projectId!, scenes, shots)}
+                    onExportAllowedChange={setQaExportAllowed}
+                  />
                 </div>
-              </>
+              </details>
+
+              {/* Manifest Timing */}
+              <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                  Manifest Timing (synchronisation audio/image)
+                </summary>
+                <div className="mt-3">
+                  <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
+                </div>
+              </details>
+
+              <div className="mt-6 sm:mt-8 flex gap-3">
+                <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
+                  <Play className="h-4 w-4" /> Re-générer tous les shots
+                </Button>
+              </div>
+            </>
             )}
           </div>
-          <VisualGallery
-            open={galleryOpen}
-            onOpenChange={setGalleryOpen}
-            shots={shots}
-            scenes={scenes}
-            imageModels={IMAGE_MODELS}
-            imageModel={imageModel}
-            onImageModelChange={setImageModel}
-            onRegenerateShot={handleShotRegenerate}
-            onGenerateImage={handleGenerateShotImage}
-            totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
-          />
           </>
         )}
-
         {/* Export tab */}
         {!showSetup && activeTab === "export" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
