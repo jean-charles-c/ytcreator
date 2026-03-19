@@ -117,4 +117,4 @@ describe("assembleTimeline", () => {
     expect(timeline.videoTrack.segments[2].startTime).toBe(10.4);
     expect(timeline.videoTrack.segments[2].duration).toBe(2.16);
   });
-}
+});

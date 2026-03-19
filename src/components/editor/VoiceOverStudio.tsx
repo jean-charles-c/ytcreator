@@ -149,7 +149,14 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
+      const expectedShotIds = getSortedShots().map((shot) => shot.id);
       const shotSentences = buildShotSentences();
+      const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
+
+      if (!syncValidation.ok || !shotSentences) {
+        toast.error(syncValidation.errors[0] ?? "Sync audio bloquée — les shots doivent correspondre exactement au script.");
+        return;
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts`,
@@ -182,7 +189,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
-            ...(shotSentences ? { shotSentences, syncMode: "shot_marked" } : {}),
+            shotSentences,
+            syncMode: "shot_marked",
           }),
         }
       );

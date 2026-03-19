@@ -558,9 +558,14 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             const timepoints = (audioFiles[0].shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
             const duration = audioFiles[0].duration_estimate ?? 0;
             const timing = buildManifestTiming(manifest, timepoints, duration);
+            if (timing.issues.some((issue) => issue.level === "error") || timing.entries.length === 0) {
+              throw new Error(timing.issues[0]?.message ?? "Export XML bloqué — manifest timing exact invalide.");
+            }
             manifestEntries = timing.entries;
           }
-        } catch { /* fallback to legacy path */ }
+        } catch (error) {
+          throw error instanceof Error ? error : new Error("Export XML bloqué — impossible de valider le manifest timing exact.");
+        }
 
         const blob = await exportTimelineToXmlZip(params.timeline, params.fps, (p) => {
           if (ac.signal.aborted) return;
