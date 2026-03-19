@@ -58,7 +58,7 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           level: "critical",
           category: "structure",
           sceneOrder: scene.sceneOrder,
-          message: `Fragment « ${frag.text.slice(0, 40)}… » référence un shot inexistant ou supprimé`,
+          message: `Un fragment orphelin référence un shot supprimé ou fusionné. Régénérez les shots de la scène ${scene.sceneOrder} pour corriger le mapping.`,
         });
       }
     }
@@ -72,7 +72,7 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           category: "structure",
           sceneOrder: scene.sceneOrder,
           shotOrder: shot.globalOrder,
-          message: `Shot ${shot.globalOrder} n'a aucun fragment associé`,
+          message: `Shot ${shot.globalOrder} (scène ${scene.sceneOrder}) n'a aucun fragment de texte associé. Régénérez les shots de cette scène pour recréer le mapping.`,
         });
       }
     }
@@ -117,7 +117,7 @@ function checkTiming(timing: ManifestTiming | null): QaIssue[] {
         level: "critical",
         category: "timing",
         shotOrder: entry.order,
-        message: `Shot ${entry.order} a une durée nulle ou négative (${entry.duration}s)`,
+        message: `Shot ${entry.order} (scène ${entry.sceneOrder}) a une durée nulle — deux shots partagent le même timestamp audio. Régénérez la voix off.`,
       });
     }
   }

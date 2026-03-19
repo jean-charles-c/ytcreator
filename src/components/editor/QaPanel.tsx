@@ -122,7 +122,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
                   <span className="text-muted-foreground">
                     {issue.category === "structure" ? "Structure" : "Timing"}
                     {issue.sceneOrder != null && ` • S${issue.sceneOrder}`}
-                    {issue.shotOrder != null && ` • Shot ${issue.shotOrder}`}
+                    {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
                   </span>
                 </div>
                 <span className="text-foreground break-words">{issue.message}</span>
