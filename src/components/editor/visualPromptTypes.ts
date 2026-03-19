@@ -190,6 +190,7 @@ export function buildManifest(
     scenes,
     totalShots: globalOrder,
     builtAt: new Date().toISOString(),
+    history: [],
   };
 }
 
