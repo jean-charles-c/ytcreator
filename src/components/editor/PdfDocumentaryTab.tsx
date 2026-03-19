@@ -248,16 +248,20 @@ export default function PdfDocumentaryTab({
     }
   }, [script, generatingScript, scriptVersions.length]);
 
-  // When script changes externally (generation, version restore), reset sections to empty
-  // Sections are now populated by AI analysis, not heuristic parsing
+  // When script changes externally (generation, version restore), parse sections
+  // If [[TAG]] markers are present, use deterministic parser immediately
   useEffect(() => {
     const scriptStr = script || "";
     if (scriptStr !== sectionsInitRef.current) {
       sectionsInitRef.current = scriptStr;
-      // Don't auto-parse into sections — wait for AI analysis
-      // Only reset to empty sections if script changed significantly
       if (!scriptStr.trim()) {
         setSections(parseScriptIntoSections(""));
+      } else {
+        // Auto-parse if tagged script detected (V3 tags like [[HOOK]], [[ACT1]], etc.)
+        const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]/i.test(scriptStr);
+        if (hasV3Tags) {
+          setSections(parseScriptIntoSections(scriptStr));
+        }
       }
     }
   }, [script]);
