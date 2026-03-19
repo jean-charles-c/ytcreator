@@ -17,6 +17,7 @@ import {
   Pencil,
   Check,
   X,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +62,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
   const [balanceMessage, setBalanceMessage] = useState<string | null>(null);
 
@@ -70,6 +72,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [audioProgress, setAudioProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load saved settings
   useEffect(() => {
@@ -284,6 +287,59 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     }
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) { toast.error("Fichier audio uniquement"); return; }
+    if (file.size > 50 * 1024 * 1024) { toast.error("Fichier trop volumineux (max 50 MB)"); return; }
+
+    setUploading(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) { toast.error("Connectez-vous."); return; }
+      const userId = session.user.id;
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const timeStr = new Date().toISOString().slice(11, 16).replace(":", "h");
+      const storagePath = `${userId}/imports/${dateStr}_${timeStr}_${file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("music-audio")
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw new Error(uploadError.message);
+
+      // Get duration via temporary Audio element
+      let durationSeconds = 0;
+      try {
+        const tempUrl = URL.createObjectURL(file);
+        durationSeconds = await new Promise<number>((resolve) => {
+          const a = new Audio(tempUrl);
+          a.onloadedmetadata = () => { resolve(Math.round(a.duration)); URL.revokeObjectURL(tempUrl); };
+          a.onerror = () => { resolve(0); URL.revokeObjectURL(tempUrl); };
+        });
+      } catch { /* ignore */ }
+
+      await (supabase as any).from("music_history").insert({
+        project_id: projectId || "00000000-0000-0000-0000-000000000000",
+        user_id: userId,
+        file_name: file.name,
+        file_path: storagePath,
+        file_size: file.size,
+        duration_seconds: durationSeconds,
+        prompt: "Import",
+      });
+
+      fetchHistory();
+      toast.success(`"${file.name}" importé dans la bibliothèque`);
+    } catch (err: any) {
+      console.error("Import error:", err);
+      toast.error(err?.message || "Erreur d'import");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ElevenLabs Balance */}
@@ -407,12 +463,33 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
         </div>
       )}
 
-      {/* History */}
+      {/* Library */}
       <div className="space-y-2">
-        <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <Clock className="h-3.5 w-3.5 text-primary" />
-          Bibliothèque musicale
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <Clock className="h-3.5 w-3.5 text-primary" />
+            Bibliothèque musicale
+          </h4>
+          <div className="flex items-center gap-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={handleImport}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] gap-1"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+              Importer
+            </Button>
+          </div>
+        </div>
 
         {loading && entries.length === 0 && (
           <div className="flex items-center justify-center py-4">
