@@ -6,7 +6,8 @@ export interface ShotSentenceEntry {
 
 const SCRIPT_SENTENCE_SPLIT_REGEX = /(?<=[.!?])\s+/;
 const MAX_MULTI_SENTENCES_PER_SHOT = 3;
-const MAX_LOOKAHEAD_SENTENCES = 3;
+const MAX_LOOKAHEAD_SENTENCES = 5;
+const FUZZY_WORD_OVERLAP_THRESHOLD = 0.45;
 
 function normalizeText(value: string): string {
   return value
