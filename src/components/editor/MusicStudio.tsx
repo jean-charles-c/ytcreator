@@ -62,6 +62,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
   const [balanceMessage, setBalanceMessage] = useState<string | null>(null);
 
@@ -71,6 +72,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [audioProgress, setAudioProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load saved settings
   useEffect(() => {
