@@ -59,7 +59,10 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [entries, setEntries] = useState<MusicEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (!projectId) return null;
+    return localStorage.getItem(`music_selected_${projectId}`) || null;
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -154,9 +157,26 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       .select("*")
       .eq("user_id", session.session.user.id)
       .order("created_at", { ascending: false });
-    setEntries(data ?? []);
+    const list: MusicEntry[] = data ?? [];
+    setEntries(list);
+
+    // Restore persisted selection and notify parent
+    if (projectId) {
+      const savedId = localStorage.getItem(`music_selected_${projectId}`);
+      if (savedId) {
+        const found = list.find(e => e.id === savedId);
+        if (found) {
+          const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(found.file_path);
+          onMusicSelected?.(urlData.publicUrl, found.file_name);
+        } else {
+          localStorage.removeItem(`music_selected_${projectId}`);
+          setSelectedId(null);
+        }
+      }
+    }
+
     setLoading(false);
-  }, []);
+  }, [projectId, onMusicSelected]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -257,7 +277,10 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
       await supabase.storage.from("music-audio").remove([entry.file_path]);
       await (supabase as any).from("music_history").delete().eq("id", entry.id);
       setEntries(prev => prev.filter(e => e.id !== entry.id));
-      if (selectedId === entry.id) { setSelectedId(null); }
+      if (selectedId === entry.id) {
+        setSelectedId(null);
+        if (projectId) localStorage.removeItem(`music_selected_${projectId}`);
+      }
       toast.success("Musique supprimée");
     } catch (e: any) {
       toast.error(e?.message || "Erreur");
@@ -269,6 +292,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const handleSelect = (entry: MusicEntry) => {
     const { data } = supabase.storage.from("music-audio").getPublicUrl(entry.file_path);
     setSelectedId(entry.id);
+    if (projectId) localStorage.setItem(`music_selected_${projectId}`, entry.id);
     onMusicSelected?.(data.publicUrl, entry.file_name);
     toast.success(`"${entry.file_name}" sélectionné pour l'export`);
   };
