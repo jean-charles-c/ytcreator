@@ -154,7 +154,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
 
       if (!syncValidation.ok || !shotSentences) {
-        toast.error(syncValidation.errors[0] ?? "Sync audio bloquée — les shots doivent correspondre exactement au script.");
+        if (syncValidation.placeholderIds.length > 0) {
+          toast.error("Le script VO n’est plus aligné avec les shots. Corrigez d’abord la scène signalée dans Contrôle qualité, cliquez sur ‘Coller le script généré’, puis relancez la voix off.");
+        } else {
+          toast.error(syncValidation.errors[0] ?? "Sync audio bloquée — les shots doivent correspondre exactement au script.");
+        }
         return;
       }
 

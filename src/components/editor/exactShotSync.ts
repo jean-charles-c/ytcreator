@@ -56,7 +56,7 @@ export function validateExactAlignedShotSentences(
   }
 
   if (placeholderIds.length > 0) {
-    errors.push(`${placeholderIds.length} fragment(s) orphelin(s) ont été détecté(s) dans le script VO.`);
+    errors.push(`${placeholderIds.length} fragment(s) orphelin(s) ont été détecté(s) dans le script VO. Le script n’est plus aligné avec les shots courants : régénérez d’abord les shots de la scène signalée dans Contrôle qualité, recollez le script généré, puis relancez la voix off.`);
   }
 
   if (duplicateIds.length > 0) {
