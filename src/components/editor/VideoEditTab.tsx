@@ -43,6 +43,7 @@ interface VideoEditTabProps {
   projectId: string | null;
   scenes: Scene[];
   shots: Shot[];
+  exportBlocked?: boolean;
 }
 
 const STATUS_CONFIG = {
