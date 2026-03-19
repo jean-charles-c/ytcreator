@@ -2,15 +2,25 @@ import type { ManifestTiming } from "./manifestTiming";
 
 interface ManifestTimingTableProps {
   timing: ManifestTiming;
+  fps?: number;
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+/** Format seconds as timecode mm:ss:ff (frame-accurate) */
+function formatTimecode(seconds: number, fps: number): string {
+  const totalFrames = Math.round(seconds * fps);
+  const ff = totalFrames % fps;
+  const totalSec = Math.floor(totalFrames / fps);
+  const ss = totalSec % 60;
+  const mm = Math.floor(totalSec / 60);
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}:${String(ff).padStart(2, "0")}`;
 }
 
-export default function ManifestTimingTable({ timing }: ManifestTimingTableProps) {
+/** Frame number from seconds */
+function toFrame(seconds: number, fps: number): number {
+  return Math.round(seconds * fps);
+}
+
+export default function ManifestTimingTable({ timing, fps = 24 }: ManifestTimingTableProps) {
   const { entries, issues, totalDuration } = timing;
 
   if (entries.length === 0) {
@@ -30,7 +40,9 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
       <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs text-muted-foreground">
         <span>{entries.length} segments</span>
         <span className="hidden sm:inline">•</span>
-        <span>Durée : {formatTime(totalDuration)}</span>
+        <span>Durée : {formatTimecode(totalDuration, fps)}</span>
+        <span className="hidden sm:inline">•</span>
+        <span>{fps} fps</span>
         {errorCount > 0 && (
           <span className="text-destructive font-medium">⚠ {errorCount} erreur(s)</span>
         )}
@@ -59,8 +71,8 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
 
       {/* Mobile: card layout */}
       <div className="sm:hidden space-y-2">
-        {entries.map((entry, i) => {
-          const end = Math.round((entry.start + entry.duration) * 100) / 100;
+        {entries.map((entry) => {
+          const end = entry.start + entry.duration;
           const hasIssue = issues.some((iss) => iss.shotId === entry.shotId);
           return (
             <div
@@ -85,9 +97,9 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
                 {entry.fragmentText.length > 80 ? entry.fragmentText.slice(0, 80) + "…" : entry.fragmentText}
               </p>
               <div className="flex gap-3 font-mono text-muted-foreground">
-                <span>{formatTime(entry.start)}</span>
-                <span>{entry.duration.toFixed(2)}s</span>
-                <span>→ {formatTime(end)}</span>
+                <span>{formatTimecode(entry.start, fps)}</span>
+                <span>f{toFrame(entry.start, fps)}</span>
+                <span>→ {formatTimecode(end, fps)}</span>
               </div>
             </div>
           );
@@ -102,15 +114,18 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
               <th className="px-2 py-1.5 text-left font-medium">#</th>
               <th className="px-2 py-1.5 text-left font-medium">Scène</th>
               <th className="px-2 py-1.5 text-left font-medium">Fragment</th>
-              <th className="px-2 py-1.5 text-right font-medium">Début</th>
+              <th className="px-2 py-1.5 text-right font-medium">Début (TC)</th>
+              <th className="px-2 py-1.5 text-right font-medium">Frame</th>
               <th className="px-2 py-1.5 text-right font-medium">Durée</th>
-              <th className="px-2 py-1.5 text-right font-medium">Fin</th>
+              <th className="px-2 py-1.5 text-right font-medium">Fin (TC)</th>
               <th className="px-2 py-1.5 text-center font-medium">Source</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((entry, i) => {
-              const end = Math.round((entry.start + entry.duration) * 100) / 100;
+              const end = entry.start + entry.duration;
+              const startF = toFrame(entry.start, fps);
+              const durFrames = toFrame(end, fps) - startF;
               const hasIssue = issues.some((iss) => iss.shotId === entry.shotId);
               return (
                 <tr
@@ -124,9 +139,10 @@ export default function ManifestTimingTable({ timing }: ManifestTimingTableProps
                   <td className="px-2 py-1.5 text-foreground max-w-[300px] truncate" title={entry.fragmentText}>
                     {entry.fragmentText.length > 60 ? entry.fragmentText.slice(0, 60) + "…" : entry.fragmentText}
                   </td>
-                  <td className="px-2 py-1.5 text-right font-mono">{formatTime(entry.start)}</td>
-                  <td className="px-2 py-1.5 text-right font-mono">{entry.duration.toFixed(2)}s</td>
-                  <td className="px-2 py-1.5 text-right font-mono">{formatTime(end)}</td>
+                  <td className="px-2 py-1.5 text-right font-mono">{formatTimecode(entry.start, fps)}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-muted-foreground">{startF}</td>
+                  <td className="px-2 py-1.5 text-right font-mono">{durFrames}f</td>
+                  <td className="px-2 py-1.5 text-right font-mono">{formatTimecode(end, fps)}</td>
                   <td className="px-2 py-1.5 text-center">
                     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium border ${
                       entry.source === "timepoint"
