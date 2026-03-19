@@ -11,6 +11,7 @@ import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSe
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { alignShotSentencesToScript } from "./shotSentenceAlignment";
+import { validateExactAlignedShotSentences } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 
 interface VoiceOverStudioProps {
@@ -96,19 +97,21 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     toast.success("Narration collée");
   };
 
-  // Build sorted shotSentences for marked sync mode.
-  // The textarea remains the source of truth, but each sentence block is now
-  // kept attached to the nearest shot in order so a paraphrased line cannot
-  // push a real shot to the end of the audio with a broken timecode.
-  const buildShotSentences = (): { id: string; text: string; isNewScene?: boolean }[] | null => {
-    if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return null;
+  const getSortedShots = () => {
+    if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return [];
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
-    const sorted = [...shots].sort((a, b) => {
+    return [...shots].sort((a, b) => {
       const oa = sceneOrderMap.get(a.scene_id) ?? 0;
       const ob = sceneOrderMap.get(b.scene_id) ?? 0;
       if (oa !== ob) return oa - ob;
       return a.shot_order - b.shot_order;
     });
+  };
+
+  // Build sorted shotSentences for marked sync mode.
+  const buildShotSentences = (): { id: string; text: string; isNewScene?: boolean }[] | null => {
+    const sorted = getSortedShots();
+    if (sorted.length === 0) return null;
 
     let lastSceneId = "";
     const shotEntries = sorted
@@ -146,7 +149,14 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
+      const expectedShotIds = getSortedShots().map((shot) => shot.id);
       const shotSentences = buildShotSentences();
+      const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
+
+      if (!syncValidation.ok || !shotSentences) {
+        toast.error(syncValidation.errors[0] ?? "Sync audio bloquée — les shots doivent correspondre exactement au script.");
+        return;
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts`,
@@ -179,7 +189,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
-            ...(shotSentences ? { shotSentences, syncMode: "shot_marked" } : {}),
+            shotSentences,
+            syncMode: "shot_marked",
           }),
         }
       );
