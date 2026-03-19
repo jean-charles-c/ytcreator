@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-interface MusicTrack {
+export interface MusicTrack {
   url: string;
   name: string;
 }
