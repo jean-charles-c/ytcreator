@@ -80,6 +80,32 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
     loadSettings();
   }, []);
 
+  // Fetch ElevenLabs balance
+  const fetchBalance = useCallback(async () => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) return;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-balance`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setBalance(data);
+      }
+    } catch (e) {
+      console.error("Balance fetch error:", e);
+    }
+  }, []);
+
+  useEffect(() => { fetchBalance(); }, [fetchBalance]);
+
   // Save settings on change
   const saveSettings = useCallback(async (newPrompt: string, newDuration: number) => {
     const { data: session } = await supabase.auth.getSession();
