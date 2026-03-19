@@ -865,6 +865,11 @@ serve(async (req) => {
     if (useMarkedMode) {
       // ── Marked mode: SSML with <mark> tags for precise shot timing ──
       console.log(`Generating TTS with ${shotSentences!.length} shot marks`);
+      // Log scene breaks for debugging paragraph pauses
+      const sceneBreakIndices = shotSentences!
+        .map((s, i) => s.isNewScene ? i : -1)
+        .filter(i => i >= 0);
+      console.log(`Scene/paragraph breaks at indices: [${sceneBreakIndices.join(",")}] (para pause=${pauseBetweenParagraphs}ms, sent pause=${pauseAfterSentences}ms)`);
       const markedSsml = buildMarkedSsml(
         shotSentences!,
         pauseAfterSentences,
