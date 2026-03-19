@@ -163,6 +163,7 @@ The goal is CLARITY FOR THE EAR, not minimalism for its own sake.
 - If you lack a specific detail: REWRITE the sentence to avoid needing it. State the idea differently, use a relative timeframe ("decades later"), or omit the claim entirely.
 - NEVER use vague placeholder attributions: "experts say", "studies show", "scientists believe", "according to researchers" — unless a specific expert or study is named in the source.
 - Every factual claim must be traceable to the provided inputs.
+- NUMBER FORMATTING: NEVER use commas or dots as thousands separators in numbers. Write numbers ≥1000 WITHOUT any separator: 1000, 15000, 2000000 — NOT 1,000 or 15.000. This is critical because the script will be read aloud by a TTS engine that would pronounce the separator.
 
 ### 4. NARRATIVE FLOW (anti-list, pro-progression)
 The script must feel like a STORY unfolding, not a report being delivered.

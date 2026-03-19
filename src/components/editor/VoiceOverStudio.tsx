@@ -64,6 +64,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [activeProfileName, setActiveProfileName] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
+  const stripThousandSeparators = (text: string): string =>
+    text.replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2")
+        .replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2"); // second pass for millions+
+
   const handlePasteFromScript = () => {
     // Priority: use generated script with scene structure
     if (generatedScript?.trim()) {
@@ -71,13 +76,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       if (scenes && scenes.length > 0) {
         const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
         if (sceneTexts.length > 0) {
-          setVoScript(sceneTexts.join("\n\n"));
+          setVoScript(stripThousandSeparators(sceneTexts.join("\n\n")));
           toast.success("Script généré collé (structure par scènes)");
           return;
         }
       }
       // Fallback: use the generated script directly
-      setVoScript(generatedScript);
+      setVoScript(stripThousandSeparators(generatedScript));
       toast.success("Script généré collé");
       return;
     }
@@ -87,7 +92,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       toast.error("Aucun script généré disponible. Générez d'abord un script dans l'onglet ScriptCreator.");
       return;
     }
-    setVoScript(source);
+    setVoScript(stripThousandSeparators(source));
     toast.success("Narration collée");
   };
 
