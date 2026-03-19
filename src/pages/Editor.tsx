@@ -1937,53 +1937,38 @@ export default function Editor() {
                 </CollapsibleContent>
               </Collapsible>
 
-                {/* QA Contrôle qualité */}
-                <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Contrôle qualité
-                  </summary>
-                  <div className="mt-3">
-                    <QaPanel
-                      projectId={projectId!}
-                      manifest={buildManifest(projectId!, scenes, shots)}
-                      onExportAllowedChange={setQaExportAllowed}
-                    />
-                  </div>
-                </details>
-
-                {/* Manifest Timing */}
-                <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
-                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
-                    Manifest Timing (synchronisation audio/image)
-                  </summary>
-                  <div className="mt-3">
-                    <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
-                  </div>
-                </details>
-
-                <div className="mt-6 sm:mt-8 flex gap-3">
-                  <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
-                    <Play className="h-4 w-4" /> Re-générer tous les shots
-                  </Button>
+              {/* QA Contrôle qualité */}
+              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Contrôle qualité
+                </summary>
+                <div className="mt-3">
+                  <QaPanel
+                    projectId={projectId!}
+                    manifest={buildManifest(projectId!, scenes, shots)}
+                    onExportAllowedChange={setQaExportAllowed}
+                  />
                 </div>
-            )}
-          </div>
-          <VisualGallery
-            open={galleryOpen}
-            onOpenChange={setGalleryOpen}
-            shots={shots}
-            scenes={scenes}
-            imageModels={IMAGE_MODELS}
-            imageModel={imageModel}
-            onImageModelChange={setImageModel}
-            onRegenerateShot={handleShotRegenerate}
-            onGenerateImage={handleGenerateShotImage}
-            totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
-          />
-          </>
-        )}
+              </details>
 
+              {/* Manifest Timing */}
+              <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                  Manifest Timing (synchronisation audio/image)
+                </summary>
+                <div className="mt-3">
+                  <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
+                </div>
+              </details>
+
+              <div className="mt-6 sm:mt-8 flex gap-3">
+                <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
+                  <Play className="h-4 w-4" /> Re-générer tous les shots
+                </Button>
+              </div>
+            </>
+            )}
         {/* Export tab */}
         {!showSetup && activeTab === "export" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
