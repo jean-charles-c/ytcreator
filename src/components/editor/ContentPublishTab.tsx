@@ -303,9 +303,18 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
                   {hasScript ? (
                     <>
-                      {/* SCRIPT sub-collapsible */}
+                      {/* SCRIPT pur VO */}
                       <SubCollapsible icon={ScrollText} title="SCRIPT">
-                        <CopyableBlock text={cleanedScript!} label="Script complet">
+                        <CopyableBlock text={cleanedScriptVo!} label="Script">
+                          <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
+                            {cleanedScriptVo}
+                          </pre>
+                        </CopyableBlock>
+                      </SubCollapsible>
+
+                      {/* SCRIPT avec Marks des chapitres */}
+                      <SubCollapsible icon={ScrollText} title="SCRIPT AVEC MARKS DES CHAPITRES">
+                        <CopyableBlock text={cleanedScript!} label="Script avec marks">
                           <pre className="rounded bg-background border border-border p-3 sm:p-4 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text pr-10">
                             {cleanedScript}
                           </pre>
