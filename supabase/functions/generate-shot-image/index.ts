@@ -163,9 +163,11 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const MAX_RETRIES = 3;
-    let aiResponse: Response | null = null;
+    let imageData: string | undefined;
+    let aiData: any;
+
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + LOVABLE_API_KEY,
@@ -178,60 +180,46 @@ serve(async (req) => {
         }),
       });
 
-      if (aiResponse.ok) break;
-
-      const errText = await aiResponse.text();
-      console.error(`AI error (attempt ${attempt}/${MAX_RETRIES}):`, aiResponse.status, errText);
-
-      if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
-      if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
-
-      if (aiResponse.status >= 500 && attempt < MAX_RETRIES) {
-        const delay = attempt * 3000;
-        console.log(`Retrying in ${delay}ms...`);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
+      if (!aiResponse.ok) {
+        const errText = await aiResponse.text();
+        console.error(`AI error (attempt ${attempt}/${MAX_RETRIES}):`, aiResponse.status, errText);
+        if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
+        if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
+        if (aiResponse.status >= 500 && attempt < MAX_RETRIES) {
+          await new Promise((r) => setTimeout(r, attempt * 3000));
+          continue;
+        }
+        throw new Error("AI gateway error");
       }
 
-      throw new Error("AI gateway error");
-    }
+      aiData = await aiResponse.json();
+      const msg = aiData.choices?.[0]?.message;
+      console.log("AI attempt", attempt, "- keys:", JSON.stringify(Object.keys(msg || {})));
 
-    if (!aiResponse || !aiResponse.ok) throw new Error("AI gateway error after retries");
-
-    const aiData = await aiResponse.json();
-    console.log("AI response keys:", JSON.stringify(Object.keys(aiData)));
-    const msg = aiData.choices?.[0]?.message;
-    if (msg) {
-      console.log("Message keys:", JSON.stringify(Object.keys(msg)));
-      if (msg.content) {
-        const contentPreview = typeof msg.content === "string"
-          ? msg.content.substring(0, 200)
-          : JSON.stringify(msg.content).substring(0, 200);
-        console.log("Content preview:", contentPreview);
+      // Try multiple known response formats
+      imageData = msg?.images?.[0]?.image_url?.url;
+      if (!imageData && Array.isArray(msg?.content)) {
+        const imagePart = msg.content.find((p: any) => p.type === "image_url" || p.type === "image");
+        imageData = imagePart?.image_url?.url || imagePart?.url || imagePart?.image?.url;
       }
-      if (msg.images) console.log("Images structure:", JSON.stringify(msg.images).substring(0, 300));
-    }
+      if (!imageData && Array.isArray(msg?.content)) {
+        const inlinePart = msg.content.find((p: any) => p.inline_data?.mime_type?.startsWith("image/"));
+        if (inlinePart?.inline_data) {
+          imageData = `data:${inlinePart.inline_data.mime_type};base64,${inlinePart.inline_data.data}`;
+        }
+      }
 
-    // Try multiple known response formats
-    let imageData: string | undefined;
-    // Format 1: images array
-    imageData = msg?.images?.[0]?.image_url?.url;
-    // Format 2: content array with image parts
-    if (!imageData && Array.isArray(msg?.content)) {
-      const imagePart = msg.content.find((p: any) => p.type === "image_url" || p.type === "image");
-      imageData = imagePart?.image_url?.url || imagePart?.url || imagePart?.image?.url;
-    }
-    // Format 3: inline_data in content parts
-    if (!imageData && Array.isArray(msg?.content)) {
-      const inlinePart = msg.content.find((p: any) => p.inline_data?.mime_type?.startsWith("image/"));
-      if (inlinePart?.inline_data) {
-        imageData = `data:${inlinePart.inline_data.mime_type};base64,${inlinePart.inline_data.data}`;
+      if (imageData) break;
+
+      console.warn(`No image in response (attempt ${attempt}/${MAX_RETRIES})`);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, attempt * 2000));
       }
     }
 
     if (!imageData) {
       console.error("Full AI response:", JSON.stringify(aiData).substring(0, 1000));
-      throw new Error("No image generated");
+      throw new Error("No image generated after retries");
     }
 
     const rawImage = await decodeGeneratedImage(imageData);
