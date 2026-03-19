@@ -59,6 +59,8 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const [balance, setBalance] = useState<ElevenLabsBalance | null>(null);
   const [balanceMessage, setBalanceMessage] = useState<string | null>(null);
 
