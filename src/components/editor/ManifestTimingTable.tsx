@@ -2,12 +2,22 @@ import type { ManifestTiming } from "./manifestTiming";
 
 interface ManifestTimingTableProps {
   timing: ManifestTiming;
+  fps?: number;
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+/** Format seconds as timecode mm:ss:ff (frame-accurate) */
+function formatTimecode(seconds: number, fps: number): string {
+  const totalFrames = Math.round(seconds * fps);
+  const ff = totalFrames % fps;
+  const totalSec = Math.floor(totalFrames / fps);
+  const ss = totalSec % 60;
+  const mm = Math.floor(totalSec / 60);
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}:${String(ff).padStart(2, "0")}`;
+}
+
+/** Frame number from seconds */
+function toFrame(seconds: number, fps: number): number {
+  return Math.round(seconds * fps);
 }
 
 export default function ManifestTimingTable({ timing }: ManifestTimingTableProps) {
