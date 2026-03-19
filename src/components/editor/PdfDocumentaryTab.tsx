@@ -171,6 +171,7 @@ export default function PdfDocumentaryTab({
   const [sectionHistory, setSectionHistory] = useState<Record<string, SectionHistoryEntry[]>>({});
   const [sectionTranslations, setSectionTranslations] = useState<Record<string, string>>({});
   const [translatingSections, setTranslatingSections] = useState<Set<string>>(new Set());
+  const translationsHydratedRef = useRef(false);
   const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
