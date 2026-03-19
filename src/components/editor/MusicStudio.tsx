@@ -562,7 +562,7 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
               <div
                 key={entry.id}
                 className={`flex items-center gap-2 rounded border p-3 sm:p-2.5 group hover:border-primary/30 transition-colors ${
-                  selectedId === entry.id ? "border-primary bg-primary/5" : "border-border bg-background"
+                  selectedIds.has(entry.id) ? "border-primary bg-primary/5" : "border-border bg-background"
                 }`}
               >
                 <button
