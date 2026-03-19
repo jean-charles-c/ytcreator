@@ -1779,7 +1779,7 @@ export default function Editor() {
 
                           return (
                             <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : "border-border"} bg-card overflow-hidden`}>
-                              <button
+                                <button
                                 onClick={() =>
                                   setOpenSceneIds((prev) =>
                                     prev.includes(scene.id)
@@ -1787,7 +1787,7 @@ export default function Editor() {
                                       : [...prev, scene.id]
                                   )
                                 }
-                                className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                                className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-left hover:bg-secondary/50 transition-colors min-h-[48px]"
                               >
                                 <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
                                 <span className="text-xs font-display font-medium text-primary whitespace-nowrap">SCÈNE {scene.scene_order}</span>
