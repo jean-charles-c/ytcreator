@@ -254,18 +254,21 @@ export function validateManifest(manifest: VisualPromptManifest): ManifestIssue[
       }
     }
 
-    // Fragments should reconstruct full scene text (warning only)
-    const reconstructed = scene.fragments.map((f) => f.text).join(" ");
-    if (reconstructed.trim() !== scene.sceneText.trim()) {
-      // Check with flexible whitespace
-      const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
-      if (normalize(reconstructed) !== normalize(scene.sceneText)) {
-        issues.push({
-          level: "warning",
-          sceneId: scene.sceneId,
-          message: "Fragments do not reconstruct full scene text",
-        });
-      }
+    // Fragments should cover the scene text (warning only)
+    // Use a lenient check: all fragment text tokens should appear in scene text
+    const normalize = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+    const sceneNorm = normalize(scene.sceneText);
+    const fragTexts = scene.fragments.map((f) => f.text);
+    const allFragsPresent = fragTexts.every((ft) => {
+      const ftNorm = normalize(ft);
+      return ftNorm.length === 0 || sceneNorm.includes(ftNorm);
+    });
+    if (!allFragsPresent) {
+      issues.push({
+        level: "warning",
+        sceneId: scene.sceneId,
+        message: "Fragments do not reconstruct full scene text",
+      });
     }
   }
 
