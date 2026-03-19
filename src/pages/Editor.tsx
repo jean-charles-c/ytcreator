@@ -22,6 +22,7 @@ import {
   Search,
   ImageIcon,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
