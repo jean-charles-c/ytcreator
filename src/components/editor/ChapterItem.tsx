@@ -126,19 +126,21 @@ export default function ChapterItem({
                 className="h-7 text-sm font-medium"
               />
             ) : (
-              <button
-                onClick={() => { setDraft(chapter.title); setEditing(true); }}
-                className="text-sm font-medium text-foreground text-left truncate hover:underline decoration-primary/40 underline-offset-2"
-              >
-                {chapter.title}
-              </button>
-              <button
-                onClick={handleCopy}
-                className="shrink-0 p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                title="Copier le titre"
-              >
-                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-              </button>
+              <>
+                <button
+                  onClick={() => { setDraft(chapter.title); setEditing(true); }}
+                  className="text-sm font-medium text-foreground text-left truncate hover:underline decoration-primary/40 underline-offset-2"
+                >
+                  {chapter.title}
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="shrink-0 p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  title="Copier le titre"
+                >
+                  {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                </button>
+              </>
             )}
           </div>
 
