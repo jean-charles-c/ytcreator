@@ -180,7 +180,7 @@ export default function ManifestTimingTable({ timing, fps = 24, rawTimepoints }:
                       {ttsFrame !== null ? ttsFrame : "—"}
                     </td>
                     <td className="px-2 py-1 text-right font-mono">{ttsTc}</td>
-                    <td className="px-2 py-1 text-right font-mono">{entry.start.toFixed(2)}</td>
+                    <td className="px-2 py-1 text-right font-mono">{entry.start.toFixed(3)}</td>
                     <td className="px-2 py-1 text-right font-mono">{manifestFrame}</td>
                     <td className={`px-2 py-1 text-right font-mono font-semibold ${hasDrift ? "text-destructive" : ""}`}>
                       {xmlFrame}

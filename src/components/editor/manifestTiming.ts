@@ -221,7 +221,7 @@ export function buildManifestTiming(
   if (!validation.ok) {
     return {
       entries: [],
-      totalDuration: Math.round(audioDuration * 100) / 100,
+      totalDuration: audioDuration,
       issues,
       builtAt: new Date().toISOString(),
     };
@@ -231,18 +231,18 @@ export function buildManifestTiming(
   const timepointMap = new Map<string, number>(
     realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
   );
-  const roundedAudioDuration = Math.round(audioDuration * 100) / 100;
+  const exactAudioDuration = audioDuration;
 
-  const roundedStarts = activeShots.map((item) => {
+  const exactStarts = activeShots.map((item) => {
     const start = timepointMap.get(item.shot.shotId);
-    return Math.round((start ?? 0) * 100) / 100;
+    return start ?? 0;
   });
 
   const entries: ManifestTimingEntry[] = activeShots.map((item, idx) => {
     const order = idx + 1;
-    const start = roundedStarts[idx];
-    const nextStart = idx < activeShots.length - 1 ? roundedStarts[idx + 1] : roundedAudioDuration;
-    const duration = Math.round((nextStart - start) * 100) / 100;
+    const start = exactStarts[idx];
+    const nextStart = idx < activeShots.length - 1 ? exactStarts[idx + 1] : exactAudioDuration;
+    const duration = nextStart - start;
 
     if (!(duration > 0)) {
       pushUniqueIssue(issues, {
@@ -268,7 +268,7 @@ export function buildManifestTiming(
 
   return {
     entries,
-    totalDuration: roundedAudioDuration,
+    totalDuration: exactAudioDuration,
     issues,
     builtAt: new Date().toISOString(),
   };
