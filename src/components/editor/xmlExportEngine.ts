@@ -10,6 +10,8 @@ import {
   validateMasterTemplate,
 } from "./fusionTitleTemplate";
 import { validateResolveXml, formatValidationReport } from "./resolveXmlValidator";
+import { scanXmlReferences } from "./xmlReferenceScanner";
+import { detectForbiddenReferences, formatBlockingReport } from "./forbiddenReferenceDetector";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
@@ -632,6 +634,17 @@ export async function exportTimelineToXmlZip(
   );
 
   // ── Validate generated XML before packaging ──
+
+  // ExportBlocker: scan for forbidden file/media references in Fusion Titles
+  const scanResult = scanXmlReferences(xml);
+  const refDetection = detectForbiddenReferences(scanResult);
+  if (!refDetection.clean) {
+    const refReport = formatBlockingReport(refDetection);
+    console.error("[ForbiddenReferenceDetector] Export bloqué:\n", refReport);
+    throw new Error(`Export XML bloqué — références interdites détectées:\n${refReport}`);
+  }
+
+  // ResolveXmlValidator: structural validation
   const validation = validateResolveXml(xml);
   if (!validation.valid) {
     const report = formatValidationReport(validation);
