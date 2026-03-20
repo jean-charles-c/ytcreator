@@ -84,7 +84,8 @@ function generateXml(
   imageFileNames: Map<number, string>,
   audioFileName: string,
   exportUid: string,
-  markersXml: string = ""
+  markersXml: string = "",
+  musicTracks: { fileName: string; localPath: string }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
