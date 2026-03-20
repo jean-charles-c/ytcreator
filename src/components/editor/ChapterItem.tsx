@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Sparkles, ChevronDown } from "lucide-react";
+import { Loader2, Sparkles, ChevronDown, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import type { Chapter, ChapterTitleVariant } from "./chapterTypes";
 import { SECTION_META, SECTION_TAGS, type SectionType } from "./canonicalScriptTypes";
 
