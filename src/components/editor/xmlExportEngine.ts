@@ -293,7 +293,30 @@ ${clipItems}
               </clipitem>
             </track>`;
             }).join("")}
-          </audio>
+          </audio>${chapterTitles.length > 0 ? `
+          <subtitle>
+            <track>
+              <clipitem id="subtitle-clip-${exportUid}-titles">
+                <name>titles</name>
+                <duration>${totalFrames}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>0</start>
+                <end>${totalFrames}</end>
+                <in>0</in>
+                <out>${totalFrames}</out>
+                <sourcetrack>
+                  <mediatype>subtitle</mediatype>
+                  <trackindex>1</trackindex>
+                </sourcetrack>
+                <file id="subtitle-file-${exportUid}-titles">
+                  <name>titles</name>
+                  <pathurl>titles.srt</pathurl>
+                  <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                  <duration>${totalFrames}</duration>
+                </file>
+              </clipitem>
+            </track>
+          </subtitle>` : ""}
         </media>
       </sequence>
     </children>
