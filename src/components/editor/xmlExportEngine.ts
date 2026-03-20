@@ -5,14 +5,6 @@ import { buildClipFrames, escapeXml } from "./xmlExportUtils";
 import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 import type { ManifestTimingEntry } from "./manifestTiming";
-import {
-  FUSION_TITLE_FILE_ID,
-  validateMasterTemplate,
-} from "./fusionTitleTemplate";
-import { validateResolveXml, formatValidationReport } from "./resolveXmlValidator";
-import { scanXmlReferences } from "./xmlReferenceScanner";
-import { detectForbiddenReferences, formatBlockingReport } from "./forbiddenReferenceDetector";
-import { generatePythonFromXml } from "./titleInjectorGenerator";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
