@@ -270,7 +270,6 @@ function cloneFusionTitleClip(
     .replace("{{OUT}}", String(out))
     .replace("{{FILE_BLOCK}}", fileBlock);
 }
-}
 
 /**
  * Build the complete V2 track XML for all chapter title clips.
