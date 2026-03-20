@@ -181,35 +181,8 @@ ${clipItems}
             <track>
 ${chapterTitles.map((ct, idx) => {
   const dur = ct.endFrame - ct.startFrame;
-  const fileRef = idx === 0
-    ? `<file id="fusion-title-file-${exportUid}">
-                            <duration>${dur}</duration>
-                            <rate>
-                                <timebase>${fps}</timebase>
-                                <ntsc>FALSE</ntsc>
-                            </rate>
-                            <name>Slug</name>
-                            <timecode>
-                                <string>00:00:00:00</string>
-                                <displayformat>NDF</displayformat>
-                                <rate>
-                                    <timebase>${fps}</timebase>
-                                    <ntsc>FALSE</ntsc>
-                                </rate>
-                            </timecode>
-                            <media>
-                                <video>
-                                    <samplecharacteristics>
-                                        <width>1920</width>
-                                        <height>1080</height>
-                                    </samplecharacteristics>
-                                </video>
-                            </media>
-                            <mediaSource>Slug</mediaSource>
-                        </file>`
-    : `<file id="fusion-title-file-${exportUid}"/>`;
-  return `              <clipitem id="fusion-title-${exportUid}-${idx + 1}">
-                        <name>Fusion Title</name>
+  return `              <generatoritem id="title-${exportUid}-${idx + 1}">
+                        <name>${escapeXml(ct.name)}</name>
                         <duration>${dur}</duration>
                         <rate>
                             <timebase>${fps}</timebase>
@@ -220,8 +193,45 @@ ${chapterTitles.map((ct, idx) => {
                         <enabled>TRUE</enabled>
                         <in>0</in>
                         <out>${dur}</out>
-                        ${fileRef}
-                        <compositemode>normal</compositemode>
+                        <anamorphic>FALSE</anamorphic>
+                        <alphatype>black</alphatype>
+                        <effect>
+                            <name>Text</name>
+                            <effectid>Text</effectid>
+                            <effectcategory>Text</effectcategory>
+                            <effecttype>generator</effecttype>
+                            <mediatype>video</mediatype>
+                            <parameter>
+                                <parameterid>str</parameterid>
+                                <name>Text</name>
+                                <value>${escapeXml(ct.name)}</value>
+                            </parameter>
+                            <parameter>
+                                <parameterid>fontsize</parameterid>
+                                <name>Font Size</name>
+                                <value>72</value>
+                            </parameter>
+                            <parameter>
+                                <parameterid>font</parameterid>
+                                <name>Font</name>
+                                <value>Arial</value>
+                            </parameter>
+                            <parameter>
+                                <parameterid>fontcolor</parameterid>
+                                <name>Font Color</name>
+                                <value>
+                                    <alpha>255</alpha>
+                                    <red>255</red>
+                                    <green>255</green>
+                                    <blue>255</blue>
+                                </value>
+                            </parameter>
+                            <parameter>
+                                <parameterid>alignment</parameterid>
+                                <name>Alignment</name>
+                                <value>1</value>
+                            </parameter>
+                        </effect>
                         <filter>
                             <enabled>TRUE</enabled>
                             <start>0</start>
@@ -323,10 +333,7 @@ ${chapterTitles.map((ct, idx) => {
                                 </parameter>
                             </effect>
                         </filter>
-                        <comments>
-                            <mastercomment1>${escapeXml(ct.name)}</mastercomment1>
-                        </comments>
-                    </clipitem>`;
+                    </generatoritem>`;
 }).join("\n")}
             </track>` : ""}
           </video>
