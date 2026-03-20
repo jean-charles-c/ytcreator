@@ -335,6 +335,101 @@ ${chapterTitles.map((ct, idx) => {
                         </filter>
                     </generatoritem>`;
 }).join("\n")}
+            </track>
+            <track>
+${chapterTitles.map((ct, idx) => {
+  const dur = ct.endFrame - ct.startFrame;
+  const fileRef = idx === 0
+    ? `<file id="fusion-title-file-${exportUid}">
+                            <duration>${dur}</duration>
+                            <rate>
+                                <timebase>${fps}</timebase>
+                                <ntsc>FALSE</ntsc>
+                            </rate>
+                            <name>Slug</name>
+                            <timecode>
+                                <string>00:00:00:00</string>
+                                <displayformat>NDF</displayformat>
+                                <rate>
+                                    <timebase>${fps}</timebase>
+                                    <ntsc>FALSE</ntsc>
+                                </rate>
+                            </timecode>
+                            <media>
+                                <video>
+                                    <samplecharacteristics>
+                                        <width>1920</width>
+                                        <height>1080</height>
+                                    </samplecharacteristics>
+                                </video>
+                            </media>
+                            <mediaSource>Slug</mediaSource>
+                        </file>`
+    : `<file id="fusion-title-file-${exportUid}"/>`;
+  return `              <clipitem id="fusion-title-${exportUid}-${idx + 1}">
+                        <name>Fusion Title</name>
+                        <duration>${dur}</duration>
+                        <rate>
+                            <timebase>${fps}</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <start>${ct.startFrame}</start>
+                        <end>${ct.endFrame}</end>
+                        <enabled>TRUE</enabled>
+                        <in>0</in>
+                        <out>${dur}</out>
+                        ${fileRef}
+                        <compositemode>normal</compositemode>
+                        <filter>
+                            <enabled>TRUE</enabled>
+                            <start>0</start>
+                            <end>${dur}</end>
+                            <effect>
+                                <name>Basic Motion</name>
+                                <effectid>basic</effectid>
+                                <effecttype>motion</effecttype>
+                                <mediatype>video</mediatype>
+                                <effectcategory>motion</effectcategory>
+                                <parameter><name>Scale</name><parameterid>scale</parameterid><value>100</value><valuemin>0</valuemin><valuemax>10000</valuemax></parameter>
+                                <parameter><name>Center</name><parameterid>center</parameterid><value><horiz>0</horiz><vert>0</vert></value></parameter>
+                                <parameter><name>Rotation</name><parameterid>rotation</parameterid><value>0</value><valuemin>-100000</valuemin><valuemax>100000</valuemax></parameter>
+                                <parameter><name>Anchor Point</name><parameterid>centerOffset</parameterid><value><horiz>0</horiz><vert>0</vert></value></parameter>
+                            </effect>
+                        </filter>
+                        <filter>
+                            <enabled>TRUE</enabled>
+                            <start>0</start>
+                            <end>${dur}</end>
+                            <effect>
+                                <name>Crop</name>
+                                <effectid>crop</effectid>
+                                <effecttype>motion</effecttype>
+                                <mediatype>video</mediatype>
+                                <effectcategory>motion</effectcategory>
+                                <parameter><name>left</name><parameterid>left</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
+                                <parameter><name>right</name><parameterid>right</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
+                                <parameter><name>top</name><parameterid>top</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
+                                <parameter><name>bottom</name><parameterid>bottom</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
+                            </effect>
+                        </filter>
+                        <filter>
+                            <enabled>TRUE</enabled>
+                            <start>0</start>
+                            <end>${dur}</end>
+                            <effect>
+                                <name>Opacity</name>
+                                <effectid>opacity</effectid>
+                                <effecttype>motion</effecttype>
+                                <mediatype>video</mediatype>
+                                <effectcategory>motion</effectcategory>
+                                <parameter><name>opacity</name><parameterid>opacity</parameterid><value>100</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
+                            </effect>
+                        </filter>
+                        <comments>
+                            <mastercomment1>${escapeXml(ct.name)}</mastercomment1>
+                        </comments>
+                    </clipitem>`;
+}).join("\n")}
             </track>` : ""}
           </video>
           <audio>
