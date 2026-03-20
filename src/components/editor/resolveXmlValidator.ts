@@ -148,7 +148,7 @@ export function validateResolveXml(xml: string): XmlValidationResult {
  */
 export function formatValidationReport(result: XmlValidationResult): string {
   if (result.valid && result.issues.length === 0) {
-    return "✅ XML Resolve valide — aucun problème détecté.";
+    return "✅ XML Resolve valide — importable sans relink de Fusion Title.";
   }
 
   const lines: string[] = [];
@@ -158,11 +158,18 @@ export function formatValidationReport(result: XmlValidationResult): string {
   if (errors.length > 0) {
     lines.push(`🔴 ${errors.length} erreur(s) bloquante(s) :`);
     errors.forEach((e, i) => lines.push(`  ${i + 1}. [${e.rule}] ${e.message}`));
+    lines.push("");
+    lines.push("⛔ Verdict : susceptible de produire « Fichier introuvable » dans Resolve. Export bloqué.");
   }
 
   if (warnings.length > 0) {
     lines.push(`⚠️ ${warnings.length} avertissement(s) :`);
     warnings.forEach((w, i) => lines.push(`  ${i + 1}. [${w.rule}] ${w.message}`));
+  }
+
+  if (errors.length === 0) {
+    lines.push("");
+    lines.push("✅ Verdict : théoriquement importable sans relink de Fusion Title.");
   }
 
   return lines.join("\n");
