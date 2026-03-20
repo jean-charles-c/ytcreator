@@ -79,201 +79,78 @@ interface XmlSegment {
   shotType: string;
 }
 
-// ── Fusion Title template system ───────────────────────────────────
-
-const SLUG_DURATION = 120;
+// ── Fusion Title Cloner (uses master template from fusionTitleTemplate.ts) ──
 
 /**
- * Build the full <file> block for the first Fusion Title clip (Slug source declaration).
- * Subsequent clips reuse this via a self-closing reference.
+ * Clone a single Fusion Title clipitem from the master template.
+ * Only dynamic fields are injected; everything else is verbatim from reference.
+ *
+ * ID convention from DaVinci reference:
+ *   clipitem id = "Fusion Title {idx}"  (0-based index)
+ *   file id     = "Fusion Title 2"      (shared, fixed)
  */
-function buildFusionSlugFileBlock(fileId: string, fps: ExportFps): string {
-  return `<file id="${fileId}">
-                    <duration>${SLUG_DURATION}</duration>
-                    <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                    <name>Slug</name>
-                    <timecode>
-                      <string>00:00:00:00</string>
-                      <displayformat>NDF</displayformat>
-                      <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                    </timecode>
-                    <media>
-                      <video>
-                        <samplecharacteristics>
-                          <width>1920</width>
-                          <height>1080</height>
-                        </samplecharacteristics>
-                      </video>
-                    </media>
-                    <mediaSource>Slug</mediaSource>
-                  </file>`;
-}
-
-/**
- * Build the 3 fixed filter blocks (Basic Motion, Crop, Opacity) for a Fusion Title clip.
- * These are identical for every title — values come from the DaVinci reference XML.
- */
-function buildFusionTitleFilters(): string {
-  return `<filter>
-                  <enabled>TRUE</enabled>
-                  <start>0</start>
-                  <end>${SLUG_DURATION}</end>
-                  <effect>
-                    <name>Basic Motion</name>
-                    <effectid>basic</effectid>
-                    <effecttype>motion</effecttype>
-                    <mediatype>video</mediatype>
-                    <effectcategory>motion</effectcategory>
-                    <parameter>
-                      <name>Scale</name>
-                      <parameterid>scale</parameterid>
-                      <value>100</value>
-                      <valuemin>0</valuemin>
-                      <valuemax>10000</valuemax>
-                    </parameter>
-                    <parameter>
-                      <name>Center</name>
-                      <parameterid>center</parameterid>
-                      <value>
-                        <horiz>0</horiz>
-                        <vert>0</vert>
-                      </value>
-                    </parameter>
-                    <parameter>
-                      <name>Rotation</name>
-                      <parameterid>rotation</parameterid>
-                      <value>0</value>
-                      <valuemin>-100000</valuemin>
-                      <valuemax>100000</valuemax>
-                    </parameter>
-                    <parameter>
-                      <name>Anchor Point</name>
-                      <parameterid>centerOffset</parameterid>
-                      <value>
-                        <horiz>0</horiz>
-                        <vert>0</vert>
-                      </value>
-                    </parameter>
-                  </effect>
-                </filter>
-                <filter>
-                  <enabled>TRUE</enabled>
-                  <start>0</start>
-                  <end>${SLUG_DURATION}</end>
-                  <effect>
-                    <name>Crop</name>
-                    <effectid>crop</effectid>
-                    <effecttype>motion</effecttype>
-                    <mediatype>video</mediatype>
-                    <effectcategory>motion</effectcategory>
-                    <parameter>
-                      <name>left</name>
-                      <parameterid>left</parameterid>
-                      <value>0</value>
-                      <valuemin>0</valuemin>
-                      <valuemax>100</valuemax>
-                    </parameter>
-                    <parameter>
-                      <name>right</name>
-                      <parameterid>right</parameterid>
-                      <value>0</value>
-                      <valuemin>0</valuemin>
-                      <valuemax>100</valuemax>
-                    </parameter>
-                    <parameter>
-                      <name>top</name>
-                      <parameterid>top</parameterid>
-                      <value>0</value>
-                      <valuemin>0</valuemin>
-                      <valuemax>100</valuemax>
-                    </parameter>
-                    <parameter>
-                      <name>bottom</name>
-                      <parameterid>bottom</parameterid>
-                      <value>0</value>
-                      <valuemin>0</valuemin>
-                      <valuemax>100</valuemax>
-                    </parameter>
-                  </effect>
-                </filter>
-                <filter>
-                  <enabled>TRUE</enabled>
-                  <start>0</start>
-                  <end>${SLUG_DURATION}</end>
-                  <effect>
-                    <name>Opacity</name>
-                    <effectid>opacity</effectid>
-                    <effecttype>motion</effecttype>
-                    <mediatype>video</mediatype>
-                    <effectcategory>motion</effectcategory>
-                    <parameter>
-                      <name>opacity</name>
-                      <parameterid>opacity</parameterid>
-                      <value>100</value>
-                      <valuemin>0</valuemin>
-                      <valuemax>100</valuemax>
-                    </parameter>
-                  </effect>
-                </filter>`;
-}
-
-/**
- * Build a single Fusion Title clipitem from the master template.
- * Only dynamic fields (id, start, end, out, file ref) are injected.
- */
-function buildFusionTitleClip(
-  clipId: string,
-  fileId: string,
+function cloneFusionTitleClip(
+  idx: number,
   startFrame: number,
   endFrame: number,
   fps: ExportFps,
   isFirst: boolean
 ): string {
-  const dur = endFrame - startFrame;
+  const clipId = `Fusion Title ${idx}`;
+  const out = endFrame - startFrame;
   const fileRef = isFirst
-    ? buildFusionSlugFileBlock(fileId, fps)
-    : `<file id="${fileId}"/>`;
-  const filters = buildFusionTitleFilters();
+    ? buildMasterFileBlock(fps)
+    : buildFileReference();
+  const filters = buildMasterFilters();
 
   return `
-              <clipitem id="${clipId}">
-                <name>Fusion Title</name>
-                <duration>${SLUG_DURATION}</duration>
-                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                <start>${startFrame}</start>
-                <end>${endFrame}</end>
-                <enabled>TRUE</enabled>
-                <in>0</in>
-                <out>${dur}</out>
-                ${fileRef}
-                <compositemode>normal</compositemode>
-                ${filters}
-                <comments/>
-              </clipitem>`;
+                    <clipitem id="${clipId}">
+                        <name>Fusion Title</name>
+                        <duration>${FUSION_TITLE_DURATION}</duration>
+                        <rate>
+                            <timebase>${fps}</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <start>${startFrame}</start>
+                        <end>${endFrame}</end>
+                        <enabled>TRUE</enabled>
+                        <in>0</in>
+                        <out>${out}</out>
+                        ${fileRef}
+                        <compositemode>normal</compositemode>
+                        ${filters}
+                        <comments/>
+                    </clipitem>`;
 }
 
 /**
  * Build the complete V2 track XML for all chapter title clips.
+ * Validates the master template before generating — throws if invalid.
  */
 function buildFusionTitleTrack(
   chapterTitles: { name: string; startFrame: number; endFrame: number }[],
   fps: ExportFps,
-  exportUid: string
+  _exportUid: string
 ): string {
   if (chapterTitles.length === 0) return "";
 
-  const fileId = `fusion-slug-${exportUid}`;
-  const clips = chapterTitles.map((ct, idx) => {
-    const clipId = `Fusion Title ${exportUid}-${idx}`;
-    return buildFusionTitleClip(clipId, fileId, ct.startFrame, ct.endFrame, fps, idx === 0);
-  }).join("\n");
+  // Validate master template integrity before generating
+  const validation = validateMasterTemplate();
+  if (!validation.valid) {
+    console.error("[FusionTitleCloner] Template validation failed:", validation.errors);
+    throw new Error(`Fusion Title template invalid: ${validation.errors.join("; ")}`);
+  }
+
+  const clips = chapterTitles.map((ct, idx) =>
+    cloneFusionTitleClip(idx, ct.startFrame, ct.endFrame, fps, idx === 0)
+  ).join("\n");
 
   return `
-            <track>
+                <track>
 ${clips}
-              <enabled>TRUE</enabled>
-              <locked>FALSE</locked>
-            </track>`;
+                    <enabled>TRUE</enabled>
+                    <locked>FALSE</locked>
+                </track>`;
 }
 
 /** Format seconds to SRT timecode: HH:MM:SS,mmm */
