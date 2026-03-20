@@ -33,13 +33,17 @@ export interface ChapterMarker {
 export function buildChapterMarkers(
   chapters: Chapter[],
   timeline: Timeline,
-  fps: ExportFps
+  fps: ExportFps,
+  /** When provided, search only these segments (already filtered for export) */
+  exportSegments?: { id: string; sentence: string; sentenceFr: string | null }[],
+  /** Pre-computed clip frames matching exportSegments */
+  exportClipFrames?: { start: number; end: number }[]
 ): ChapterMarker[] {
   const validated = chapters.filter((ch) => ch.validated);
   if (validated.length === 0) return [];
 
-  const segments = timeline.videoTrack.segments;
-  const clipFrames = buildClipFrames(timeline, fps);
+  const segments = exportSegments ?? timeline.videoTrack.segments;
+  const clipFrames = exportClipFrames ?? buildClipFrames(timeline, fps);
 
   return validated.map((ch) => {
     let clipIndex = 0;
