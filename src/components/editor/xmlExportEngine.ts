@@ -12,6 +12,7 @@ import {
 import { validateResolveXml, formatValidationReport } from "./resolveXmlValidator";
 import { scanXmlReferences } from "./xmlReferenceScanner";
 import { detectForbiddenReferences, formatBlockingReport } from "./forbiddenReferenceDetector";
+import { generatePythonFromXml } from "./titleInjectorGenerator";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
@@ -656,6 +657,12 @@ export async function exportTimelineToXmlZip(
   }
 
   zip.file("timeline.xml", xml);
+
+  // ── Generate Title Injector Python script ──
+  const pyScript = generatePythonFromXml(xml);
+  if (pyScript) {
+    zip.file("resolve_titles.py", pyScript);
+  }
 
   // ── Generate SRT subtitle file with shot sentences ──
   if (clipFrames.length > 0 && xmlSegments.length > 0) {
