@@ -27,6 +27,8 @@ interface ExportManagerProps {
   musicTracks?: { url: string; name: string }[];
 }
 
+type ExportMusicTrack = { url: string; name: string };
+
 export interface ExportEntry {
   id: string;
   type: "mp4" | "xml";
@@ -47,6 +49,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
   const [fps, setFps] = useState<ExportFps>(24);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
+  const [resolvedMusicTracks, setResolvedMusicTracks] = useState<ExportMusicTrack[]>(musicTracks ?? []);
   
 
   // Always use the freshest timeline via ref to avoid stale closures
@@ -82,6 +85,57 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
     load();
   }, [projectId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (musicTracks && musicTracks.length > 0) {
+      setResolvedMusicTracks(musicTracks);
+      return;
+    }
+
+    if (!projectId) {
+      setResolvedMusicTracks([]);
+      return;
+    }
+
+    const loadPersistedMusicSelection = async () => {
+      try {
+        const saved = localStorage.getItem(`music_selected_${projectId}`);
+        const selectedIds = saved ? (JSON.parse(saved) as string[]) : [];
+
+        if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
+          if (!cancelled) setResolvedMusicTracks([]);
+          return;
+        }
+
+        const { data, error } = await (supabase as any)
+          .from("music_history")
+          .select("id, file_name, file_path")
+          .in("id", selectedIds);
+
+        if (error) throw error;
+
+        const orderedTracks = selectedIds
+          .map((id) => data?.find((entry: { id: string; file_name: string; file_path: string }) => entry.id === id))
+          .filter(Boolean)
+          .map((entry: { file_name: string; file_path: string }) => {
+            const { data: urlData } = supabase.storage.from("music-audio").getPublicUrl(entry.file_path);
+            return { url: urlData.publicUrl, name: entry.file_name };
+          });
+
+        if (!cancelled) setResolvedMusicTracks(orderedTracks);
+      } catch {
+        if (!cancelled) setResolvedMusicTracks([]);
+      }
+    };
+
+    loadPersistedMusicSelection();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [musicTracks, projectId]);
+
   // ── Listen for export completion to refresh list ──
   useEffect(() => {
     const unsub1 = subscribe(projectId, "export-mp4", (task) => {
@@ -110,8 +164,8 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
   }, [projectId, fps, startExportMp4]);
 
   const handleExportXml = useCallback(() => {
-    startExportXml({ projectId, timeline: timelineRef.current, fps, musicTracks });
-  }, [projectId, fps, startExportXml, musicTracks]);
+    startExportXml({ projectId, timeline: timelineRef.current, fps, musicTracks: resolvedMusicTracks });
+  }, [projectId, fps, startExportXml, resolvedMusicTracks]);
 
   const handleAbortMp4 = useCallback(() => {
     stopTask(projectId, "export-mp4");
