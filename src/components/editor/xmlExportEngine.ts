@@ -416,7 +416,9 @@ export async function exportTimelineToXmlZip(
   // ── Generate XML ──
   onProgress?.({ phase: "packaging", percent: 80, message: "Génération du XML…" });
   const exportUid = crypto.randomUUID().slice(0, 8);
-  const timelineMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
+  const timelineMarkers = chapters
+    ? buildChapterMarkers(chapters, timeline, fps, xmlSegments, clipFrames)
+    : [];
   const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
 
   // Build SRT subtitle file from chapter markers
