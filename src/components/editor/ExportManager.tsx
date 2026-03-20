@@ -109,8 +109,8 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
   }, [projectId, fps, startExportMp4]);
 
   const handleExportXml = useCallback(() => {
-    startExportXml({ projectId, timeline: timelineRef.current, fps });
-  }, [projectId, fps, startExportXml]);
+    startExportXml({ projectId, timeline: timelineRef.current, fps, musicTracks });
+  }, [projectId, fps, startExportXml, musicTracks]);
 
   const handleAbortMp4 = useCallback(() => {
     stopTask(projectId, "export-mp4");
