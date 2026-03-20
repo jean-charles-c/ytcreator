@@ -5,6 +5,14 @@ import { buildClipFrames, escapeXml } from "./xmlExportUtils";
 import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 import type { ManifestTimingEntry } from "./manifestTiming";
+import {
+  FUSION_TITLE_DURATION,
+  FUSION_TITLE_FILE_ID,
+  buildMasterFileBlock,
+  buildFileReference,
+  buildMasterFilters,
+  validateMasterTemplate,
+} from "./fusionTitleTemplate";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
