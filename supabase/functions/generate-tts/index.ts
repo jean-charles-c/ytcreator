@@ -719,6 +719,65 @@ function chunkMarkedSsml(
   return chunks;
 }
 
+/**
+ * Parse actual MP3 duration by reading frame headers.
+ * Google TTS outputs MPEG1 Layer 3 CBR — we read the first valid frame
+ * to get bitrate, then compute duration = totalBits / bitrate.
+ * This is critical for accurate cumulativeOffset across chunks.
+ */
+function parseMp3Duration(data: Uint8Array): number {
+  // MPEG1 Layer 3 bitrate table (index 0 and 15 are invalid)
+  const MPEG1_L3_BITRATES = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+  const MPEG1_SAMPLE_RATES = [44100, 48000, 32000, 0];
+  // MPEG2/2.5 Layer 3 bitrate table
+  const MPEG2_L3_BITRATES = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0];
+  const MPEG2_SAMPLE_RATES = [22050, 24000, 16000, 0];
+  const MPEG25_SAMPLE_RATES = [11025, 12000, 8000, 0];
+
+  // Scan for first valid frame sync (0xFF followed by 0xE0+ mask)
+  const scanLimit = Math.min(data.length - 4, 16384);
+  for (let i = 0; i < scanLimit; i++) {
+    if (data[i] !== 0xFF || (data[i + 1] & 0xE0) !== 0xE0) continue;
+
+    const versionBits = (data[i + 1] >> 3) & 0x03;   // 00=2.5, 01=reserved, 10=2, 11=1
+    const layerBits = (data[i + 1] >> 1) & 0x03;       // 01=Layer3
+    const bitrateIndex = (data[i + 2] >> 4) & 0x0F;
+    const sampleRateIndex = (data[i + 2] >> 2) & 0x03;
+
+    if (bitrateIndex === 0 || bitrateIndex === 15 || sampleRateIndex === 3) continue;
+    if (layerBits === 0x00) continue; // reserved layer
+
+    let bitrateKbps: number;
+    let sampleRate: number;
+
+    if (versionBits === 0x03 && layerBits === 0x01) {
+      // MPEG1 Layer 3
+      bitrateKbps = MPEG1_L3_BITRATES[bitrateIndex];
+      sampleRate = MPEG1_SAMPLE_RATES[sampleRateIndex];
+    } else if ((versionBits === 0x02 || versionBits === 0x00) && layerBits === 0x01) {
+      // MPEG2 or MPEG2.5 Layer 3
+      bitrateKbps = MPEG2_L3_BITRATES[bitrateIndex];
+      sampleRate = versionBits === 0x02
+        ? MPEG2_SAMPLE_RATES[sampleRateIndex]
+        : MPEG25_SAMPLE_RATES[sampleRateIndex];
+    } else {
+      continue;
+    }
+
+    if (bitrateKbps > 0 && sampleRate > 0) {
+      // For CBR: duration = (dataSize * 8) / (bitrate * 1000)
+      // Subtract header offset to only count audio data
+      const audioBytes = data.length - i;
+      const duration = (audioBytes * 8) / (bitrateKbps * 1000);
+      return duration;
+    }
+  }
+
+  // Fallback: assume 32kbps (Google TTS typical for low quality MP3)
+  console.warn("MP3 frame header not found, falling back to byte estimation");
+  return (data.length * 8) / 32000;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -941,13 +1000,11 @@ serve(async (req) => {
         audioBuffers.push(raw);
 
         // Process timepoints — mark names ARE the shot IDs
-        let chunkDuration = 0;
         const chunkTimepoints: { name: string; time: number }[] = [];
         if (result.timepoints) {
           for (const tp of result.timepoints) {
             chunkTimepoints.push({ name: tp.markName, time: tp.timeSeconds });
             if (tp.markName === "__chunk_end" || tp.markName === "__end") {
-              chunkDuration = tp.timeSeconds;
               continue;
             }
             // Mark name is directly the shot ID — no index parsing needed
@@ -955,7 +1012,7 @@ serve(async (req) => {
             if (shotIndex >= 0) {
               allTimepoints.push({
                 shotIndex,
-                timeSeconds: Math.round((tp.timeSeconds + cumulativeOffset) * 1000) / 1000,
+                timeSeconds: tp.timeSeconds + cumulativeOffset,
                 shotId: tp.markName,
               });
             }
@@ -964,18 +1021,11 @@ serve(async (req) => {
 
         console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
 
-        // If no end marker found, estimate from audio byte size (MP3 ~16kbps)
-        if (chunkDuration === 0) {
-          if (result.timepoints && result.timepoints.length > 0) {
-            const lastTp = result.timepoints[result.timepoints.length - 1];
-            chunkDuration = lastTp.timeSeconds + 2;
-          } else {
-            chunkDuration = raw.length / 16000;
-          }
-        }
-
+        // Use actual MP3 duration (parsed from frames) instead of marker time
+        // This prevents cumulative drift when concatenating multiple chunks
+        const chunkDuration = parseMp3Duration(raw);
         cumulativeOffset += chunkDuration;
-        console.log(`Chunk ${ci + 1} duration: ${chunkDuration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
+        console.log(`Chunk ${ci + 1} MP3 duration: ${chunkDuration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
       }
 
       console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
