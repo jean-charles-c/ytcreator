@@ -134,9 +134,19 @@ export function buildManifest(
   let globalOrder = 0;
 
   const scenes: NormalisedScene[] = sortedScenes.map((scene) => {
-    const sceneShots = (shotsByScene.get(scene.id) ?? []).sort(
-      (a, b) => a.shot_order - b.shot_order
-    );
+    const sceneShots = (shotsByScene.get(scene.id) ?? []).sort((a, b) => {
+      // Primary: text position in scene source_text
+      const sceneTextLower = scene.source_text.toLowerCase();
+      const textA = (a.source_sentence || "").toLowerCase().trim();
+      const textB = (b.source_sentence || "").toLowerCase().trim();
+      if (textA && textB) {
+        const posA = sceneTextLower.indexOf(textA);
+        const posB = sceneTextLower.indexOf(textB);
+        if (posA >= 0 && posB >= 0 && posA !== posB) return posA - posB;
+      }
+      // Fallback: shot_order
+      return a.shot_order - b.shot_order;
+    });
 
     const isSingle = sceneShots.length <= 1;
 
