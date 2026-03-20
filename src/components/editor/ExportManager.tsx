@@ -23,6 +23,7 @@ interface ExportManagerProps {
   timeline: Timeline;
   projectId: string;
   exportBlocked?: boolean;
+  musicTracks?: { url: string; name: string }[];
 }
 
 export interface ExportEntry {
