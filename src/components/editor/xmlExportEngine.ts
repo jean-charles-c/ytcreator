@@ -86,8 +86,12 @@ interface XmlSegment {
  * Only dynamic fields are injected; everything else is verbatim from reference.
  *
  * ID convention from DaVinci reference:
- *   clipitem id = "Fusion Title {idx}"  (0-based index)
- *   file id     = "Fusion Title 2"      (shared, fixed)
+ *   clipitem id = "Fusion Title {N}"  where N skips index 2
+ *   file id     = "Fusion Title 2"    (shared, fixed — occupies index 2)
+ *
+ * Resolve uses a GLOBAL id namespace: clipitem and file ids must not collide.
+ * The file always uses "Fusion Title 2", so clipitem indices skip 2:
+ *   0, 1, 3, 4, 5, 6, ...
  */
 function cloneFusionTitleClip(
   idx: number,
@@ -96,7 +100,9 @@ function cloneFusionTitleClip(
   fps: ExportFps,
   isFirst: boolean
 ): string {
-  const clipId = `Fusion Title ${idx}`;
+  // Skip index 2 — it's reserved for the shared file id
+  const resolveIdx = idx >= 2 ? idx + 1 : idx;
+  const clipId = `Fusion Title ${resolveIdx}`;
   const out = endFrame - startFrame;
   const fileRef = isFirst
     ? buildMasterFileBlock(fps)
