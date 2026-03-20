@@ -10,6 +10,8 @@ import {
   validateMasterTemplate,
 } from "./fusionTitleTemplate";
 import { validateResolveXml, formatValidationReport } from "./resolveXmlValidator";
+import { scanXmlReferences } from "./xmlReferenceScanner";
+import { detectForbiddenReferences, formatBlockingReport } from "./forbiddenReferenceDetector";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
