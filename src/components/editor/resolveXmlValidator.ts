@@ -189,8 +189,6 @@ export function validateResolveXml(xml: string): XmlValidationResult {
       }
 
       // Special check: <media><video> inside clipitem (not inside <file>)
-      // The <file> block legitimately has no <media><video> in valid Fusion Titles,
-      // but we need to check if <media> appears at clipitem level
       const blockWithoutFile = block.replace(/<file[^/]*>[\s\S]*?<\/file>/g, "");
       if (blockWithoutFile.includes("<media>")) {
         issues.push({
@@ -199,6 +197,79 @@ export function validateResolveXml(xml: string): XmlValidationResult {
           message: "Un Fusion Title contient un bloc <media> au niveau clipitem — sémantique de média externe",
         });
         break;
+      }
+    }
+
+    // ── ResolveImportGate (Rules 16-17) ───────────────────────────────
+    // Structural parity: verify the first Fusion Title clipitem contains
+    // exactly the expected tag sequence from the master template.
+    // This catches any drift even if individual forbidden-field rules pass.
+
+    if (fusionClipBlocks.length > 0) {
+      const firstClip = fusionClipBlocks[0];
+
+      // Expected top-level tag order inside the first clipitem (from reference XML)
+      const EXPECTED_TAG_SEQUENCE = [
+        "name", "duration", "rate", "start", "end", "enabled", "in", "out",
+        "file", "compositemode", "filter", "filter", "filter", "comments",
+      ];
+
+      // Extract actual top-level tags (direct children of clipitem)
+      const actualTags: string[] = [];
+      // Strip the outer <clipitem> wrapper
+      const inner = firstClip.replace(/^<clipitem[^>]*>/, "").replace(/<\/clipitem>$/, "");
+      // Match top-level opening tags (not nested ones) by tracking depth
+      const tagRegex = /<(\/?)([\w-]+)[^>]*>/g;
+      let depth = 0;
+      let tagMatch: RegExpExecArray | null;
+      while ((tagMatch = tagRegex.exec(inner)) !== null) {
+        const isClosing = tagMatch[1] === "/";
+        const tagName = tagMatch[2];
+        if (isClosing) {
+          depth = Math.max(0, depth - 1);
+        } else {
+          if (depth === 0) {
+            actualTags.push(tagName);
+          }
+          // Self-closing tags don't increase depth
+          if (!tagMatch[0].endsWith("/>")) {
+            depth++;
+          }
+        }
+      }
+
+      // Compare sequences
+      const expectedStr = EXPECTED_TAG_SEQUENCE.join(",");
+      const actualStr = actualTags.join(",");
+      if (actualStr !== expectedStr) {
+        // Find first divergence point for diagnostic
+        let divergeIdx = 0;
+        for (let i = 0; i < Math.max(EXPECTED_TAG_SEQUENCE.length, actualTags.length); i++) {
+          if (EXPECTED_TAG_SEQUENCE[i] !== actualTags[i]) {
+            divergeIdx = i;
+            break;
+          }
+        }
+        const expected = EXPECTED_TAG_SEQUENCE[divergeIdx] ?? "(fin)";
+        const actual = actualTags[divergeIdx] ?? "(fin)";
+
+        issues.push({
+          level: "error",
+          rule: "FUSION_STRUCTURAL_PARITY",
+          message: `Structure du premier Fusion Title diverge du modèle valide à la position ${divergeIdx} : attendu <${expected}>, trouvé <${actual}>. Séquence attendue : [${expectedStr}]`,
+        });
+      }
+
+      // Rule 17: Subsequent clips must NOT contain full <file> block
+      for (let i = 1; i < fusionClipBlocks.length; i++) {
+        if (fusionClipBlocks[i].includes(`<file id="${FUSION_TITLE_FILE_ID}">`)) {
+          issues.push({
+            level: "error",
+            rule: "FUSION_SUBSEQUENT_FULL_FILE",
+            message: `Le Fusion Title ${i + 1} contient une définition complète <file> au lieu de la référence courte — Resolve duplique le média`,
+          });
+          break;
+        }
       }
     }
   }
