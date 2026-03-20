@@ -209,6 +209,42 @@ ${clipItems}
                 </file>
               </clipitem>
             </track>
+            </track>${musicTracks.map((mt, idx) => {
+              const trackIdx = idx + 2;
+              const clipId = `audio-clip-${exportUid}-music-${trackIdx}`;
+              const fileId = `audio-file-${exportUid}-music-${trackIdx}`;
+              return `
+            <track>
+              <clipitem id="${clipId}">
+                <name>${escapeXml(mt.fileName)}</name>
+                <duration>${audioEndFrame}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>0</start>
+                <end>${audioEndFrame}</end>
+                <in>0</in>
+                <out>${audioEndFrame}</out>
+                <sourcetrack>
+                  <mediatype>audio</mediatype>
+                  <trackindex>${trackIdx}</trackindex>
+                </sourcetrack>
+                <file id="${fileId}">
+                  <name>${escapeXml(mt.fileName)}</name>
+                  <pathurl>${escapeXml(mt.localPath)}</pathurl>
+                  <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                  <duration>${audioEndFrame}</duration>
+                  <media>
+                    <audio>
+                      <channelcount>2</channelcount>
+                      <samplecharacteristics>
+                        <depth>16</depth>
+                        <samplerate>48000</samplerate>
+                      </samplecharacteristics>
+                    </audio>
+                  </media>
+                </file>
+              </clipitem>
+            </track>`;
+            }).join("")}
           </audio>
         </media>
       </sequence>
