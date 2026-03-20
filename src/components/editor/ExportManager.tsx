@@ -23,6 +23,7 @@ interface ExportManagerProps {
   timeline: Timeline;
   projectId: string;
   exportBlocked?: boolean;
+  musicTracks?: { url: string; name: string }[];
 }
 
 export interface ExportEntry {
@@ -41,7 +42,7 @@ const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
   { value: 30, label: "30 fps (NTSC)" },
 ];
 
-export default function ExportManager({ timeline, projectId, exportBlocked = false }: ExportManagerProps) {
+export default function ExportManager({ timeline, projectId, exportBlocked = false, musicTracks }: ExportManagerProps) {
   const [fps, setFps] = useState<ExportFps>(24);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
@@ -108,8 +109,8 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
   }, [projectId, fps, startExportMp4]);
 
   const handleExportXml = useCallback(() => {
-    startExportXml({ projectId, timeline: timelineRef.current, fps });
-  }, [projectId, fps, startExportXml]);
+    startExportXml({ projectId, timeline: timelineRef.current, fps, musicTracks });
+  }, [projectId, fps, startExportXml, musicTracks]);
 
   const handleAbortMp4 = useCallback(() => {
     stopTask(projectId, "export-mp4");

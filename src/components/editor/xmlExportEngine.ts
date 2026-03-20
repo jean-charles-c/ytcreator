@@ -84,7 +84,8 @@ function generateXml(
   imageFileNames: Map<number, string>,
   audioFileName: string,
   exportUid: string,
-  markersXml: string = ""
+  markersXml: string = "",
+  musicTracks: { fileName: string; localPath: string }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
@@ -208,9 +209,14 @@ ${clipItems}
                 </file>
               </clipitem>
             </track>
+            </track>${musicTracks.map((mt, idx) => {
+              const trackIdx = idx + 2;
+              const clipId = `audio-clip-${exportUid}-music-${trackIdx}`;
+              const fileId = `audio-file-${exportUid}-music-${trackIdx}`;
+              return `
             <track>
-              <clipitem id="audio-clip-${exportUid}-2">
-                <name>${escapeXml(audioTrack.fileName)}</name>
+              <clipitem id="${clipId}">
+                <name>${escapeXml(mt.fileName)}</name>
                 <duration>${audioEndFrame}</duration>
                 <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
                 <start>0</start>
@@ -219,11 +225,26 @@ ${clipItems}
                 <out>${audioEndFrame}</out>
                 <sourcetrack>
                   <mediatype>audio</mediatype>
-                  <trackindex>2</trackindex>
+                  <trackindex>${trackIdx}</trackindex>
                 </sourcetrack>
-                <file id="audio-file-${exportUid}-1"/>
+                <file id="${fileId}">
+                  <name>${escapeXml(mt.fileName)}</name>
+                  <pathurl>${escapeXml(mt.localPath)}</pathurl>
+                  <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                  <duration>${audioEndFrame}</duration>
+                  <media>
+                    <audio>
+                      <channelcount>2</channelcount>
+                      <samplecharacteristics>
+                        <depth>16</depth>
+                        <samplerate>48000</samplerate>
+                      </samplecharacteristics>
+                    </audio>
+                  </media>
+                </file>
               </clipitem>
-            </track>
+            </track>`;
+            }).join("")}
           </audio>
         </media>
       </sequence>
@@ -250,7 +271,8 @@ export async function exportTimelineToXmlZip(
   fps: ExportFps = 24,
   onProgress?: (p: XmlExportProgress) => void,
   chapters?: Chapter[],
-  manifestEntries?: ManifestTimingEntry[]
+  manifestEntries?: ManifestTimingEntry[],
+  musicTracks?: { url: string; name: string }[]
 ): Promise<Blob> {
   const zip = new JSZip();
   const mediaFolder = zip.folder("media")!;
@@ -298,6 +320,22 @@ export async function exportTimelineToXmlZip(
     mediaFolder.file(audioFileName, audioData);
   }
 
+  // ── Download music tracks ──
+  const musicFileEntries: { fileName: string; localPath: string }[] = [];
+  if (musicTracks && musicTracks.length > 0) {
+    for (let i = 0; i < musicTracks.length; i++) {
+      const mt = musicTracks[i];
+      onProgress?.({ phase: "audio", percent: 68 + Math.round((i / musicTracks.length) * 7), message: `Téléchargement musique ${i + 1}/${musicTracks.length}…` });
+      const ext = mt.name.split(".").pop() || "mp3";
+      const safeName = `music_${String(i + 1).padStart(2, "0")}.${ext}`;
+      const data = await fetchMedia(mt.url);
+      if (data) {
+        mediaFolder.file(safeName, data);
+        musicFileEntries.push({ fileName: mt.name, localPath: `media/${safeName}` });
+      }
+    }
+  }
+
   // ── Build clip frames ──
   let clipFrames: ClipFrame[];
   let totalFrames: number;
@@ -341,7 +379,8 @@ export async function exportTimelineToXmlZip(
     imageFileNames,
     `media/${audioFileName}`,
     exportUid,
-    markersXml
+    markersXml,
+    musicFileEntries
   );
   zip.file("timeline.xml", xml);
 
