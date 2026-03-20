@@ -271,7 +271,8 @@ export async function exportTimelineToXmlZip(
   fps: ExportFps = 24,
   onProgress?: (p: XmlExportProgress) => void,
   chapters?: Chapter[],
-  manifestEntries?: ManifestTimingEntry[]
+  manifestEntries?: ManifestTimingEntry[],
+  musicTracks?: { url: string; name: string }[]
 ): Promise<Blob> {
   const zip = new JSZip();
   const mediaFolder = zip.folder("media")!;
