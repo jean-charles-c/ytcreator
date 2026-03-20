@@ -370,7 +370,7 @@ export async function exportTimelineToXmlZip(
   const timelineMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
   const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
 
-  // Build chapter title clips: each title spans the duration of its associated shot
+  // Build SRT subtitle file from chapter markers
   const chapterTitleClips = timelineMarkers.map((marker) => {
     const clipEnd = clipFrames[marker.clipIndex]?.end ?? marker.startFrame + Math.round(fps * 5);
     return {
@@ -390,10 +390,19 @@ export async function exportTimelineToXmlZip(
     `media/${audioFileName}`,
     exportUid,
     markersXml,
-    musicFileEntries,
-    chapterTitleClips
+    musicFileEntries
   );
   zip.file("timeline.xml", xml);
+
+  // ── Generate SRT subtitle file for chapter titles ──
+  if (chapterTitleClips.length > 0) {
+    const srtContent = chapterTitleClips.map((ct, idx) => {
+      const startSec = ct.startFrame / fps;
+      const endSec = ct.endFrame / fps;
+      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${ct.name}\n`;
+    }).join("\n");
+    zip.file("chapter_titles.srt", srtContent);
+  }
 
   // ── Generate ZIP ──
   onProgress?.({ phase: "packaging", percent: 85, message: "Compression du package…" });
