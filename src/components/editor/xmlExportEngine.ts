@@ -176,7 +176,7 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>${chapterTitles.length > 0 ? `
+            </track>
             <track>
 ${chapterTitles.map((ct, idx) => {
   const dur = ct.endFrame - ct.startFrame;
