@@ -579,7 +579,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               message: p.message,
             },
           });
-        }, chapters, manifestEntries);
+        }, chapters, manifestEntries, params.musicTracks);
         if (ac.signal.aborted) return;
 
         const fileName = `${params.projectId}/${Date.now()}_${params.fps}fps.zip`;
