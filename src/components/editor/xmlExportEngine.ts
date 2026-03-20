@@ -79,19 +79,174 @@ interface XmlSegment {
   shotType: string;
 }
 
-// ── Fusion Title Cloner (uses master template from fusionTitleTemplate.ts) ──
+// ── MasterTitleClipClone (verbatim from reference XML) ──────────────
+//
+// Instead of assembling the clipitem from fragments (file block + filters),
+// we store the ENTIRE clipitem as a single verbatim template extracted from
+// "Timeline avec titres avec le bon template.xml" (lines 55932–56072).
+// Only 5 placeholders are substituted per clone: CLIP_ID, TIMEBASE, START, END, OUT.
+// The file block strategy (full vs short ref) is the only structural variation.
 
 /**
- * Clone a single Fusion Title clipitem from the master template.
- * Only dynamic fields are injected; everything else is verbatim from reference.
+ * Master clipitem template — verbatim from reference XML.
+ * Placeholders: {{CLIP_ID}}, {{TIMEBASE}}, {{START}}, {{END}}, {{OUT}}, {{FILE_BLOCK}}
+ */
+const MASTER_CLIP_TEMPLATE = `
+                    <clipitem id="{{CLIP_ID}}">
+                        <name>Fusion Title</name>
+                        <duration>120</duration>
+                        <rate>
+                            <timebase>{{TIMEBASE}}</timebase>
+                            <ntsc>FALSE</ntsc>
+                        </rate>
+                        <start>{{START}}</start>
+                        <end>{{END}}</end>
+                        <enabled>TRUE</enabled>
+                        <in>0</in>
+                        <out>{{OUT}}</out>
+                        {{FILE_BLOCK}}
+                        <compositemode>normal</compositemode>
+                        <filter>
+                            <enabled>TRUE</enabled>
+                            <start>0</start>
+                            <end>120</end>
+                            <effect>
+                                <name>Basic Motion</name>
+                                <effectid>basic</effectid>
+                                <effecttype>motion</effecttype>
+                                <mediatype>video</mediatype>
+                                <effectcategory>motion</effectcategory>
+                                <parameter>
+                                    <name>Scale</name>
+                                    <parameterid>scale</parameterid>
+                                    <value>100</value>
+                                    <valuemin>0</valuemin>
+                                    <valuemax>10000</valuemax>
+                                </parameter>
+                                <parameter>
+                                    <name>Center</name>
+                                    <parameterid>center</parameterid>
+                                    <value>
+                                        <horiz>0</horiz>
+                                        <vert>0</vert>
+                                    </value>
+                                </parameter>
+                                <parameter>
+                                    <name>Rotation</name>
+                                    <parameterid>rotation</parameterid>
+                                    <value>0</value>
+                                    <valuemin>-100000</valuemin>
+                                    <valuemax>100000</valuemax>
+                                </parameter>
+                                <parameter>
+                                    <name>Anchor Point</name>
+                                    <parameterid>centerOffset</parameterid>
+                                    <value>
+                                        <horiz>0</horiz>
+                                        <vert>0</vert>
+                                    </value>
+                                </parameter>
+                            </effect>
+                        </filter>
+                        <filter>
+                            <enabled>TRUE</enabled>
+                            <start>0</start>
+                            <end>120</end>
+                            <effect>
+                                <name>Crop</name>
+                                <effectid>crop</effectid>
+                                <effecttype>motion</effecttype>
+                                <mediatype>video</mediatype>
+                                <effectcategory>motion</effectcategory>
+                                <parameter>
+                                    <name>left</name>
+                                    <parameterid>left</parameterid>
+                                    <value>0</value>
+                                    <valuemin>0</valuemin>
+                                    <valuemax>100</valuemax>
+                                </parameter>
+                                <parameter>
+                                    <name>right</name>
+                                    <parameterid>right</parameterid>
+                                    <value>0</value>
+                                    <valuemin>0</valuemin>
+                                    <valuemax>100</valuemax>
+                                </parameter>
+                                <parameter>
+                                    <name>top</name>
+                                    <parameterid>top</parameterid>
+                                    <value>0</value>
+                                    <valuemin>0</valuemin>
+                                    <valuemax>100</valuemax>
+                                </parameter>
+                                <parameter>
+                                    <name>bottom</name>
+                                    <parameterid>bottom</parameterid>
+                                    <value>0</value>
+                                    <valuemin>0</valuemin>
+                                    <valuemax>100</valuemax>
+                                </parameter>
+                            </effect>
+                        </filter>
+                        <filter>
+                            <enabled>TRUE</enabled>
+                            <start>0</start>
+                            <end>120</end>
+                            <effect>
+                                <name>Opacity</name>
+                                <effectid>opacity</effectid>
+                                <effecttype>motion</effecttype>
+                                <mediatype>video</mediatype>
+                                <effectcategory>motion</effectcategory>
+                                <parameter>
+                                    <name>opacity</name>
+                                    <parameterid>opacity</parameterid>
+                                    <value>100</value>
+                                    <valuemin>0</valuemin>
+                                    <valuemax>100</valuemax>
+                                </parameter>
+                            </effect>
+                        </filter>
+                        <comments/>
+                    </clipitem>`;
+
+/**
+ * Full <file> block for the first clip — verbatim from reference XML.
+ * Timebase is the only dynamic field.
+ */
+function buildMasterFileBlockVerbatim(fps: ExportFps): string {
+  return `<file id="${FUSION_TITLE_FILE_ID}">
+                            <duration>120</duration>
+                            <rate>
+                                <timebase>${fps}</timebase>
+                                <ntsc>FALSE</ntsc>
+                            </rate>
+                            <name>Slug</name>
+                            <timecode>
+                                <string>00:00:00:00</string>
+                                <displayformat>NDF</displayformat>
+                                <rate>
+                                    <timebase>${fps}</timebase>
+                                    <ntsc>FALSE</ntsc>
+                                </rate>
+                            </timecode>
+                            <media>
+                                <video>
+                                    <samplecharacteristics>
+                                        <width>1920</width>
+                                        <height>1080</height>
+                                    </samplecharacteristics>
+                                </video>
+                            </media>
+                            <mediaSource>Slug</mediaSource>
+                        </file>`;
+}
+
+/**
+ * Clone a Fusion Title clipitem from the verbatim master template.
+ * Only dynamic fields (id, timebase, start, end, out, file strategy) are injected.
  *
- * ID convention from DaVinci reference:
- *   clipitem id = "Fusion Title {N}"  where N skips index 2
- *   file id     = "Fusion Title 2"    (shared, fixed — occupies index 2)
- *
- * Resolve uses a GLOBAL id namespace: clipitem and file ids must not collide.
- * The file always uses "Fusion Title 2", so clipitem indices skip 2:
- *   0, 1, 3, 4, 5, 6, ...
+ * ID convention: clipitem indices skip 2 (reserved for file id "Fusion Title 2").
  */
 function cloneFusionTitleClip(
   idx: number,
@@ -100,33 +255,21 @@ function cloneFusionTitleClip(
   fps: ExportFps,
   isFirst: boolean
 ): string {
-  // Skip index 2 — it's reserved for the shared file id
   const resolveIdx = idx >= 2 ? idx + 1 : idx;
   const clipId = `Fusion Title ${resolveIdx}`;
   const out = endFrame - startFrame;
-  const fileRef = isFirst
-    ? buildMasterFileBlock(fps)
-    : buildFileReference();
-  const filters = buildMasterFilters();
+  const fileBlock = isFirst
+    ? buildMasterFileBlockVerbatim(fps)
+    : `<file id="${FUSION_TITLE_FILE_ID}"/>`;
 
-  return `
-                    <clipitem id="${clipId}">
-                        <name>Fusion Title</name>
-                        <duration>${FUSION_TITLE_DURATION}</duration>
-                        <rate>
-                            <timebase>${fps}</timebase>
-                            <ntsc>FALSE</ntsc>
-                        </rate>
-                        <start>${startFrame}</start>
-                        <end>${endFrame}</end>
-                        <enabled>TRUE</enabled>
-                        <in>0</in>
-                        <out>${out}</out>
-                        ${fileRef}
-                        <compositemode>normal</compositemode>
-                        ${filters}
-                        <comments/>
-                    </clipitem>`;
+  return MASTER_CLIP_TEMPLATE
+    .replace("{{CLIP_ID}}", clipId)
+    .replace("{{TIMEBASE}}", String(fps))
+    .replace("{{START}}", String(startFrame))
+    .replace("{{END}}", String(endFrame))
+    .replace("{{OUT}}", String(out))
+    .replace("{{FILE_BLOCK}}", fileBlock);
+}
 }
 
 /**
