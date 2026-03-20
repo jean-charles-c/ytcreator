@@ -111,34 +111,51 @@ ${clips}
 }
 
 function buildSubtitleTracks(
-  subtitleTracks: { name: string; pathurl: string; durationFrames: number }[],
+  subtitleTracks: { name: string; pathurl: string; durationFrames: number; clips: { name: string; startFrame: number; endFrame: number; text: string }[] }[],
   fps: ExportFps,
   exportUid: string
 ): string {
   if (subtitleTracks.length === 0) return "";
 
-  const tracksXml = subtitleTracks.map((track, idx) => `
-            <track>
-              <clipitem id="subtitle-clip-${exportUid}-${idx + 1}">
-                <name>${escapeXml(track.name)}</name>
-                <duration>${track.durationFrames}</duration>
-                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                <start>0</start>
-                <end>${track.durationFrames}</end>
-                <in>0</in>
-                <out>${track.durationFrames}</out>
-                <sourcetrack>
-                  <mediatype>subtitle</mediatype>
-                  <trackindex>${idx + 1}</trackindex>
-                </sourcetrack>
-                <file id="subtitle-file-${exportUid}-${idx + 1}">
+  const tracksXml = subtitleTracks.map((track, idx) => {
+    const fileId = `subtitle-file-${exportUid}-${idx + 1}`;
+    const clipItemsXml = track.clips.map((clip, clipIdx) => {
+      const startFrame = Math.max(0, clip.startFrame);
+      const endFrame = Math.max(startFrame + 1, clip.endFrame);
+      const fileXml = clipIdx === 0
+        ? `<file id="${fileId}">
                   <name>${escapeXml(track.name)}</name>
                   <pathurl>${escapeXml(track.pathurl)}</pathurl>
                   <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
                   <duration>${track.durationFrames}</duration>
-                </file>
-              </clipitem>
-            </track>`).join("");
+                </file>`
+        : `<file id="${fileId}"/>`;
+
+      return `
+              <clipitem id="subtitle-clip-${exportUid}-${idx + 1}-${clipIdx + 1}">
+                <name>${escapeXml(clip.name)}</name>
+                <duration>${track.durationFrames}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>${startFrame}</start>
+                <end>${endFrame}</end>
+                <enabled>TRUE</enabled>
+                <in>${startFrame}</in>
+                <out>${endFrame}</out>
+                <comments>
+                  <mastercomment1>${escapeXml(clip.text)}</mastercomment1>
+                </comments>
+                <sourcetrack>
+                  <mediatype>subtitle</mediatype>
+                  <trackindex>${idx + 1}</trackindex>
+                </sourcetrack>
+                ${fileXml}
+              </clipitem>`;
+    }).join("");
+
+    return `
+            <track>${clipItemsXml}
+            </track>`;
+  }).join("");
 
   return `
           <subtitle>${tracksXml}
@@ -170,7 +187,7 @@ function generateXml(
   markersXml: string = "",
   musicTracks: { fileName: string; localPath: string }[] = [],
    chapterTitles: { name: string; startFrame: number; endFrame: number }[] = [],
-   subtitleTracks: { name: string; pathurl: string; durationFrames: number }[] = []
+   subtitleTracks: { name: string; pathurl: string; durationFrames: number; clips: { name: string; startFrame: number; endFrame: number; text: string }[] }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
@@ -468,8 +485,28 @@ export async function exportTimelineToXmlZip(
   });
 
   const subtitleTracks = [
-    ...(chapterTitleClips.length > 0 ? [{ name: "titles", pathurl: "titles.srt", durationFrames: totalFrames }] : []),
-    ...(clipFrames.length > 0 && xmlSegments.length > 0 ? [{ name: "subtitles", pathurl: "subtitles.srt", durationFrames: totalFrames }] : []),
+    ...(chapterTitleClips.length > 0 ? [{
+      name: "titles",
+      pathurl: "titles.srt",
+      durationFrames: totalFrames,
+      clips: chapterTitleClips.map((clip) => ({
+        name: clip.name,
+        startFrame: clip.startFrame,
+        endFrame: clip.endFrame,
+        text: clip.name,
+      })),
+    }] : []),
+    ...(clipFrames.length > 0 && xmlSegments.length > 0 ? [{
+      name: "subtitles",
+      pathurl: "subtitles.srt",
+      durationFrames: totalFrames,
+      clips: xmlSegments.map((seg, idx) => ({
+        name: `subtitle-${idx + 1}`,
+        startFrame: clipFrames[idx]?.start ?? 0,
+        endFrame: clipFrames[idx]?.end ?? Math.max(1, Math.round(totalFrames / Math.max(xmlSegments.length, 1))),
+        text: seg.sentence || seg.sentenceFr || seg.description,
+      })),
+    }] : []),
   ];
 
   const xml = generateXml(
