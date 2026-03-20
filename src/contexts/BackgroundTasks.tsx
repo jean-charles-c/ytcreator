@@ -47,6 +47,7 @@ export interface ExportXmlParams {
   projectId: string;
   timeline: Timeline;
   fps: ExportFps;
+  musicTracks?: { url: string; name: string }[];
 }
 
 export interface ImageGenParams {
