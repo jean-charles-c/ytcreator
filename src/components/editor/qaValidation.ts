@@ -90,13 +90,13 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
     }
 
     // Check shot text order vs scene text position (compare DB shot_order against text position)
-    const sceneTextLower = scene.sceneText.toLowerCase();
+    const sceneTextLower = scene.sceneText.toLowerCase().replace(/\s+/g, " ").trim();
     const shotTextPositions: { shotId: string; globalOrder: number; localOrder: number; position: number }[] = [];
     for (const shot of activeShots) {
       // Find the fragment text for this shot
       const frag = scene.fragments.find(f => f.shotId === shot.shotId);
       if (!frag) continue;
-      const fragLower = frag.text.toLowerCase().trim();
+      const fragLower = frag.text.toLowerCase().replace(/\s+/g, " ").trim();
       if (fragLower.length === 0) continue;
       const pos = sceneTextLower.indexOf(fragLower);
       shotTextPositions.push({ shotId: shot.shotId, globalOrder: shot.globalOrder, localOrder: shot.localOrder, position: pos });
@@ -116,8 +116,35 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
       }
     }
 
-    // Detect duplicate source_sentence within a scene
-    const fragTexts = scene.fragments.map(f => f.text.trim().toLowerCase());
+    // Detect duplicate/repeated text within a single shot's source_sentence
+    for (const frag of scene.fragments) {
+      const fragText = frag.text.trim();
+      if (fragText.length === 0) continue;
+      // Split into sentences and look for exact repetitions
+      const sentences = fragText.match(/[^.!?]+[.!?]+/g) || [];
+      if (sentences.length >= 2) {
+        const normalized = sentences.map(s => s.trim().toLowerCase());
+        const sentenceSet = new Set<string>();
+        for (const ns of normalized) {
+          if (ns.length < 5) continue;
+          if (sentenceSet.has(ns)) {
+            const shot = scene.shots.find(s => s.shotId === frag.shotId);
+            issues.push({
+              level: "critical",
+              category: "structure",
+              sceneOrder: scene.sceneOrder,
+              shotOrder: shot?.globalOrder,
+              message: `Scène ${scene.sceneOrder} : une phrase est répétée dans le shot ${shot?.globalOrder ?? "?"} (« ${ns.slice(0, 60)}… »). Régénérez les shots de cette scène.`,
+            });
+            break;
+          }
+          sentenceSet.add(ns);
+        }
+      }
+    }
+
+    // Detect duplicate source_sentence across multiple shots in same scene
+    const fragTexts = scene.fragments.map(f => f.text.replace(/\s+/g, " ").trim().toLowerCase());
     const seen = new Set<string>();
     for (const ft of fragTexts) {
       if (ft.length === 0) continue;
