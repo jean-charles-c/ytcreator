@@ -456,8 +456,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 </div>
               </div>
 
-              {/* Bottom row under script: Test rapide | Player | History — 3 columns */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Bottom row under script: Test rapide | Player + History — 2 columns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Test rapide */}
                 <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                   <h3 className="flex items-center gap-2 text-xs font-semibold font-display text-foreground">
@@ -467,10 +467,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   <VoicePreviewTest settings={settings} hideHeader />
                 </div>
 
-                {/* Player */}
-                <div>
+                {/* Player + History combined */}
+                <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+                  {/* Player */}
                   {playerState ? (
-                    <div className="rounded-lg border border-border bg-card p-3 space-y-2 h-full">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <h3 className="font-display text-xs font-semibold text-foreground">Lecteur</h3>
                         <span className="text-[10px] text-muted-foreground font-mono">
@@ -494,18 +495,16 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                       <p className="text-[10px] text-muted-foreground truncate">{playerState.fileName}</p>
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-card/50 p-3 flex items-center justify-center gap-2 h-full min-h-[80px]">
+                    <div className="rounded border border-dashed border-border bg-card/50 p-3 flex items-center justify-center gap-2 min-h-[60px]">
                       <Volume2 className="h-4 w-4 text-muted-foreground/30" />
                       <p className="text-xs text-muted-foreground/50">Lecteur audio</p>
                     </div>
                   )}
-                </div>
 
-                {/* History */}
-                <div>
+                  {/* History */}
                   <Accordion type="multiple" defaultValue={[]}>
-                    <AccordionItem value="history" className="border rounded-lg border-border bg-card px-3">
-                      <AccordionTrigger className="py-2 hover:no-underline gap-2">
+                    <AccordionItem value="history" className="border-0 border-t border-border pt-2">
+                      <AccordionTrigger className="py-1.5 hover:no-underline gap-2">
                         <span className="flex items-center gap-2 text-xs font-semibold font-display">
                           <Clock className="h-3.5 w-3.5 text-primary" />
                           Historique
