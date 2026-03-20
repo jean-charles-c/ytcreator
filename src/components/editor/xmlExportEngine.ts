@@ -485,6 +485,18 @@ export async function exportTimelineToXmlZip(
     musicFileEntries,
     chapterTitleClips
   );
+
+  // ── Validate generated XML before packaging ──
+  const validation = validateResolveXml(xml);
+  if (!validation.valid) {
+    const report = formatValidationReport(validation);
+    console.error("[ResolveXmlValidator] Export bloqué:\n", report);
+    throw new Error(`Export XML bloqué — structure Resolve invalide:\n${report}`);
+  }
+  if (validation.issues.length > 0) {
+    console.warn("[ResolveXmlValidator] Avertissements:\n", formatValidationReport(validation));
+  }
+
   zip.file("timeline.xml", xml);
 
   // ── Generate SRT subtitle file with shot sentences ──
