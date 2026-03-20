@@ -44,6 +44,7 @@ interface VideoEditTabProps {
   scenes: Scene[];
   shots: Shot[];
   exportBlocked?: boolean;
+  musicTracks?: { url: string; name: string }[];
 }
 
 const STATUS_CONFIG = {
