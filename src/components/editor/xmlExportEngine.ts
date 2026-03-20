@@ -400,6 +400,17 @@ export async function exportTimelineToXmlZip(
   const exportUid = crypto.randomUUID().slice(0, 8);
   const timelineMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
   const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
+
+  // Build chapter title clips: each title spans the duration of its associated shot
+  const chapterTitleClips = timelineMarkers.map((marker) => {
+    const clipEnd = clipFrames[marker.clipIndex]?.end ?? marker.startFrame + Math.round(fps * 5);
+    return {
+      name: marker.name,
+      startFrame: marker.startFrame,
+      endFrame: clipEnd,
+    };
+  });
+
   const xml = generateXml(
     xmlSegments,
     clipFrames,
@@ -410,7 +421,8 @@ export async function exportTimelineToXmlZip(
     `media/${audioFileName}`,
     exportUid,
     markersXml,
-    musicFileEntries
+    musicFileEntries,
+    chapterTitleClips
   );
   zip.file("timeline.xml", xml);
 
