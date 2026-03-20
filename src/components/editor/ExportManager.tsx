@@ -296,7 +296,6 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
             </p>
           </div>
         )}
-        )}
 
         {/* MP4 Progress */}
         {isMp4Exporting && renderProgress("MP4", mp4Task?.exportProgress, handleAbortMp4)}
