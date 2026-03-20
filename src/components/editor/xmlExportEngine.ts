@@ -12,6 +12,7 @@ import {
 import { validateResolveXml, formatValidationReport } from "./resolveXmlValidator";
 import { scanXmlReferences } from "./xmlReferenceScanner";
 import { detectForbiddenReferences, formatBlockingReport } from "./forbiddenReferenceDetector";
+import { generatePythonFromXml } from "./titleInjectorGenerator";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
