@@ -556,7 +556,7 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
 
                 {/* Collapsible: Export Manager */}
                 <CollapsibleSection title="Export Manager" icon={Film}>
-                  <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={exportBlocked} />
+                  <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={exportBlocked} musicTracks={musicTracks} />
                 </CollapsibleSection>
               </>
             )}

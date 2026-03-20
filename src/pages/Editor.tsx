@@ -1402,6 +1402,7 @@ export default function Editor() {
             scenes={scenes}
             shots={shots}
             exportBlocked={!qaExportAllowed}
+            musicTracks={selectedMusicTracks}
           />
         )}
 
