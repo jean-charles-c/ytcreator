@@ -72,12 +72,12 @@ function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reorde
   for (const [sceneId, sceneShots] of byScene) {
     const scene = sceneMap.get(sceneId);
     if (!scene) continue;
-    const sceneTextLower = (scene.source_text || "").toLowerCase();
+    const sceneTextLower = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
 
     // Sort by position of source_sentence in scene text
     sceneShots.sort((a, b) => {
-      const sentA = (a.source_sentence || "").trim().toLowerCase();
-      const sentB = (b.source_sentence || "").trim().toLowerCase();
+      const sentA = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentB = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
       const posA = sentA ? sceneTextLower.indexOf(sentA) : 9999;
       const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
       return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
