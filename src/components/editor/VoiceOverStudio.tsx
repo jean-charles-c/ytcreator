@@ -142,7 +142,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const sceneTextMap = new Map<string, string>();
     if (scenes) {
       for (const s of scenes) {
-        sceneTextMap.set(s.id, s.source_text.toLowerCase());
+        sceneTextMap.set(s.id, s.source_text.toLowerCase().replace(/\s+/g, " "));
       }
     }
 
