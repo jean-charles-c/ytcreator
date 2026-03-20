@@ -175,17 +175,32 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
 
   const renderError = (label: string, progress: ExportProgress | undefined, onRetry: () => void) => {
     if (!progress || progress.phase !== "error") return null;
+    const message = progress.message || "";
+    // Split multi-line diagnostic reports into readable lines
+    const lines = message.split("\n").filter(Boolean);
+    const title = lines[0] || `Erreur ${label}`;
+    const details = lines.slice(1);
     return (
-      <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-        <XCircle className="h-4 w-4 text-destructive shrink-0" />
-        <div className="flex-1">
-          <p className="text-sm font-medium text-destructive">Erreur {label}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{progress.message}</p>
+      <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+        <div className="flex items-start gap-2">
+          <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-destructive">{title}</p>
+            {details.length > 0 && (
+              <div className="mt-2 space-y-0.5 max-h-48 overflow-y-auto">
+                {details.map((line, i) => (
+                  <p key={i} className="text-xs text-muted-foreground font-mono whitespace-pre-wrap break-all leading-relaxed">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5 shrink-0">
+            <RefreshCw className="h-3 w-3" />
+            Réessayer
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5 shrink-0">
-          <RefreshCw className="h-3 w-3" />
-          Réessayer
-        </Button>
       </div>
     );
   };
