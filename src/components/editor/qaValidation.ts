@@ -88,6 +88,48 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
         });
       }
     }
+
+    // Check shot text order vs scene text position
+    const sceneTextLower = scene.sceneText.toLowerCase();
+    const shotPositions: { shotId: string; globalOrder: number; position: number; text: string }[] = [];
+    for (const frag of scene.fragments) {
+      const fragLower = frag.text.toLowerCase().trim();
+      if (fragLower.length > 0) {
+        const pos = sceneTextLower.indexOf(fragLower);
+        shotPositions.push({ shotId: frag.shotId, globalOrder: scene.shots.find(s => s.shotId === frag.shotId)?.globalOrder ?? 0, position: pos, text: frag.text });
+      }
+    }
+    // Detect inverted shots (text appears earlier in scene but shot_order is later)
+    for (let i = 1; i < shotPositions.length; i++) {
+      if (shotPositions[i].position >= 0 && shotPositions[i - 1].position >= 0 &&
+          shotPositions[i].position < shotPositions[i - 1].position) {
+        issues.push({
+          level: "critical",
+          category: "structure",
+          sceneOrder: scene.sceneOrder,
+          message: `Scène ${scene.sceneOrder} : les shots ${shotPositions[i - 1].globalOrder} et ${shotPositions[i].globalOrder} sont inversés par rapport à l'ordre du texte source. Régénérez les shots de cette scène.`,
+        });
+        break;
+      }
+    }
+
+    // Detect duplicate source_sentence within a scene
+    const fragTexts = scene.fragments.map(f => f.text.trim().toLowerCase());
+    const seen = new Set<string>();
+    for (const ft of fragTexts) {
+      if (ft.length === 0) continue;
+      if (seen.has(ft)) {
+        issues.push({
+          level: "critical",
+          category: "structure",
+          sceneOrder: scene.sceneOrder,
+          message: `Scène ${scene.sceneOrder} : une phrase est dupliquée entre plusieurs shots (« ${ft.slice(0, 60)}… »). Régénérez les shots de cette scène.`,
+        });
+        break;
+      }
+      seen.add(ft);
+    }
+
   }
 
   return issues;

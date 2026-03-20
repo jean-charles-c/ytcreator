@@ -137,6 +137,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const getSortedShots = () => {
     if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return [];
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
+
+    // Build a map of scene source_text for text-position tiebreaking
+    const sceneTextMap = new Map<string, string>();
+    if (scenes) {
+      for (const s of scenes) {
+        // scenes prop doesn't have id, but scenesForSort does
+      }
+    }
+
     return [...shots].sort((a, b) => {
       const oa = sceneOrderMap.get(a.scene_id) ?? 0;
       const ob = sceneOrderMap.get(b.scene_id) ?? 0;
