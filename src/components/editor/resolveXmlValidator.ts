@@ -135,6 +135,72 @@ export function validateResolveXml(xml: string): XmlValidationResult {
         message: "L'ancien effet Text est présent — les Fusion Title n'utilisent pas d'effectid Text",
       });
     }
+
+    // ── ExternalMediaGuard (Rules 10-15) ──────────────────────────────
+    // Detect fields inside Fusion Title clipitems that make Resolve treat
+    // the title as an external media file instead of a native Fusion Title.
+
+    // Extract all Fusion Title clipitem blocks for deep inspection
+    const fusionClipBlocks: string[] = [];
+    const fusionClipRegex = /<clipitem id="Fusion Title \d+">([\s\S]*?)<\/clipitem>/g;
+    let clipMatch: RegExpExecArray | null;
+    while ((clipMatch = fusionClipRegex.exec(xml)) !== null) {
+      fusionClipBlocks.push(clipMatch[0]);
+    }
+
+    const forbiddenInFusionClip: { tag: string; rule: string; message: string }[] = [
+      {
+        tag: "<stillframe>",
+        rule: "FUSION_EXTERNAL_STILLFRAME",
+        message: "Un Fusion Title contient <stillframe> — Resolve le traite comme une image fixe externe",
+      },
+      {
+        tag: "<masterclipid>",
+        rule: "FUSION_EXTERNAL_MASTERCLIP",
+        message: "Un Fusion Title contient <masterclipid> — réservé aux vrais médias, pas aux titres Fusion",
+      },
+      {
+        tag: "<anamorphic>",
+        rule: "FUSION_EXTERNAL_ANAMORPHIC",
+        message: "Un Fusion Title contient <anamorphic> — champ de média externe absent du template valide",
+      },
+      {
+        tag: "<sourcetrack>",
+        rule: "FUSION_EXTERNAL_SOURCETRACK",
+        message: "Un Fusion Title contient <sourcetrack> — champ de média externe absent du template valide",
+      },
+      {
+        tag: "<pixelaspectratio>",
+        rule: "FUSION_EXTERNAL_PIXELASPECT",
+        message: "Un Fusion Title contient <pixelaspectratio> — champ de média externe absent du template valide",
+      },
+    ];
+
+    for (const block of fusionClipBlocks) {
+      for (const forbidden of forbiddenInFusionClip) {
+        if (block.includes(forbidden.tag)) {
+          issues.push({
+            level: "error",
+            rule: forbidden.rule,
+            message: forbidden.message,
+          });
+          break; // One detection per rule is enough
+        }
+      }
+
+      // Special check: <media><video> inside clipitem (not inside <file>)
+      // The <file> block legitimately has no <media><video> in valid Fusion Titles,
+      // but we need to check if <media> appears at clipitem level
+      const blockWithoutFile = block.replace(/<file[^/]*>[\s\S]*?<\/file>/g, "");
+      if (blockWithoutFile.includes("<media>")) {
+        issues.push({
+          level: "error",
+          rule: "FUSION_EXTERNAL_MEDIA_BLOCK",
+          message: "Un Fusion Title contient un bloc <media> au niveau clipitem — sémantique de média externe",
+        });
+        break;
+      }
+    }
   }
 
   return {
