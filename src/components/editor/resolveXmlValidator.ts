@@ -86,7 +86,7 @@ export function validateResolveXml(xml: string): XmlValidationResult {
       });
     }
 
-    // Rule 6: clipitem IDs must follow "Fusion Title N" pattern
+    // Rule 6: clipitem IDs must follow "Fusion Title N" pattern AND not collide with file id
     const clipIds = [...xml.matchAll(/clipitem id="([^"]+)"/g)]
       .map((m) => m[1])
       .filter((id) => id.startsWith("Fusion Title"));
@@ -96,6 +96,13 @@ export function validateResolveXml(xml: string): XmlValidationResult {
           level: "error",
           rule: "FUSION_CLIP_ID_FORMAT",
           message: `ID de clipitem invalide : "${id}" — doit être "Fusion Title N"`,
+        });
+      }
+      if (id === FUSION_TITLE_FILE_ID) {
+        issues.push({
+          level: "error",
+          rule: "FUSION_ID_COLLISION",
+          message: `Collision d'ID : clipitem "${id}" utilise le même ID que le bloc <file> — Resolve confond clip et fichier`,
         });
       }
     }
