@@ -19,7 +19,7 @@ interface VoiceOverStudioProps {
   generatedScript: string | null;
   projectId: string | null;
   projectTitle?: string;
-  scenes?: { source_text: string; title: string }[];
+  scenes?: { source_text: string; title: string; id: string }[];
   shots?: { id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
   /** Scenes with scene_order for sorting shots correctly */
   scenesForSort?: { id: string; scene_order: number }[];
@@ -137,10 +137,32 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const getSortedShots = () => {
     if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return [];
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
+
+    // Build a map of scene source_text for text-position tiebreaking
+    const sceneTextMap = new Map<string, string>();
+    if (scenes) {
+      for (const s of scenes) {
+        sceneTextMap.set(s.id, s.source_text.toLowerCase());
+      }
+    }
+
     return [...shots].sort((a, b) => {
       const oa = sceneOrderMap.get(a.scene_id) ?? 0;
       const ob = sceneOrderMap.get(b.scene_id) ?? 0;
       if (oa !== ob) return oa - ob;
+
+      // Within same scene: use text position in source_text as primary sort
+      const sceneText = sceneTextMap.get(a.scene_id);
+      if (sceneText) {
+        const textA = (a.source_sentence || "").toLowerCase().trim();
+        const textB = (b.source_sentence || "").toLowerCase().trim();
+        if (textA && textB) {
+          const posA = sceneText.indexOf(textA);
+          const posB = sceneText.indexOf(textB);
+          if (posA >= 0 && posB >= 0 && posA !== posB) return posA - posB;
+        }
+      }
+
       return a.shot_order - b.shot_order;
     });
   };
