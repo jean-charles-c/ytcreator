@@ -42,7 +42,7 @@ const FPS_OPTIONS: { value: ExportFps; label: string }[] = [
   { value: 30, label: "30 fps (NTSC)" },
 ];
 
-export default function ExportManager({ timeline, projectId, exportBlocked = false }: ExportManagerProps) {
+export default function ExportManager({ timeline, projectId, exportBlocked = false, musicTracks }: ExportManagerProps) {
   const [fps, setFps] = useState<ExportFps>(24);
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
