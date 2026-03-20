@@ -290,7 +290,12 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
                 <span className="text-[10px] opacity-70 ml-1">ZIP</span>
               </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+              <Terminal className="h-3 w-3" />
+              Le ZIP inclut automatiquement un script Python (<code>resolve_titles.py</code>) pour injecter les titres dans Resolve.
+            </p>
           </div>
+        )}
         )}
 
         {/* MP4 Progress */}
