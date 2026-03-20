@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Sparkles, ChevronDown } from "lucide-react";
+import { Loader2, Sparkles, ChevronDown, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import type { Chapter, ChapterTitleVariant } from "./chapterTypes";
 import { SECTION_META, SECTION_TAGS, type SectionType } from "./canonicalScriptTypes";
 
@@ -49,6 +50,15 @@ export default function ChapterItem({
   const [draft, setDraft] = useState(chapter.title);
   const [tone, setTone] = useState("curiosity");
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(chapter.title).then(() => {
+      setCopied(true);
+      toast.success("Titre copié");
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [chapter.title]);
 
   const commitTitle = () => {
     setEditing(false);
@@ -116,12 +126,21 @@ export default function ChapterItem({
                 className="h-7 text-sm font-medium"
               />
             ) : (
-              <button
-                onClick={() => { setDraft(chapter.title); setEditing(true); }}
-                className="text-sm font-medium text-foreground text-left truncate hover:underline decoration-primary/40 underline-offset-2"
-              >
-                {chapter.title}
-              </button>
+              <>
+                <button
+                  onClick={() => { setDraft(chapter.title); setEditing(true); }}
+                  className="text-sm font-medium text-foreground text-left truncate hover:underline decoration-primary/40 underline-offset-2"
+                >
+                  {chapter.title}
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="shrink-0 p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  title="Copier le titre"
+                >
+                  {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                </button>
+              </>
             )}
           </div>
 
