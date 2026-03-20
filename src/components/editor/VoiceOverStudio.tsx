@@ -74,27 +74,38 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const sorted = getSortedShots();
     if (sorted.length === 0) return "";
 
-    const sceneBlocks: string[] = [];
-    let currentSceneId: string | null = null;
-    let currentLines: string[] = [];
+    // Build a map of scene source_text to preserve internal \n\n paragraph breaks
+    const sceneSourceMap = new Map<string, string>();
+    if (scenes) {
+      for (const s of scenes) {
+        if (s.source_text) sceneSourceMap.set(s.id, s.source_text);
+      }
+    }
 
+    // Group shots by scene in order
+    const sceneIds: string[] = [];
     for (const shot of sorted) {
       const text = (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
       if (!text) continue;
-
-      if (currentSceneId !== null && shot.scene_id !== currentSceneId) {
-        if (currentLines.length > 0) {
-          sceneBlocks.push(currentLines.join(" "));
-        }
-        currentLines = [];
+      if (!sceneIds.includes(shot.scene_id)) {
+        sceneIds.push(shot.scene_id);
       }
-
-      currentSceneId = shot.scene_id;
-      currentLines.push(text);
     }
 
-    if (currentLines.length > 0) {
-      sceneBlocks.push(currentLines.join(" "));
+    // For each scene, prefer source_text (preserves \n\n) over shot sentence concatenation
+    const sceneBlocks: string[] = [];
+    for (const sceneId of sceneIds) {
+      const sourceText = sceneSourceMap.get(sceneId);
+      if (sourceText?.trim()) {
+        sceneBlocks.push(sourceText.trim());
+      } else {
+        // Fallback: join shot sentences
+        const shotTexts = sorted
+          .filter((s) => s.scene_id === sceneId)
+          .map((s) => (s.source_sentence || s.source_sentence_fr || s.description || "").trim())
+          .filter(Boolean);
+        if (shotTexts.length > 0) sceneBlocks.push(shotTexts.join(" "));
+      }
     }
 
     return stripThousandSeparators(sceneBlocks.join("\n\n"));
