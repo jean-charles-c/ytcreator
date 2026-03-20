@@ -6,10 +6,7 @@ import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 import type { ManifestTimingEntry } from "./manifestTiming";
 import {
-  FUSION_TITLE_DURATION,
-  buildMasterFileBlock,
-  buildFileReference,
-  buildMasterFilters,
+  FUSION_TITLE_FILE_ID,
   validateMasterTemplate,
 } from "./fusionTitleTemplate";
 import { validateResolveXml, formatValidationReport } from "./resolveXmlValidator";
