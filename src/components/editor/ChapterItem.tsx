@@ -50,6 +50,15 @@ export default function ChapterItem({
   const [draft, setDraft] = useState(chapter.title);
   const [tone, setTone] = useState("curiosity");
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(chapter.title).then(() => {
+      setCopied(true);
+      toast.success("Titre copié");
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [chapter.title]);
 
   const commitTitle = () => {
     setEditing(false);
