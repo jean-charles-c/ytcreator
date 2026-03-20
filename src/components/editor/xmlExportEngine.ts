@@ -177,7 +177,37 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>
+            </track>${chapterTitles.length > 0 ? `
+            <track>
+${chapterTitles.map((ct, idx) => {
+  const dur = ct.endFrame - ct.startFrame;
+  return `              <generatoritem id="title-${exportUid}-${idx + 1}">
+                <name>${escapeXml(ct.name)}</name>
+                <duration>${dur}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>${ct.startFrame}</start>
+                <end>${ct.endFrame}</end>
+                <in>0</in>
+                <out>${dur}</out>
+                <effect>
+                  <name>Text</name>
+                  <effectid>Text</effectid>
+                  <effecttype>generator</effecttype>
+                  <mediatype>video</mediatype>
+                  <parameter>
+                    <name>str</name>
+                    <parameterid>str</parameterid>
+                    <value>${escapeXml(ct.name)}</value>
+                  </parameter>
+                  <parameter>
+                    <name>fontsize</name>
+                    <parameterid>fontsize</parameterid>
+                    <value>48</value>
+                  </parameter>
+                </effect>
+              </generatoritem>`;
+}).join("\n")}
+            </track>` : ""}
           </video>
           <audio>
             <track>
