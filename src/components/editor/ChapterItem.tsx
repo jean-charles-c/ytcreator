@@ -72,7 +72,9 @@ export default function ChapterItem({
   /** Find the first matching shot and convert it to the real global shot number in project order */
   const matchingShotOrder = useMemo(() => {
     if (!shots || shots.length === 0 || !chapter.sourceText) return null;
-    const srcNorm = chapter.sourceText.toLowerCase().replace(/\s+/g, " ").trim();
+    /** Normalize: lowercase, collapse whitespace, strip commas in numbers */
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/,/g, "").trim();
+    const srcNorm = norm(chapter.sourceText);
     if (!srcNorm) return null;
 
     const sceneOrderMap = new Map((scenesForShotOrder || []).map((scene) => [scene.id, scene.scene_order]));
@@ -84,7 +86,7 @@ export default function ChapterItem({
     });
 
     const matchIndex = globallySortedShots.findIndex((shot) => {
-      const sent = (shot.source_sentence || shot.source_sentence_fr || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const sent = norm(shot.source_sentence || shot.source_sentence_fr || "");
       return sent.length >= 5 && srcNorm.includes(sent);
     });
 
