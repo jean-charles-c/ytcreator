@@ -45,11 +45,12 @@ export function buildChapterMarkers(
     let clipIndex = 0;
 
     if (ch.sourceText) {
-      const srcNorm = ch.sourceText.toLowerCase().trim();
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/,/g, "").trim();
+      const srcNorm = norm(ch.sourceText);
 
       // Find the first segment whose sentence is contained in this chapter's source text
       const found = segments.findIndex((seg) => {
-        const sent = (seg.sentence || "").toLowerCase().trim();
+        const sent = norm(seg.sentence || "");
         return sent.length >= 5 && srcNorm.includes(sent);
       });
 

@@ -208,22 +208,6 @@ ${clipItems}
                 </file>
               </clipitem>
             </track>
-            <track>
-              <clipitem id="audio-clip-${exportUid}-2">
-                <name>${escapeXml(audioTrack.fileName)}</name>
-                <duration>${audioEndFrame}</duration>
-                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                <start>0</start>
-                <end>${audioEndFrame}</end>
-                <in>0</in>
-                <out>${audioEndFrame}</out>
-                <sourcetrack>
-                  <mediatype>audio</mediatype>
-                  <trackindex>2</trackindex>
-                </sourcetrack>
-                <file id="audio-file-${exportUid}-1"/>
-              </clipitem>
-            </track>
           </audio>
         </media>
       </sequence>
