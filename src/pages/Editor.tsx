@@ -1876,7 +1876,12 @@ export default function Editor() {
                                               }
                                             }
                                             toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte`);
-                                            loadProjectData(projectId!);
+                                            // Reload shots from DB
+                                            const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+                                            if (freshShots) {
+                                              const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
+                                              setShots(reordered);
+                                            }
                                           }}
                                           className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 transition-colors min-h-[44px] sm:min-h-[36px] border border-amber-500/30"
                                           title="Réordonner les shots selon leur position dans le texte source"
