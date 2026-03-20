@@ -110,6 +110,41 @@ ${clips}
                 </track>`;
 }
 
+function buildSubtitleTracks(
+  subtitleTracks: { name: string; pathurl: string; durationFrames: number }[],
+  fps: ExportFps,
+  exportUid: string
+): string {
+  if (subtitleTracks.length === 0) return "";
+
+  const tracksXml = subtitleTracks.map((track, idx) => `
+            <track>
+              <clipitem id="subtitle-clip-${exportUid}-${idx + 1}">
+                <name>${escapeXml(track.name)}</name>
+                <duration>${track.durationFrames}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>0</start>
+                <end>${track.durationFrames}</end>
+                <in>0</in>
+                <out>${track.durationFrames}</out>
+                <sourcetrack>
+                  <mediatype>subtitle</mediatype>
+                  <trackindex>${idx + 1}</trackindex>
+                </sourcetrack>
+                <file id="subtitle-file-${exportUid}-${idx + 1}">
+                  <name>${escapeXml(track.name)}</name>
+                  <pathurl>${escapeXml(track.pathurl)}</pathurl>
+                  <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                  <duration>${track.durationFrames}</duration>
+                </file>
+              </clipitem>
+            </track>`).join("");
+
+  return `
+          <subtitle>${tracksXml}
+          </subtitle>`;
+}
+
 /** Format seconds to SRT timecode: HH:MM:SS,mmm */
 function formatSrtTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -134,7 +169,8 @@ function generateXml(
   exportUid: string,
   markersXml: string = "",
   musicTracks: { fileName: string; localPath: string }[] = [],
-  chapterTitles: { name: string; startFrame: number; endFrame: number }[] = []
+   chapterTitles: { name: string; startFrame: number; endFrame: number }[] = [],
+   subtitleTracks: { name: string; pathurl: string; durationFrames: number }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
@@ -293,30 +329,7 @@ ${clipItems}
               </clipitem>
             </track>`;
             }).join("")}
-          </audio>${chapterTitles.length > 0 ? `
-          <subtitle>
-            <track>
-              <clipitem id="subtitle-clip-${exportUid}-titles">
-                <name>titles</name>
-                <duration>${totalFrames}</duration>
-                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                <start>0</start>
-                <end>${totalFrames}</end>
-                <in>0</in>
-                <out>${totalFrames}</out>
-                <sourcetrack>
-                  <mediatype>subtitle</mediatype>
-                  <trackindex>1</trackindex>
-                </sourcetrack>
-                <file id="subtitle-file-${exportUid}-titles">
-                  <name>titles</name>
-                  <pathurl>titles.srt</pathurl>
-                  <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
-                  <duration>${totalFrames}</duration>
-                </file>
-              </clipitem>
-            </track>
-          </subtitle>` : ""}
+          </audio>${buildSubtitleTracks(subtitleTracks, fps, exportUid)}
         </media>
       </sequence>
     </children>
@@ -454,6 +467,11 @@ export async function exportTimelineToXmlZip(
     };
   });
 
+  const subtitleTracks = [
+    ...(chapterTitleClips.length > 0 ? [{ name: "titles", pathurl: "titles.srt", durationFrames: totalFrames }] : []),
+    ...(clipFrames.length > 0 && xmlSegments.length > 0 ? [{ name: "subtitles", pathurl: "subtitles.srt", durationFrames: totalFrames }] : []),
+  ];
+
   const xml = generateXml(
     xmlSegments,
     clipFrames,
@@ -465,7 +483,8 @@ export async function exportTimelineToXmlZip(
     exportUid,
     markersXml,
     musicFileEntries,
-    chapterTitleClips
+    chapterTitleClips,
+    subtitleTracks
   );
 
   zip.file("timeline.xml", xml);
