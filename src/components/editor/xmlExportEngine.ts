@@ -85,7 +85,8 @@ function generateXml(
   audioFileName: string,
   exportUid: string,
   markersXml: string = "",
-  musicTracks: { fileName: string; localPath: string }[] = []
+  musicTracks: { fileName: string; localPath: string }[] = [],
+  chapterTitles: { name: string; startFrame: number; endFrame: number }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
@@ -176,7 +177,37 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>
+            </track>${chapterTitles.length > 0 ? `
+            <track>
+${chapterTitles.map((ct, idx) => {
+  const dur = ct.endFrame - ct.startFrame;
+  return `              <generatoritem id="title-${exportUid}-${idx + 1}">
+                <name>${escapeXml(ct.name)}</name>
+                <duration>${dur}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>${ct.startFrame}</start>
+                <end>${ct.endFrame}</end>
+                <in>0</in>
+                <out>${dur}</out>
+                <effect>
+                  <name>Text</name>
+                  <effectid>Text</effectid>
+                  <effecttype>generator</effecttype>
+                  <mediatype>video</mediatype>
+                  <parameter>
+                    <name>str</name>
+                    <parameterid>str</parameterid>
+                    <value>${escapeXml(ct.name)}</value>
+                  </parameter>
+                  <parameter>
+                    <name>fontsize</name>
+                    <parameterid>fontsize</parameterid>
+                    <value>48</value>
+                  </parameter>
+                </effect>
+              </generatoritem>`;
+}).join("\n")}
+            </track>` : ""}
           </video>
           <audio>
             <track>
@@ -208,7 +239,6 @@ ${clipItems}
                   </media>
                 </file>
               </clipitem>
-            </track>
             </track>${musicTracks.map((mt, idx) => {
               const trackIdx = idx + 2;
               const clipId = `audio-clip-${exportUid}-music-${trackIdx}`;
@@ -370,6 +400,17 @@ export async function exportTimelineToXmlZip(
   const exportUid = crypto.randomUUID().slice(0, 8);
   const timelineMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
   const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
+
+  // Build chapter title clips: each title spans the duration of its associated shot
+  const chapterTitleClips = timelineMarkers.map((marker) => {
+    const clipEnd = clipFrames[marker.clipIndex]?.end ?? marker.startFrame + Math.round(fps * 5);
+    return {
+      name: marker.name,
+      startFrame: marker.startFrame,
+      endFrame: clipEnd,
+    };
+  });
+
   const xml = generateXml(
     xmlSegments,
     clipFrames,
@@ -380,7 +421,8 @@ export async function exportTimelineToXmlZip(
     `media/${audioFileName}`,
     exportUid,
     markersXml,
-    musicFileEntries
+    musicFileEntries,
+    chapterTitleClips
   );
   zip.file("timeline.xml", xml);
 
