@@ -23,6 +23,7 @@ import {
   ImageIcon,
   ChevronDown,
   ShieldCheck,
+  ArrowUpDown,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
