@@ -71,7 +71,16 @@ interface XmlSegment {
   shotType: string;
 }
 
-/**
+/** Format seconds to SRT timecode: HH:MM:SS,mmm */
+function formatSrtTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const ms = Math.round((totalSeconds % 1) * 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
+
  * Generate FCP XML with local relative paths to bundled media.
  * When manifestEntries are provided, they are the sole source of truth for timing.
  */
