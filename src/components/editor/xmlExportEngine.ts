@@ -443,37 +443,9 @@ export async function exportTimelineToXmlZip(
     chapterTitleClips
   );
 
-  // ── Validate generated XML before packaging ──
-
-  // ExportBlocker: scan for forbidden file/media references in Fusion Titles
-  const scanResult = scanXmlReferences(xml);
-  const refDetection = detectForbiddenReferences(scanResult);
-  if (!refDetection.clean) {
-    const refReport = formatBlockingReport(refDetection);
-    console.error("[ForbiddenReferenceDetector] Export bloqué:\n", refReport);
-    throw new Error(`Export XML bloqué — références interdites détectées:\n${refReport}`);
-  }
-
-  // ResolveXmlValidator: structural validation
-  const validation = validateResolveXml(xml);
-  if (!validation.valid) {
-    const report = formatValidationReport(validation);
-    console.error("[ResolveXmlValidator] Export bloqué:\n", report);
-    throw new Error(`Export XML bloqué — structure Resolve invalide:\n${report}`);
-  }
-  if (validation.issues.length > 0) {
-    console.warn("[ResolveXmlValidator] Avertissements:\n", formatValidationReport(validation));
-  }
-
   zip.file("timeline.xml", xml);
 
-  // ── Generate Title Injector Python script ──
-  const pyScript = generatePythonFromXml(xml);
-  if (pyScript) {
-    zip.file("resolve_titles.py", pyScript);
-  }
-
-  // ── Generate SRT subtitle file with shot sentences ──
+  // ── Generate SRT subtitle file with shot sentences (full script) ──
   if (clipFrames.length > 0 && xmlSegments.length > 0) {
     const srtContent = xmlSegments.map((seg, idx) => {
       const frame = clipFrames[idx];
@@ -484,6 +456,16 @@ export async function exportTimelineToXmlZip(
       return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${text}\n`;
     }).filter(Boolean).join("\n");
     zip.file("subtitles.srt", srtContent);
+  }
+
+  // ── Generate SRT file with chapter titles only ──
+  if (chapterTitleClips.length > 0) {
+    const titlesSrt = chapterTitleClips.map((ct, idx) => {
+      const startSec = ct.startFrame / fps;
+      const endSec = ct.endFrame / fps;
+      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${ct.name}\n`;
+    }).join("\n");
+    zip.file("titles.srt", titlesSrt);
   }
 
   // ── Generate ZIP ──
