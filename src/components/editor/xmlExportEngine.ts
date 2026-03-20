@@ -457,18 +457,22 @@ export async function exportTimelineToXmlZip(
     `media/${audioFileName}`,
     exportUid,
     markersXml,
-    musicFileEntries
+    musicFileEntries,
+    chapterTitleClips
   );
   zip.file("timeline.xml", xml);
 
-  // ── Generate SRT subtitle file for chapter titles ──
-  if (chapterTitleClips.length > 0) {
-    const srtContent = chapterTitleClips.map((ct, idx) => {
-      const startSec = ct.startFrame / fps;
-      const endSec = ct.endFrame / fps;
-      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${ct.name}\n`;
-    }).join("\n");
-    zip.file("chapter_titles.srt", srtContent);
+  // ── Generate SRT subtitle file with shot sentences ──
+  if (clipFrames.length > 0 && xmlSegments.length > 0) {
+    const srtContent = xmlSegments.map((seg, idx) => {
+      const frame = clipFrames[idx];
+      if (!frame) return "";
+      const startSec = frame.start / fps;
+      const endSec = frame.end / fps;
+      const text = seg.sentence || seg.sentenceFr || seg.description;
+      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${text}\n`;
+    }).filter(Boolean).join("\n");
+    zip.file("subtitles.srt", srtContent);
   }
 
   // ── Generate ZIP ──
