@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import NotFound from "./pages/NotFound";
 import TitleInjector from "./pages/TitleInjector";
+import TitleFixer from "./pages/TitleFixer";
 
 const queryClient = new QueryClient();
 
