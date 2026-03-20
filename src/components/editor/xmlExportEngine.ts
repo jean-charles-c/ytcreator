@@ -109,7 +109,6 @@ ${clips}
                     <locked>FALSE</locked>
                 </track>`;
 }
-}
 
 /** Format seconds to SRT timecode: HH:MM:SS,mmm */
 function formatSrtTime(totalSeconds: number): string {
