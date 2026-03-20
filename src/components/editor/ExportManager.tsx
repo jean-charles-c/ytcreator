@@ -11,6 +11,7 @@ import {
   XCircle,
   StopCircle,
   Clock,
+  Terminal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";

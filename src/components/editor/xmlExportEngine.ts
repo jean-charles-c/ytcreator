@@ -658,6 +658,12 @@ export async function exportTimelineToXmlZip(
 
   zip.file("timeline.xml", xml);
 
+  // ── Generate Title Injector Python script ──
+  const pyScript = generatePythonFromXml(xml);
+  if (pyScript) {
+    zip.file("resolve_titles.py", pyScript);
+  }
+
   // ── Generate SRT subtitle file with shot sentences ──
   if (clipFrames.length > 0 && xmlSegments.length > 0) {
     const srtContent = xmlSegments.map((seg, idx) => {
