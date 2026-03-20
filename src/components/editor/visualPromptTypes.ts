@@ -135,10 +135,10 @@ export function buildManifest(
 
   const scenes: NormalisedScene[] = sortedScenes.map((scene) => {
     const sceneShots = (shotsByScene.get(scene.id) ?? []).sort((a, b) => {
-      // Primary: text position in scene source_text
-      const sceneTextLower = scene.source_text.toLowerCase();
-      const textA = (a.source_sentence || "").toLowerCase().trim();
-      const textB = (b.source_sentence || "").toLowerCase().trim();
+      // Primary: text position in scene source_text (normalize whitespace for multi-line texts)
+      const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
+      const textA = (a.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const textB = (b.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
       if (textA && textB) {
         const posA = sceneTextLower.indexOf(textA);
         const posB = sceneTextLower.indexOf(textB);

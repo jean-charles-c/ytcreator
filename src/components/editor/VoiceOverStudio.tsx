@@ -154,8 +154,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       // Within same scene: use text position in source_text as primary sort
       const sceneText = sceneTextMap.get(a.scene_id);
       if (sceneText) {
-        const textA = (a.source_sentence || "").toLowerCase().trim();
-        const textB = (b.source_sentence || "").toLowerCase().trim();
+        const textA = (a.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
+        const textB = (b.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
         if (textA && textB) {
           const posA = sceneText.indexOf(textA);
           const posB = sceneText.indexOf(textB);
