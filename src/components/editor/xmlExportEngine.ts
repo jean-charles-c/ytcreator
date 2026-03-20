@@ -80,7 +80,7 @@ function formatSrtTime(totalSeconds: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
 }
 
-
+/**
  * Generate FCP XML with local relative paths to bundled media.
  * When manifestEntries are provided, they are the sole source of truth for timing.
  */
