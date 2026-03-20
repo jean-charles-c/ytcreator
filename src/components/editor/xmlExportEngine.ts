@@ -71,6 +71,15 @@ interface XmlSegment {
   shotType: string;
 }
 
+/** Format seconds to SRT timecode: HH:MM:SS,mmm */
+function formatSrtTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const ms = Math.round((totalSeconds % 1) * 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
 /**
  * Generate FCP XML with local relative paths to bundled media.
  * When manifestEntries are provided, they are the sole source of truth for timing.
@@ -85,8 +94,7 @@ function generateXml(
   audioFileName: string,
   exportUid: string,
   markersXml: string = "",
-  musicTracks: { fileName: string; localPath: string }[] = [],
-  chapterTitles: { name: string; startFrame: number; endFrame: number }[] = []
+  musicTracks: { fileName: string; localPath: string }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
@@ -177,260 +185,7 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>${chapterTitles.length > 0 ? `
-            <track>
-${chapterTitles.map((ct, idx) => {
-  const dur = ct.endFrame - ct.startFrame;
-  return `              <generatoritem id="title-${exportUid}-${idx + 1}">
-                        <name>${escapeXml(ct.name)}</name>
-                        <duration>${dur}</duration>
-                        <rate>
-                            <timebase>${fps}</timebase>
-                            <ntsc>FALSE</ntsc>
-                        </rate>
-                        <start>${ct.startFrame}</start>
-                        <end>${ct.endFrame}</end>
-                        <enabled>TRUE</enabled>
-                        <in>0</in>
-                        <out>${dur}</out>
-                        <anamorphic>FALSE</anamorphic>
-                        <alphatype>black</alphatype>
-                        <effect>
-                            <name>Text</name>
-                            <effectid>Text</effectid>
-                            <effectcategory>Text</effectcategory>
-                            <effecttype>generator</effecttype>
-                            <mediatype>video</mediatype>
-                            <parameter>
-                                <parameterid>str</parameterid>
-                                <name>Text</name>
-                                <value>${escapeXml(ct.name)}</value>
-                            </parameter>
-                            <parameter>
-                                <parameterid>fontsize</parameterid>
-                                <name>Font Size</name>
-                                <value>72</value>
-                            </parameter>
-                            <parameter>
-                                <parameterid>font</parameterid>
-                                <name>Font</name>
-                                <value>Arial</value>
-                            </parameter>
-                            <parameter>
-                                <parameterid>fontcolor</parameterid>
-                                <name>Font Color</name>
-                                <value>
-                                    <alpha>255</alpha>
-                                    <red>255</red>
-                                    <green>255</green>
-                                    <blue>255</blue>
-                                </value>
-                            </parameter>
-                            <parameter>
-                                <parameterid>alignment</parameterid>
-                                <name>Alignment</name>
-                                <value>1</value>
-                            </parameter>
-                        </effect>
-                        <filter>
-                            <enabled>TRUE</enabled>
-                            <start>0</start>
-                            <end>${dur}</end>
-                            <effect>
-                                <name>Basic Motion</name>
-                                <effectid>basic</effectid>
-                                <effecttype>motion</effecttype>
-                                <mediatype>video</mediatype>
-                                <effectcategory>motion</effectcategory>
-                                <parameter>
-                                    <name>Scale</name>
-                                    <parameterid>scale</parameterid>
-                                    <value>100</value>
-                                    <valuemin>0</valuemin>
-                                    <valuemax>10000</valuemax>
-                                </parameter>
-                                <parameter>
-                                    <name>Center</name>
-                                    <parameterid>center</parameterid>
-                                    <value>
-                                        <horiz>0</horiz>
-                                        <vert>0</vert>
-                                    </value>
-                                </parameter>
-                                <parameter>
-                                    <name>Rotation</name>
-                                    <parameterid>rotation</parameterid>
-                                    <value>0</value>
-                                    <valuemin>-100000</valuemin>
-                                    <valuemax>100000</valuemax>
-                                </parameter>
-                                <parameter>
-                                    <name>Anchor Point</name>
-                                    <parameterid>centerOffset</parameterid>
-                                    <value>
-                                        <horiz>0</horiz>
-                                        <vert>0</vert>
-                                    </value>
-                                </parameter>
-                            </effect>
-                        </filter>
-                        <filter>
-                            <enabled>TRUE</enabled>
-                            <start>0</start>
-                            <end>${dur}</end>
-                            <effect>
-                                <name>Crop</name>
-                                <effectid>crop</effectid>
-                                <effecttype>motion</effecttype>
-                                <mediatype>video</mediatype>
-                                <effectcategory>motion</effectcategory>
-                                <parameter>
-                                    <name>left</name>
-                                    <parameterid>left</parameterid>
-                                    <value>0</value>
-                                    <valuemin>0</valuemin>
-                                    <valuemax>100</valuemax>
-                                </parameter>
-                                <parameter>
-                                    <name>right</name>
-                                    <parameterid>right</parameterid>
-                                    <value>0</value>
-                                    <valuemin>0</valuemin>
-                                    <valuemax>100</valuemax>
-                                </parameter>
-                                <parameter>
-                                    <name>top</name>
-                                    <parameterid>top</parameterid>
-                                    <value>0</value>
-                                    <valuemin>0</valuemin>
-                                    <valuemax>100</valuemax>
-                                </parameter>
-                                <parameter>
-                                    <name>bottom</name>
-                                    <parameterid>bottom</parameterid>
-                                    <value>0</value>
-                                    <valuemin>0</valuemin>
-                                    <valuemax>100</valuemax>
-                                </parameter>
-                            </effect>
-                        </filter>
-                        <filter>
-                            <enabled>TRUE</enabled>
-                            <start>0</start>
-                            <end>${dur}</end>
-                            <effect>
-                                <name>Opacity</name>
-                                <effectid>opacity</effectid>
-                                <effecttype>motion</effecttype>
-                                <mediatype>video</mediatype>
-                                <effectcategory>motion</effectcategory>
-                                <parameter>
-                                    <name>opacity</name>
-                                    <parameterid>opacity</parameterid>
-                                    <value>100</value>
-                                    <valuemin>0</valuemin>
-                                    <valuemax>100</valuemax>
-                                </parameter>
-                            </effect>
-                        </filter>
-                    </generatoritem>`;
-}).join("\n")}
             </track>
-            <track>
-${chapterTitles.map((ct, idx) => {
-  const dur = ct.endFrame - ct.startFrame;
-  const fileRef = idx === 0
-    ? `<file id="fusion-title-file-${exportUid}">
-                            <duration>${dur}</duration>
-                            <rate>
-                                <timebase>${fps}</timebase>
-                                <ntsc>FALSE</ntsc>
-                            </rate>
-                            <name>Slug</name>
-                            <timecode>
-                                <string>00:00:00:00</string>
-                                <displayformat>NDF</displayformat>
-                                <rate>
-                                    <timebase>${fps}</timebase>
-                                    <ntsc>FALSE</ntsc>
-                                </rate>
-                            </timecode>
-                            <media>
-                                <video>
-                                    <samplecharacteristics>
-                                        <width>1920</width>
-                                        <height>1080</height>
-                                    </samplecharacteristics>
-                                </video>
-                            </media>
-                            <mediaSource>Slug</mediaSource>
-                        </file>`
-    : `<file id="fusion-title-file-${exportUid}"/>`;
-  return `              <clipitem id="fusion-title-${exportUid}-${idx + 1}">
-                        <name>Fusion Title</name>
-                        <duration>${dur}</duration>
-                        <rate>
-                            <timebase>${fps}</timebase>
-                            <ntsc>FALSE</ntsc>
-                        </rate>
-                        <start>${ct.startFrame}</start>
-                        <end>${ct.endFrame}</end>
-                        <enabled>TRUE</enabled>
-                        <in>0</in>
-                        <out>${dur}</out>
-                        ${fileRef}
-                        <compositemode>normal</compositemode>
-                        <filter>
-                            <enabled>TRUE</enabled>
-                            <start>0</start>
-                            <end>${dur}</end>
-                            <effect>
-                                <name>Basic Motion</name>
-                                <effectid>basic</effectid>
-                                <effecttype>motion</effecttype>
-                                <mediatype>video</mediatype>
-                                <effectcategory>motion</effectcategory>
-                                <parameter><name>Scale</name><parameterid>scale</parameterid><value>100</value><valuemin>0</valuemin><valuemax>10000</valuemax></parameter>
-                                <parameter><name>Center</name><parameterid>center</parameterid><value><horiz>0</horiz><vert>0</vert></value></parameter>
-                                <parameter><name>Rotation</name><parameterid>rotation</parameterid><value>0</value><valuemin>-100000</valuemin><valuemax>100000</valuemax></parameter>
-                                <parameter><name>Anchor Point</name><parameterid>centerOffset</parameterid><value><horiz>0</horiz><vert>0</vert></value></parameter>
-                            </effect>
-                        </filter>
-                        <filter>
-                            <enabled>TRUE</enabled>
-                            <start>0</start>
-                            <end>${dur}</end>
-                            <effect>
-                                <name>Crop</name>
-                                <effectid>crop</effectid>
-                                <effecttype>motion</effecttype>
-                                <mediatype>video</mediatype>
-                                <effectcategory>motion</effectcategory>
-                                <parameter><name>left</name><parameterid>left</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
-                                <parameter><name>right</name><parameterid>right</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
-                                <parameter><name>top</name><parameterid>top</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
-                                <parameter><name>bottom</name><parameterid>bottom</parameterid><value>0</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
-                            </effect>
-                        </filter>
-                        <filter>
-                            <enabled>TRUE</enabled>
-                            <start>0</start>
-                            <end>${dur}</end>
-                            <effect>
-                                <name>Opacity</name>
-                                <effectid>opacity</effectid>
-                                <effecttype>motion</effecttype>
-                                <mediatype>video</mediatype>
-                                <effectcategory>motion</effectcategory>
-                                <parameter><name>opacity</name><parameterid>opacity</parameterid><value>100</value><valuemin>0</valuemin><valuemax>100</valuemax></parameter>
-                            </effect>
-                        </filter>
-                        <comments>
-                            <mastercomment1>${escapeXml(ct.name)}</mastercomment1>
-                        </comments>
-                    </clipitem>`;
-}).join("\n")}
-            </track>` : ""}
           </video>
           <audio>
             <track>
@@ -624,7 +379,7 @@ export async function exportTimelineToXmlZip(
   const timelineMarkers = chapters ? buildChapterMarkers(chapters, timeline, fps) : [];
   const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
 
-  // Build chapter title clips: each title spans the duration of its associated shot
+  // Build SRT subtitle file from chapter markers
   const chapterTitleClips = timelineMarkers.map((marker) => {
     const clipEnd = clipFrames[marker.clipIndex]?.end ?? marker.startFrame + Math.round(fps * 5);
     return {
@@ -644,10 +399,19 @@ export async function exportTimelineToXmlZip(
     `media/${audioFileName}`,
     exportUid,
     markersXml,
-    musicFileEntries,
-    chapterTitleClips
+    musicFileEntries
   );
   zip.file("timeline.xml", xml);
+
+  // ── Generate SRT subtitle file for chapter titles ──
+  if (chapterTitleClips.length > 0) {
+    const srtContent = chapterTitleClips.map((ct, idx) => {
+      const startSec = ct.startFrame / fps;
+      const endSec = ct.endFrame / fps;
+      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${ct.name}\n`;
+    }).join("\n");
+    zip.file("chapter_titles.srt", srtContent);
+  }
 
   // ── Generate ZIP ──
   onProgress?.({ phase: "packaging", percent: 85, message: "Compression du package…" });
