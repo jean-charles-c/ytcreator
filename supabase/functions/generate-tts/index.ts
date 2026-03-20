@@ -941,13 +941,11 @@ serve(async (req) => {
         audioBuffers.push(raw);
 
         // Process timepoints — mark names ARE the shot IDs
-        let chunkDuration = 0;
         const chunkTimepoints: { name: string; time: number }[] = [];
         if (result.timepoints) {
           for (const tp of result.timepoints) {
             chunkTimepoints.push({ name: tp.markName, time: tp.timeSeconds });
             if (tp.markName === "__chunk_end" || tp.markName === "__end") {
-              chunkDuration = tp.timeSeconds;
               continue;
             }
             // Mark name is directly the shot ID — no index parsing needed
@@ -955,7 +953,7 @@ serve(async (req) => {
             if (shotIndex >= 0) {
               allTimepoints.push({
                 shotIndex,
-                timeSeconds: Math.round((tp.timeSeconds + cumulativeOffset) * 1000) / 1000,
+                timeSeconds: tp.timeSeconds + cumulativeOffset,
                 shotId: tp.markName,
               });
             }
@@ -964,18 +962,11 @@ serve(async (req) => {
 
         console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
 
-        // If no end marker found, estimate from audio byte size (MP3 ~16kbps)
-        if (chunkDuration === 0) {
-          if (result.timepoints && result.timepoints.length > 0) {
-            const lastTp = result.timepoints[result.timepoints.length - 1];
-            chunkDuration = lastTp.timeSeconds + 2;
-          } else {
-            chunkDuration = raw.length / 16000;
-          }
-        }
-
+        // Use actual MP3 duration (parsed from frames) instead of marker time
+        // This prevents cumulative drift when concatenating multiple chunks
+        const chunkDuration = parseMp3Duration(raw);
         cumulativeOffset += chunkDuration;
-        console.log(`Chunk ${ci + 1} duration: ${chunkDuration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
+        console.log(`Chunk ${ci + 1} MP3 duration: ${chunkDuration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
       }
 
       console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
