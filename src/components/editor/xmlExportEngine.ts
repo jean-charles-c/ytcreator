@@ -225,7 +225,7 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>${buildFusionTitleTrack(chapterTitles, fps, exportUid)}
+            </track>${buildSimpleTitleTrack(chapterTitles, fps, exportUid)}
           </video>
           <audio>
             <track>
