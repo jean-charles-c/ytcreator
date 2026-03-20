@@ -379,7 +379,8 @@ export async function exportTimelineToXmlZip(
     imageFileNames,
     `media/${audioFileName}`,
     exportUid,
-    markersXml
+    markersXml,
+    musicFileEntries
   );
   zip.file("timeline.xml", xml);
 
