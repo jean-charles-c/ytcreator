@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import NotFound from "./pages/NotFound";
 import TitleInjector from "./pages/TitleInjector";
+import TitleFixer from "./pages/TitleFixer";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/editor/:id" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
               <Route path="/title-injector" element={<TitleInjector />} />
+              <Route path="/title-fixer" element={<TitleFixer />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
