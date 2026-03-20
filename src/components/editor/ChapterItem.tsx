@@ -132,6 +132,13 @@ export default function ChapterItem({
               >
                 {chapter.title}
               </button>
+              <button
+                onClick={handleCopy}
+                className="shrink-0 p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                title="Copier le titre"
+              >
+                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+              </button>
             )}
           </div>
 
