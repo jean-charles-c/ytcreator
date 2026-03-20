@@ -1845,6 +1845,46 @@ export default function Editor() {
                               {isOpen && (
                                 <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
+                                    {/* Realign shots button — only show if shots are out of text order */}
+                                    {(() => {
+                                      const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
+                                      const positions = sceneShots
+                                        .map(sh => ({
+                                          id: sh.id,
+                                          order: sh.shot_order,
+                                          pos: sceneTextLower.indexOf((sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim()),
+                                        }))
+                                        .filter(p => p.pos >= 0);
+                                      const sorted = [...positions].sort((a, b) => a.order - b.order);
+                                      const needsRealign = sorted.some((p, i) => i > 0 && p.pos < sorted[i - 1].pos);
+                                      if (!needsRealign) return null;
+                                      return (
+                                        <button
+                                          onClick={async () => {
+                                            const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
+                                            const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
+                                            for (const u of updates) {
+                                              await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
+                                            }
+                                            // Also fix shots not found in text (keep them at end)
+                                            const fixedIds = new Set(updates.map(u => u.id));
+                                            let nextOrder = updates.length + 1;
+                                            for (const sh of sceneShots) {
+                                              if (!fixedIds.has(sh.id)) {
+                                                await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
+                                              }
+                                            }
+                                            toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte`);
+                                            loadProjectData(projectId!);
+                                          }}
+                                          className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 transition-colors min-h-[44px] sm:min-h-[36px] border border-amber-500/30"
+                                          title="Réordonner les shots selon leur position dans le texte source"
+                                        >
+                                          <ArrowUpDown className="h-3.5 w-3.5" />
+                                          <span>Réaligner</span>
+                                        </button>
+                                      );
+                                    })()}
                                     <button
                                       onClick={() => handleGenerateSceneImages(scene.id)}
                                       disabled={generatingSceneImages === scene.id}
