@@ -1387,7 +1387,7 @@ export default function Editor() {
             generatedScript={generatedScript}
             projectId={projectId}
             projectTitle={title}
-            scenes={scenes.map((s) => ({ source_text: s.source_text, title: s.title }))}
+            scenes={scenes.map((s) => ({ id: s.id, source_text: s.source_text, title: s.title }))}
             shots={shots.map((s) => ({ id: s.id, scene_id: s.scene_id, shot_order: s.shot_order, source_sentence: s.source_sentence, source_sentence_fr: s.source_sentence_fr, description: s.description }))}
             scenesForSort={scenes.map((s) => ({ id: s.id, scene_order: s.scene_order }))}
             onMusicSelected={(tracks) => setSelectedMusicTracks(tracks)}

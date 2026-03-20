@@ -19,7 +19,7 @@ interface VoiceOverStudioProps {
   generatedScript: string | null;
   projectId: string | null;
   projectTitle?: string;
-  scenes?: { source_text: string; title: string }[];
+  scenes?: { source_text: string; title: string; id: string }[];
   shots?: { id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
   /** Scenes with scene_order for sorting shots correctly */
   scenesForSort?: { id: string; scene_order: number }[];
