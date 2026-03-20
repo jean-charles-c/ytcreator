@@ -94,7 +94,8 @@ function generateXml(
   audioFileName: string,
   exportUid: string,
   markersXml: string = "",
-  musicTracks: { fileName: string; localPath: string }[] = []
+  musicTracks: { fileName: string; localPath: string }[] = [],
+  chapterTitles: { name: string; startFrame: number; endFrame: number }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
@@ -185,7 +186,64 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>
+            </track>${chapterTitles.length > 0 ? `
+            <track>
+${chapterTitles.map((ct, idx) => {
+  const dur = ct.endFrame - ct.startFrame;
+  const HANDLE = Math.round(fps * 2);
+  const fileDuration = dur + HANDLE * 2;
+  return `
+              <generatoritem id="title-${exportUid}-${idx + 1}">
+                <name>${escapeXml(ct.name)}</name>
+                <enabled>TRUE</enabled>
+                <duration>${fileDuration}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>${ct.startFrame}</start>
+                <end>${ct.endFrame}</end>
+                <in>${HANDLE}</in>
+                <out>${HANDLE + dur}</out>
+                <anamorphic>FALSE</anamorphic>
+                <pixelaspectratio>square</pixelaspectratio>
+                <effect>
+                  <name>Text</name>
+                  <effectid>Text</effectid>
+                  <effectcategory>Text</effectcategory>
+                  <effecttype>generator</effecttype>
+                  <mediatype>video</mediatype>
+                  <parameter>
+                    <parameterid>str</parameterid>
+                    <name>Text</name>
+                    <value>${escapeXml(ct.name)}</value>
+                  </parameter>
+                  <parameter>
+                    <parameterid>fontname</parameterid>
+                    <name>Font</name>
+                    <value>Arial</value>
+                  </parameter>
+                  <parameter>
+                    <parameterid>fontsize</parameterid>
+                    <name>Size</name>
+                    <valuemin>0</valuemin>
+                    <valuemax>1000</valuemax>
+                    <value>72</value>
+                  </parameter>
+                  <parameter>
+                    <parameterid>fontcolor</parameterid>
+                    <name>Font Color</name>
+                    <value>
+                      <alpha>255</alpha>
+                      <red>255</red>
+                      <green>255</green>
+                      <blue>255</blue>
+                    </value>
+                  </parameter>
+                </effect>
+                <sourcetrack>
+                  <mediatype>video</mediatype>
+                </sourcetrack>
+              </generatoritem>`;
+}).join("\n")}
+            </track>` : ""}
           </video>
           <audio>
             <track>
@@ -399,18 +457,22 @@ export async function exportTimelineToXmlZip(
     `media/${audioFileName}`,
     exportUid,
     markersXml,
-    musicFileEntries
+    musicFileEntries,
+    chapterTitleClips
   );
   zip.file("timeline.xml", xml);
 
-  // ── Generate SRT subtitle file for chapter titles ──
-  if (chapterTitleClips.length > 0) {
-    const srtContent = chapterTitleClips.map((ct, idx) => {
-      const startSec = ct.startFrame / fps;
-      const endSec = ct.endFrame / fps;
-      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${ct.name}\n`;
-    }).join("\n");
-    zip.file("chapter_titles.srt", srtContent);
+  // ── Generate SRT subtitle file with shot sentences ──
+  if (clipFrames.length > 0 && xmlSegments.length > 0) {
+    const srtContent = xmlSegments.map((seg, idx) => {
+      const frame = clipFrames[idx];
+      if (!frame) return "";
+      const startSec = frame.start / fps;
+      const endSec = frame.end / fps;
+      const text = seg.sentence || seg.sentenceFr || seg.description;
+      return `${idx + 1}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${text}\n`;
+    }).filter(Boolean).join("\n");
+    zip.file("subtitles.srt", srtContent);
   }
 
   // ── Generate ZIP ──
