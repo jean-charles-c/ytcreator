@@ -94,7 +94,8 @@ function generateXml(
   audioFileName: string,
   exportUid: string,
   markersXml: string = "",
-  musicTracks: { fileName: string; localPath: string }[] = []
+  musicTracks: { fileName: string; localPath: string }[] = [],
+  chapterTitles: { name: string; startFrame: number; endFrame: number }[] = []
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
