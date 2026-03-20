@@ -89,25 +89,28 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
       }
     }
 
-    // Check shot text order vs scene text position
+    // Check shot text order vs scene text position (compare DB shot_order against text position)
     const sceneTextLower = scene.sceneText.toLowerCase();
-    const shotPositions: { shotId: string; globalOrder: number; position: number; text: string }[] = [];
-    for (const frag of scene.fragments) {
+    const shotTextPositions: { shotId: string; globalOrder: number; localOrder: number; position: number }[] = [];
+    for (const shot of activeShots) {
+      // Find the fragment text for this shot
+      const frag = scene.fragments.find(f => f.shotId === shot.shotId);
+      if (!frag) continue;
       const fragLower = frag.text.toLowerCase().trim();
-      if (fragLower.length > 0) {
-        const pos = sceneTextLower.indexOf(fragLower);
-        shotPositions.push({ shotId: frag.shotId, globalOrder: scene.shots.find(s => s.shotId === frag.shotId)?.globalOrder ?? 0, position: pos, text: frag.text });
-      }
+      if (fragLower.length === 0) continue;
+      const pos = sceneTextLower.indexOf(fragLower);
+      shotTextPositions.push({ shotId: shot.shotId, globalOrder: shot.globalOrder, localOrder: shot.localOrder, position: pos });
     }
-    // Detect inverted shots (text appears earlier in scene but shot_order is later)
-    for (let i = 1; i < shotPositions.length; i++) {
-      if (shotPositions[i].position >= 0 && shotPositions[i - 1].position >= 0 &&
-          shotPositions[i].position < shotPositions[i - 1].position) {
+    // Sort by DB localOrder and check if text positions are consistent
+    const byLocalOrder = [...shotTextPositions].sort((a, b) => a.localOrder - b.localOrder);
+    for (let i = 1; i < byLocalOrder.length; i++) {
+      if (byLocalOrder[i].position >= 0 && byLocalOrder[i - 1].position >= 0 &&
+          byLocalOrder[i].position < byLocalOrder[i - 1].position) {
         issues.push({
           level: "critical",
           category: "structure",
           sceneOrder: scene.sceneOrder,
-          message: `Scène ${scene.sceneOrder} : les shots ${shotPositions[i - 1].globalOrder} et ${shotPositions[i].globalOrder} sont inversés par rapport à l'ordre du texte source. Régénérez les shots de cette scène.`,
+          message: `Scène ${scene.sceneOrder} : les shots ${byLocalOrder[i - 1].globalOrder} et ${byLocalOrder[i].globalOrder} sont inversés par rapport à l'ordre du texte source (shot_order DB incorrect). Régénérez les shots de cette scène.`,
         });
         break;
       }
