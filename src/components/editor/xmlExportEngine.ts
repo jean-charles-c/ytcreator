@@ -186,7 +186,64 @@ function generateXml(
             </format>
             <track>
 ${clipItems}
-            </track>
+            </track>${chapterTitles.length > 0 ? `
+            <track>
+${chapterTitles.map((ct, idx) => {
+  const dur = ct.endFrame - ct.startFrame;
+  const HANDLE = Math.round(fps * 2);
+  const fileDuration = dur + HANDLE * 2;
+  return `
+              <generatoritem id="title-${exportUid}-${idx + 1}">
+                <name>${escapeXml(ct.name)}</name>
+                <enabled>TRUE</enabled>
+                <duration>${fileDuration}</duration>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+                <start>${ct.startFrame}</start>
+                <end>${ct.endFrame}</end>
+                <in>${HANDLE}</in>
+                <out>${HANDLE + dur}</out>
+                <anamorphic>FALSE</anamorphic>
+                <pixelaspectratio>square</pixelaspectratio>
+                <effect>
+                  <name>Text</name>
+                  <effectid>Text</effectid>
+                  <effectcategory>Text</effectcategory>
+                  <effecttype>generator</effecttype>
+                  <mediatype>video</mediatype>
+                  <parameter>
+                    <parameterid>str</parameterid>
+                    <name>Text</name>
+                    <value>${escapeXml(ct.name)}</value>
+                  </parameter>
+                  <parameter>
+                    <parameterid>fontname</parameterid>
+                    <name>Font</name>
+                    <value>Arial</value>
+                  </parameter>
+                  <parameter>
+                    <parameterid>fontsize</parameterid>
+                    <name>Size</name>
+                    <valuemin>0</valuemin>
+                    <valuemax>1000</valuemax>
+                    <value>72</value>
+                  </parameter>
+                  <parameter>
+                    <parameterid>fontcolor</parameterid>
+                    <name>Font Color</name>
+                    <value>
+                      <alpha>255</alpha>
+                      <red>255</red>
+                      <green>255</green>
+                      <blue>255</blue>
+                    </value>
+                  </parameter>
+                </effect>
+                <sourcetrack>
+                  <mediatype>video</mediatype>
+                </sourcetrack>
+              </generatoritem>`;
+}).join("\n")}
+            </track>` : ""}
           </video>
           <audio>
             <track>
