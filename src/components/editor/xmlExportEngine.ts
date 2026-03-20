@@ -239,8 +239,7 @@ ${chapterTitles.map((ct, idx) => {
                   </media>
                 </file>
               </clipitem>
-            </track>
-            </track>${musicTracks.map((mt, idx) => {
+            ${musicTracks.map((mt, idx) => {
               const trackIdx = idx + 2;
               const clipId = `audio-clip-${exportUid}-music-${trackIdx}`;
               const fileId = `audio-file-${exportUid}-music-${trackIdx}`;
