@@ -320,6 +320,22 @@ export async function exportTimelineToXmlZip(
     mediaFolder.file(audioFileName, audioData);
   }
 
+  // ── Download music tracks ──
+  const musicFileEntries: { fileName: string; localPath: string }[] = [];
+  if (musicTracks && musicTracks.length > 0) {
+    for (let i = 0; i < musicTracks.length; i++) {
+      const mt = musicTracks[i];
+      onProgress?.({ phase: "audio", percent: 68 + Math.round((i / musicTracks.length) * 7), message: `Téléchargement musique ${i + 1}/${musicTracks.length}…` });
+      const ext = mt.name.split(".").pop() || "mp3";
+      const safeName = `music_${String(i + 1).padStart(2, "0")}.${ext}`;
+      const data = await fetchMedia(mt.url);
+      if (data) {
+        mediaFolder.file(safeName, data);
+        musicFileEntries.push({ fileName: mt.name, localPath: `media/${safeName}` });
+      }
+    }
+  }
+
   // ── Build clip frames ──
   let clipFrames: ClipFrame[];
   let totalFrames: number;
