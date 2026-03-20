@@ -87,13 +87,16 @@ function scanClipBlock(
   const clipItemId = idMatch ? idMatch[1] : "unknown";
   const isFusionTitle = clipItemId.startsWith("Fusion Title");
 
-  // For each reference tag, check presence
+  // Strip <file>...</file> blocks so we only detect tags at the clipitem level,
+  // not legitimate tags nested inside the file definition.
+  const blockWithoutFileContent = block.replace(/<file\s+id="[^"]*">[\s\S]*?<\/file>/g, "<!-- file-block-removed -->");
+
+  // For each reference tag, check presence at clipitem level (outside <file>)
   for (const tag of REFERENCE_TAGS) {
-    // Match opening tags (could be self-closing or have content)
     const tagRegex = new RegExp(`<${tag}([^>]*)>([\\s\\S]*?)<\\/${tag}>|<${tag}([^/]*?)\\/>`, "g");
     let match: RegExpExecArray | null;
-    while ((match = tagRegex.exec(block)) !== null) {
-      const value = (match[2] || "").trim().substring(0, 200); // cap length
+    while ((match = tagRegex.exec(blockWithoutFileContent)) !== null) {
+      const value = (match[2] || "").trim().substring(0, 200);
       refs.push({
         tag,
         value,
