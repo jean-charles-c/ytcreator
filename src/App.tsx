@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import NotFound from "./pages/NotFound";
+import TitleInjector from "./pages/TitleInjector";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/editor/:id" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+              <Route path="/title-injector" element={<TitleInjector />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
