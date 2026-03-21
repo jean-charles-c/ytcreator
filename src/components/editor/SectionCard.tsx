@@ -402,9 +402,21 @@ export default function SectionCard({
             {/* Block 2: French translation (always visible for non-FR scripts) */}
             {!isFrenchScript && (
               <div className="space-y-1 rounded border border-primary/15 bg-primary/5 p-2 sm:p-3">
-                <p className="text-[10px] font-medium text-primary uppercase tracking-wider flex items-center gap-1.5">
-                  <Languages className="h-3 w-3" /> Français
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-medium text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <Languages className="h-3 w-3" /> Français
+                  </p>
+                  {translation && !translating && onTranslate && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onTranslate(section.key)}
+                      className="h-6 text-[10px] px-2 gap-1 text-primary hover:text-primary"
+                    >
+                      <RotateCcw className="h-2.5 w-2.5" /> Retraduire
+                    </Button>
+                  )}
+                </div>
                 {translating ? (
                   <div className="flex items-center gap-2 py-4">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
