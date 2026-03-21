@@ -898,7 +898,7 @@ export default function Editor() {
   };
 
   // --- Image generation handlers ---
-  const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
+  // generatingSceneImages removed — all image gen routes through bgStartImageGen
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [galleryOpen, setGalleryOpen] = useState(false);
