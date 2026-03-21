@@ -1870,11 +1870,11 @@ export default function Editor() {
                                     })()}
                                     <button
                                       onClick={() => handleGenerateSceneImages(scene.id)}
-                                      disabled={generatingSceneImages === scene.id}
+                                      disabled={generatingAllImages}
                                       className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
                                       title="Générer les visuels de cette scène"
                                     >
-                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                                      {generatingAllImages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
                                       <span>Visuels</span>
                                     </button>
                                     <button
