@@ -968,18 +968,18 @@ export default function Editor() {
     });
   }, [projectId, subscribe]);
 
-  const handleGenerateSceneImages = async (sceneId: string) => {
-    if (generatingSceneImages) return;
-    setGeneratingSceneImages(sceneId);
-    const sceneShots = shots.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
-    let count = 0;
-    for (let i = 0; i < sceneShots.length; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 8000));
-      const url = await generateShotImage(sceneShots[i].id);
-      if (url) count++;
-    }
-    setGeneratingSceneImages(null);
-    toast.success(`${count} visuel(s) généré(s)`);
+  const handleGenerateSceneImages = (sceneId: string) => {
+    if (!projectId || generatingAllImages) return;
+    const sceneShots = shots
+      .filter((s) => s.scene_id === sceneId)
+      .sort((a, b) => a.shot_order - b.shot_order);
+    if (sceneShots.length === 0) return;
+    bgStartImageGen({
+      projectId,
+      shotIds: sceneShots.map((s) => s.id),
+      model: imageModel,
+      aspectRatio: imageAspectRatio,
+    });
   };
 
   const downloadAllImages = useCallback(async () => {
