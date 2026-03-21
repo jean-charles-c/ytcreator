@@ -919,38 +919,14 @@ export default function Editor() {
     { value: "3:2", label: "3:2 (Photo)" },
   ];
 
-  const generateShotImage = async (shotId: string): Promise<string | null> => {
-    try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ shot_id: shotId, model: imageModel, aspect_ratio: imageAspectRatio }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
-      if (data.image_url) {
-        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url, generation_cost: data.generation_cost ?? s.generation_cost } : s)));
-        return data.image_url;
-      }
-      return null;
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Erreur de génération d'image");
-      return null;
-    }
-  };
-
   const handleGenerateShotImage = async (shotId: string) => {
-    const url = await generateShotImage(shotId);
-    if (url) toast.success("Visuel généré");
+    if (!projectId || generatingAllImages) return;
+    bgStartImageGen({
+      projectId,
+      shotIds: [shotId],
+      model: imageModel,
+      aspectRatio: imageAspectRatio,
+    });
   };
 
   const imageGenTask = getTask(projectId ?? "", "image-gen");
