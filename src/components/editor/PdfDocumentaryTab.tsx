@@ -166,7 +166,7 @@ export default function PdfDocumentaryTab({
   const [scriptOpen, setScriptOpen] = useState(false);
   const [findingTension, setFindingTension] = useState(false);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(["hook"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
   const [sections, setSections] = useState<NarrativeSection[]>(() => parseScriptIntoSections(script || ""));
   const [sectionHistory, setSectionHistory] = useState<Record<string, SectionHistoryEntry[]>>({});
   const [sectionTranslations, setSectionTranslations] = useState<Record<string, string>>({});
