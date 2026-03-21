@@ -898,7 +898,7 @@ export default function Editor() {
   };
 
   // --- Image generation handlers ---
-  const [generatingSceneImages, setGeneratingSceneImages] = useState<string | null>(null);
+  // generatingSceneImages removed — all image gen routes through bgStartImageGen
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -919,38 +919,14 @@ export default function Editor() {
     { value: "3:2", label: "3:2 (Photo)" },
   ];
 
-  const generateShotImage = async (shotId: string): Promise<string | null> => {
-    try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ shot_id: shotId, model: imageModel, aspect_ratio: imageAspectRatio }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
-      if (data.image_url) {
-        setShots((prev) => prev.map((s) => (s.id === shotId ? { ...s, image_url: data.image_url, generation_cost: data.generation_cost ?? s.generation_cost } : s)));
-        return data.image_url;
-      }
-      return null;
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Erreur de génération d'image");
-      return null;
-    }
-  };
-
   const handleGenerateShotImage = async (shotId: string) => {
-    const url = await generateShotImage(shotId);
-    if (url) toast.success("Visuel généré");
+    if (!projectId || generatingAllImages) return;
+    bgStartImageGen({
+      projectId,
+      shotIds: [shotId],
+      model: imageModel,
+      aspectRatio: imageAspectRatio,
+    });
   };
 
   const imageGenTask = getTask(projectId ?? "", "image-gen");
@@ -992,18 +968,18 @@ export default function Editor() {
     });
   }, [projectId, subscribe]);
 
-  const handleGenerateSceneImages = async (sceneId: string) => {
-    if (generatingSceneImages) return;
-    setGeneratingSceneImages(sceneId);
-    const sceneShots = shots.filter((s) => s.scene_id === sceneId).sort((a, b) => a.shot_order - b.shot_order);
-    let count = 0;
-    for (let i = 0; i < sceneShots.length; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 8000));
-      const url = await generateShotImage(sceneShots[i].id);
-      if (url) count++;
-    }
-    setGeneratingSceneImages(null);
-    toast.success(`${count} visuel(s) généré(s)`);
+  const handleGenerateSceneImages = (sceneId: string) => {
+    if (!projectId || generatingAllImages) return;
+    const sceneShots = shots
+      .filter((s) => s.scene_id === sceneId)
+      .sort((a, b) => a.shot_order - b.shot_order);
+    if (sceneShots.length === 0) return;
+    bgStartImageGen({
+      projectId,
+      shotIds: sceneShots.map((s) => s.id),
+      model: imageModel,
+      aspectRatio: imageAspectRatio,
+    });
   };
 
   const downloadAllImages = useCallback(async () => {
@@ -1894,11 +1870,11 @@ export default function Editor() {
                                     })()}
                                     <button
                                       onClick={() => handleGenerateSceneImages(scene.id)}
-                                      disabled={generatingSceneImages === scene.id}
+                                      disabled={generatingAllImages}
                                       className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
                                       title="Générer les visuels de cette scène"
                                     >
-                                      {generatingSceneImages === scene.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                                      {generatingAllImages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
                                       <span>Visuels</span>
                                     </button>
                                     <button
