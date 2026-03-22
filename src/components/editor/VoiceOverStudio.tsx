@@ -116,6 +116,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const currentShotScript = buildScriptFromCurrentShots();
     if (currentShotScript) {
       setVoScript(currentShotScript);
+      setUserEditedScript(false);
       toast.success("Script VO reconstruit depuis les shots actuels");
       return;
     }
