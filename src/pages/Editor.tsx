@@ -501,9 +501,10 @@ export default function Editor() {
     const unsubs: (() => void)[] = [];
 
     unsubs.push(subscribe(projectId, "segmentation", async (task) => {
-      if (task.status === "done") {
+      if (task.status === "done" || task.status === "error") {
+        // Always try to fetch scenes from DB — even on error, the server may have saved results
         const { data: sceneData } = await supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order", { ascending: true });
-        if (sceneData) {
+        if (sceneData && sceneData.length > 0) {
           if (scenes.length > 0) {
             setSceneVersions((prev) => {
               const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
@@ -520,8 +521,11 @@ export default function Editor() {
             setCurrentSceneVersionId(1);
           }
           setScenes(sceneData);
+          setShots([]);
+          if (task.status === "error") {
+            toast.info(`${sceneData.length} scènes récupérées malgré l'erreur.`);
+          }
         }
-        setShots([]);
       }
     }));
 
@@ -550,13 +554,18 @@ export default function Editor() {
   // Segment narration (delegates to background)
   const runSegmentation = useCallback(async () => {
     if (!projectId) return;
+    // Prevent double-launch if already running
+    if (getTask(projectId, "segmentation")?.status === "running") {
+      setActiveTab("segmentation");
+      return;
+    }
     if (narration.trim()) {
       await supabase.from("projects").update({ narration: narration.trim() }).eq("id", projectId);
     }
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
     bgStartSegmentation({ projectId });
-  }, [projectId, narration, bgStartSegmentation]);
+  }, [projectId, narration, bgStartSegmentation, getTask]);
 
   const stopSegmentation = useCallback(() => {
     if (projectId) stopTask(projectId, "segmentation");

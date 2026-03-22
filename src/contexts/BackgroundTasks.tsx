@@ -310,6 +310,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
   // ─── Segmentation ──────────────────────────────────────────────────
   const startSegmentation = useCallback((params: SegmentationParams) => {
     const key = taskKey(params.projectId, "segmentation");
+    // Skip if already running
+    if (tasks[key]?.status === "running") return;
     abortControllers.current[key]?.abort();
 
     const ac = new AbortController();
