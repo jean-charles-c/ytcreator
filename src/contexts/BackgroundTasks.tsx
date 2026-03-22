@@ -657,6 +657,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
       type: "image-gen",
       status: "running",
       completedShots: 0,
+      successShots: 0,
       totalShots: total,
     });
 
