@@ -55,6 +55,7 @@ interface PlayerState {
 
 export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort, onMusicSelected }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
+  const [userEditedScript, setUserEditedScript] = useState(false);
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [generating, setGenerating] = useState(false);
   const [customFileName, setCustomFileName] = useState("");
@@ -115,6 +116,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const currentShotScript = buildScriptFromCurrentShots();
     if (currentShotScript) {
       setVoScript(currentShotScript);
+      setUserEditedScript(false);
       toast.success("Script VO reconstruit depuis les shots actuels");
       return;
     }
@@ -126,12 +128,14 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
         if (sceneTexts.length > 0) {
           setVoScript(stripThousandSeparators(sceneTexts.join("\n\n")));
+          setUserEditedScript(false);
           toast.success("Script généré collé (structure par scènes)");
           return;
         }
       }
       // Fallback: use the generated script directly
       setVoScript(stripThousandSeparators(generatedScript));
+      setUserEditedScript(false);
       toast.success("Script généré collé");
       return;
     }
@@ -142,6 +146,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       return;
     }
     setVoScript(stripThousandSeparators(source));
+    setUserEditedScript(false);
     toast.success("Narration collée");
   };
 
@@ -219,14 +224,21 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
-      // Try to align with shots for precise sync; fall back to standard mode if not possible
+      // If user manually edited the textarea, force standard mode (no shot sync)
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
-      const shotSentences = buildShotSentences();
-      const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
-      const useMarkedSync = syncValidation.ok && shotSentences && shotSentences.length > 0;
+      let useMarkedSync = false;
+      let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
-      if (!useMarkedSync && expectedShotIds.length > 0 && shotSentences && shotSentences.length > 0) {
-        console.warn("Shot sync validation failed, falling back to standard mode:", syncValidation.errors);
+      if (!userEditedScript) {
+        shotSentences = buildShotSentences();
+        const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
+        useMarkedSync = syncValidation.ok && shotSentences != null && shotSentences.length > 0;
+
+        if (!useMarkedSync && expectedShotIds.length > 0 && shotSentences && shotSentences.length > 0) {
+          console.warn("Shot sync validation failed, falling back to standard mode:", syncValidation.errors);
+        }
+      } else {
+        console.info("User edited script detected — using standard TTS mode (no shot sync).");
       }
 
       const response = await fetch(
@@ -398,7 +410,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                       Paramètres de voix
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent forceMount className="data-[state=closed]:hidden">
                     <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader onActiveProfileChange={setActiveProfileName} />
                   </AccordionContent>
                 </AccordionItem>
@@ -453,7 +465,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 <Textarea
                   id="vo-script"
                   value={voScript}
-                  onChange={(e) => setVoScript(e.target.value)}
+                  onChange={(e) => { setVoScript(e.target.value); setUserEditedScript(true); }}
                   placeholder="Collez ou saisissez votre texte narratif ici..."
                   className="min-h-[200px] sm:min-h-[250px] lg:min-h-[220px] text-sm leading-relaxed resize-y font-body"
                   aria-label="Script narratif pour la voix off"
