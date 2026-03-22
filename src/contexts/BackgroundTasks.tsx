@@ -32,6 +32,7 @@ export interface BackgroundTask {
   exportProgress?: ExportProgress;
   /** Image gen progress */
   completedShots?: number;
+  successShots?: number;
   totalShots?: number;
 }
 
