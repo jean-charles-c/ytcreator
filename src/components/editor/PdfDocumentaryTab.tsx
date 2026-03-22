@@ -294,7 +294,7 @@ export default function PdfDocumentaryTab({
         setSections(parseScriptIntoSections(""));
       } else {
         // Auto-parse if tagged script detected (V3 tags like [[HOOK]], [[ACT1]], etc.)
-        const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]/i.test(scriptStr);
+        const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]/i.test(scriptStr);
         if (hasV3Tags) {
           setSections(parseScriptIntoSections(scriptStr));
         }
@@ -694,7 +694,7 @@ export default function PdfDocumentaryTab({
 
     return raw
       // Strip all [[TAG]] markers (e.g. [[HOOK]], [[PROMISE]], [[ACT1]], etc.)
-      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
+      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]\s*/gi, "")
       .split("\n")
       .filter((line) => {
         const t = line.trim();

@@ -13,7 +13,7 @@ export interface ParsedSection {
 export interface TagParseResult {
   /** Whether [[TAG]] markers were found and used */
   tagged: boolean;
-  /** 9 sections in canonical order, empty string if missing */
+  /** 13 sections in canonical order, empty string if missing */
   sections: ParsedSection[];
   /** Keys of sections that had no content */
   emptySections: SectionType[];
@@ -21,20 +21,34 @@ export interface TagParseResult {
   preamble: string;
 }
 
-/** Ordered tag keys for regex */
-const TAG_KEYS = SECTION_TYPES.map((t) => t.toUpperCase());
+/** Ordered tag keys for regex — handles space-separated tags like STYLE CHECK */
+const TAG_PATTERNS = SECTION_TYPES.map((t) => {
+  const tag = SECTION_TAGS[t];
+  // Extract inner content between [[ and ]]
+  return tag.slice(2, -2);
+});
 const TAG_REGEX = new RegExp(
-  `\\[\\[(${TAG_KEYS.join("|")})\\]\\]`,
+  `\\[\\[(${TAG_PATTERNS.map(p => p.replace(/\s+/g, "\\s+")).join("|")})\\]\\]`,
   "gi"
 );
 
 /**
- * Parse a tagged script into 9 canonical sections.
+ * Parse a tagged script into 13 canonical sections.
  * - Deterministic: regex only, zero AI.
  * - Strips tags from content.
  * - Preserves all text between tags verbatim.
  * - Also strips residual `<plan>...</plan>` blocks.
  */
+
+/** Map tag inner text (e.g. "STYLE CHECK") to SectionType key (e.g. "style_check") */
+function tagToKey(tagInner: string): SectionType | null {
+  const normalized = tagInner.trim().toLowerCase().replace(/\s+/g, "_");
+  if ((SECTION_TYPES as readonly string[]).includes(normalized)) {
+    return normalized as SectionType;
+  }
+  return null;
+}
+
 export function parseTaggedScript(raw: string): TagParseResult {
   if (!raw || !raw.trim()) {
     return {
@@ -66,7 +80,8 @@ export function parseTaggedScript(raw: string): TagParseResult {
   // Extract content between consecutive tags
   const extracted = new Map<string, string>();
   for (let i = 0; i < matches.length; i++) {
-    const tagKey = matches[i][1].toLowerCase();
+    const tagKey = tagToKey(matches[i][1]);
+    if (!tagKey) continue;
     const contentStart = matches[i].index! + matches[i][0].length;
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
     const content = cleaned.slice(contentStart, contentEnd).trim();

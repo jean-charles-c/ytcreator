@@ -2,8 +2,12 @@
  * CanonicalScript — Modèle de données stable pour un script narratif
  * segmenté, versionnable et traduisible.
  *
+ * V4 — NarrativeEngineExpert : 13 blocs
+ *   • NarrativeCoreBlocks  (1-10) : script principal
+ *   • EditorialAssistBlocks (11-13) : assistance éditoriale optionnelle
+ *
  * Règles :
- * - Les 7 sections sont fixes et ordonnées par `order`.
+ * - Les sections sont fixes et ordonnées par `order`.
  * - `originalText`  = texte brut issu de la segmentation IA (immutable après segmentation).
  * - `editedText`    = version courante éditée par l'utilisateur (null = pas encore touché).
  * - `translatedFR`  = traduction FR non destructive (null = pas encore traduite).
@@ -11,47 +15,77 @@
  * - `currentDisplayText()` = helper pour obtenir le texte affiché (editedText ?? originalText).
  */
 
-/* ── Section types (enum-like) ─────────────────────── */
+/* ── Section types ─────────────────────────────────── */
 
-export const SECTION_TYPES = [
+/** Core narrative blocks (1-10) — the actual script */
+export const CORE_SECTION_TYPES = [
   "hook",
   "context",
   "promise",
   "act1",
   "act2",
+  "act2b",
   "act3",
   "climax",
   "insight",
   "conclusion",
 ] as const;
 
+/** Editorial assist blocks (11-13) — optional quality layer */
+export const EDITORIAL_SECTION_TYPES = [
+  "transitions",
+  "style_check",
+  "risk_check",
+] as const;
+
+/** All 13 section types */
+export const SECTION_TYPES = [
+  ...CORE_SECTION_TYPES,
+  ...EDITORIAL_SECTION_TYPES,
+] as const;
+
+export type CoreSectionType = (typeof CORE_SECTION_TYPES)[number];
+export type EditorialSectionType = (typeof EDITORIAL_SECTION_TYPES)[number];
 export type SectionType = (typeof SECTION_TYPES)[number];
+
+/** Helper to check if a section is editorial */
+export function isEditorialSection(type: SectionType): boolean {
+  return (EDITORIAL_SECTION_TYPES as readonly string[]).includes(type);
+}
 
 /** Tag markers used inside the generated script */
 export const SECTION_TAGS: Record<SectionType, string> = {
-  hook:       "[[HOOK]]",
-  context:    "[[CONTEXT]]",
-  promise:    "[[PROMISE]]",
-  act1:       "[[ACT1]]",
-  act2:       "[[ACT2]]",
-  act3:       "[[ACT3]]",
-  climax:     "[[CLIMAX]]",
-  insight:    "[[INSIGHT]]",
-  conclusion: "[[CONCLUSION]]",
+  hook:         "[[HOOK]]",
+  context:      "[[CONTEXT]]",
+  promise:      "[[PROMISE]]",
+  act1:         "[[ACT1]]",
+  act2:         "[[ACT2]]",
+  act2b:        "[[ACT2B]]",
+  act3:         "[[ACT3]]",
+  climax:       "[[CLIMAX]]",
+  insight:      "[[INSIGHT]]",
+  conclusion:   "[[CONCLUSION]]",
+  transitions:  "[[TRANSITIONS]]",
+  style_check:  "[[STYLE CHECK]]",
+  risk_check:   "[[RISK CHECK]]",
 };
 
 /* ── Section metadata (labels & icons, display only) ── */
 
-export const SECTION_META: Record<SectionType, { label: string; icon: string }> = {
-  hook:       { label: "Hook",                icon: "🎣" },
-  context:    { label: "Context",             icon: "📖" },
-  promise:    { label: "Promise",             icon: "🎯" },
-  act1:       { label: "Act 1 — Setup",       icon: "🏗️" },
-  act2:       { label: "Act 2 — Escalade",    icon: "⚡" },
-  act3:       { label: "Act 3 — Impact",      icon: "🔥" },
-  climax:     { label: "Climax",              icon: "💡" },
-  insight:    { label: "Insight",             icon: "🧠" },
-  conclusion: { label: "Conclusion",          icon: "🎬" },
+export const SECTION_META: Record<SectionType, { label: string; icon: string; editorial?: boolean }> = {
+  hook:         { label: "Hook",                       icon: "🎣" },
+  context:      { label: "Context",                    icon: "📖" },
+  promise:      { label: "Promise",                    icon: "🎯" },
+  act1:         { label: "Act 1 — Setup",              icon: "🏗️" },
+  act2:         { label: "Act 2 — Escalade",           icon: "⚡" },
+  act2b:        { label: "Act 2B — Contre-point",      icon: "🔀" },
+  act3:         { label: "Act 3 — Impact",             icon: "🔥" },
+  climax:       { label: "Climax",                     icon: "💡" },
+  insight:      { label: "Insight",                    icon: "🧠" },
+  conclusion:   { label: "Conclusion",                 icon: "🎬" },
+  transitions:  { label: "Transitions",                icon: "🔗", editorial: true },
+  style_check:  { label: "Style Check",                icon: "🎨", editorial: true },
+  risk_check:   { label: "Risk Check",                 icon: "⚠️", editorial: true },
 };
 
 /* ── History entry ─────────────────────────────────── */
@@ -70,7 +104,7 @@ export interface SectionHistoryEntry {
 export interface CanonicalSection {
   /** Fixed section identifier */
   type: SectionType;
-  /** Explicit render order (0-6) */
+  /** Explicit render order (0-12) */
   order: number;
   /** Original text from AI segmentation (immutable after initial parse) */
   originalText: string;
@@ -93,7 +127,7 @@ export type SegmentationStatus =
 /* ── Global canonical script ───────────────────────── */
 
 export interface CanonicalScript {
-  /** The 7 fixed narrative sections, always ordered by `order` */
+  /** The 13 fixed narrative sections, always ordered by `order` */
   sections: CanonicalSection[];
 
   /** Full reassembled source text (kept for reference / re-segmentation) */
@@ -115,7 +149,7 @@ export interface CanonicalScript {
 
 /* ── Factory ───────────────────────────────────────── */
 
-/** Create an empty CanonicalScript with all 7 sections initialized */
+/** Create an empty CanonicalScript with all 13 sections initialized */
 export function createEmptyCanonicalScript(): CanonicalScript {
   return {
     sections: SECTION_TYPES.map((type, order) => ({
@@ -140,9 +174,10 @@ export function getDisplayText(section: CanonicalSection): string {
   return section.editedText ?? section.originalText;
 }
 
-/** Reassemble all display texts into a single script string */
+/** Reassemble all display texts into a single script string (core blocks only) */
 export function reassembleCanonical(cs: CanonicalScript): string {
   return cs.sections
+    .filter((s) => !isEditorialSection(s.type))
     .filter((s) => getDisplayText(s).trim())
     .map((s) => getDisplayText(s).trim())
     .join("\n\n");

@@ -11,29 +11,40 @@ export interface NarrativeSection {
   content: string;
 }
 
-/** Fixed narrative structure — order matters */
+/** Core narrative blocks (1-10) — the actual script */
 export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "hook", label: "Hook", icon: "🎣" },
   { key: "context", label: "Context", icon: "📖" },
   { key: "promise", label: "Promise", icon: "🎯" },
   { key: "act1", label: "Act 1 — Setup", icon: "🏗️" },
   { key: "act2", label: "Act 2 — Escalade", icon: "⚡" },
+  { key: "act2b", label: "Act 2B — Contre-point", icon: "🔀" },
   { key: "act3", label: "Act 3 — Impact", icon: "🔥" },
   { key: "climax", label: "Climax", icon: "💡" },
   { key: "insight", label: "Insight", icon: "🧠" },
   { key: "conclusion", label: "Conclusion", icon: "🎬" },
 ];
 
+/** Editorial assist blocks (11-13) — optional quality layer */
+export const EDITORIAL_SECTIONS: { key: string; label: string; icon: string }[] = [
+  { key: "transitions", label: "Transitions", icon: "🔗" },
+  { key: "style_check", label: "Style Check", icon: "🎨" },
+  { key: "risk_check", label: "Risk Check", icon: "⚠️" },
+];
+
+/** All 13 sections for parsing */
+export const ALL_SECTIONS = [...NARRATIVE_SECTIONS, ...EDITORIAL_SECTIONS];
+
 export function parseScriptIntoSections(script: string): NarrativeSection[] {
   if (!script || !script.trim()) {
-    return NARRATIVE_SECTIONS.map((s) => ({ ...s, content: "" }));
+    return ALL_SECTIONS.map((s) => ({ ...s, content: "" }));
   }
 
   // V3: Use deterministic tag parser (priority path)
   const parsed = parseTaggedScript(script);
 
   if (parsed.tagged) {
-    return NARRATIVE_SECTIONS.map((s) => ({
+    return ALL_SECTIONS.map((s) => ({
       ...s,
       content: parsed.sections.find((seg) => seg.key === s.key)?.content || "",
     }));
@@ -63,16 +74,16 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
       }
     }
 
-    return NARRATIVE_SECTIONS.map((s) => ({
+    return ALL_SECTIONS.map((s) => ({
       ...s,
       content: segments.find((seg) => seg.key === s.key)?.content || "",
     }));
   }
 
-  // Final fallback: proportional split
+  // Final fallback: proportional split (core blocks only)
   const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
   const total = paragraphs.length;
-  const ratios = [0.08, 0.08, 0.06, 0.18, 0.25, 0.15, 0.10, 0.05, 0.05];
+  const ratios = [0.02, 0.10, 0.05, 0.15, 0.20, 0.10, 0.15, 0.08, 0.05, 0.04];
   const counts = ratios.map((r) => Math.max(1, Math.round(r * total)));
 
   let sum = counts.reduce((a, b) => a + b, 0);
@@ -87,10 +98,14 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   }
 
   let offset = 0;
-  return NARRATIVE_SECTIONS.map((s, i) => {
-    const sectionParas = paragraphs.slice(offset, offset + counts[i]);
-    offset += counts[i];
-    return { ...s, content: sectionParas.join("\n\n") };
+  // Only assign to core narrative sections for fallback
+  return ALL_SECTIONS.map((s, i) => {
+    if (i < NARRATIVE_SECTIONS.length) {
+      const sectionParas = paragraphs.slice(offset, offset + counts[i]);
+      offset += counts[i];
+      return { ...s, content: sectionParas.join("\n\n") };
+    }
+    return { ...s, content: "" };
   });
 }
 
@@ -100,11 +115,15 @@ function resolveKey(headerText: string): string {
   if (/promise/i.test(headerText)) return "promise";
   if (/introduction/i.test(headerText)) return "context";
   if (/act\s*1|setup/i.test(headerText)) return "act1";
+  if (/act\s*2\s*b|contre.?point/i.test(headerText)) return "act2b";
   if (/act\s*2|escalade/i.test(headerText)) return "act2";
   if (/act\s*3/i.test(headerText)) return "act3";
   if (/climax|révélation|revelation/i.test(headerText)) return "climax";
   if (/insight/i.test(headerText)) return "insight";
   if (/conclusion/i.test(headerText)) return "conclusion";
+  if (/transition/i.test(headerText)) return "transitions";
+  if (/style\s*check/i.test(headerText)) return "style_check";
+  if (/risk\s*check/i.test(headerText)) return "risk_check";
   return "act2";
 }
 
@@ -176,15 +195,19 @@ export interface SectionHistoryEntry {
 /* ── Visual hierarchy per section type ─────────────── */
 
 const SECTION_ACCENTS: Record<string, { border: string; bg: string; badge: string }> = {
-  hook:       { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
-  context:    { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
-  promise:    { border: "border-l-cyan-500",    bg: "bg-cyan-500/5",    badge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400" },
-  act1:       { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
-  act2:       { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
-  act3:       { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
-  climax:     { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
-  insight:    { border: "border-l-teal-500",    bg: "bg-teal-500/5",    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400" },
-  conclusion: { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
+  hook:         { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+  context:      { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
+  promise:      { border: "border-l-cyan-500",    bg: "bg-cyan-500/5",    badge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400" },
+  act1:         { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
+  act2:         { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
+  act2b:        { border: "border-l-purple-500",  bg: "bg-purple-500/5",  badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400" },
+  act3:         { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
+  climax:       { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  insight:      { border: "border-l-teal-500",    bg: "bg-teal-500/5",    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400" },
+  conclusion:   { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
+  transitions:  { border: "border-l-slate-400",   bg: "bg-slate-400/5",   badge: "bg-slate-400/10 text-slate-600 dark:text-slate-400" },
+  style_check:  { border: "border-l-pink-400",    bg: "bg-pink-400/5",    badge: "bg-pink-400/10 text-pink-600 dark:text-pink-400" },
+  risk_check:   { border: "border-l-yellow-500",  bg: "bg-yellow-500/5",  badge: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" },
 };
 
 const DEFAULT_ACCENT = { border: "border-l-border", bg: "", badge: "bg-muted text-muted-foreground" };
@@ -204,11 +227,13 @@ interface SectionCardProps {
   onTranslate?: (key: string) => void;
   showTranslation?: boolean;
   scriptLanguage?: string;
+  /** If true, renders with editorial assist styling */
+  editorial?: boolean;
 }
 
 export default function SectionCard({
   section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating,
-  history, onRestore, translation, translating, onTranslate, scriptLanguage,
+  history, onRestore, translation, translating, onTranslate, scriptLanguage, editorial,
 }: SectionCardProps) {
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
