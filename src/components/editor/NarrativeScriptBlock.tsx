@@ -266,13 +266,13 @@ export default function NarrativeScriptBlock({
               {analyzingScript && (
                 <div className="flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5 mb-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Analyse narrative en cours — identification des 7 sections…</p>
+                  <p className="text-sm text-muted-foreground">Analyse narrative en cours — identification des sections…</p>
                 </div>
               )}
 
-              {/* SectionCards — modular narrative view */}
+              {/* Core narrative sections (1-10) */}
               <div className="space-y-2">
-                {sections.map((section, idx) => (
+                {sections.filter((s) => !isEditorialSection(s.key as any)).map((section, idx) => (
                   <SectionCard
                     key={section.key}
                     section={section}
@@ -292,6 +292,49 @@ export default function NarrativeScriptBlock({
                   />
                 ))}
               </div>
+
+              {/* Editorial assist blocks (11-13) — collapsible */}
+              {(() => {
+                const editorialWithContent = sections.filter(
+                  (s) => isEditorialSection(s.key as any) && s.content.trim()
+                );
+                if (editorialWithContent.length === 0) return null;
+                return (
+                  <Collapsible className="mt-4">
+                    <CollapsibleTrigger className="w-full rounded-lg border border-dashed border-border bg-card/50 p-3 flex items-center justify-between hover:bg-secondary/20 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Assistance éditoriale ({editorialWithContent.length} bloc{editorialWithContent.length > 1 ? "s" : ""})
+                        </span>
+                      </div>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-2">
+                      {editorialWithContent.map((section, idx) => (
+                        <SectionCard
+                          key={section.key}
+                          section={section}
+                          index={idx}
+                          isOpen={openSections.has(section.key)}
+                          onToggle={() => onSectionToggle(section.key)}
+                          onContentChange={onSectionContentChange}
+                          onRegenerate={onRegenerateSection}
+                          regenerating={regeneratingSection === section.key}
+                          history={sectionHistory[section.key] || []}
+                          onRestore={onRestoreSection}
+                          translation={sectionTranslations[section.key] || null}
+                          translating={translatingSections.has(section.key)}
+                          onTranslate={onTranslateSection}
+                          showTranslation={!!sectionTranslations[section.key]}
+                          scriptLanguage={scriptLanguage}
+                          editorial
+                        />
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })()}
               <div ref={scriptEndRef} />
             </>
           )}
