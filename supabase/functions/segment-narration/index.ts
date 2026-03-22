@@ -613,7 +613,7 @@ serve(async (req) => {
 
     const narrationText = project.narration.trim()
       // Strip all [[TAG]] section markers that may remain from script generation
-      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
+      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]\s*/gi, "")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
     const scriptLanguage = project.script_language || "en";

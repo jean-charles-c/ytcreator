@@ -694,7 +694,7 @@ export default function PdfDocumentaryTab({
 
     return raw
       // Strip all [[TAG]] markers (e.g. [[HOOK]], [[PROMISE]], [[ACT1]], etc.)
-      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
+      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]\s*/gi, "")
       .split("\n")
       .filter((line) => {
         const t = line.trim();
