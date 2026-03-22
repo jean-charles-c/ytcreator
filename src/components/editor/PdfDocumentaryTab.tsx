@@ -294,7 +294,7 @@ export default function PdfDocumentaryTab({
         setSections(parseScriptIntoSections(""));
       } else {
         // Auto-parse if tagged script detected (V3 tags like [[HOOK]], [[ACT1]], etc.)
-        const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]/i.test(scriptStr);
+        const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]/i.test(scriptStr);
         if (hasV3Tags) {
           setSections(parseScriptIntoSections(scriptStr));
         }
