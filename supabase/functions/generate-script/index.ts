@@ -216,10 +216,15 @@ You are NOT translating from English. You are THINKING and WRITING directly in $
 - Over-literal rendering of English rhetorical effects (e.g., translating "Let that sink in" word-for-word).
 - Academic or written-language constructions in what should be spoken narration.
 
-### StyleAdapter
+### StyleAdapter — Per-Block Tonal Modulation
+
 ${styleInstruction}
 
-The style is an EXPRESSIVE LAYER — it modulates tone, rhythm, and vocabulary. It must NEVER weaken the narrative structure, dilute factual precision, or replace argumentation with decoration.
+CRITICAL STYLE RULES:
+1. The style is an EXPRESSIVE LAYER — it modulates tone, rhythm, and vocabulary. It must NEVER weaken the narrative structure, dilute factual precision, or replace argumentation with decoration.
+2. VARY the style intensity per block: the HOOK and CLIMAX can be more stylistically charged; ACT2 (analytical core) must remain substance-first regardless of style.
+3. TONAL CONSISTENCY: the style must feel like ONE voice throughout — not 13 different authors. Variations in intensity are fine; contradictions in tone are not.
+4. STYLE ≠ QUALITY SUBSTITUTE: a "dramatic" style does NOT excuse vague claims. A "humorous" style does NOT excuse shallow analysis. A "documentary" style does NOT excuse empty atmosphere. Every stylistic choice must CARRY analytical content.
 
 ---
 
