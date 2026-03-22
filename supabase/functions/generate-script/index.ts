@@ -662,13 +662,68 @@ This is a voice-over script meant to be READ ALOUD. Sentence length must serve o
 - NEVER use vague placeholder attributions: "experts say", "studies show", "scientists believe" — unless a specific expert or study is named in the source.
 - NUMBER FORMATTING: NEVER use commas or dots as thousands separators. Write numbers ≥1000 WITHOUT any separator: 1000, 15000, 2000000.
 
-### 4. NARRATIVE FLOW (NarrativeCoherenceLayer)
-The script must feel like a STORY unfolding, not a report being delivered.
-- NEVER enumerate facts in sequence ("First… Second… Third…").
-- Every fact must be CONNECTED to what comes before and after via cause-and-effect, tension, surprise, or consequence.
-- Pattern: FACT → IMPLICATION → TENSION → REVEAL.
-- Transitions must be organic and story-driven, never mechanical ("Let's now turn to…", "Moving on…").
-- The NarrativeCoherenceLayer ensures: each block's ENDING sets up the NEXT block's BEGINNING. No block exists in isolation.
+### 4. NARRATIVE COHERENCE LAYER (NarrativeCoherenceLayer)
+
+The 10 core blocks must function as a SINGLE CONTINUOUS MOVEMENT, not a collection of independent sections. The tags are invisible to the viewer — what they hear is one uninterrupted story.
+
+#### A. MANDATORY THREAD CONNECTIONS
+
+Each pair of consecutive blocks has a SPECIFIC narrative contract:
+
+1. **HOOK → CONTEXT**: The hook creates cognitive friction; the context GROUNDS that friction in reality. The context must directly address the "why is this surprising?" question the hook implicitly raised.
+
+2. **CONTEXT → PROMISE**: The context establishes complexity; the promise channels that complexity into ANTICIPATION. The promise must reference something SPECIFIC from the context and redirect it forward.
+
+3. **PROMISE → ACT1**: The promise creates open loops; ACT1 must begin ANSWERING one of those loops immediately. No gap between "here's what we'll discover" and "here's where it started."
+
+4. **ACT1 → ACT2**: ACT1 establishes an initial state; ACT2 must show that state CHANGING. The last paragraph of ACT1 must create a pull: "something doesn't add up" → ACT2 investigates what.
+
+5. **ACT2 → ACT2B**: ACT2 builds apparent clarity; ACT2B must DISRUPT it. The transition should feel like: "We thought we understood, but…"
+
+6. **ACT2B → ACT3**: The complication in ACT2B must produce VISIBLE CONSEQUENCES in ACT3. ACT2B cannot introduce a paradox that ACT3 ignores.
+
+7. **ACT3 → CLIMAX**: ACT3 builds maximum tension; the CLIMAX must RESOLVE it. The viewer must feel the transition as inevitable — "everything was leading here."
+
+8. **CLIMAX → INSIGHT**: The climax resolves the narrative; the insight extracts what it MEANS. The insight must feel like a natural consequence of the climax, not a separate thought.
+
+9. **INSIGHT → CONCLUSION**: The insight is intellectual; the conclusion is SENSORY/EMOTIONAL. Together they provide closure on two planes.
+
+#### B. HOOK-CLIMAX ARC (the narrative contract)
+
+This is the SPINE of the entire script:
+- The HOOK poses a tension, contradiction, or mystery.
+- Everything between CONTEXT and ACT3 explores, complicates, and deepens that tension.
+- The CLIMAX explicitly RESOLVES or REFRAMES the hook's tension.
+- If the climax does not address the hook, the narrative contract is BROKEN.
+
+During the planning phase, you MUST explicitly state: "The hook's tension is [X]. The climax will resolve it by [Y]."
+
+#### C. ANTI-REDUNDANCY RULES
+
+Redundancy is the primary enemy of narrative momentum. Enforce these rules:
+
+1. **CONTEXT ≠ PROMISE**: Context provides FACTS about the subject. Promise creates ANTICIPATION about the journey. If you find yourself repeating context information in the promise, you're doing it wrong.
+
+2. **ACT2 ≠ ACT2B**: ACT2 builds the thesis. ACT2B CHALLENGES it. If ACT2B could be inserted into ACT2 without disruption, it has failed its mission.
+
+3. **CLIMAX ≠ CONCLUSION**: The climax is the CONVERGENCE (intellectual resolution). The conclusion is the RESONANCE (lasting impression). If the conclusion restates the climax's content, it must be rewritten as a concrete closing image instead.
+
+4. **INSIGHT ≠ CLIMAX RESTATEMENT**: The insight must add a NEW LAYER of meaning that goes BEYOND what the climax established. If the insight just rephrases the climax, it's redundant.
+
+5. **CROSS-SCRIPT DEDUP**: No sentence in the script should express the same idea as another sentence elsewhere. Each sentence must advance understanding — if removing it loses nothing, it shouldn't exist.
+
+#### D. PROGRESSIVE ENGAGEMENT CURVE
+
+The script must follow this emotional/intellectual trajectory:
+- **HOOK-PROMISE** (0-7%): HIGH engagement — curiosity spike, "I need to keep watching"
+- **ACT1** (7-22%): GROUNDING — engagement dips slightly as we set foundations, but FIRST TENSION maintains interest
+- **ACT2** (22-42%): BUILDING — steady escalation through reveals and evidence hierarchy
+- **ACT2B** (42-52%): DISRUPTION — engagement spikes as certainties are challenged
+- **ACT3** (52-67%): CONVERGENCE — tension increases as consequences become clear
+- **CLIMAX** (67-75%): PEAK — maximum intellectual/emotional engagement
+- **INSIGHT-CONCLUSION** (75-100%): RESOLUTION — satisfying descent, leaving the viewer with resonance
+
+Each block must feel like a NECESSARY STEP in this curve. No block should feel like it could be skipped without losing something essential.
 
 ### 5. PARAGRAPH STRUCTURE
 - Default paragraph: 2–3 sentences.
