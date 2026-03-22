@@ -259,7 +259,8 @@ function buildSystemPrompt(
   const styleInstruction = NARRATIVE_STYLE_INSTRUCTIONS[narrativeStyle]
     || `Adopt a "${narrativeStyle}" narrative voice. Embody this style authentically throughout the entire script.`;
 
-  const volumeTable = buildVolumeTable(wordTarget);
+  const volumeTable = buildVolumeTable(charTarget);
+  const volumeGuidance = buildVolumeGuidance(charTarget);
 
   return `You are NarrativeEngineExpert — a world-class documentary scriptwriter and narrator.
 
