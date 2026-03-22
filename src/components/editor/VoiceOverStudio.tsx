@@ -55,6 +55,7 @@ interface PlayerState {
 
 export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort, onMusicSelected }: VoiceOverStudioProps) {
   const [voScript, setVoScript] = useState("");
+  const [userEditedScript, setUserEditedScript] = useState(false);
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [generating, setGenerating] = useState(false);
   const [customFileName, setCustomFileName] = useState("");
