@@ -45,7 +45,7 @@ export default function ChapterCollapse({
 
   /** Build chapters directly from NarrativeScriptBlock sections */
   const chaptersFromSections = useMemo((): Chapter[] => {
-    return SECTION_TYPES.map((type, idx) => {
+    return CORE_SECTION_TYPES.map((type, idx) => {
       const meta = SECTION_META[type];
       const section = scriptSections?.find((s) => s.key === type);
       const text = section?.content?.trim() || "";
