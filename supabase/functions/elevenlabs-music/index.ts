@@ -79,8 +79,14 @@ serve(async (req) => {
     // Generate file name
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const timeStr = new Date().toISOString().slice(11, 16).replace(":", "h");
-    const baseName = customFileName?.trim() || "music";
-    const fileName = `${baseName}_${dateStr}_${timeStr}.mp3`;
+    const rawName = customFileName?.trim() || "music";
+    // Sanitize: remove accents, replace non-alphanumeric with underscore
+    const safeName = rawName
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .replace(/_+/g, "_")
+      .substring(0, 80);
+    const fileName = `${safeName}_${dateStr}_${timeStr}.mp3`;
     const storagePath = `${userId}/${projectId}/${fileName}`;
 
     // Upload to storage
