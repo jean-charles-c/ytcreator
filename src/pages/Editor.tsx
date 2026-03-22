@@ -2035,6 +2035,19 @@ export default function Editor() {
           </div>
         )}
       </main>
+
+      <VisualGallery
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        shots={shots}
+        scenes={scenes}
+        imageModels={IMAGE_MODELS}
+        imageModel={imageModel}
+        onImageModelChange={setImageModel}
+        onRegenerateShot={handleShotRegenerate}
+        onGenerateImage={handleGenerateShotImage}
+        totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
+      />
     </div>
   );
 }

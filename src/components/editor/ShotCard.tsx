@@ -197,7 +197,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             className="mb-3 rounded overflow-hidden border border-border cursor-pointer"
             onClick={() => setLightboxOpen(true)}
           >
-            <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-cover" loading="lazy" />
+            <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-contain" loading="lazy" />
           </div>
         )}
 
