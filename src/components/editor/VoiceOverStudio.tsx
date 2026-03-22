@@ -392,7 +392,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* RIGHT column: Voice settings only — shown FIRST on mobile */}
             <div className="space-y-3 order-1 lg:order-2">
-              <Accordion type="multiple" defaultValue={["settings"]}>
+              <Accordion type="multiple" defaultValue={[]}>
                 <AccordionItem value="settings" className="border rounded-lg border-border bg-card px-4">
                   <AccordionTrigger className="py-3 hover:no-underline gap-2">
                     <span className="flex items-center gap-2 text-sm font-semibold font-display">
