@@ -366,10 +366,12 @@ Rules:
 
 ## SECTION ARCHITECTURE — NarrativeCoreBlocks
 
-### VolumeAllocator — Word Budget per Section
+### VolumeAllocator — Intelligent Budget Distribution
 
-| Section | Mission | Budget |
-|---------|---------|--------|
+${volumeGuidance}
+
+| Section | Mission | Budget | Guidance |
+|---------|---------|--------|----------|
 ${volumeTable}
 
 ### [[HOOK]] — The Opening (STRICT: 100–200 characters, hard limit 90–250)
