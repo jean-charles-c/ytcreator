@@ -611,7 +611,11 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const narrationText = project.narration.trim();
+    const narrationText = project.narration.trim()
+      // Strip all [[TAG]] section markers that may remain from script generation
+      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
     const scriptLanguage = project.script_language || "en";
     const needsFrenchTranslation = scriptLanguage !== "fr";
     const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
