@@ -11,18 +11,29 @@ export interface NarrativeSection {
   content: string;
 }
 
-/** Fixed narrative structure — order matters */
+/** Core narrative blocks (1-10) — the actual script */
 export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "hook", label: "Hook", icon: "🎣" },
   { key: "context", label: "Context", icon: "📖" },
   { key: "promise", label: "Promise", icon: "🎯" },
   { key: "act1", label: "Act 1 — Setup", icon: "🏗️" },
   { key: "act2", label: "Act 2 — Escalade", icon: "⚡" },
+  { key: "act2b", label: "Act 2B — Contre-point", icon: "🔀" },
   { key: "act3", label: "Act 3 — Impact", icon: "🔥" },
   { key: "climax", label: "Climax", icon: "💡" },
   { key: "insight", label: "Insight", icon: "🧠" },
   { key: "conclusion", label: "Conclusion", icon: "🎬" },
 ];
+
+/** Editorial assist blocks (11-13) — optional quality layer */
+export const EDITORIAL_SECTIONS: { key: string; label: string; icon: string }[] = [
+  { key: "transitions", label: "Transitions", icon: "🔗" },
+  { key: "style_check", label: "Style Check", icon: "🎨" },
+  { key: "risk_check", label: "Risk Check", icon: "⚠️" },
+];
+
+/** All 13 sections for parsing */
+export const ALL_SECTIONS = [...NARRATIVE_SECTIONS, ...EDITORIAL_SECTIONS];
 
 export function parseScriptIntoSections(script: string): NarrativeSection[] {
   if (!script || !script.trim()) {
