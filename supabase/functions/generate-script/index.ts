@@ -118,42 +118,129 @@ Per-block modulation:
 Guardrails: Rigor does NOT mean dryness. Analytical style must still create narrative momentum — use the revelation of each analytical layer as a source of intellectual suspense. Avoid academic jargon unless essential and immediately explained.`,
 };
 
-/* ── VolumeAllocator ──────────────────────────────── */
+/* ── VolumeAllocator — Intelligent Budget Distribution ── */
 
 interface SectionBudget {
   tag: string;
   label: string;
-  pct: number;
+  /** Budget percentages: [short, medium, long] */
+  pct: [number, number, number];
+  /** Editorial guidance per length tier */
+  shortNote: string;
+  longNote: string;
+}
+
+/**
+ * Three tiers based on total character target:
+ * - SHORT:  < 5000 chars (~900 words)   — tight, essential-only
+ * - MEDIUM: 5000–15000 chars            — balanced
+ * - LONG:   > 15000 chars (~2700 words) — rich, nuanced
+ */
+type LengthTier = "short" | "medium" | "long";
+
+function getLengthTier(charTarget: number): LengthTier {
+  if (charTarget < 5000) return "short";
+  if (charTarget <= 15000) return "medium";
+  return "long";
 }
 
 const CORE_BUDGETS: SectionBudget[] = [
-  { tag: "HOOK",       label: "Opening hook",              pct: 0.02 },
-  { tag: "CONTEXT",    label: "Contextual grounding",      pct: 0.10 },
-  { tag: "PROMISE",    label: "Curiosity contract",        pct: 0.05 },
-  { tag: "ACT1",       label: "Origins & setup",           pct: 0.15 },
-  { tag: "ACT2",       label: "Escalation & complexity",   pct: 0.20 },
-  { tag: "ACT2B",      label: "Counter-point & pivot",     pct: 0.10 },
-  { tag: "ACT3",       label: "Consequences & stakes",     pct: 0.15 },
-  { tag: "CLIMAX",     label: "Turning point & synthesis",  pct: 0.08 },
-  { tag: "INSIGHT",    label: "Emergent principle",         pct: 0.05 },
-  { tag: "CONCLUSION", label: "Resonant closing image",     pct: 0.04 },
+  { tag: "HOOK",       label: "Opening hook",
+    pct: [0.03, 0.02, 0.015],
+    shortNote: "1-2 sentences, maximum density",
+    longNote: "Still 1-3 sentences — the hook must stay short even in long scripts" },
+  { tag: "CONTEXT",    label: "Contextual grounding",
+    pct: [0.10, 0.10, 0.10],
+    shortNote: "Essential framing only, skip secondary details",
+    longNote: "Add historical depth, geographic precision, key actor backgrounds" },
+  { tag: "PROMISE",    label: "Curiosity contract",
+    pct: [0.05, 0.05, 0.04],
+    shortNote: "2-3 sentences, pure traction",
+    longNote: "Can add 1-2 specific curiosity hooks, but stay concise" },
+  { tag: "ACT1",       label: "Origins & setup",
+    pct: [0.14, 0.15, 0.14],
+    shortNote: "Focus on ONE key origin scene with essentials",
+    longNote: "Develop multiple founding moments, richer character motivations" },
+  { tag: "ACT2",       label: "Analytical core (PRIORITY)",
+    pct: [0.22, 0.20, 0.22],
+    shortNote: "Compress to strongest evidence only — hierarchy is critical",
+    longNote: "Full hierarchy of evidence, multiple analytical layers, detailed examples" },
+  { tag: "ACT2B",      label: "Essential complication",
+    pct: [0.08, 0.10, 0.10],
+    shortNote: "ONE counter-argument or paradox, concisely",
+    longNote: "Develop the complication with multiple facets, show why it matters deeply" },
+  { tag: "ACT3",       label: "Tipping point & stakes",
+    pct: [0.14, 0.15, 0.15],
+    shortNote: "Focus on the KEY transformation moment",
+    longNote: "Show multiple consequences, ripple effects, detailed stakes" },
+  { tag: "CLIMAX",     label: "Convergence & resolution",
+    pct: [0.10, 0.08, 0.08],
+    shortNote: "Direct resolution — connect hook to answer efficiently",
+    longNote: "Full thread convergence, detailed synthesis, honest uncertainty mapping" },
+  { tag: "INSIGHT",    label: "Emergent principle",
+    pct: [0.06, 0.05, 0.05],
+    shortNote: "ONE clear takeaway, 2-3 sentences",
+    longNote: "Develop the transferable principle with concrete implications" },
+  { tag: "CONCLUSION", label: "Resonant closing image",
+    pct: [0.05, 0.04, 0.035],
+    shortNote: "Final image or line, 1-3 sentences",
+    longNote: "A rich closing scene that echoes the hook — still brief but resonant" },
 ];
 
-function buildVolumeTable(wordTarget: number): string {
-  // Remaining 6% is distributed to ACT2 (ensures core fills 100%)
+function buildVolumeTable(charTarget: number): string {
+  const tier = getLengthTier(charTarget);
+  const tierIdx = tier === "short" ? 0 : tier === "medium" ? 1 : 2;
+  const wordTarget = Math.round(charTarget / 5.5);
+
   const adjusted = CORE_BUDGETS.map(b => ({
     ...b,
-    words: Math.round(wordTarget * b.pct),
+    words: Math.round(wordTarget * b.pct[tierIdx]),
+    activePct: b.pct[tierIdx],
+    note: tier === "short" ? b.shortNote : tier === "long" ? b.longNote : "",
   }));
-  const allocated = adjusted.reduce((s, b) => s + b.words, 0);
-  const deficit = wordTarget - allocated;
-  // Give surplus to ACT2 (the longest section)
-  const act2 = adjusted.find(b => b.tag === "ACT2");
-  if (act2) act2.words += deficit;
 
-  return adjusted.map(b =>
-    `| [[${b.tag}]] | ${b.label} | ~${b.words} words (${Math.round(b.pct * 100)}%) |`
-  ).join("\n");
+  // Ensure total matches target — give surplus/deficit to ACT2
+  const allocated = adjusted.reduce((s, b) => s + b.words, 0);
+  const act2 = adjusted.find(b => b.tag === "ACT2");
+  if (act2) act2.words += (wordTarget - allocated);
+
+  let table = adjusted.map(b => {
+    const line = `| [[${b.tag}]] | ${b.label} | ~${b.words} words (${Math.round(b.activePct * 100)}%) |`;
+    return b.note ? `${line} ${b.note}` : line;
+  }).join("\n");
+
+  return table;
+}
+
+function buildVolumeGuidance(charTarget: number): string {
+  const tier = getLengthTier(charTarget);
+  const wordTarget = Math.round(charTarget / 5.5);
+
+  const tierGuidance: Record<LengthTier, string> = {
+    short: `LENGTH TIER: SHORT (~${wordTarget} words)
+STRATEGY: Every sentence must earn its place. Reduce EXAMPLES, not SECTIONS — all 10 core blocks must appear.
+- Cut secondary examples and supporting details first.
+- Keep the strongest evidence in ACT2 — compress by removing the second-best example, not by weakening the best one.
+- Transitions between blocks can be tighter — the viewer accepts faster pacing in short formats.
+- NEVER amputate entire analytical steps. A short script is COMPRESSED, not incomplete.`,
+
+    medium: `LENGTH TIER: MEDIUM (~${wordTarget} words)
+STRATEGY: Balanced mode — each section gets its natural development.
+- Standard budget allocation applies.
+- Room for 2-3 examples per analytical section.
+- Transitions should be smooth but not overly elaborate.`,
+
+    long: `LENGTH TIER: LONG (~${wordTarget} words)
+STRATEGY: Enrich through DEPTH, not padding. More words = more nuance, more examples, richer demonstration.
+- ACT2 gets the biggest enrichment: more evidence layers, finer distinctions between certainty levels, additional concrete examples.
+- ACT1 and ACT3 can develop richer scenes and more detailed consequences.
+- ACT2B can explore the complication from multiple angles.
+- CLIMAX gains space for thorough thread convergence.
+- NEVER pad with: rhetorical questions that add nothing, repetitive emphasis ("This was truly, remarkably, incredibly important"), atmospheric filler, or restating what was already said.
+- The test: if a paragraph could be removed without losing analytical substance, it should not exist — regardless of length tier.`,
+  };
+
+  return tierGuidance[tier];
 }
 
 /* ── NarrativeEngineExpert — System Prompt ─────────── */
@@ -172,7 +259,8 @@ function buildSystemPrompt(
   const styleInstruction = NARRATIVE_STYLE_INSTRUCTIONS[narrativeStyle]
     || `Adopt a "${narrativeStyle}" narrative voice. Embody this style authentically throughout the entire script.`;
 
-  const volumeTable = buildVolumeTable(wordTarget);
+  const volumeTable = buildVolumeTable(charTarget);
+  const volumeGuidance = buildVolumeGuidance(charTarget);
 
   return `You are NarrativeEngineExpert — a world-class documentary scriptwriter and narrator.
 
@@ -278,10 +366,12 @@ Rules:
 
 ## SECTION ARCHITECTURE — NarrativeCoreBlocks
 
-### VolumeAllocator — Word Budget per Section
+### VolumeAllocator — Intelligent Budget Distribution
 
-| Section | Mission | Budget |
-|---------|---------|--------|
+${volumeGuidance}
+
+| Section | Mission | Budget | Guidance |
+|---------|---------|--------|----------|
 ${volumeTable}
 
 ### [[HOOK]] — The Opening (STRICT: 100–200 characters, hard limit 90–250)
