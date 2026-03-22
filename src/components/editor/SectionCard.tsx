@@ -215,6 +215,8 @@ interface SectionCardProps {
   onTranslate?: (key: string) => void;
   showTranslation?: boolean;
   scriptLanguage?: string;
+  /** If true, renders with editorial assist styling */
+  editorial?: boolean;
 }
 
 export default function SectionCard({
