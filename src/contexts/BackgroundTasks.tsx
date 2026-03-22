@@ -695,7 +695,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             if (shotErr?.name === "AbortError") break;
             console.error(`Image gen failed for shot ${params.shotIds[i]}:`, shotErr);
           }
-          updateTask(key, { completedShots: i + 1 });
+          updateTask(key, { completedShots: i + 1, successShots: count });
         }
 
         if (ac.signal.aborted) {
