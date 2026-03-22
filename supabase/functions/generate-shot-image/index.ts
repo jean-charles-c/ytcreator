@@ -77,7 +77,7 @@ const enforceExactAspectRatio = async (imageBytes: Uint8Array, aspectRatio: stri
   const origH = decoded.height;
   const srcAR = origW / origH;
 
-  // Only crop, never upscale — keeps file size small
+  // Crop to target aspect ratio
   if (Math.abs(srcAR - targetAR) > 0.01) {
     if (srcAR > targetAR) {
       const cw = Math.max(1, Math.round(origH * targetAR));
@@ -88,9 +88,19 @@ const enforceExactAspectRatio = async (imageBytes: Uint8Array, aspectRatio: stri
     }
   }
 
-  console.log("Cropped image", { aspectRatio, origW, origH, outW: decoded.width, outH: decoded.height });
-  const bytes = await decoded.encode(1);
-  return { bytes, mimeType: "image/png" as const, extension: "png" as const, width: decoded.width, height: decoded.height };
+  // Downscale if larger than 1280px on longest side — keeps file size small
+  const MAX_DIM = 1280;
+  if (decoded.width > MAX_DIM || decoded.height > MAX_DIM) {
+    const scale = MAX_DIM / Math.max(decoded.width, decoded.height);
+    const newW = Math.max(1, Math.round(decoded.width * scale));
+    const newH = Math.max(1, Math.round(decoded.height * scale));
+    decoded.resize(newW, newH);
+  }
+
+  console.log("Processed image", { aspectRatio, origW, origH, outW: decoded.width, outH: decoded.height });
+  // Encode as JPEG at 85% quality — much smaller than PNG
+  const bytes = await decoded.encodeJPEG(85);
+  return { bytes, mimeType: "image/jpeg" as const, extension: "jpg" as const, width: decoded.width, height: decoded.height };
 };
 
 serve(async (req) => {
