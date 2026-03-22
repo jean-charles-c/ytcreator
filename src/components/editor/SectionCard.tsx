@@ -187,15 +187,19 @@ export interface SectionHistoryEntry {
 /* ── Visual hierarchy per section type ─────────────── */
 
 const SECTION_ACCENTS: Record<string, { border: string; bg: string; badge: string }> = {
-  hook:       { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
-  context:    { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
-  promise:    { border: "border-l-cyan-500",    bg: "bg-cyan-500/5",    badge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400" },
-  act1:       { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
-  act2:       { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
-  act3:       { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
-  climax:     { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
-  insight:    { border: "border-l-teal-500",    bg: "bg-teal-500/5",    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400" },
-  conclusion: { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
+  hook:         { border: "border-l-amber-500",   bg: "bg-amber-500/5",   badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+  context:      { border: "border-l-sky-500",     bg: "bg-sky-500/5",     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
+  promise:      { border: "border-l-cyan-500",    bg: "bg-cyan-500/5",    badge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400" },
+  act1:         { border: "border-l-emerald-500", bg: "bg-emerald-500/5", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
+  act2:         { border: "border-l-violet-500",  bg: "bg-violet-500/5",  badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
+  act2b:        { border: "border-l-purple-500",  bg: "bg-purple-500/5",  badge: "bg-purple-500/10 text-purple-700 dark:text-purple-400" },
+  act3:         { border: "border-l-rose-500",    bg: "bg-rose-500/5",    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400" },
+  climax:       { border: "border-l-orange-500",  bg: "bg-orange-500/5",  badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  insight:      { border: "border-l-teal-500",    bg: "bg-teal-500/5",    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400" },
+  conclusion:   { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
+  transitions:  { border: "border-l-slate-400",   bg: "bg-slate-400/5",   badge: "bg-slate-400/10 text-slate-600 dark:text-slate-400" },
+  style_check:  { border: "border-l-pink-400",    bg: "bg-pink-400/5",    badge: "bg-pink-400/10 text-pink-600 dark:text-pink-400" },
+  risk_check:   { border: "border-l-yellow-500",  bg: "bg-yellow-500/5",  badge: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" },
 };
 
 const DEFAULT_ACCENT = { border: "border-l-border", bg: "", badge: "bg-muted text-muted-foreground" };
