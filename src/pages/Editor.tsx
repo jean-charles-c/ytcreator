@@ -554,13 +554,18 @@ export default function Editor() {
   // Segment narration (delegates to background)
   const runSegmentation = useCallback(async () => {
     if (!projectId) return;
+    // Prevent double-launch if already running
+    if (getTask(projectId, "segmentation")?.status === "running") {
+      setActiveTab("segmentation");
+      return;
+    }
     if (narration.trim()) {
       await supabase.from("projects").update({ narration: narration.trim() }).eq("id", projectId);
     }
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
     bgStartSegmentation({ projectId });
-  }, [projectId, narration, bgStartSegmentation]);
+  }, [projectId, narration, bgStartSegmentation, getTask]);
 
   const stopSegmentation = useCallback(() => {
     if (projectId) stopTask(projectId, "segmentation");
