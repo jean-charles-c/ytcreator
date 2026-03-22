@@ -37,7 +37,7 @@ export const ALL_SECTIONS = [...NARRATIVE_SECTIONS, ...EDITORIAL_SECTIONS];
 
 export function parseScriptIntoSections(script: string): NarrativeSection[] {
   if (!script || !script.trim()) {
-    return NARRATIVE_SECTIONS.map((s) => ({ ...s, content: "" }));
+    return ALL_SECTIONS.map((s) => ({ ...s, content: "" }));
   }
 
   // V3: Use deterministic tag parser (priority path)
