@@ -128,6 +128,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
         if (sceneTexts.length > 0) {
           setVoScript(stripThousandSeparators(sceneTexts.join("\n\n")));
+          setUserEditedScript(false);
           toast.success("Script généré collé (structure par scènes)");
           return;
         }
