@@ -363,7 +363,7 @@ export default function ChapterCollapse({
               className="h-7 text-xs gap-1"
             >
               {batchGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              Générer les 9 titres
+              Générer les 10 titres
             </Button>
             <Button
               variant="outline"
