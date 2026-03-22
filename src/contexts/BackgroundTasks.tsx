@@ -32,6 +32,7 @@ export interface BackgroundTask {
   exportProgress?: ExportProgress;
   /** Image gen progress */
   completedShots?: number;
+  successShots?: number;
   totalShots?: number;
 }
 
@@ -656,6 +657,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
       type: "image-gen",
       status: "running",
       completedShots: 0,
+      successShots: 0,
       totalShots: total,
     });
 
@@ -693,7 +695,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             if (shotErr?.name === "AbortError") break;
             console.error(`Image gen failed for shot ${params.shotIds[i]}:`, shotErr);
           }
-          updateTask(key, { completedShots: i + 1 });
+          updateTask(key, { completedShots: i + 1, successShots: count });
         }
 
         if (ac.signal.aborted) {
@@ -702,8 +704,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        updateTask(key, { status: "done", completedShots: total });
-        toast.success(`${count} visuel(s) généré(s)`);
+        updateTask(key, { status: "done", completedShots: total, successShots: count });
+        toast.success(`${count} visuel(s) généré(s) sur ${total} traités`);
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération des visuels annulée");
