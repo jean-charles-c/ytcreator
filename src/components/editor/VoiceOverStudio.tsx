@@ -410,9 +410,13 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                       Paramètres de voix
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent forceMount className="data-[state=closed]:hidden">
+                  <AccordionContent>
                     <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader onActiveProfileChange={setActiveProfileName} />
                   </AccordionContent>
+                  {/* Hidden mount for profile loading when accordion is closed */}
+                  <div className="hidden">
+                    <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader onActiveProfileChange={setActiveProfileName} />
+                  </div>
                 </AccordionItem>
               </Accordion>
             </div>
