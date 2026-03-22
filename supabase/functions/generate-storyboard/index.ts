@@ -151,24 +151,138 @@ const splitSentences = (text: string): string[] => {
   return cleaned.length > 0 ? cleaned : [text.trim()].filter(Boolean);
 };
 
+const TARGET_CHARS_PER_SHOT = 100;
+
+const normalizeNarrationText = (value: string): string =>
+  value.trim().replace(/\s+/g, " ");
+
+const collectBoundaryPositions = (text: string, regex: RegExp): number[] => {
+  regex.lastIndex = 0;
+  const positions: number[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    positions.push(match.index + match[0].length);
+  }
+
+  return positions;
+};
+
+const pickBoundaryPosition = (
+  start: number,
+  totalLength: number,
+  remainingSegments: number,
+  maxChars: number,
+  candidates: number[]
+): number | null => {
+  const remainingLength = totalLength - start;
+  const minPos = start + Math.max(1, remainingLength - maxChars * (remainingSegments - 1));
+  const maxPos = Math.min(totalLength - 1, start + maxChars);
+
+  if (minPos > maxPos) return null;
+
+  const idealPos = start + Math.ceil(remainingLength / remainingSegments);
+  const validCandidates = candidates.filter((pos) => pos >= minPos && pos <= maxPos);
+  if (validCandidates.length === 0) return null;
+
+  return validCandidates.reduce((best, pos) =>
+    Math.abs(pos - idealPos) < Math.abs(best - idealPos) ? pos : best
+  );
+};
+
+const splitLongSentenceIntoSegments = (
+  sentence: string,
+  maxChars = TARGET_CHARS_PER_SHOT
+): string[] => {
+  const text = normalizeNarrationText(sentence);
+  if (!text) return [];
+
+  const requiredSegments = Math.max(1, Math.ceil(text.length / maxChars));
+  if (requiredSegments === 1) return [text];
+
+  const preferredBoundaryPositions = Array.from(new Set([
+    ...collectBoundaryPositions(text, /,\s+/g),
+    ...collectBoundaryPositions(text, /;\s+/g),
+    ...collectBoundaryPositions(text, /:\s+/g),
+    ...collectBoundaryPositions(text, /—\s*/g),
+    ...collectBoundaryPositions(text, /–\s*/g),
+  ])).sort((a, b) => a - b);
+
+  const wordBoundaryPositions = Array.from(new Set(
+    collectBoundaryPositions(text, /\s+/g)
+  )).sort((a, b) => a - b);
+
+  const segments: string[] = [];
+  let start = 0;
+  let remainingSegments = requiredSegments;
+
+  while (remainingSegments > 1) {
+    const preferredPos = pickBoundaryPosition(
+      start,
+      text.length,
+      remainingSegments,
+      maxChars,
+      preferredBoundaryPositions.filter((pos) => pos > start)
+    );
+
+    const fallbackPos = pickBoundaryPosition(
+      start,
+      text.length,
+      remainingSegments,
+      maxChars,
+      wordBoundaryPositions.filter((pos) => pos > start)
+    );
+
+    const splitPos = preferredPos ?? fallbackPos ?? Math.min(text.length - 1, start + maxChars);
+    const segment = text.slice(start, splitPos).trim();
+    if (!segment) break;
+
+    segments.push(segment);
+    start = splitPos;
+    remainingSegments -= 1;
+  }
+
+  const tail = text.slice(start).trim();
+  if (tail) segments.push(tail);
+
+  return segments.length > 0 ? segments : [text];
+};
+
+const splitSceneIntoShotSegments = (text: string): string[] =>
+  splitSentences(text).flatMap((sentence) => splitLongSentenceIntoSegments(sentence));
+
 const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
   `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 
 const fallbackDescription = (sentence: string): string =>
-  `Description visuelle de la phrase : "${sentence}"`;
+  `Description visuelle du segment narratif : "${sentence}"`;
+
+const buildSegmentShot = (
+  segment: string,
+  scene: any,
+  shotIndex: number,
+  baseShot?: any,
+  reuseGeneratedContent = false
+) => {
+  const shotType = baseShot?.shot_type || CAMERA_TYPES[shotIndex % CAMERA_TYPES.length];
+
+  return {
+    shot_type: shotType,
+    description: reuseGeneratedContent
+      ? baseShot?.description || fallbackDescription(segment)
+      : fallbackDescription(segment),
+    source_sentence: segment,
+    source_sentence_fr: reuseGeneratedContent ? baseShot?.source_sentence_fr || null : null,
+    prompt_export: reuseGeneratedContent
+      ? baseShot?.prompt_export || fallbackPrompt(segment, scene.visual_intention, shotType)
+      : fallbackPrompt(segment, scene.visual_intention, shotType),
+    guardrails: baseShot?.guardrails || "historically accurate clothing, architecture, and materials",
+  };
+};
 
 const buildFallbackShots = (scene: any) => {
-  const sentences = splitSentences(scene.source_text || "");
-  return sentences.map((sentence, index) => {
-    const shotType = CAMERA_TYPES[index % CAMERA_TYPES.length];
-    return {
-      shot_type: shotType,
-      description: fallbackDescription(sentence),
-      source_sentence: sentence,
-      prompt_export: fallbackPrompt(sentence, scene.visual_intention, shotType),
-      guardrails: "historically accurate clothing, architecture, and materials",
-    };
-  });
+  const segments = splitSceneIntoShotSegments(scene.source_text || "");
+  return segments.map((segment, index) => buildSegmentShot(segment, scene, index));
 };
 
 const buildFallbackStoryboard = (scenes: any[]) =>
