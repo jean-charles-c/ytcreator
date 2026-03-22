@@ -44,7 +44,7 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   const parsed = parseTaggedScript(script);
 
   if (parsed.tagged) {
-    return NARRATIVE_SECTIONS.map((s) => ({
+    return ALL_SECTIONS.map((s) => ({
       ...s,
       content: parsed.sections.find((seg) => seg.key === s.key)?.content || "",
     }));
