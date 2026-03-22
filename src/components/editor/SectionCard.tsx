@@ -115,11 +115,15 @@ function resolveKey(headerText: string): string {
   if (/promise/i.test(headerText)) return "promise";
   if (/introduction/i.test(headerText)) return "context";
   if (/act\s*1|setup/i.test(headerText)) return "act1";
+  if (/act\s*2\s*b|contre.?point/i.test(headerText)) return "act2b";
   if (/act\s*2|escalade/i.test(headerText)) return "act2";
   if (/act\s*3/i.test(headerText)) return "act3";
   if (/climax|révélation|revelation/i.test(headerText)) return "climax";
   if (/insight/i.test(headerText)) return "insight";
   if (/conclusion/i.test(headerText)) return "conclusion";
+  if (/transition/i.test(headerText)) return "transitions";
+  if (/style\s*check/i.test(headerText)) return "style_check";
+  if (/risk\s*check/i.test(headerText)) return "risk_check";
   return "act2";
 }
 
