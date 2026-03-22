@@ -21,10 +21,14 @@ export interface TagParseResult {
   preamble: string;
 }
 
-/** Ordered tag keys for regex */
-const TAG_KEYS = SECTION_TYPES.map((t) => t.toUpperCase());
+/** Ordered tag keys for regex — handles space-separated tags like STYLE CHECK */
+const TAG_PATTERNS = SECTION_TYPES.map((t) => {
+  const tag = SECTION_TAGS[t];
+  // Extract inner content between [[ and ]]
+  return tag.slice(2, -2);
+});
 const TAG_REGEX = new RegExp(
-  `\\[\\[(${TAG_KEYS.join("|")})\\]\\]`,
+  `\\[\\[(${TAG_PATTERNS.map(p => p.replace(/\s+/g, "\\s+")).join("|")})\\]\\]`,
   "gi"
 );
 
