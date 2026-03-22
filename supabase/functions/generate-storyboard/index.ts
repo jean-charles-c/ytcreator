@@ -21,7 +21,7 @@ Scenes must produce enough visual material to sustain cinematic rhythm in a docu
 ## LANGUAGE RULES
 - shot_type MUST always be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
 - description MUST always be in FRENCH, regardless of the script language
-- source_sentence MUST be the EXACT original sentence from the narration text (in its original language, copied verbatim)
+- source_sentence MUST be the EXACT original sentence OR exact sentence segment from the narration text (in its original language, copied verbatim)
 - prompt_export MUST always be in ENGLISH, regardless of the script language
 
 ## VISUAL BEAT RULE
@@ -32,23 +32,25 @@ Each scene you receive already represents a narrative segment. Generate shots fo
 Every sentence of the narration must be represented visually.
 Even very short sentences must generate at least one visual shot.
 Sentences must not be skipped or removed.
+If a sentence is long, it must be split into consecutive exact segments that together reconstruct the full sentence in order.
 
 ## SHORT SENTENCE EXPANSION RULE
 Very short sentences must still generate visual shots.
 Short sentences often represent strong documentary beats and must not be merged.
 
 ## VISUAL SHOT DENSITY RULE
-Every sentence in the narration must produce exactly one visual shot.
-Count the sentences (delimited by . ! or ?) and generate that exact number of shots.
+Each sentence shorter than 100 characters must produce exactly one visual shot.
+If a sentence is 100 characters or longer, split it into consecutive exact narration segments, aiming for roughly one shot per 100 characters.
+Use natural clause breaks whenever possible: commas, semicolons, colons, em dashes, en dashes.
+Generate exactly one shot per resulting segment.
 Do NOT merge multiple sentences into a single shot.
-Do NOT skip any sentence.
-Shots must represent different cinematic views corresponding to each sentence.
+Do NOT skip any sentence or segment.
+Shots must represent different cinematic views corresponding to each exact sentence or sentence segment.
 
-## SHOT MINIMUM RULE — ONE SHOT PER SENTENCE
-Each sentence in the narration MUST produce exactly one visual shot. No exceptions.
-Count the sentences in the scene text and generate exactly that many shots.
-A sentence is any text ending with a period, exclamation mark, or question mark.
-CRITICAL: Every shot prompt must describe ONLY what the corresponding sentence says. Never invent visual content that is not present in the narration text.
+## SHOT SEGMENTATION RULE — CRITICAL
+For long sentences, the ordered source_sentence values must partition the original sentence without overlap and without duplication.
+Each shot must illustrate ONLY its own exact segment of narration, never the full long sentence if that sentence has been split.
+CRITICAL: Every shot prompt must describe ONLY what the corresponding sentence or sentence segment says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
 To maintain visual consistency across scenes, key recurring elements must use stable visual anchors.
@@ -149,24 +151,138 @@ const splitSentences = (text: string): string[] => {
   return cleaned.length > 0 ? cleaned : [text.trim()].filter(Boolean);
 };
 
+const TARGET_CHARS_PER_SHOT = 100;
+
+const normalizeNarrationText = (value: string): string =>
+  value.trim().replace(/\s+/g, " ");
+
+const collectBoundaryPositions = (text: string, regex: RegExp): number[] => {
+  regex.lastIndex = 0;
+  const positions: number[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    positions.push(match.index + match[0].length);
+  }
+
+  return positions;
+};
+
+const pickBoundaryPosition = (
+  start: number,
+  totalLength: number,
+  remainingSegments: number,
+  maxChars: number,
+  candidates: number[]
+): number | null => {
+  const remainingLength = totalLength - start;
+  const minPos = start + Math.max(1, remainingLength - maxChars * (remainingSegments - 1));
+  const maxPos = Math.min(totalLength - 1, start + maxChars);
+
+  if (minPos > maxPos) return null;
+
+  const idealPos = start + Math.ceil(remainingLength / remainingSegments);
+  const validCandidates = candidates.filter((pos) => pos >= minPos && pos <= maxPos);
+  if (validCandidates.length === 0) return null;
+
+  return validCandidates.reduce((best, pos) =>
+    Math.abs(pos - idealPos) < Math.abs(best - idealPos) ? pos : best
+  );
+};
+
+const splitLongSentenceIntoSegments = (
+  sentence: string,
+  maxChars = TARGET_CHARS_PER_SHOT
+): string[] => {
+  const text = normalizeNarrationText(sentence);
+  if (!text) return [];
+
+  const requiredSegments = Math.max(1, Math.ceil(text.length / maxChars));
+  if (requiredSegments === 1) return [text];
+
+  const preferredBoundaryPositions = Array.from(new Set([
+    ...collectBoundaryPositions(text, /,\s+/g),
+    ...collectBoundaryPositions(text, /;\s+/g),
+    ...collectBoundaryPositions(text, /:\s+/g),
+    ...collectBoundaryPositions(text, /—\s*/g),
+    ...collectBoundaryPositions(text, /–\s*/g),
+  ])).sort((a, b) => a - b);
+
+  const wordBoundaryPositions = Array.from(new Set(
+    collectBoundaryPositions(text, /\s+/g)
+  )).sort((a, b) => a - b);
+
+  const segments: string[] = [];
+  let start = 0;
+  let remainingSegments = requiredSegments;
+
+  while (remainingSegments > 1) {
+    const preferredPos = pickBoundaryPosition(
+      start,
+      text.length,
+      remainingSegments,
+      maxChars,
+      preferredBoundaryPositions.filter((pos) => pos > start)
+    );
+
+    const fallbackPos = pickBoundaryPosition(
+      start,
+      text.length,
+      remainingSegments,
+      maxChars,
+      wordBoundaryPositions.filter((pos) => pos > start)
+    );
+
+    const splitPos = preferredPos ?? fallbackPos ?? Math.min(text.length - 1, start + maxChars);
+    const segment = text.slice(start, splitPos).trim();
+    if (!segment) break;
+
+    segments.push(segment);
+    start = splitPos;
+    remainingSegments -= 1;
+  }
+
+  const tail = text.slice(start).trim();
+  if (tail) segments.push(tail);
+
+  return segments.length > 0 ? segments : [text];
+};
+
+const splitSceneIntoShotSegments = (text: string): string[] =>
+  splitSentences(text).flatMap((sentence) => splitLongSentenceIntoSegments(sentence));
+
 const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
   `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 
 const fallbackDescription = (sentence: string): string =>
-  `Description visuelle de la phrase : "${sentence}"`;
+  `Description visuelle du segment narratif : "${sentence}"`;
+
+const buildSegmentShot = (
+  segment: string,
+  scene: any,
+  shotIndex: number,
+  baseShot?: any,
+  reuseGeneratedContent = false
+) => {
+  const shotType = baseShot?.shot_type || CAMERA_TYPES[shotIndex % CAMERA_TYPES.length];
+
+  return {
+    shot_type: shotType,
+    description: reuseGeneratedContent
+      ? baseShot?.description || fallbackDescription(segment)
+      : fallbackDescription(segment),
+    source_sentence: segment,
+    source_sentence_fr: reuseGeneratedContent ? baseShot?.source_sentence_fr || null : null,
+    prompt_export: reuseGeneratedContent
+      ? baseShot?.prompt_export || fallbackPrompt(segment, scene.visual_intention, shotType)
+      : fallbackPrompt(segment, scene.visual_intention, shotType),
+    guardrails: baseShot?.guardrails || "historically accurate clothing, architecture, and materials",
+  };
+};
 
 const buildFallbackShots = (scene: any) => {
-  const sentences = splitSentences(scene.source_text || "");
-  return sentences.map((sentence, index) => {
-    const shotType = CAMERA_TYPES[index % CAMERA_TYPES.length];
-    return {
-      shot_type: shotType,
-      description: fallbackDescription(sentence),
-      source_sentence: sentence,
-      prompt_export: fallbackPrompt(sentence, scene.visual_intention, shotType),
-      guardrails: "historically accurate clothing, architecture, and materials",
-    };
-  });
+  const segments = splitSceneIntoShotSegments(scene.source_text || "");
+  return segments.map((segment, index) => buildSegmentShot(segment, scene, index));
 };
 
 const buildFallbackStoryboard = (scenes: any[]) =>
@@ -222,16 +338,10 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Shot count: 1 shot per sentence, but long sentences (100+ chars) get 1 shot per 100-char chunk
+    // Shot count: 1 shot per exact narration segment, with long sentences split into ~100-char chunks
     const calcShotCount = (text: string): number => {
-      if (text.length < 100) return 1;
-      const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0);
-      let total = 0;
-      for (const sentence of sentences) {
-        const len = sentence.trim().length;
-        total += len < 100 ? 1 : Math.ceil(len / 100);
-      }
-      return Math.max(1, total);
+      const segments = splitSceneIntoShotSegments(text);
+      return Math.max(1, segments.length);
     };
 
     const scriptLang = project.script_language || "fr";
@@ -272,7 +382,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE. If MANDATORY_shot_count=4, you MUST produce exactly 4 shots. Long sentences MUST be split into multiple visual moments.\n2. Each shot must correspond to a visual moment from the narration. For long sentences, split them into distinct visual segments.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence (or segment) copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly mention the historical period/era and geographic location relevant to the scene.${translationRule}\n\n${sceneDescriptions}` },
+            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE. If MANDATORY_shot_count=4, you MUST produce exactly 4 shots. Long sentences MUST be split into multiple ordered narration segments.\n2. Each shot must correspond to one precise visual moment from the narration. For long sentences, split at natural clause boundaries whenever possible: commas, semicolons, colons, em dashes, en dashes.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence segment copied verbatim from the narration. The ordered source_sentence values must reconstruct the full scene text without overlap and without duplication.\n5. prompt_export MUST be in ENGLISH and must illustrate ONLY that exact source_sentence segment, not the whole long sentence.\n6. Do NOT merge sentences. Do NOT skip sentences or segments.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly mention the historical period/era and geographic location relevant to the scene.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
@@ -380,124 +490,38 @@ serve(async (req) => {
         ? sceneData.shots
         : buildFallbackShots(scene);
 
-      const sceneText = (scene.source_text || "").trim();
+      const sceneText = normalizeNarrationText(scene.source_text || "");
       const sceneSentences = splitSentences(sceneText);
+      const expectedSegments = splitSceneIntoShotSegments(sceneText);
+      const requiredShotCount = Math.max(1, expectedSegments.length);
+      const normalize = (value: string) => normalizeNarrationText(value).toLowerCase();
 
-      // ── TEXT COVERAGE ENFORCEMENT ──
-      // If only 1 shot: source_sentence = full scene text
-      if (sceneShots.length === 1) {
-        sceneShots[0] = { ...sceneShots[0], source_sentence: sceneText };
+      if (requiredShotCount === 1) {
+        const currentShot = sceneShots[0];
+        const canReuse = normalize(currentShot?.source_sentence || "") === normalize(sceneText);
+        sceneShots = [buildSegmentShot(sceneText, scene, 0, currentShot, canReuse)];
       } else {
-        // Multi-shot: ensure every sentence from the scene is covered
-        // Normalize for comparison
-        const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
-        const coveredText = sceneShots.map((sh: any) => normalize(sh.source_sentence || "")).join(" ");
-        
-        // Find sentences not covered by any shot's source_sentence
-        const missingSentences: string[] = [];
-        for (const sentence of sceneSentences) {
-          const norm = normalize(sentence);
-          if (norm.length < 3) continue; // skip trivial fragments
-          if (!coveredText.includes(norm)) {
-            missingSentences.push(sentence);
-          }
+        const exactShotsBySegment = new Map<string, any>();
+        for (const shot of sceneShots) {
+          const key = normalize(shot?.source_sentence || "");
+          if (key && !exactShotsBySegment.has(key)) exactShotsBySegment.set(key, shot);
         }
 
-        if (missingSentences.length > 0) {
-          console.log(`Scene ${scene.id}: ${missingSentences.length} uncovered sentence(s), adding extra shots`);
-          // Append missing sentences as additional shots
-          for (const missing of missingSentences) {
-            const idx = sceneShots.length;
-            const shotType = CAMERA_TYPES[idx % CAMERA_TYPES.length];
-            sceneShots.push({
-              shot_type: shotType,
-              description: fallbackDescription(missing),
-              source_sentence: missing,
-              prompt_export: fallbackPrompt(missing, scene.visual_intention, shotType),
-              guardrails: "historically accurate clothing, architecture, and materials",
-            });
-          }
+        const alreadyExact = sceneShots.length === requiredShotCount
+          && expectedSegments.every((segment, idx) => normalize(sceneShots[idx]?.source_sentence || "") === normalize(segment));
+
+        if (!alreadyExact) {
+          console.log(`Scene ${scene.id}: rebuilding shots from exact narration segments (${requiredShotCount} required)`);
         }
 
-        // Final safety: if concatenated shot sentences don't cover all the scene text,
-        // redistribute scene text across shots by sentence
-        const allShotText = sceneShots.map((sh: any) => normalize(sh.source_sentence || "")).join(" ");
-        const sceneNorm = normalize(sceneText);
-        
-        // Check if significant portions are missing (>10% of text)
-        if (sceneNorm.length > 0) {
-          let coveredChars = 0;
-          for (const sh of sceneShots) {
-            const shotNorm = normalize(sh.source_sentence || "");
-            if (sceneNorm.includes(shotNorm)) coveredChars += shotNorm.length;
-          }
-          const coverage = coveredChars / sceneNorm.length;
-          
-          if (coverage < 0.8) {
-            console.log(`Scene ${scene.id}: coverage only ${Math.round(coverage * 100)}%, rebuilding from sentences`);
-            // Rebuild shots from sentences, preserving AI prompts where possible
-            sceneShots = sceneSentences.map((sentence, idx) => {
-              const existingShot = idx < sceneShots.length ? sceneShots[idx] : null;
-              const shotType = existingShot?.shot_type || CAMERA_TYPES[idx % CAMERA_TYPES.length];
-              return {
-                shot_type: shotType,
-                description: existingShot?.description || fallbackDescription(sentence),
-                source_sentence: sentence,
-                source_sentence_fr: existingShot?.source_sentence_fr || null,
-                prompt_export: existingShot?.prompt_export || fallbackPrompt(sentence, scene.visual_intention, shotType),
-                guardrails: existingShot?.guardrails || "historically accurate clothing, architecture, and materials",
-              };
-            });
-          }
-        }
-      }
+        sceneShots = expectedSegments.map((segment, idx) => {
+          const exactShot = exactShotsBySegment.get(normalize(segment));
+          const indexedShot = sceneShots[idx];
+          const baseShot = exactShot ?? indexedShot ?? null;
+          const canReuse = !!exactShot || normalize(indexedShot?.source_sentence || "") === normalize(segment);
 
-      // ── SHOT COUNT ENFORCEMENT ──
-      // Ensure we have at least the minimum number of shots based on text length
-      const requiredShotCount = calcShotCount(sceneText);
-      if (sceneShots.length < requiredShotCount) {
-        console.log(`Scene ${scene.id}: only ${sceneShots.length} shots but ${requiredShotCount} required, splitting long sentences`);
-        // Split the longest source_sentences to reach the required count
-        while (sceneShots.length < requiredShotCount) {
-          // Find the shot with the longest source_sentence
-          let longestIdx = 0;
-          let longestLen = 0;
-          for (let i = 0; i < sceneShots.length; i++) {
-            const len = (sceneShots[i].source_sentence || "").length;
-            if (len > longestLen) { longestLen = len; longestIdx = i; }
-          }
-          const shotToSplit = sceneShots[longestIdx];
-          const fullText = (shotToSplit.source_sentence || "").trim();
-          // Split at natural break points: em-dash, semicolon, comma near middle
-          const breakPoints = [/—/g, /–/g, /;/g, /,/g];
-          let bestSplitPos = Math.floor(fullText.length / 2);
-          const mid = fullText.length / 2;
-          for (const bp of breakPoints) {
-            let match: RegExpExecArray | null;
-            let closest = -1;
-            let closestDist = Infinity;
-            while ((match = bp.exec(fullText)) !== null) {
-              const dist = Math.abs(match.index - mid);
-              if (dist < closestDist) { closestDist = dist; closest = match.index + match[0].length; }
-            }
-            if (closest > 0) { bestSplitPos = closest; break; }
-          }
-          const part1 = fullText.slice(0, bestSplitPos).trim();
-          const part2 = fullText.slice(bestSplitPos).trim();
-          if (!part1 || !part2) break; // safety: can't split further
-          
-          const idx = sceneShots.length;
-          const shotType2 = CAMERA_TYPES[idx % CAMERA_TYPES.length];
-          sceneShots[longestIdx] = { ...shotToSplit, source_sentence: part1 };
-          sceneShots.splice(longestIdx + 1, 0, {
-            shot_type: shotType2,
-            description: fallbackDescription(part2),
-            source_sentence: part2,
-            source_sentence_fr: null,
-            prompt_export: fallbackPrompt(part2, scene.visual_intention, shotType2),
-            guardrails: shotToSplit.guardrails || "historically accurate clothing, architecture, and materials",
-          });
-        }
+          return buildSegmentShot(segment, scene, idx, baseShot, canReuse);
+        });
       }
 
       // ── SORT SHOTS BY READING ORDER ──
