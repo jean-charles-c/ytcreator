@@ -21,7 +21,7 @@ Scenes must produce enough visual material to sustain cinematic rhythm in a docu
 ## LANGUAGE RULES
 - shot_type MUST always be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
 - description MUST always be in FRENCH, regardless of the script language
-- source_sentence MUST be the EXACT original sentence from the narration text (in its original language, copied verbatim)
+- source_sentence MUST be the EXACT original sentence OR exact sentence segment from the narration text (in its original language, copied verbatim)
 - prompt_export MUST always be in ENGLISH, regardless of the script language
 
 ## VISUAL BEAT RULE
@@ -32,23 +32,25 @@ Each scene you receive already represents a narrative segment. Generate shots fo
 Every sentence of the narration must be represented visually.
 Even very short sentences must generate at least one visual shot.
 Sentences must not be skipped or removed.
+If a sentence is long, it must be split into consecutive exact segments that together reconstruct the full sentence in order.
 
 ## SHORT SENTENCE EXPANSION RULE
 Very short sentences must still generate visual shots.
 Short sentences often represent strong documentary beats and must not be merged.
 
 ## VISUAL SHOT DENSITY RULE
-Every sentence in the narration must produce exactly one visual shot.
-Count the sentences (delimited by . ! or ?) and generate that exact number of shots.
+Each sentence shorter than 100 characters must produce exactly one visual shot.
+If a sentence is 100 characters or longer, split it into consecutive exact narration segments, aiming for roughly one shot per 100 characters.
+Use natural clause breaks whenever possible: commas, semicolons, colons, em dashes, en dashes.
+Generate exactly one shot per resulting segment.
 Do NOT merge multiple sentences into a single shot.
-Do NOT skip any sentence.
-Shots must represent different cinematic views corresponding to each sentence.
+Do NOT skip any sentence or segment.
+Shots must represent different cinematic views corresponding to each exact sentence or sentence segment.
 
-## SHOT MINIMUM RULE — ONE SHOT PER SENTENCE
-Each sentence in the narration MUST produce exactly one visual shot. No exceptions.
-Count the sentences in the scene text and generate exactly that many shots.
-A sentence is any text ending with a period, exclamation mark, or question mark.
-CRITICAL: Every shot prompt must describe ONLY what the corresponding sentence says. Never invent visual content that is not present in the narration text.
+## SHOT SEGMENTATION RULE — CRITICAL
+For long sentences, the ordered source_sentence values must partition the original sentence without overlap and without duplication.
+Each shot must illustrate ONLY its own exact segment of narration, never the full long sentence if that sentence has been split.
+CRITICAL: Every shot prompt must describe ONLY what the corresponding sentence or sentence segment says. Never invent visual content that is not present in the narration text.
 
 ## VISUAL ANCHOR SYSTEM
 To maintain visual consistency across scenes, key recurring elements must use stable visual anchors.
