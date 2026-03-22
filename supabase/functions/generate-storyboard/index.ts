@@ -338,16 +338,10 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Shot count: 1 shot per sentence, but long sentences (100+ chars) get 1 shot per 100-char chunk
+    // Shot count: 1 shot per exact narration segment, with long sentences split into ~100-char chunks
     const calcShotCount = (text: string): number => {
-      if (text.length < 100) return 1;
-      const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0);
-      let total = 0;
-      for (const sentence of sentences) {
-        const len = sentence.trim().length;
-        total += len < 100 ? 1 : Math.ceil(len / 100);
-      }
-      return Math.max(1, total);
+      const segments = splitSceneIntoShotSegments(text);
+      return Math.max(1, segments.length);
     };
 
     const scriptLang = project.script_language || "fr";
@@ -388,7 +382,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE. If MANDATORY_shot_count=4, you MUST produce exactly 4 shots. Long sentences MUST be split into multiple visual moments.\n2. Each shot must correspond to a visual moment from the narration. For long sentences, split them into distinct visual segments.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence (or segment) copied verbatim from the narration.\n5. prompt_export MUST be in ENGLISH.\n6. Do NOT merge sentences. Do NOT skip sentences.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly mention the historical period/era and geographic location relevant to the scene.${translationRule}\n\n${sceneDescriptions}` },
+            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE. If MANDATORY_shot_count=4, you MUST produce exactly 4 shots. Long sentences MUST be split into multiple ordered narration segments.\n2. Each shot must correspond to one precise visual moment from the narration. For long sentences, split at natural clause boundaries whenever possible: commas, semicolons, colons, em dashes, en dashes.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence segment copied verbatim from the narration. The ordered source_sentence values must reconstruct the full scene text without overlap and without duplication.\n5. prompt_export MUST be in ENGLISH and must illustrate ONLY that exact source_sentence segment, not the whole long sentence.\n6. Do NOT merge sentences. Do NOT skip sentences or segments.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly mention the historical period/era and geographic location relevant to the scene.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
