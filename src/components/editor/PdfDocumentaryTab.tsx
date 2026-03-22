@@ -864,6 +864,95 @@ export default function PdfDocumentaryTab({
         </div>
       )}
 
+      {/* Analysis results — collapsible (shown above script generation controls) */}
+      {analysis && (
+        <Collapsible open={analysisOpen} onOpenChange={setAnalysisOpen} className="mt-6">
+          <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Analyse narrative</h3>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${analysisOpen ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-4 animate-fade-in">
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><Sparkles className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Mystère central</h3></div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{analysis.central_mystery}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Contradiction principale</h3></div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{analysis.main_contradiction}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><Lightbulb className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Découvertes intrigantes</h3></div>
+              <ul className="space-y-2">
+                {analysis.intriguing_discoveries.map((d, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-muted-foreground leading-relaxed"><span className="text-primary font-medium shrink-0">{i + 1}.</span>{d}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-3"><Swords className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Tensions narratives</h3></div>
+              <div className="space-y-3">
+                {analysis.narrative_tensions.map((t, i) => (
+                  <div key={i} className="group rounded border border-border bg-background p-3 relative">
+                    <button
+                      onClick={() => {
+                        const updated = { ...analysis, narrative_tensions: analysis.narrative_tensions.filter((_, idx) => idx !== i) };
+                        onAnalysisChange(updated);
+                      }}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded hover:bg-destructive/10"
+                      title="Retirer cette tension"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <p className="text-sm font-medium text-foreground mb-1 pr-6">{t.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="hero"
+                size="sm"
+                onClick={async () => {
+                  if (!extractedText || findingTension) return;
+                  setFindingTension(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("find-tension", {
+                      body: {
+                        text: extractedText.slice(0, 12000),
+                        existing_tensions: analysis.narrative_tensions.slice(0, 20),
+                      },
+                    });
+
+                    if (error || data?.error) {
+                      toast.error(data?.error || "Erreur lors de la recherche");
+                      console.error(error || data?.error);
+                    } else if (data?.tension) {
+                      const updated = { ...analysis, narrative_tensions: [...analysis.narrative_tensions, data.tension] };
+                      onAnalysisChange(updated);
+                      toast.success("Nouvelle tension ajoutée");
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Erreur inattendue");
+                  }
+                  setFindingTension(false);
+                }}
+                disabled={findingTension || !extractedText}
+                className="mt-3 w-full h-8 text-xs"
+              >
+                {findingTension ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Recherche dans le document…</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5" /> Trouver une nouvelle tension</>
+                )}
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {/* Action buttons */}
       <div className="mt-4 flex flex-col sm:flex-row gap-3">
         {!extractedText && !analyzing && !hasResults && (
@@ -927,106 +1016,6 @@ export default function PdfDocumentaryTab({
           </div>
         )}
       </div>
-
-      {/* Analysis loading */}
-      {(parsing || analyzing) && (
-        <div className="mt-6 flex items-center gap-2 p-3 rounded border border-primary/20 bg-primary/5">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">
-            {parsing ? "Extraction du texte en cours…" : "Analyse narrative en cours…"}
-          </p>
-        </div>
-      )}
-
-      {/* Analysis results — collapsible */}
-      {analysis && (
-        <Collapsible open={analysisOpen} onOpenChange={setAnalysisOpen} className="mt-6">
-          <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h3 className="font-display text-sm font-semibold text-foreground">Analyse narrative</h3>
-            </div>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${analysisOpen ? "rotate-180" : ""}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3 space-y-4 animate-fade-in">
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-3"><Sparkles className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Mystère central</h3></div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{analysis.central_mystery}</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-3"><AlertTriangle className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Contradiction principale</h3></div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{analysis.main_contradiction}</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-3"><Lightbulb className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Découvertes intrigantes</h3></div>
-              <ul className="space-y-2">
-                {analysis.intriguing_discoveries.map((d, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-muted-foreground leading-relaxed"><span className="text-primary font-medium shrink-0">{i + 1}.</span>{d}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-3"><Swords className="h-4 w-4 text-primary" /><h3 className="font-display text-sm font-semibold text-foreground">Tensions narratives</h3></div>
-              <div className="space-y-3">
-                {analysis.narrative_tensions.map((t, i) => (
-                  <div key={i} className="group rounded border border-border bg-background p-3 relative">
-                    <button
-                      onClick={() => {
-                        const updated = { ...analysis, narrative_tensions: analysis.narrative_tensions.filter((_, idx) => idx !== i) };
-                        onAnalysisChange(updated);
-                      }}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded hover:bg-destructive/10"
-                      title="Retirer cette tension"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                    <p className="text-sm font-medium text-foreground mb-1 pr-6">{t.title}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Add new tension via AI */}
-              <Button
-                variant="hero"
-                size="sm"
-                onClick={async () => {
-                  if (!extractedText || findingTension) return;
-                  setFindingTension(true);
-                  try {
-                    const { data, error } = await supabase.functions.invoke("find-tension", {
-                      body: {
-                        text: extractedText.slice(0, 12000),
-                        existing_tensions: analysis.narrative_tensions.slice(0, 20),
-                      },
-                    });
-
-                    if (error || data?.error) {
-                      toast.error(data?.error || "Erreur lors de la recherche");
-                      console.error(error || data?.error);
-                    } else if (data?.tension) {
-                      const updated = { ...analysis, narrative_tensions: [...analysis.narrative_tensions, data.tension] };
-                      onAnalysisChange(updated);
-                      toast.success("Nouvelle tension ajoutée");
-                    }
-                  } catch (e) {
-                    console.error(e);
-                    toast.error("Erreur inattendue");
-                  }
-                  setFindingTension(false);
-                }}
-                disabled={findingTension || !extractedText}
-                className="mt-3 w-full h-8 text-xs"
-              >
-                {findingTension ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Recherche dans le document…</>
-                ) : (
-                  <><Sparkles className="h-3.5 w-3.5" /> Trouver une nouvelle tension</>
-                )}
-              </Button>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
 
       {/* Generation loading — shown before script arrives */}
       {generatingScript && !script && (
