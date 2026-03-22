@@ -704,8 +704,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        updateTask(key, { status: "done", completedShots: total });
-        toast.success(`${count} visuel(s) généré(s)`);
+        updateTask(key, { status: "done", completedShots: total, successShots: count });
+        toast.success(`${count} visuel(s) généré(s) sur ${total} traités`);
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération des visuels annulée");
