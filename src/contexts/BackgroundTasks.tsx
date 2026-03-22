@@ -643,7 +643,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  // ─── Image Generation (batch) ───────────────────────────────────────
+  // ─── Image Generation (batch) — self-healing loop ────────────────────
   const startImageGen = useCallback((params: ImageGenParams) => {
     const key = taskKey(params.projectId, "image-gen");
     abortControllers.current[key]?.abort();
@@ -662,78 +662,109 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     });
 
     (async () => {
+      const MAX_ROUNDS = 5; // max auto-restart rounds
+      let round = 0;
+      let remainingShotIds = [...params.shotIds];
+      let globalSuccess = 0;
+
       try {
         const session = (await supabase.auth.getSession()).data.session;
-        let count = 0;
 
-        const MAX_RETRIES = 3;
-        const SHOT_TIMEOUT_MS = 120_000; // 2 min per shot max
-
-        for (let i = 0; i < params.shotIds.length; i++) {
+        while (round < MAX_ROUNDS && remainingShotIds.length > 0) {
           if (ac.signal.aborted) break;
-          if (i > 0) await new Promise((r) => setTimeout(r, 8000));
-          if (ac.signal.aborted) break;
+          round++;
 
-          let succeeded = false;
-          for (let attempt = 1; attempt <= MAX_RETRIES && !succeeded; attempt++) {
+          if (round > 1) {
+            console.log(`[image-gen] Auto-restart round ${round} — ${remainingShotIds.length} shots remaining`);
+            toast.info(`Relance automatique (round ${round}) — ${remainingShotIds.length} visuel(s) restant(s)`);
+            // Wait before restarting
+            await new Promise((r) => setTimeout(r, 10_000));
+            if (ac.signal.aborted) break;
+          }
+
+          const MAX_RETRIES = 3;
+          const SHOT_TIMEOUT_MS = 120_000;
+          const failedThisRound: string[] = [];
+
+          for (let i = 0; i < remainingShotIds.length; i++) {
+            if (ac.signal.aborted) break;
+            if (i > 0 || round > 1) await new Promise((r) => setTimeout(r, 8000));
             if (ac.signal.aborted) break;
 
-            try {
-              // Combine user abort + per-shot timeout
-              const shotAc = new AbortController();
-              const onParentAbort = () => shotAc.abort();
-              ac.signal.addEventListener("abort", onParentAbort, { once: true });
-              const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
+            let succeeded = false;
+            for (let attempt = 1; attempt <= MAX_RETRIES && !succeeded; attempt++) {
+              if (ac.signal.aborted) break;
 
-              const response = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token}`,
-                    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                  },
-                  body: JSON.stringify({
-                    shot_id: params.shotIds[i],
-                    model: params.model,
-                    aspect_ratio: params.aspectRatio,
-                  }),
-                  signal: shotAc.signal,
+              try {
+                const shotAc = new AbortController();
+                const onParentAbort = () => shotAc.abort();
+                ac.signal.addEventListener("abort", onParentAbort, { once: true });
+                const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
+
+                const response = await fetch(
+                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${session?.access_token}`,
+                      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                    },
+                    body: JSON.stringify({
+                      shot_id: remainingShotIds[i],
+                      model: params.model,
+                      aspect_ratio: params.aspectRatio,
+                    }),
+                    signal: shotAc.signal,
+                  }
+                );
+                clearTimeout(timer);
+                ac.signal.removeEventListener("abort", onParentAbort);
+
+                const data = await response.json();
+                if (response.ok && data.image_url) {
+                  globalSuccess++;
+                  succeeded = true;
+                } else if (response.status === 429 || response.status === 402) {
+                  console.warn(`Shot ${remainingShotIds[i]}: ${response.status}, waiting before retry (${attempt}/${MAX_RETRIES})`);
+                  await new Promise((r) => setTimeout(r, attempt * 15_000));
+                } else {
+                  console.warn(`Shot ${remainingShotIds[i]}: HTTP ${response.status} (attempt ${attempt}/${MAX_RETRIES})`);
+                  if (attempt < MAX_RETRIES) await new Promise((r) => setTimeout(r, attempt * 5000));
                 }
-              );
-              clearTimeout(timer);
-              ac.signal.removeEventListener("abort", onParentAbort);
-
-              const data = await response.json();
-              if (response.ok && data.image_url) {
-                count++;
-                succeeded = true;
-              } else if (response.status === 429 || response.status === 402) {
-                // Rate limit or payment — wait longer then retry
-                console.warn(`Shot ${params.shotIds[i]}: ${response.status}, waiting before retry (${attempt}/${MAX_RETRIES})`);
-                await new Promise((r) => setTimeout(r, attempt * 15_000));
-              } else {
-                console.warn(`Shot ${params.shotIds[i]}: HTTP ${response.status} (attempt ${attempt}/${MAX_RETRIES})`);
+              } catch (shotErr: any) {
+                if (ac.signal.aborted) break;
+                console.error(`Shot ${remainingShotIds[i]} attempt ${attempt}/${MAX_RETRIES}:`, shotErr);
                 if (attempt < MAX_RETRIES) await new Promise((r) => setTimeout(r, attempt * 5000));
               }
-            } catch (shotErr: any) {
-              if (ac.signal.aborted) break;
-              console.error(`Shot ${params.shotIds[i]} attempt ${attempt}/${MAX_RETRIES}:`, shotErr);
-              if (attempt < MAX_RETRIES) await new Promise((r) => setTimeout(r, attempt * 5000));
             }
+
+            if (!succeeded) failedThisRound.push(remainingShotIds[i]);
+            updateTask(key, {
+              completedShots: total - (remainingShotIds.length - i - 1) - failedThisRound.length + globalSuccess,
+              successShots: globalSuccess,
+            });
           }
-          updateTask(key, { completedShots: i + 1, successShots: count });
+
+          remainingShotIds = failedThisRound;
+
+          // If no failures or all done, break
+          if (failedThisRound.length === 0) break;
         }
 
         if (ac.signal.aborted) {
-          toast.info(`Génération stoppée — ${count} visuel(s) créé(s)`);
+          toast.info(`Génération stoppée — ${globalSuccess} visuel(s) créé(s)`);
           removeTask(key);
           return;
         }
 
-        updateTask(key, { status: "done", completedShots: total, successShots: count });
-        toast.success(`${count} visuel(s) généré(s) sur ${total} traités`);
+        updateTask(key, { status: "done", completedShots: total, successShots: globalSuccess });
+
+        if (remainingShotIds.length > 0) {
+          toast.warning(`${globalSuccess}/${total} visuels générés — ${remainingShotIds.length} en échec après ${MAX_ROUNDS} relances`);
+        } else {
+          toast.success(`${globalSuccess} visuel(s) généré(s) sur ${total} — tous traités ✓`);
+        }
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération des visuels annulée");
