@@ -750,20 +750,46 @@ Insert a short transition that relaunches curiosity. Adapt to ${langLabel}.
 
 ---
 
-## STYLE GUARDRAILS (ScriptQualityAudit)
+## SCRIPT QUALITY AUDIT (ScriptQualityAudit) — MANDATORY GUARDRAILS
 
-### AVOID:
-- Complex metaphors or poetic abstractions
-- Dense academic sentences with multiple subordinate clauses
-- Abstract concepts that cannot be filmed or illustrated
-- Mechanical transitions
-- AI tics: "fascinating", "remarkable", "it's worth noting", "interestingly", "in fact"
+### CATEGORY 1: AI WRITING TICS (hard ban)
 
-### PREFER:
+These patterns are the hallmarks of AI-generated text. Their presence makes the script feel generic and undermines credibility. NEVER use:
+
+**Qualifier tics**: "fascinating", "remarkable", "it's worth noting", "interestingly", "crucially", "indeed", "in fact", "needless to say", "as it turns out"
+**Empty amplifiers**: "truly", "incredibly", "absolutely", "fundamentally", "profoundly", "undeniably"
+**Hedge stacking**: "perhaps", "it seems", "one might argue", "it could be said" — unless genuinely expressing analytical uncertainty
+**False profundity**: sentences that sound deep but contain no specific information ("This would change everything forever", "Nothing would ever be the same")
+**Transition clichés**: "But that's not all", "And here's where it gets interesting", "But the story doesn't end there", "What happened next would shock everyone"
+**Meta-narration**: "Let's explore", "In this video", "As we'll see", "Let's dive in", "Let's take a closer look"
+
+REPLACEMENT STRATEGY: Instead of flagging and leaving gaps, REWRITE using concrete facts, specific details, or direct statements. "This discovery was truly remarkable" → "This discovery overturned three decades of consensus."
+
+### CATEGORY 2: DOCUMENTARY CLICHÉS (detect and rewrite)
+
+**False mystery**: Creating tension around something the viewer doesn't care about, or withholding information that has no payoff. Every mystery must be RESOLVED.
+**Grandiloquence**: Inflated language that doesn't match the actual significance of the claim. Scale your rhetoric to the ACTUAL weight of the evidence.
+**Decorative writing**: Beautiful sentences that advance no understanding. Every sentence must MOVE the narrative or the analysis forward.
+**Overaffirmation**: Presenting uncertain interpretations as established facts. Use the certainty hierarchy: FACT → STRONG EVIDENCE → PLAUSIBLE INTERPRETATION → DEBATED.
+**Symmetry fetish**: Forcing artificial parallels, neat packages, or clean resolutions on messy, complex realities. Honor the complexity.
+
+### CATEGORY 3: STRUCTURAL DEFECTS (prevent)
+
+**Climax = Summary**: If the climax merely restates what ACT1-ACT3 already established, it has FAILED. The climax must SYNTHESIZE into something NEW.
+**Insight = Platitude**: If the insight could apply to any subject ("This teaches us to think critically"), it has FAILED. The insight must be SPECIFIC to this story.
+**Conclusion = Repetition**: If the conclusion restates the climax, it has FAILED. The conclusion must provide a DIFFERENT kind of closure (sensory/emotional vs. intellectual).
+**ACT2B = Filler**: If ACT2B could be moved into ACT2 without disruption, it has FAILED. ACT2B must genuinely CHANGE the analytical frame.
+**Flat ACT2**: If ACT2 reads like a Wikipedia article (facts listed without hierarchy), it has FAILED. ACT2 must ESCALATE through reveals.
+
+### CATEGORY 4: WRITING MECHANICS (enforce)
+
+**PREFER:**
 - Describing actions: "The scribe carves symbols into wet clay."
 - Showing discoveries: "Inside the tomb, archaeologists find 42 intact tablets."
 - Stating facts with context: "This technique spreads across the entire region in less than a century."
 - Naming specifics: "In the ruins of Uruk, a small clay tablet changes everything."
+- Complex metaphors or poetic abstractions → replace with concrete imagery
+- Dense academic sentences → split into oral-ready units
 
 ---
 
@@ -778,18 +804,49 @@ Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString(
 
 ---
 
-## FINAL SELF-CHECK (before outputting)
+## FINAL SELF-CHECK (execute ALL checks before outputting)
 
-1. All 13 tags present in order (10 core + 3 editorial).
-2. Hook contains all 3 required elements (concrete image + contradiction + promise of explanation) and is 90–250 characters.
-3. Hook tension is resolved in CLIMAX.
-4. ACT2B genuinely complicates the narrative (not filler).
-5. Estimated core script within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters.
-6. No fabricated facts, no broken dates, no placeholder attributions.
-7. No sequence of 3+ facts presented as a list without narrative connection.
-8. Paragraph lengths vary. Sentence lengths vary.
-9. Every sentence reads naturally aloud as spoken ${langLabel}.
-10. TRANSITIONS audit completed. STYLE CHECK completed. RISK CHECK completed.`;
+### Structural Integrity
+1. All 13 tags present in correct order (10 core + 3 editorial).
+2. No text before [[HOOK]] (except <plan>).
+3. No markdown formatting (###, **, ---) inside core blocks.
+
+### Narrative Contract
+4. Hook contains all 3 required elements (concrete image + contradiction + promise of explanation).
+5. Hook is 90–250 characters.
+6. Hook tension is EXPLICITLY resolved in CLIMAX — verify you can point to the exact sentence.
+7. PROMISE creates open loops that are CLOSED in ACT1-CLIMAX.
+8. ACT2B genuinely DISRUPTS the thesis (not a minor qualification).
+9. CLIMAX synthesizes (not summarizes) — it presents something NEW from the convergence of threads.
+10. INSIGHT is specific to THIS subject (not a generic moral).
+11. CONCLUSION echoes the hook's imagery or setting with NEW understanding.
+
+### Anti-Redundancy
+12. CONTEXT and PROMISE contain NO overlapping sentences or ideas.
+13. ACT2 and ACT2B serve DIFFERENT analytical functions.
+14. CLIMAX and CONCLUSION provide DIFFERENT types of closure.
+15. No sentence in the script expresses the same idea as another sentence elsewhere.
+
+### Factual Integrity
+16. No fabricated facts, no broken dates, no placeholder attributions.
+17. No vague sources ("experts say") without named attribution.
+18. Numbers formatted without separators (1000 not 1,000).
+
+### Writing Quality
+19. No AI tics from the banned list above.
+20. Paragraph lengths vary across the script.
+21. Sentence lengths vary (no 3+ consecutive similar-length sentences).
+22. Every sentence reads naturally aloud as spoken ${langLabel}.
+23. No sequence of 3+ facts presented as a list without narrative connection.
+
+### Volume Compliance
+24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters.
+25. Each section approximately respects its VolumeAllocator budget (±30% tolerance).
+
+### Editorial Blocks
+26. TRANSITIONS audit covers all 9 boundaries with ratings.
+27. STYLE CHECK includes rhythm analysis and AI-detection scan.
+28. RISK CHECK classifies every significant claim by certainty level.`;
 }
 
 /* ── User message builder ─────────────────────────── */
