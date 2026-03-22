@@ -80,10 +80,10 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
     }));
   }
 
-  // Final fallback: proportional split
+  // Final fallback: proportional split (core blocks only)
   const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
   const total = paragraphs.length;
-  const ratios = [0.08, 0.08, 0.06, 0.18, 0.25, 0.15, 0.10, 0.05, 0.05];
+  const ratios = [0.02, 0.10, 0.05, 0.15, 0.20, 0.10, 0.15, 0.08, 0.05, 0.04];
   const counts = ratios.map((r) => Math.max(1, Math.round(r * total)));
 
   let sum = counts.reduce((a, b) => a + b, 0);
@@ -98,10 +98,14 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   }
 
   let offset = 0;
-  return NARRATIVE_SECTIONS.map((s, i) => {
-    const sectionParas = paragraphs.slice(offset, offset + counts[i]);
-    offset += counts[i];
-    return { ...s, content: sectionParas.join("\n\n") };
+  // Only assign to core narrative sections for fallback
+  return ALL_SECTIONS.map((s, i) => {
+    if (i < NARRATIVE_SECTIONS.length) {
+      const sectionParas = paragraphs.slice(offset, offset + counts[i]);
+      offset += counts[i];
+      return { ...s, content: sectionParas.join("\n\n") };
+    }
+    return { ...s, content: "" };
   });
 }
 
