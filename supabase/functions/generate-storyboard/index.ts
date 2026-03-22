@@ -452,6 +452,54 @@ serve(async (req) => {
         }
       }
 
+      // ── SHOT COUNT ENFORCEMENT ──
+      // Ensure we have at least the minimum number of shots based on text length
+      const requiredShotCount = calcShotCount(sceneText);
+      if (sceneShots.length < requiredShotCount) {
+        console.log(`Scene ${scene.id}: only ${sceneShots.length} shots but ${requiredShotCount} required, splitting long sentences`);
+        // Split the longest source_sentences to reach the required count
+        while (sceneShots.length < requiredShotCount) {
+          // Find the shot with the longest source_sentence
+          let longestIdx = 0;
+          let longestLen = 0;
+          for (let i = 0; i < sceneShots.length; i++) {
+            const len = (sceneShots[i].source_sentence || "").length;
+            if (len > longestLen) { longestLen = len; longestIdx = i; }
+          }
+          const shotToSplit = sceneShots[longestIdx];
+          const fullText = (shotToSplit.source_sentence || "").trim();
+          // Split at natural break points: em-dash, semicolon, comma near middle
+          const breakPoints = [/—/g, /–/g, /;/g, /,/g];
+          let bestSplitPos = Math.floor(fullText.length / 2);
+          const mid = fullText.length / 2;
+          for (const bp of breakPoints) {
+            let match: RegExpExecArray | null;
+            let closest = -1;
+            let closestDist = Infinity;
+            while ((match = bp.exec(fullText)) !== null) {
+              const dist = Math.abs(match.index - mid);
+              if (dist < closestDist) { closestDist = dist; closest = match.index + match[0].length; }
+            }
+            if (closest > 0) { bestSplitPos = closest; break; }
+          }
+          const part1 = fullText.slice(0, bestSplitPos).trim();
+          const part2 = fullText.slice(bestSplitPos).trim();
+          if (!part1 || !part2) break; // safety: can't split further
+          
+          const idx = sceneShots.length;
+          const shotType2 = CAMERA_TYPES[idx % CAMERA_TYPES.length];
+          sceneShots[longestIdx] = { ...shotToSplit, source_sentence: part1 };
+          sceneShots.splice(longestIdx + 1, 0, {
+            shot_type: shotType2,
+            description: fallbackDescription(part2),
+            source_sentence: part2,
+            source_sentence_fr: null,
+            prompt_export: fallbackPrompt(part2, scene.visual_intention, shotType2),
+            guardrails: shotToSplit.guardrails || "historically accurate clothing, architecture, and materials",
+          });
+        }
+      }
+
       // ── SORT SHOTS BY READING ORDER ──
       // Sort shots so their source_sentence appears in the same order as in the scene text
       const sceneTextLower = sceneText.toLowerCase();
