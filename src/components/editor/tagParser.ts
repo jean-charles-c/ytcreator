@@ -13,7 +13,7 @@ export interface ParsedSection {
 export interface TagParseResult {
   /** Whether [[TAG]] markers were found and used */
   tagged: boolean;
-  /** 9 sections in canonical order, empty string if missing */
+  /** 13 sections in canonical order, empty string if missing */
   sections: ParsedSection[];
   /** Keys of sections that had no content */
   emptySections: SectionType[];
