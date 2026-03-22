@@ -124,3 +124,135 @@ describe("reassembleWithTags", () => {
     expect(text).toContain("[[RISK CHECK]]");
   });
 });
+
+/* ── Robustness tests for NarrativeEngineExpert output ── */
+
+describe("parseTaggedScript — robustness", () => {
+  it("handles case-insensitive tags", () => {
+    const text = "[[hook]]\nLower case hook.\n[[CONTEXT]]\nUpper context.";
+    const result = parseTaggedScript(text);
+    expect(result.tagged).toBe(true);
+    expect(result.sections.find(s => s.key === "hook")!.content).toBe("Lower case hook.");
+    expect(result.sections.find(s => s.key === "context")!.content).toBe("Upper context.");
+  });
+
+  it("handles extra whitespace in STYLE CHECK / RISK CHECK", () => {
+    const text = "[[STYLE  CHECK]]\nNotes.\n[[RISK  CHECK]]\nRisks.";
+    const result = parseTaggedScript(text);
+    expect(result.sections.find(s => s.key === "style_check")!.content).toBe("Notes.");
+    expect(result.sections.find(s => s.key === "risk_check")!.content).toBe("Risks.");
+  });
+
+  it("handles multiline content with paragraphs in each section", () => {
+    const text = `[[HOOK]]
+Line 1 of hook.
+
+Line 2 of hook.
+
+Line 3 of hook.
+
+[[CONTEXT]]
+Context line 1.
+
+Context line 2.`;
+    const result = parseTaggedScript(text);
+    const hook = result.sections.find(s => s.key === "hook")!;
+    expect(hook.content).toContain("Line 1 of hook.");
+    expect(hook.content).toContain("Line 3 of hook.");
+  });
+
+  it("handles a full 13-block French script", () => {
+    const frScript = `[[HOOK]]
+En 1347, un navire fantôme accoste à Messine.
+
+[[CONTEXT]]
+La peste noire ravage l'Europe médiévale.
+
+[[PROMISE]]
+Ce que nous allons découvrir change tout.
+
+[[ACT1]]
+Les origines remontent à l'Asie centrale.
+
+[[ACT2]]
+Les preuves s'accumulent de manière surprenante.
+
+[[ACT2B]]
+Mais une contradiction majeure émerge.
+
+[[ACT3]]
+Les conséquences sont dévastatrices.
+
+[[CLIMAX]]
+La convergence finale révèle la vérité.
+
+[[INSIGHT]]
+Ce que cette histoire nous enseigne.
+
+[[CONCLUSION]]
+Le port de Messine existe toujours.
+
+[[TRANSITIONS]]
+HOOK→CONTEXT: ✅ SEAMLESS
+
+[[STYLE CHECK]]
+Ton documentaire cohérent. Rating: STRONG.
+
+[[RISK CHECK]]
+🟢 Dates vérifiées. Rating: SOLID.`;
+
+    const result = parseTaggedScript(frScript);
+    expect(result.tagged).toBe(true);
+    expect(result.sections).toHaveLength(13);
+    expect(result.emptySections).toHaveLength(0);
+    expect(result.sections[0].content).toContain("navire fantôme");
+    expect(result.sections[10].content).toContain("SEAMLESS");
+    expect(result.sections[11].content).toContain("STRONG");
+    expect(result.sections[12].content).toContain("SOLID");
+  });
+
+  it("handles a short script (all sections present but minimal)", () => {
+    const tags = ["HOOK","CONTEXT","PROMISE","ACT1","ACT2","ACT2B","ACT3","CLIMAX","INSIGHT","CONCLUSION","TRANSITIONS","STYLE CHECK","RISK CHECK"];
+    const shortScript = tags.map(t => `[[${t}]]\nMinimal ${t.toLowerCase()} content.`).join("\n\n");
+    const result = parseTaggedScript(shortScript);
+    expect(result.tagged).toBe(true);
+    expect(result.emptySections).toHaveLength(0);
+    expect(result.sections).toHaveLength(13);
+  });
+
+  it("handles a long script with extensive ACT2 content", () => {
+    const longAct2 = Array.from({length: 20}, (_, i) => `Evidence paragraph ${i+1} with detailed analysis.`).join("\n\n");
+    const text = `[[HOOK]]\nShort hook.\n[[CONTEXT]]\nBrief context.\n[[PROMISE]]\nPromise.\n[[ACT1]]\nSetup.\n[[ACT2]]\n${longAct2}\n[[ACT2B]]\nComplication.\n[[ACT3]]\nStakes.\n[[CLIMAX]]\nResolution.\n[[INSIGHT]]\nTakeaway.\n[[CONCLUSION]]\nFinal image.\n[[TRANSITIONS]]\nAudit.\n[[STYLE CHECK]]\nCheck.\n[[RISK CHECK]]\nRisks.`;
+    const result = parseTaggedScript(text);
+    expect(result.tagged).toBe(true);
+    const act2 = result.sections.find(s => s.key === "act2")!;
+    expect(act2.content).toContain("Evidence paragraph 1");
+    expect(act2.content).toContain("Evidence paragraph 20");
+  });
+
+  it("core sections vs editorial sections are correctly identified", () => {
+    const result = parseTaggedScript(SAMPLE_TAGGED);
+    const coreKeys = result.sections.filter(s => !["transitions","style_check","risk_check"].includes(s.key));
+    const editorialKeys = result.sections.filter(s => ["transitions","style_check","risk_check"].includes(s.key));
+    expect(coreKeys).toHaveLength(10);
+    expect(editorialKeys).toHaveLength(3);
+  });
+
+  it("reassembleFromParsed excludes editorial blocks from narration output", () => {
+    const result = parseTaggedScript(SAMPLE_TAGGED);
+    // Only core sections should appear in reassembled narration
+    const coreOnly = result.sections.filter(s => !["transitions","style_check","risk_check"].includes(s.key));
+    const text = reassembleFromParsed(coreOnly);
+    expect(text).not.toContain("Seamless");
+    expect(text).not.toContain("Style is consistent");
+    expect(text).toContain("A striking opening line.");
+  });
+
+  it("handles duplicate tags by appending content", () => {
+    const text = "[[HOOK]]\nFirst hook.\n[[HOOK]]\nSecond hook.\n[[CONTEXT]]\nCtx.";
+    const result = parseTaggedScript(text);
+    const hook = result.sections.find(s => s.key === "hook")!;
+    expect(hook.content).toContain("First hook.");
+    expect(hook.content).toContain("Second hook.");
+  });
+});
