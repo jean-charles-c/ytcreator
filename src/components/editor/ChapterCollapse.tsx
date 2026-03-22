@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ChapterList from "./ChapterList";
 import { type ChapterListState, type ChapterTitleVariant, type Chapter } from "./chapterTypes";
-import { SECTION_TYPES, SECTION_META, type SectionType } from "./canonicalScriptTypes";
+import { CORE_SECTION_TYPES, SECTION_TYPES, SECTION_META, type SectionType } from "./canonicalScriptTypes";
 import { supabase } from "@/integrations/supabase/client";
 import type { NarrativeSection } from "./SectionCard";
 
