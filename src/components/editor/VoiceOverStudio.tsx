@@ -135,6 +135,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       }
       // Fallback: use the generated script directly
       setVoScript(stripThousandSeparators(generatedScript));
+      setUserEditedScript(false);
       toast.success("Script généré collé");
       return;
     }
