@@ -221,7 +221,7 @@ interface SectionCardProps {
 
 export default function SectionCard({
   section, index, isOpen, onToggle, onContentChange, onRegenerate, regenerating,
-  history, onRestore, translation, translating, onTranslate, scriptLanguage,
+  history, onRestore, translation, translating, onTranslate, scriptLanguage, editorial,
 }: SectionCardProps) {
   const charCount = section.content?.length || 0;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
