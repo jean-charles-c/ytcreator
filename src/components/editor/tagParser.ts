@@ -33,12 +33,22 @@ const TAG_REGEX = new RegExp(
 );
 
 /**
- * Parse a tagged script into 9 canonical sections.
+ * Parse a tagged script into 13 canonical sections.
  * - Deterministic: regex only, zero AI.
  * - Strips tags from content.
  * - Preserves all text between tags verbatim.
  * - Also strips residual `<plan>...</plan>` blocks.
  */
+
+/** Map tag inner text (e.g. "STYLE CHECK") to SectionType key (e.g. "style_check") */
+function tagToKey(tagInner: string): SectionType | null {
+  const normalized = tagInner.trim().toLowerCase().replace(/\s+/g, "_");
+  if ((SECTION_TYPES as readonly string[]).includes(normalized)) {
+    return normalized as SectionType;
+  }
+  return null;
+}
+
 export function parseTaggedScript(raw: string): TagParseResult {
   if (!raw || !raw.trim()) {
     return {
