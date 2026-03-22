@@ -268,34 +268,85 @@ Anti-patterns:
 
 Structural rule: ACT2B must CREATE NARRATIVE PRESSURE toward ACT3. The complication it introduces must demand consequences.
 
-### [[ACT3]] — Consequences & Stakes (~15%)
+### [[ACT3]] — The Tipping Point (~15%)
 
-Real-world impact, complications, unresolved tensions:
-- What happened as a result? Who was affected? What changed?
-- Build TOWARD the climax — each paragraph should increase the narrative pressure.
-- The viewer should feel the story converging toward a turning point.
+ACT3 is where the story TILTS. Everything built in ACT1-ACT2-ACT2B now produces consequences.
 
-### [[CLIMAX]] — The Turning Point (~8%)
+Mission: show the TRANSFORMATION — what broke, what shifted, what could no longer remain as it was. ACT3 is not "more analysis"; it is the moment where analysis meets reality.
 
-Bring ALL THREADS together. This is where the hook's mystery finds its resolution:
-- Present the key insight as a CONCRETE DISCOVERY, not an abstract conclusion.
-- The central contradiction from the hook must be explicitly resolved or reframed.
-- This should feel like a revelation — the moment everything clicks.
+Requirements:
+- DISTINGUISH ROOT CAUSES from SYMBOLIC RUPTURE: something concrete happened (a decision, a discovery, a failure, a confrontation) — identify it precisely. Then show WHY this moment was a tipping point, not just another event.
+- ACCELERATE THE RHYTHM: ACT3 should feel faster than ACT2. Shorter paragraphs, more direct sentences. The viewer senses convergence — the story is heading somewhere inevitable.
+- SHOW THE STAKES concretely: who is affected? What is lost, gained, or irreversibly changed? Use specific consequences — names, numbers, places, dates — not abstract claims about "impact."
+- RAISE THE FINAL QUESTION: ACT3's last paragraph must make the CLIMAX feel inevitable. The viewer should think: "Everything has been building to THIS — what is the answer?"
+- CONNECT TO ACT2B: the complication introduced in ACT2B must produce visible consequences here. If ACT2B introduced a paradox, ACT3 shows what happens when that paradox collides with reality.
+
+Anti-patterns:
+- A chronological continuation that adds more facts without narrative convergence — ACT3 is not "and then more things happened."
+- Repeating the analysis from ACT2 in different words — ACT3 must MOVE THE STORY FORWARD, not restate it.
+- Emotional inflation without factual grounding: "This changed everything forever" without showing WHAT changed and HOW.
+- A flat transition to CLIMAX — the viewer should feel narrative PRESSURE building, not just another section starting.
+
+Structural rule: ACT3 must end on a moment of MAXIMUM TENSION — the question is fully formed, the stakes are clear, and the resolution is imminent.
+
+### [[CLIMAX]] — Convergence & Resolution (~8%)
+
+The CLIMAX is the PAYOFF of the entire script. It is where the narrative contract made in the HOOK is honored.
+
+Mission: bring ALL narrative threads together into a single moment of clarity — not a summary, but a CONVERGENCE where the viewer suddenly sees the full picture.
+
+Requirements:
+- RESOLVE THE HOOK'S TENSION: go back to the specific contradiction, mystery, or cognitive friction established in [[HOOK]]. The viewer must feel the CLICK — "so THAT'S why the hook was phrased that way."
+- CONCRETE DISCOVERY, NOT ABSTRACT CONCLUSION: the climax must present its resolution through a SPECIFIC element — a fact, a quote, a scene, a comparison — not through a general statement. Show the answer; don't just state it.
+- SYNTHESIS, NOT SUMMARY: the climax weaves together threads from ACT1, ACT2, ACT2B, and ACT3 into something that is MORE than their sum. The viewer gains an understanding they could not have reached from any single section.
+- INTELLECTUAL HONESTY on residual uncertainty: if the subject does not permit a clean resolution, say so explicitly. State what IS known with confidence, what remains plausible but unproven, and what is still genuinely open. A climax that admits honest uncertainty is more powerful than one that forces a fake resolution.
+- EMOTIONAL PRECISION: this is the most emotionally intense moment — but the emotion must come FROM the facts, not from rhetorical amplification. Let the material speak; don't inflate it.
+
+Anti-patterns:
+- A summary disguised as a climax: "So as we've seen, X was important because of Y and Z" — this is a recap, not a revelation.
+- An abstract philosophical statement: "In the end, what matters is that humanity…" — too vague, too generic.
+- A forced resolution that oversimplifies: if the subject is genuinely complex, the climax must honor that complexity.
+- A climax disconnected from the hook: if the opening tension is not explicitly addressed, the narrative contract is broken.
+
+Structural rule: the CLIMAX should be felt as the gravitational center of the script — everything before it builds toward it, everything after it radiates from it.
 
 ### [[INSIGHT]] — The Emergent Principle (~5%)
 
-What does this story teach us? What principle emerges?
-- Concrete and ACTIONABLE — not abstract philosophy.
-- Connect back to the viewer's world — why does this matter to THEM?
-- One clear, memorable takeaway.
+INSIGHT is the INTELLECTUAL RESIDUE of the story — the principle, pattern, or lesson that the viewer carries away.
+
+Mission: extract a CLEAR, NON-OBVIOUS takeaway that emerges organically from the narrative — not a moral imposed from outside, but something the story itself teaches.
+
+Requirements:
+- EMERGENT, NOT IMPOSED: the insight must feel like a natural consequence of everything the viewer has just experienced. If the viewer could not have anticipated this takeaway before watching the script, you've succeeded.
+- CONCRETE AND TRANSFERABLE: the insight must connect to the viewer's world. It answers: "Why does this matter to ME? What does this change about how I see things?" Give a specific framing, not an abstract principle.
+- ONE CLEAR IDEA: resist the temptation to list multiple takeaways. Identify the SINGLE most powerful insight and commit to it fully.
+- AVOID MORAL PLATITUDES: "We should learn from history" or "The truth is always more complex" are generic. The insight must be SPECIFIC to this subject — something only THIS story could teach.
+- BRIDGE TO CONCLUSION: the insight provides the intellectual closure; the conclusion provides the emotional closure. The insight says "here's what this means"; the conclusion says "here's what stays with you."
+
+Anti-patterns:
+- A vague moral ("This reminds us that…") — too generic, could apply to any subject.
+- A list of lessons ("Three things we can learn from this…") — dilutes the impact.
+- Repeating the climax in different words — the insight must ADD a new layer of meaning.
+- An insight disconnected from the narrative — if it doesn't flow from ACT1-CLIMAX, it feels pasted on.
 
 ### [[CONCLUSION]] — The Resonant Closing Image (~4%)
 
-End with a CONCRETE IMAGE or FACT that stays with the viewer:
-- A final scene, a lingering detail, a quiet moment after the revelation.
-- Do NOT summarize the video.
-- Do NOT use calls to action ("subscribe", "like").
-- The best conclusions ECHO the hook — returning to the opening image with new understanding.
+The CONCLUSION is the LAST THING the viewer hears. It must linger.
+
+Mission: close the script with a CONCRETE, MEMORABLE image or line that resonates — not a summary, not a call to action, but a final sensory or intellectual impression.
+
+Requirements:
+- ECHO THE HOOK: the most powerful conclusions RETURN to the opening image, place, or question — but now the viewer sees it with completely different eyes. This creates a CIRCULAR structure that feels complete and satisfying.
+- CONCRETE, NOT ABSTRACT: end with a SPECIFIC image, fact, scene, or detail — something the viewer can visualize. "The door is still there, unmarked, on a quiet street in Prague" is better than "The mystery continues to fascinate."
+- SHORT AND PRECISE: the conclusion should be 2-5 sentences maximum. Each word must earn its place. This is the moment where restraint creates impact.
+- NO META-COMMENTARY: do NOT say "This story shows us that…" or "What do you think?" Do NOT summarize the video. Do NOT include calls to action ("subscribe", "like", "comment").
+- LEAVE A RESONANCE: the best conclusions create a slight vibration in the viewer's mind — an image that keeps coming back, a question that keeps echoing, a detail that feels both final and infinite.
+
+Anti-patterns:
+- A summary paragraph ("So we've seen that X, Y, and Z…") — this kills the ending's power.
+- A generic philosophical closing ("And so the mystery of humanity continues…") — too vague.
+- A call to action or channel plug — this is narration, not a YouTube outro.
+- An abrupt stop without any resonance — the viewer should feel the ending was crafted, not that you ran out of things to say.
 
 ---
 
