@@ -1,9 +1,10 @@
 import { useRef } from "react";
-import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles } from "lucide-react";
+import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import SectionCard, { type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
+import SectionCard, { type NarrativeSection, type SectionHistoryEntry, EDITORIAL_SECTIONS } from "./SectionCard";
+import { isEditorialSection } from "./canonicalScriptTypes";
 
 /* ── Types ─────────────────────────────────────────── */
 
