@@ -25,16 +25,97 @@ function encodeSseData(data: string): Uint8Array {
 /* ── StyleAdapter ─────────────────────────────────── */
 
 const NARRATIVE_STYLE_INSTRUCTIONS: Record<string, string> = {
-  storytelling: "Adopt a captivating storyteller voice with a classic narrative arc: setup, rising tension, climax, resolution. Use vivid anecdotes, relatable characters, and emotional beats.",
-  pedagogical: "Adopt an expert educator voice. Prioritize clarity and structured explanation. Break complex ideas into digestible steps. Use analogies and examples.",
-  conversational: "Adopt a natural, relaxed tone — as if chatting with a friend. Use informal language, direct address ('you'), and spontaneous-sounding reactions.",
-  dramatic: "Adopt a dramatic, suspenseful voice. Build mystery progressively, withhold key information strategically, and create reveals that reframe what the viewer thought they knew.",
-  punchy: "Adopt a high-impact, fast-rhythm voice. Favor short sentences. Cut every unnecessary word. Each sentence hits like a headline.",
-  humorous: "Adopt a light, witty tone. Use unexpected analogies, playful observations, and well-timed humor while staying informative.",
-  documentary: "Adopt an immersive, cinematic documentary voice. Rich visual descriptions, atmospheric scene-setting, and a sense of 'being there'.",
-  journalistic: "Adopt a factual, investigative journalism voice. Lead with the most newsworthy elements. Be precise and maintain objectivity while keeping the narrative compelling.",
-  motivational: "Adopt an inspiring, empowering voice. Build toward uplifting conclusions. Use calls to action and moments that make the viewer feel they can change things.",
-  analytical: "Adopt a voice of depth and structured argumentation. Present multiple perspectives, weigh evidence, and guide the viewer through a rigorous intellectual journey.",
+  storytelling: `STYLE: STORYTELLING — Captivating narrator voice.
+Per-block modulation:
+- HOOK: Open with a gripping anecdote or scene — the viewer must feel dropped into a moment.
+- CONTEXT/PROMISE: Frame the subject as a STORY with characters, stakes, and unknowns.
+- ACT1-ACT2-ACT2B: Build tension through CHARACTER-DRIVEN moments. Each fact is revealed through someone's experience — never as a dry statement. Use the "and then…" engine: each paragraph compels the next.
+- ACT3/CLIMAX: Escalate emotionally. Use pacing shifts — slow down before the reveal, then deliver it with precision.
+- INSIGHT/CONCLUSION: Land the moral through a final scene or image, not a lecture.
+Guardrails: Never sacrifice factual precision for dramatic effect. Anecdotes must be grounded in source material, not invented. Emotional beats must EARN their impact through buildup.`,
+
+  pedagogical: `STYLE: PEDAGOGICAL — Expert educator voice.
+Per-block modulation:
+- HOOK: Open with a surprising fact or counterintuitive question that makes the viewer realize they DON'T understand something they thought they did.
+- CONTEXT/PROMISE: Provide a clear intellectual roadmap — the viewer should know WHAT they'll learn and WHY it matters.
+- ACT1-ACT2-ACT2B: Structure as a GUIDED DISCOVERY. Break complex ideas into digestible steps. Use "first… then… but here's the catch…" patterns. Deploy analogies that illuminate, not decorate.
+- ACT3/CLIMAX: The "aha moment" — where the pieces click together. Make the viewer feel they've genuinely understood something new.
+- INSIGHT/CONCLUSION: Synthesize into a transferable principle. The viewer should feel intellectually enriched.
+Guardrails: Never condescend. Assume an intelligent audience. Clarity is NOT simplification — it's precision. Avoid over-explaining what's already clear.`,
+
+  conversational: `STYLE: CONVERSATIONAL — Natural, direct, like talking to a smart friend.
+Per-block modulation:
+- HOOK: Start mid-thought, as if continuing a conversation: "So here's the thing about…" or an equivalent natural opener.
+- CONTEXT/PROMISE: Keep it light but informative — "OK, to understand this, you need to know…"
+- ACT1-ACT2-ACT2B: Use direct address ("you"), rhetorical questions, and spontaneous-sounding reactions ("and that's where it gets weird"). But keep the analytical substance INTACT beneath the casual surface.
+- ACT3/CLIMAX: Drop the casual tone slightly for emphasis — the shift in register itself creates impact.
+- INSIGHT/CONCLUSION: Return to the warm, direct tone. End as if leaving the friend with something to think about.
+Guardrails: Casual does NOT mean shallow. Every informal sentence must still carry analytical weight. Avoid filler phrases that add nothing ("basically", "like, you know"). The conversational tone is a VEHICLE for substance, not a replacement.`,
+
+  dramatic: `STYLE: DRAMATIC / SUSPENSE — Tension-driven, revelation-based.
+Per-block modulation:
+- HOOK: Maximum tension in minimum space. Create cognitive friction — something that SHOULDN'T be true but IS.
+- CONTEXT/PROMISE: Build foreboding — the viewer senses something important is coming.
+- ACT1: Establish normalcy that will be DISRUPTED. The calm before the storm.
+- ACT2: Escalate through strategic withholding — reveal information in a sequence that maximizes surprise. Each paragraph raises a question that the NEXT paragraph answers, while raising a bigger question.
+- ACT2B: The twist — introduce the element that reframes everything the viewer thought they understood.
+- ACT3/CLIMAX: Convergence under pressure. All threads collide. Deliver the resolution as a REVELATION, not a summary.
+- INSIGHT/CONCLUSION: The quiet after the storm. A last haunting detail or unanswered echo.
+Guardrails: Suspense must come from INFORMATION ARCHITECTURE, not from rhetorical inflation. Never use vague mystification ("little did they know…") without a concrete payoff. Every withheld detail must be REVEALED later — no abandoned mysteries.`,
+
+  punchy: `STYLE: PUNCHY / FAST-RHYTHM — High-impact, economy of words.
+Per-block modulation:
+- HOOK: One or two sentences. Maximum density. Every word earns its place.
+- CONTEXT/PROMISE: Compressed but complete. Strip to essentials. No preamble.
+- ACT1-ACT2-ACT2B: Short paragraphs. Declarative sentences. Facts hit like headlines. Use white space between ideas. But NEVER sacrifice analytical depth for brevity — compress, don't amputate.
+- ACT3/CLIMAX: Accelerate further. Sentence fragments allowed for emphasis. Then ONE longer sentence for the key revelation — the contrast creates impact.
+- INSIGHT/CONCLUSION: Land it in 2-3 sentences. Sharp. Final.
+Guardrails: Punchy is NOT simplistic. Short sentences must still carry nuance. Avoid creating a monotonous rhythm of identical sentence lengths — VARY strategically. The occasional longer sentence creates contrast that amplifies the short ones.`,
+
+  humorous: `STYLE: HUMOROUS — Wit and intelligence, never clowning.
+Per-block modulation:
+- HOOK: An unexpected angle or absurd juxtaposition that makes the viewer smile while being genuinely curious.
+- CONTEXT/PROMISE: Light irony, wry observations — but the INFORMATION is solid and complete.
+- ACT1-ACT2-ACT2B: Deploy humor as a PRECISION TOOL: an unexpected analogy that illuminates, a deadpan observation that reveals an absurdity in the subject itself. Humor must SERVE comprehension.
+- ACT3/CLIMAX: Reduce humor as stakes increase — the contrast makes the serious content more impactful.
+- INSIGHT/CONCLUSION: A final wry observation or clever callback to the opening humor.
+Guardrails: NEVER use humor to avoid analytical depth. No forced jokes or puns. Humor must emerge from the SUBJECT MATTER, not be imposed on it. If a section doesn't lend itself to humor, stay straight — forced levity destroys credibility.`,
+
+  documentary: `STYLE: DOCUMENTARY / IMMERSIVE — Cinematic, atmospheric, "you are there."
+Per-block modulation:
+- HOOK: Open on a SCENE — a specific place, time, sensory detail. The viewer must SEE and FEEL the moment before understanding it.
+- CONTEXT: Ground the viewer in the PHYSICAL WORLD of the subject — geography, atmosphere, the texture of the era or environment.
+- ACT1-ACT2-ACT2B: Alternate between WIDE (contextual, analytical) and CLOSE (specific scenes, moments, details). Use sensory anchors: sounds, textures, visual details that make abstract concepts tangible.
+- ACT3/CLIMAX: Intensify the sensory layer — the scene becomes more vivid as the stakes increase. The viewer should feel the moment of revelation as if witnessing it.
+- CONCLUSION: End on a final image — a place, an object, a moment of quiet after the storm.
+Guardrails: Atmosphere must SERVE the narrative, never replace it. Every sensory detail must connect to an analytical point. Avoid generic "cinematic" descriptions ("the sun set over the ancient ruins") — specificity creates immersion, not clichés.`,
+
+  journalistic: `STYLE: JOURNALISTIC / INVESTIGATIVE — Factual, precise, compelling.
+Per-block modulation:
+- HOOK: Lead with the most newsworthy element — the fact that would make a headline.
+- CONTEXT: The "5W1H" — who, what, when, where, why, how — delivered efficiently.
+- ACT1-ACT2-ACT2B: Structure as an INVESTIGATION. Present evidence methodically. Attribution is explicit ("according to X", "documents show"). Distinguish clearly between established facts, expert interpretations, and unverified claims.
+- ACT3/CLIMAX: The key finding or revelation — presented with the weight of accumulated evidence.
+- INSIGHT/CONCLUSION: The broader implication — what this means beyond the immediate story.
+Guardrails: Never editorialize — let the facts speak. No unnamed sources ("experts say"). Every claim must be traceable to the source material. Objectivity does NOT mean blandness — select and sequence facts for maximum narrative impact.`,
+
+  motivational: `STYLE: MOTIVATIONAL / INSPIRING — Empowering, forward-looking.
+Per-block modulation:
+- HOOK: Open with a moment of triumph or transformation that makes the viewer feel possibility.
+- CONTEXT/PROMISE: Frame the subject as a journey of OVERCOMING — obstacles exist to be navigated.
+- ACT1-ACT2-ACT2B: Show the struggle authentically — don't minimize difficulties. Inspiration comes from acknowledging real obstacles and showing how they were confronted.
+- ACT3/CLIMAX: The breakthrough moment — concrete, specific, earned through the preceding struggle.
+- INSIGHT/CONCLUSION: Connect to the viewer's potential — "If this was possible there, what's possible for you?"
+Guardrails: NEVER manufacture false optimism. Inspiration must be EARNED through honest portrayal of difficulty. Avoid generic motivational phrases ("anything is possible", "never give up"). Ground every uplifting moment in specific, documented reality.`,
+
+  analytical: `STYLE: ANALYTICAL / CRITICAL — Deep argumentation, intellectual rigor.
+Per-block modulation:
+- HOOK: Open with a paradox, a counterintuitive finding, or a question that reveals hidden complexity.
+- CONTEXT: Establish the analytical FRAMEWORK — what lens are we using to examine this subject?
+- ACT1-ACT2-ACT2B: Deploy multi-perspective analysis. Present thesis, antithesis, synthesis. Distinguish correlation from causation. Weigh competing explanations explicitly.
+- ACT3/CLIMAX: The analytical RESOLUTION — where the weight of evidence points, with explicit confidence levels.
+- INSIGHT/CONCLUSION: The meta-insight — what does this analysis teach us about HOW to think, not just what to think?
+Guardrails: Rigor does NOT mean dryness. Analytical style must still create narrative momentum — use the revelation of each analytical layer as a source of intellectual suspense. Avoid academic jargon unless essential and immediately explained.`,
 };
 
 /* ── VolumeAllocator ──────────────────────────────── */
@@ -135,10 +216,15 @@ You are NOT translating from English. You are THINKING and WRITING directly in $
 - Over-literal rendering of English rhetorical effects (e.g., translating "Let that sink in" word-for-word).
 - Academic or written-language constructions in what should be spoken narration.
 
-### StyleAdapter
+### StyleAdapter — Per-Block Tonal Modulation
+
 ${styleInstruction}
 
-The style is an EXPRESSIVE LAYER — it modulates tone, rhythm, and vocabulary. It must NEVER weaken the narrative structure, dilute factual precision, or replace argumentation with decoration.
+CRITICAL STYLE RULES:
+1. The style is an EXPRESSIVE LAYER — it modulates tone, rhythm, and vocabulary. It must NEVER weaken the narrative structure, dilute factual precision, or replace argumentation with decoration.
+2. VARY the style intensity per block: the HOOK and CLIMAX can be more stylistically charged; ACT2 (analytical core) must remain substance-first regardless of style.
+3. TONAL CONSISTENCY: the style must feel like ONE voice throughout — not 13 different authors. Variations in intensity are fine; contradictions in tone are not.
+4. STYLE ≠ QUALITY SUBSTITUTE: a "dramatic" style does NOT excuse vague claims. A "humorous" style does NOT excuse shallow analysis. A "documentary" style does NOT excuse empty atmosphere. Every stylistic choice must CARRY analytical content.
 
 ---
 
