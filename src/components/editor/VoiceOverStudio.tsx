@@ -224,14 +224,21 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
-      // Try to align with shots for precise sync; fall back to standard mode if not possible
+      // If user manually edited the textarea, force standard mode (no shot sync)
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
-      const shotSentences = buildShotSentences();
-      const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
-      const useMarkedSync = syncValidation.ok && shotSentences && shotSentences.length > 0;
+      let useMarkedSync = false;
+      let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
-      if (!useMarkedSync && expectedShotIds.length > 0 && shotSentences && shotSentences.length > 0) {
-        console.warn("Shot sync validation failed, falling back to standard mode:", syncValidation.errors);
+      if (!userEditedScript) {
+        shotSentences = buildShotSentences();
+        const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
+        useMarkedSync = syncValidation.ok && shotSentences != null && shotSentences.length > 0;
+
+        if (!useMarkedSync && expectedShotIds.length > 0 && shotSentences && shotSentences.length > 0) {
+          console.warn("Shot sync validation failed, falling back to standard mode:", syncValidation.errors);
+        }
+      } else {
+        console.info("User edited script detected — using standard TTS mode (no shot sync).");
       }
 
       const response = await fetch(
