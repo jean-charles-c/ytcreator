@@ -207,30 +207,66 @@ Short and punchy — this is the retention moment. In 2-4 sentences:
 
 Do NOT repeat the context. Do NOT summarize the video. Do NOT list topics ("We'll explore X, Y, Z").
 
-### [[ACT1]] — Origins & Setup (~15%)
+### [[ACT1]] — Dynamic Foundations (~15%)
 
-The origin story: how it began, the founding moment, the first system.
-- Introduce key characters with their MOTIVATIONS (not just their names).
-- Ground every claim in a specific time, place, or documented event.
-- Build toward the first narrative tension — something that demands escalation.
+ACT1 is NOT a history lesson. It is the LAUNCHPAD for the analytical engine of the script.
 
-### [[ACT2]] — Escalation & Complexity (~20% — THE LONGEST)
+Mission: establish the starting conditions of the subject — its origin point, its first concrete manifestation, and the initial forces that set the story in motion.
 
-The investigation expands. Deploy narrative tensions as ESCALATING REVEALS:
-- Show growth, spread, complexity. The viewer must feel the story getting bigger.
-- Each paragraph should raise the stakes or introduce a new dimension.
-- Use the revelation pattern: introduce element → add context → reveal the unexpected truth.
-- Build toward a moment where the viewer thinks they understand — before ACT2B disrupts that understanding.
+Requirements:
+- OPEN with a grounded scene: a specific moment, place, or action that makes the subject tangible. The viewer must SEE something happening, not receive a lecture.
+- Introduce KEY ACTORS with their MOTIVATIONS — what drives them? What problem are they trying to solve? What do they want?
+- Establish the INITIAL STATE: what did the world look like before the subject changed it? This baseline is essential for the viewer to measure the escalation in ACT2.
+- Plant the FIRST TENSION: something incomplete, unstable, or contradictory in this initial state that DEMANDS further investigation. ACT1 must end with the viewer feeling: "OK, I see where this started — but something doesn't add up."
 
-### [[ACT2B]] — Counter-point & Pivot (~10% — NEW)
+Anti-patterns:
+- A flat chronological summary ("In 1823, X was born. He studied at Y. In 1850, he published Z.") — this is a biography, not a narrative foundation.
+- Pure historical context with no narrative engine — context belongs in [[CONTEXT]], ACT1 must MOVE.
+- Decorative writing that describes atmosphere without establishing stakes.
 
-The narrative complication. This block exists to PREVENT linear predictability:
-- Introduce a counter-argument, an exception, or an unexpected complication that challenges the narrative built in ACT2.
-- Show that the story is more nuanced than it first appeared.
-- This can be: a dissenting voice, a failed prediction, an inconvenient fact, a paradox, a cost nobody expected.
-- The viewer must feel: "I thought I understood, but it's more complex than that."
+Structural rule: ACT1's LAST PARAGRAPH must create a clear pull toward ACT2. The viewer should feel that the story is about to get bigger.
 
-This block must NOT be filler. It must genuinely COMPLICATE the viewer's understanding.
+### [[ACT2]] — Analytical Core (~20% — THE LONGEST BLOCK)
+
+ACT2 is the INTELLECTUAL ENGINE of the entire script. It carries the heaviest analytical load.
+
+Mission: deploy the subject's complexity through a HIERARCHIZED investigation — not a list of facts, but a structured escalation where each element builds on the previous one.
+
+Requirements:
+- HIERARCHY OF EVIDENCE: organize your material from most solid to most debatable. Lead with the strongest, most documented claims. Then introduce nuances, exceptions, and less certain interpretations. The viewer must always know WHERE they stand on the certainty spectrum.
+- ESCALATING REVEALS: each paragraph must raise the stakes or add a new dimension. The story gets BIGGER, more complex, more surprising. Use the revelation pattern: introduce element → add misleading context → reveal the unexpected truth.
+- CONSTANT ORIENTATION: the viewer must never feel lost. After each reveal, briefly re-anchor: "So now we have X, but that raises a new question…". This is NOT hand-holding — it's intellectual navigation.
+- DEMONSTRATE, DON'T DECORATE: every paragraph must advance understanding. If a paragraph could be removed without losing analytical substance, it should not exist.
+- FACTUAL PRECISION: this is where the densest factual content lives. Use specific names, dates, places, numbers — all from the source material. No vague attributions.
+
+Anti-patterns:
+- Accumulation without hierarchy: "Another example is… And there's also… Plus, we should mention…" — this is a Wikipedia list, not an investigation.
+- All claims treated as equally certain — the viewer cannot distinguish solid facts from interpretations.
+- Emotional padding: sentences that sound impressive but add no analytical content ("This was truly remarkable and changed everything forever").
+- Losing the narrative thread: ACT2 is analytical but NEVER academic. It must still FEEL like a story being told.
+
+Structural rule: ACT2 must end with a moment of apparent clarity — the viewer thinks they understand the full picture. This sets up ACT2B's disruption.
+
+### [[ACT2B]] — Essential Complication (~10%)
+
+ACT2B exists for ONE reason: to prevent the script from being intellectually predictable.
+
+Mission: introduce a NECESSARY DIMENSION that genuinely complicates the viewer's understanding — not a minor footnote, but something that forces a re-evaluation of what ACT2 established.
+
+Requirements:
+- DISRUPTION, NOT REPETITION: ACT2B must NOT be "more of the same" or "another angle on ACT2". It must introduce something the viewer did NOT expect: a counter-argument, a paradox, a failure, a cost, a dissenting voice, an inconvenient exception.
+- CONCRETE ANCHOR: the complication must be grounded in a specific fact, event, or perspective — not an abstract qualification ("However, it's more complex than that"). SHOW the complexity through a concrete case.
+- LINK DETAIL TO MEANING: every specific detail in ACT2B must connect to a LARGER IMPLICATION. A dissenting voice is interesting only if it challenges a fundamental assumption. A failed prediction matters only if it reveals a systemic blind spot.
+- INTELLECTUAL HONESTY: ACT2B is where the script earns its credibility. By showing that the subject resists simple narratives, you demonstrate that you've done the work of understanding it deeply.
+
+The viewer's feeling at the end of ACT2B: "I thought I understood this, but it's more nuanced than I realized — and I want to see how this resolves."
+
+Anti-patterns:
+- A token counter-argument that is immediately dismissed — this is intellectual theater, not genuine complication.
+- Repeating ACT2's logic with different examples — ACT2B must CHANGE the analytical frame, not extend it.
+- A block so disconnected from the main argument that it feels like a digression.
+
+Structural rule: ACT2B must CREATE NARRATIVE PRESSURE toward ACT3. The complication it introduces must demand consequences.
 
 ### [[ACT3]] — Consequences & Stakes (~15%)
 
