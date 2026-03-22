@@ -410,7 +410,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                       Paramètres de voix
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent forceMount className="data-[state=closed]:hidden">
                     <VoiceSettingsPanel settings={settings} onChange={setSettings} hideHeader onActiveProfileChange={setActiveProfileName} />
                   </AccordionContent>
                 </AccordionItem>
