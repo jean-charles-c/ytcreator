@@ -252,7 +252,7 @@ serve(async (req) => {
         s.scene_type ? `Scene type: ${s.scene_type}` : null,
         s.continuity ? `Continuity: ${s.continuity}` : null,
       ].filter(Boolean).join(" | ");
-      return `Scene ${s.scene_order} (id: ${s.id}, requested_shots: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""} — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""} — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
