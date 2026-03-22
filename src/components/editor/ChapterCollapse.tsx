@@ -316,7 +316,7 @@ export default function ChapterCollapse({
 
     setGeneratingId(null);
     setBatchGenerating(false);
-    if (errorCount === 0) toast.success("9 chapitres générés !");
+    if (errorCount === 0) toast.success(`${chaptersToProcess.length} chapitres générés !`);
     else if (errorCount < chaptersToProcess.length) toast.warning(`${errorCount} erreur(s) sur ${chaptersToProcess.length}`);
     else toast.error("Aucun titre généré — vérifiez que le script contient du texte.");
   }, [chapters, batchTone, scriptLanguage, onChapterStateChange, chapterState?.method]);
