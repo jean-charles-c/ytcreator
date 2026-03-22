@@ -222,12 +222,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // If scene source_text < 100 characters → 1 shot
-    // If scene source_text >= 100 characters → 1 shot per sentence
+    // Shot count: 1 shot per sentence, but long sentences (100+ chars) get 1 shot per 100-char chunk
     const calcShotCount = (text: string): number => {
       if (text.length < 100) return 1;
-      const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0).length;
-      return Math.max(1, sentences);
+      const sentences = text.split(/[.!?]+/).filter((s: string) => s.trim().length > 0);
+      let total = 0;
+      for (const sentence of sentences) {
+        const len = sentence.trim().length;
+        total += len < 100 ? 1 : Math.ceil(len / 100);
+      }
+      return Math.max(1, total);
     };
 
     const scriptLang = project.script_language || "fr";
