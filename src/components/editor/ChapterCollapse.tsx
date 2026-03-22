@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ChapterList from "./ChapterList";
 import { type ChapterListState, type ChapterTitleVariant, type Chapter } from "./chapterTypes";
-import { SECTION_TYPES, SECTION_META, type SectionType } from "./canonicalScriptTypes";
+import { CORE_SECTION_TYPES, SECTION_TYPES, SECTION_META, type SectionType } from "./canonicalScriptTypes";
 import { supabase } from "@/integrations/supabase/client";
 import type { NarrativeSection } from "./SectionCard";
 
@@ -45,7 +45,7 @@ export default function ChapterCollapse({
 
   /** Build chapters directly from NarrativeScriptBlock sections */
   const chaptersFromSections = useMemo((): Chapter[] => {
-    return SECTION_TYPES.map((type, idx) => {
+    return CORE_SECTION_TYPES.map((type, idx) => {
       const meta = SECTION_META[type];
       const section = scriptSections?.find((s) => s.key === type);
       const text = section?.content?.trim() || "";
@@ -97,8 +97,8 @@ export default function ChapterCollapse({
 
   const isLegacyChapterState = useCallback((state: ChapterListState | null) => {
     if (!state) return true;
-    if (state.chapters.length !== SECTION_TYPES.length) return true;
-    return SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
+    if (state.chapters.length !== CORE_SECTION_TYPES.length) return true;
+    return CORE_SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
   }, []);
 
   const handleOpenChange = useCallback(
@@ -316,7 +316,7 @@ export default function ChapterCollapse({
 
     setGeneratingId(null);
     setBatchGenerating(false);
-    if (errorCount === 0) toast.success("9 chapitres générés !");
+    if (errorCount === 0) toast.success(`${chaptersToProcess.length} chapitres générés !`);
     else if (errorCount < chaptersToProcess.length) toast.warning(`${errorCount} erreur(s) sur ${chaptersToProcess.length}`);
     else toast.error("Aucun titre généré — vérifiez que le script contient du texte.");
   }, [chapters, batchTone, scriptLanguage, onChapterStateChange, chapterState?.method]);
@@ -363,7 +363,7 @@ export default function ChapterCollapse({
               className="h-7 text-xs gap-1"
             >
               {batchGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              Générer les 9 titres
+              Générer les 10 titres
             </Button>
             <Button
               variant="outline"
