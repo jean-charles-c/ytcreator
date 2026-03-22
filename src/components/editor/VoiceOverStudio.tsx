@@ -465,7 +465,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 <Textarea
                   id="vo-script"
                   value={voScript}
-                  onChange={(e) => setVoScript(e.target.value)}
+                  onChange={(e) => { setVoScript(e.target.value); setUserEditedScript(true); }}
                   placeholder="Collez ou saisissez votre texte narratif ici..."
                   className="min-h-[200px] sm:min-h-[250px] lg:min-h-[220px] text-sm leading-relaxed resize-y font-body"
                   aria-label="Script narratif pour la voix off"
