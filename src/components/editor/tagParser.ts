@@ -80,7 +80,8 @@ export function parseTaggedScript(raw: string): TagParseResult {
   // Extract content between consecutive tags
   const extracted = new Map<string, string>();
   for (let i = 0; i < matches.length; i++) {
-    const tagKey = matches[i][1].toLowerCase();
+    const tagKey = tagToKey(matches[i][1]);
+    if (!tagKey) continue;
     const contentStart = matches[i].index! + matches[i][0].length;
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
     const content = cleaned.slice(contentStart, contentEnd).trim();
