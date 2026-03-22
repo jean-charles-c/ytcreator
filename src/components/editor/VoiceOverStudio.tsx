@@ -219,17 +219,14 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
+      // Try to align with shots for precise sync; fall back to standard mode if not possible
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
       const shotSentences = buildShotSentences();
       const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
+      const useMarkedSync = syncValidation.ok && shotSentences && shotSentences.length > 0;
 
-      if (!syncValidation.ok || !shotSentences) {
-        if (syncValidation.placeholderIds.length > 0) {
-          toast.error("Le script VO n’est plus aligné avec les shots. Cliquez sur « Coller le script généré » pour reconstruire le script depuis les shots actuels, puis relancez la voix off.");
-        } else {
-          toast.error(syncValidation.errors[0] ?? "Sync audio bloquée — les shots doivent correspondre exactement au script.");
-        }
-        return;
+      if (!useMarkedSync && expectedShotIds.length > 0 && shotSentences && shotSentences.length > 0) {
+        console.warn("Shot sync validation failed, falling back to standard mode:", syncValidation.errors);
       }
 
       const response = await fetch(
@@ -263,8 +260,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
-            shotSentences,
-            syncMode: "shot_marked",
+            ...(useMarkedSync
+              ? { shotSentences, syncMode: "shot_marked" }
+              : { syncMode: "standard" }),
           }),
         }
       );
