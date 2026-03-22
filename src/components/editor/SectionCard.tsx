@@ -74,7 +74,7 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
       }
     }
 
-    return NARRATIVE_SECTIONS.map((s) => ({
+    return ALL_SECTIONS.map((s) => ({
       ...s,
       content: segments.find((seg) => seg.key === s.key)?.content || "",
     }));
