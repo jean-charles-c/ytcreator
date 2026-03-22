@@ -146,6 +146,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       return;
     }
     setVoScript(stripThousandSeparators(source));
+    setUserEditedScript(false);
     toast.success("Narration collée");
   };
 
