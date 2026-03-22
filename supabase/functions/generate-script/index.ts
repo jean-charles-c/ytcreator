@@ -558,29 +558,82 @@ Anti-patterns:
 
 ## SECTION ARCHITECTURE — EditorialAssistBlocks
 
-### [[TRANSITIONS]]
+IMPORTANT: These 3 blocks are NOT narration. They are STRUCTURED EDITORIAL ANALYSIS written AFTER the script. They do NOT count toward the word budget. They serve as a quality audit layer.
 
-Audit every transition between core blocks. For each boundary (HOOK→CONTEXT, CONTEXT→PROMISE, etc.):
-- Quote the last sentence of the outgoing block and first sentence of the incoming block.
-- Rate the transition: SEAMLESS / ADEQUATE / ABRUPT / BROKEN.
-- If ABRUPT or BROKEN: suggest a specific fix.
+### [[TRANSITIONS]] — Inter-Block Continuity Audit
 
-### [[STYLE CHECK]]
+For EACH of the 9 boundaries between core blocks (HOOK→CONTEXT, CONTEXT→PROMISE, PROMISE→ACT1, ACT1→ACT2, ACT2→ACT2B, ACT2B→ACT3, ACT3→CLIMAX, CLIMAX→INSIGHT, INSIGHT→CONCLUSION):
 
-Verify the script against the chosen style ("${narrativeStyle}"):
-- Does the tone remain consistent throughout?
-- Are there passages that sound generic / AI-generated / template-like?
-- Are there tics to eliminate? (e.g., overuse of "fascinating", "remarkable", "it's worth noting")
-- Rate overall style adherence: STRONG / MODERATE / WEAK.
+1. **Quote** the LAST sentence of the outgoing block and the FIRST sentence of the incoming block.
+2. **Rate** the transition using this scale:
+   - ✅ SEAMLESS — ideas flow naturally, no friction.
+   - ⚠️ ADEQUATE — functional but could be smoother.
+   - 🔴 ABRUPT — noticeable jump in logic, tone, or focus.
+   - ❌ BROKEN — disconnection that would confuse a listener.
+3. **If ABRUPT or BROKEN**: write a SPECIFIC rewrite suggestion (1-2 sentences) that would fix the transition. Do NOT suggest vague improvements — provide the actual bridging sentence.
+4. **Identify scale shifts**: flag any transition where the narrative jumps between micro (specific detail) and macro (broad context) without preparation. These are the most common causes of listener disorientation.
 
-### [[RISK CHECK]]
+Format example:
+\`\`\`
+HOOK → CONTEXT:
+OUT: "…et pourtant, personne ne l'a jamais retrouvé."
+IN: "Pour comprendre cette disparition, il faut remonter à 1847."
+Rating: ✅ SEAMLESS
+\`\`\`
 
-Verify intellectual and factual integrity:
-- List any claim NOT directly supported by the provided source material.
-- Flag any vague attributions ("experts say", "studies show") without named sources.
-- Identify the hierarchy: which claims are SOLID FACTS, which are PLAUSIBLE INTERPRETATIONS, which are DEBATABLE.
-- Flag any broken numbers, placeholder dates, or empty factual slots.
-- Rate factual integrity: SOLID / MOSTLY SOLID / WEAK.
+### [[STYLE CHECK]] — Tonal & Stylistic Audit
+
+Verify the script against the chosen style ("${narrativeStyle}"). Analyze systematically:
+
+1. **RHYTHM ANALYSIS**:
+   - Count approximate sentence lengths across the script. Flag any passage with 3+ consecutive sentences of similar length.
+   - Identify sections where the rhythm feels monotonous or mechanical.
+   - Check that the HOOK is punchy, ACT2 has analytical flow, and CLIMAX has emotional precision.
+
+2. **AI-DETECTION SCAN** — Flag any sentence that contains these common AI writing tics:
+   - Overused qualifiers: "fascinating", "remarkable", "it's worth noting", "interestingly", "crucially"
+   - Empty amplifiers: "truly", "incredibly", "absolutely", "fundamentally"
+   - Hedge stacking: "perhaps", "it seems", "one might argue" used without analytical purpose
+   - False profundity: sentences that sound deep but say nothing specific
+   - List-like enumeration disguised as narration
+
+3. **TONAL CONSISTENCY**:
+   - Rate tone consistency across all 10 core blocks: CONSISTENT / MINOR DRIFT / INCONSISTENT
+   - If drift detected: identify WHICH blocks deviate and HOW (e.g., "ACT2B suddenly becomes more formal than ACT2")
+
+4. **DOCUMENTARY CLICHÉS** — Flag any instance of:
+   - "Little did they know…" / "What they discovered would change everything…"
+   - Generic scene-setting without specific details
+   - Emotional inflation without factual grounding
+   - Rhetorical questions used as filler rather than genuine curiosity hooks
+
+5. **OVERALL RATING**: STRONG / MODERATE / WEAK — with a 1-sentence justification.
+
+### [[RISK CHECK]] — Intellectual & Factual Integrity Audit
+
+Verify the robustness of every claim in the script. This is the credibility firewall.
+
+1. **CLAIM INVENTORY** — For each significant factual claim in the script, classify it:
+   - 🟢 SOLID FACT: directly supported by the source material with specific evidence.
+   - 🟡 PLAUSIBLE INTERPRETATION: reasonable inference from the source, but not explicitly stated.
+   - 🟠 DEBATABLE: multiple valid interpretations exist; the script presents one without acknowledging others.
+   - 🔴 UNSUPPORTED: not traceable to the source material; may be hallucinated or assumed.
+
+2. **ATTRIBUTION AUDIT**:
+   - Flag every vague attribution ("experts say", "studies show", "scientists believe", "historians agree") that lacks a named source.
+   - For each: suggest either naming the source (if available in the material) or rewriting to remove the false authority.
+
+3. **NUANCE GAPS**:
+   - Identify claims presented as definitive that should include uncertainty markers.
+   - Flag any "always/never/impossible/proven" language that oversimplifies.
+   - Check that ACT2B genuinely complicates the thesis rather than offering a token counter-argument.
+
+4. **FACTUAL INTEGRITY CHECK**:
+   - Flag any broken numbers, placeholder dates ("[19XX]"), or empty factual slots.
+   - Verify number formatting (no comma/dot separators).
+   - Check that statistics and dates match the source material.
+
+5. **OVERALL RATING**: SOLID / MOSTLY SOLID / WEAK — with specific items to fix listed in priority order (most critical first).
 
 ---
 
