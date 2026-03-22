@@ -97,8 +97,8 @@ export default function ChapterCollapse({
 
   const isLegacyChapterState = useCallback((state: ChapterListState | null) => {
     if (!state) return true;
-    if (state.chapters.length !== SECTION_TYPES.length) return true;
-    return SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
+    if (state.chapters.length !== CORE_SECTION_TYPES.length) return true;
+    return CORE_SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
   }, []);
 
   const handleOpenChange = useCallback(
