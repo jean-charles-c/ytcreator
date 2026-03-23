@@ -742,8 +742,12 @@ serve(async (req) => {
       return localValue.toLowerCase().trim() !== globalValue.toLowerCase().trim();
     };
 
-    // ─── Build BlocContexteScene with inheritance + variation handling ─
-    const buildSceneContext = (scene: ReturnType<typeof validateSceneBlock>) => {
+    // ─── Build BlocContexteScene with inheritance + variation handling + continuity tracking ─
+    const buildSceneContext = (
+      scene: ReturnType<typeof validateSceneBlock>,
+      sceneIndex: number,
+      prevContext: Record<string, any> | null
+    ) => {
       const gc = globalContext || {};
 
       // Local values from scene metadata
@@ -752,22 +756,32 @@ serve(async (req) => {
       const localLieu = scene.location && scene.location !== "unspecified" && scene.location !== "Non spécifié"
         ? scene.location : null;
       const localPersonnages = scene.characters && scene.characters !== "none" && scene.characters !== "Non spécifié"
+        && scene.characters !== "Aucun personnage actif"
         ? scene.characters : null;
 
       // Temporal variation detection from scene text
       const temporalShift = detectTemporalVariation(scene.source_text, gc.epoque || "");
 
-      // Determine epoch: local temporal shift > global
-      const resolvedEpoque = temporalShift || gc.epoque || "Non déterminé";
+      // Determine epoch: temporal shift > previous scene epoch (stability) > global
+      const prevEpoque = prevContext?.epoque || null;
+      const resolvedEpoque = temporalShift
+        || (prevEpoque && prevEpoque !== "Non déterminé" && !temporalShift ? prevEpoque : null)
+        || gc.epoque || "Non déterminé";
 
-      // Determine location: local if explicitly different and justified, else global
-      const resolvedLieu = localLieu || gc.lieu_principal || "Non déterminé";
+      // Determine location: local > previous scene (stability unless scene changes it) > global
+      const prevLieu = prevContext?.lieu || null;
+      const resolvedLieu = localLieu
+        || (prevLieu && prevLieu !== "Non déterminé" && scene.continuity !== "new" ? prevLieu : null)
+        || gc.lieu_principal || "Non déterminé";
 
-      // Determine characters: local if present, else meaningful global subset
+      // Determine characters: local if present, else inherit from previous scene if continuity
       const globalChars = gc.personnages?.length > 0
-        ? gc.personnages.map((p: any) => p.nom).join(", ")
+        ? gc.personnages.map((p: any) => `${p.nom} (${p.role || "personnage"})`).join(", ")
         : "Non déterminé";
-      const resolvedPersonnages = localPersonnages || globalChars;
+      const prevChars = prevContext?.personnages || null;
+      const resolvedPersonnages = localPersonnages
+        || (prevChars && scene.continuity === "continues" ? prevChars : null)
+        || globalChars;
 
       return {
         contexte_scene: localSujet || gc.contexte_narratif || "Non déterminé",
@@ -775,51 +789,71 @@ serve(async (req) => {
         lieu: resolvedLieu,
         epoque: resolvedEpoque,
         personnages: resolvedPersonnages,
-        coherence_globale: buildCoherenceNote(scene, gc, temporalShift),
+        coherence_globale: buildCoherenceNote(scene, gc, temporalShift, prevContext),
       };
     };
 
     const buildCoherenceNote = (
       scene: ReturnType<typeof validateSceneBlock>,
       gc: Record<string, any>,
-      temporalShift: string | null
+      temporalShift: string | null,
+      prevContext: Record<string, any> | null
     ): string => {
       const notes: string[] = [];
       const localLieu = scene.location && scene.location !== "unspecified" ? scene.location : null;
       const globalLieu = gc.lieu_principal || null;
+      const prevLieu = prevContext?.lieu || null;
+
+      // Classify continuity type
+      let continuityType = "Continuité totale";
 
       // Location variation
       if (isLocalVariation(localLieu, globalLieu)) {
-        notes.push(`Lieu spécifique : ${localLieu} (contexte global : ${globalLieu})`);
+        if (isLocalVariation(localLieu, prevLieu)) {
+          notes.push(`Changement de lieu : ${localLieu} (scène précédente : ${prevLieu || globalLieu})`);
+          continuityType = "Variation locale justifiée";
+        } else {
+          notes.push(`Lieu spécifique : ${localLieu} (contexte global : ${globalLieu})`);
+          continuityType = "Variation locale justifiée";
+        }
       }
 
       // Temporal variation
       if (temporalShift) {
         notes.push(`Variation temporelle : ${temporalShift} (époque globale : ${gc.epoque || "non définie"})`);
+        continuityType = "Exception narrative cohérente";
       }
 
-      // Character variation
-      const localChars = scene.characters && scene.characters !== "none" ? scene.characters : null;
+      // Character variation — detect new/punctual characters
+      const localChars = scene.characters && scene.characters !== "none"
+        && scene.characters !== "Aucun personnage actif" ? scene.characters : null;
       const globalChars = gc.personnages?.length > 0
         ? gc.personnages.map((p: any) => p.nom?.toLowerCase()).join(", ")
         : null;
       if (localChars && globalChars) {
-        const localNames = localChars.toLowerCase().split(/,\s*/);
-        const newChars = localNames.filter((n: string) => !globalChars.includes(n.trim()));
+        // Extract names (before parenthesis if role format "Nom (rôle)")
+        const extractNames = (s: string) => s.split(",").map(n => n.replace(/\(.*\)/, "").trim().toLowerCase());
+        const localNames = extractNames(localChars);
+        const globalNames = extractNames(globalChars);
+        const newChars = localNames.filter((n: string) => n && !globalNames.some(g => g.includes(n) || n.includes(g)));
         if (newChars.length > 0) {
           notes.push(`Personnages ponctuels : ${newChars.join(", ")}`);
+          if (continuityType === "Continuité totale") continuityType = "Adaptation interprétée";
         }
       }
 
-      // Scene type variations
+      // Scene type transitions
       if (scene.scene_type === "transition") {
         notes.push("Scène de transition");
+        if (continuityType === "Continuité totale") continuityType = "Variation locale justifiée";
       }
 
+      // Prefix with continuity classification
+      const prefix = `[${continuityType}]`;
       if (!notes.length) {
-        notes.push("Cohérent avec le contexte global");
+        return `${prefix} Cohérent avec le contexte global`;
       }
-      return notes.join(". ");
+      return `${prefix} ${notes.join(". ")}`;
     };
 
     // Delete existing scenes
