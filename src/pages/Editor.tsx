@@ -1399,6 +1399,19 @@ export default function Editor() {
           />
         )}
 
+        {/* VideoPrompts tab */}
+        {!showSetup && activeTab === "videoprompts" && projectId && (
+          <VideoPromptsTab
+            projectId={projectId}
+            onImportFromVisualPrompts={() => {
+              toast.info("Import depuis VisualPrompts — à venir");
+            }}
+            onCreateManual={() => {
+              toast.info("Création manuelle — à venir");
+            }}
+          />
+        )}
+
         {!showSetup && activeTab === "segmentation" && (
           <div className="container max-w-3xl py-6 sm:py-10 px-4 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
