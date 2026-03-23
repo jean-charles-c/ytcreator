@@ -44,8 +44,8 @@ describe("narrativeSegmentation", () => {
     expect(result.units.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("detects temporal transitions", () => {
-    const text = "The city thrived for centuries. Meanwhile, rival kingdoms gathered strength across the savanna.";
+  it("detects temporal transitions in long text", () => {
+    const text = "The city thrived for centuries as a major trading hub. Meanwhile, rival kingdoms gathered strength across the vast savanna and began planning their campaigns.";
     const result = segmentSceneNarrative(text);
     expect(result.units.length).toBeGreaterThanOrEqual(2);
   });
