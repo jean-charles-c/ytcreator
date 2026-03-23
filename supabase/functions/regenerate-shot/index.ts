@@ -31,7 +31,6 @@ serve(async (req) => {
     const { shot_id } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
 
-    // Fetch the shot
     const { data: shot, error: shotErr } = await supabase
       .from("shots")
       .select("*")
@@ -39,7 +38,6 @@ serve(async (req) => {
       .single();
     if (shotErr || !shot) throw new Error("Shot not found");
 
-    // Verify ownership and get script_language
     const { data: project } = await supabase
       .from("projects")
       .select("id, script_language, title, subject")
@@ -51,7 +49,6 @@ serve(async (req) => {
     const scriptLang = project.script_language || "fr";
     const needsTranslation = scriptLang.toLowerCase() !== "fr";
 
-    // Fetch the scene for context
     const { data: scene } = await supabase
       .from("scenes")
       .select("*")
@@ -59,13 +56,11 @@ serve(async (req) => {
       .single();
     if (!scene) throw new Error("Scene not found");
 
-    // Count shots in this scene to determine if this is the only one
     const { count: sceneShotCount } = await supabase
       .from("shots")
       .select("id", { count: "exact", head: true })
       .eq("scene_id", shot.scene_id);
 
-    // If this is the only shot in the scene, use the full scene text
     const isOnlyShot = (sceneShotCount ?? 0) <= 1;
     const sourceText = isOnlyShot
       ? (scene.source_text || shot.source_sentence || shot.description)
@@ -73,6 +68,10 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    const translationRule = needsTranslation
+      ? `\n- source_sentence_fr MUST be a faithful French translation of the narration sentence. This is MANDATORY and NON-NEGOTIABLE.`
+      : "";
 
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -93,17 +92,25 @@ serve(async (req) => {
 LANGUAGE RULES:
 - shot_type MUST be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
 - description MUST be in FRENCH (2-3 sentences)
-- prompt_export MUST be in ENGLISH, at least 100 words, one continuous paragraph
+- prompt_export MUST be in ENGLISH, at least 100 words, one continuous paragraph${translationRule}
+
+CONTEXTUAL ANCHORING RULE — CRITICAL:
+Every prompt_export MUST begin by explicitly stating the historical period/era and geographic location of the project.
+Example opening: "In 15th-century Great Zimbabwe, southeastern Africa, ..."
+This anchoring is MANDATORY in every single prompt_export. Never produce a prompt without it.
+All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be accurate to that specific era, culture, and place.
+Never use generic, Western, or anachronistic elements.
 
 PROMPT STRUCTURE (prompt_export, in ENGLISH):
-1. Camera framing
-2. Scene description with objects, materials, textures, colors
-3. Characters: pose, gesture, clothing, expression
-4. Environment and background
-5. Foreground depth elements
-6. Lighting: source, direction, quality, shadows
-7. Atmosphere and mood
-8. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
+1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
+2. Camera framing
+3. Scene description with objects, materials, textures, colors
+4. Characters: pose, gesture, clothing, expression — culturally accurate
+5. Environment and background — geographically accurate
+6. Foreground depth elements
+7. Lighting: source, direction, quality, shadows
+8. Atmosphere and mood
+9. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
 
 Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
             },
@@ -114,16 +121,16 @@ Images must be photorealistic historical documentary style. Never illustration o
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
 Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}${scene.location ? ` — Location: ${scene.location}` : ""}${scene.characters ? ` — Characters: ${scene.characters}` : ""}
 
-IMPORTANT: The visual prompt MUST be grounded in the specific historical period, geographic location, and cultural context of this project. Architecture, clothing, objects, vegetation, and lighting must be accurate to that era and place. Never use generic or anachronistic elements.
+MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with the historical period and geographic location from the project context above. Every visual element (architecture, clothing, vegetation, materials, skin tones) MUST be specific to that era and place.
 
 Sentence to illustrate: "${sourceText}"
-${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST also provide "source_sentence_fr": a faithful French translation of the sentence above.` : ""}
+${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST provide "source_sentence_fr": a faithful French translation of the sentence above. This is NON-NEGOTIABLE.` : ""}
 
 PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
 - Previous shot type: ${shot.shot_type}
 - Previous prompt: "${shot.prompt_export || shot.description}"
 
-CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version. The new prompt must produce a visually distinct image. Use a different camera type from the Visual Camera Grid. Change the lighting direction, time of day feel, or perspective height. The prompt_export MUST explicitly mention the historical period and geographic location.`,
+CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version. The new prompt must produce a visually distinct image. Use a different camera type from the Visual Camera Grid. Change the lighting direction, time of day feel, or perspective height.`,
             },
           ],
           tools: [
@@ -207,11 +214,12 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       description: newShot.description,
       prompt_export: newShot.prompt_export,
     };
-    // If only shot in scene, ensure source_sentence matches full scene text
     if (isOnlyShot) {
       updatePayload.source_sentence = scene.source_text;
       if (scene.source_text_fr) {
         updatePayload.source_sentence_fr = scene.source_text_fr;
+      } else if (newShot.source_sentence_fr) {
+        updatePayload.source_sentence_fr = newShot.source_sentence_fr;
       }
     } else if (newShot.source_sentence_fr) {
       updatePayload.source_sentence_fr = newShot.source_sentence_fr;
@@ -224,7 +232,6 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
 
     if (updateErr) throw new Error("Failed to update shot");
 
-    // Fetch updated shot
     const { data: updatedShot } = await supabase
       .from("shots")
       .select("*")
