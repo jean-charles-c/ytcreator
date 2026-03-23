@@ -21,6 +21,7 @@ interface RsearchEngineTabProps {
 
 export default function RsearchEngineTab({ projectId, projectTitle, onSendToScriptCreator }: RsearchEngineTabProps) {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [content, setContent] = useState("");
   const [topic, setTopic] = useState("");
   const [generating, setGenerating] = useState(false);
