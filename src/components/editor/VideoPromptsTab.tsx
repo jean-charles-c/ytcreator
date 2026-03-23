@@ -8,6 +8,7 @@ import {
   Layers,
   Camera,
   Loader2,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import BatchActionBar from "./videoPrompts/BatchActionBar";
 import type { SourceScene } from "./videoPrompts/VideoPromptSourcePanel";
 import type { VideoPrompt, VideoPromptSource } from "./videoPrompts/types";
 import { useVideoPrompts } from "./videoPrompts/useVideoPrompts";
+import { useRenderJobs } from "./videoPrompts/useRenderJobs";
 import { mapFromVisualPrompts, mapFromScene, mapFromShot } from "./videoPrompts/mapper";
 
 type Scene = Tables<"scenes">;
