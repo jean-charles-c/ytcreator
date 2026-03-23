@@ -9,7 +9,7 @@ const MAX_MULTI_SENTENCES_PER_SHOT = 3;
 const MAX_LOOKAHEAD_SENTENCES = 5;
 const FUZZY_WORD_OVERLAP_THRESHOLD = 0.45;
 /** Minimum ratio of shot text length vs script sentence length for reverse inclusion to count as a full match */
-const REVERSE_INCLUSION_MIN_COVERAGE = 0.65;
+const REVERSE_INCLUSION_MIN_COVERAGE = 0.85;
 
 function normalizeText(value: string): string {
   return value
