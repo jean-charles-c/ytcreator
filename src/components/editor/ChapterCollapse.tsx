@@ -84,7 +84,7 @@ export default function ChapterCollapse({
             validated: previous.validated,
             variants: previous.variants ?? [],
             summary: previous.summary ?? chapter.summary,
-            startSentence: chapter.startSentence || previous.startSentence,
+            startSentence: chapter.startSentence, // always use fresh from current script version
             sourceText: chapter.sourceText, // always use fresh text from sections
           };
         }),
