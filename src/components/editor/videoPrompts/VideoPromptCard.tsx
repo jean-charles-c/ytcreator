@@ -40,10 +40,12 @@ export default function VideoPromptCard({
   prompt,
   isSelected,
   isChecked,
+  renderJob,
   onClick,
   onCheckChange,
   onDuplicate,
   onDelete,
+  onRender,
 }: VideoPromptCardProps) {
   return (
     <div
