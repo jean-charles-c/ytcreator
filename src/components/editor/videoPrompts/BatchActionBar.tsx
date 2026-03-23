@@ -8,6 +8,8 @@ import {
   User,
   X,
   CheckSquare,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SettingsProfile } from "./types";
@@ -19,6 +21,8 @@ interface BatchActionBarProps {
   onApplyProfile: (profileId: string) => void;
   onDeleteSelected: () => void;
   onExportSelected: () => void;
+  onRenderSelected: () => void;
+  renderSubmitting: boolean;
   onSelectAll: () => void;
   onClearSelection: () => void;
 }
@@ -30,6 +34,8 @@ export default function BatchActionBar({
   onApplyProfile,
   onDeleteSelected,
   onExportSelected,
+  onRenderSelected,
+  renderSubmitting,
   onSelectAll,
   onClearSelection,
 }: BatchActionBarProps) {
@@ -65,6 +71,18 @@ export default function BatchActionBar({
             Profil
           </Button>
         )}
+
+        {/* Render */}
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onRenderSelected}
+          disabled={renderSubmitting}
+          className="h-7 text-[11px] px-2"
+        >
+          {renderSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          Rendu
+        </Button>
 
         {/* Export */}
         <Button variant="outline" size="sm" onClick={onExportSelected} className="h-7 text-[11px] px-2">

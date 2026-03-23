@@ -1,5 +1,5 @@
 /**
- * VideoPromptCard — Card with checkbox for multi-select.
+ * VideoPromptCard — Card with checkbox, render status, and actions.
  */
 
 import {
@@ -10,18 +10,23 @@ import {
   Ratio,
   Wind,
   PenLine,
+  Send,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { VideoPrompt } from "./types";
+import RenderJobStatusBadge from "./RenderJobStatusBadge";
+import type { RenderJob } from "./renderPipelineClient";
 
 interface VideoPromptCardProps {
   prompt: VideoPrompt;
   isSelected: boolean;
   isChecked: boolean;
+  renderJob: RenderJob | null;
   onClick: () => void;
   onCheckChange: (checked: boolean) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onRender: () => void;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -35,10 +40,12 @@ export default function VideoPromptCard({
   prompt,
   isSelected,
   isChecked,
+  renderJob,
   onClick,
   onCheckChange,
   onDuplicate,
   onDelete,
+  onRender,
 }: VideoPromptCardProps) {
   return (
     <div
@@ -118,6 +125,13 @@ export default function VideoPromptCard({
 
         <span className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
+            onClick={(e) => { e.stopPropagation(); onRender(); }}
+            className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary"
+            title="Envoyer au rendu"
+          >
+            <Send className="h-3 w-3" />
+          </button>
+          <button
             onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
             className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
             title="Dupliquer / Variante"
@@ -134,7 +148,14 @@ export default function VideoPromptCard({
         </span>
       </div>
 
-      {/* Row 4: narrative fragment */}
+      {/* Row 4: render job status */}
+      {renderJob && (
+        <div className="pl-6 mt-1">
+          <RenderJobStatusBadge job={renderJob} />
+        </div>
+      )}
+
+      {/* Row 5: narrative fragment */}
       {prompt.narrativeFragment && (
         <p className="text-[10px] text-muted-foreground/60 mt-1.5 italic line-clamp-1 border-t border-border pt-1.5 pl-6">
           📝 {prompt.narrativeFragment}

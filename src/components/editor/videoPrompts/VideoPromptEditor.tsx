@@ -20,6 +20,8 @@ import {
   Clipboard,
   Globe,
   PenLine,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +43,8 @@ interface VideoPromptEditorProps {
   onUpdate: (patch: Partial<VideoPrompt>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onRender?: () => void;
+  renderSubmitting?: boolean;
 }
 
 const ASPECT_RATIOS: AspectRatio[] = ["16:9", "9:16", "1:1", "4:3", "21:9"];
@@ -81,6 +85,8 @@ export default function VideoPromptEditor({
   onUpdate,
   onDuplicate,
   onDelete,
+  onRender,
+  renderSubmitting,
 }: VideoPromptEditorProps) {
   // Track "dirty" state by comparing with snapshot at selection time
   const snapshotRef = useRef<string>("");
@@ -179,6 +185,19 @@ export default function VideoPromptEditor({
           >
             <Copy className="h-3 w-3" />
           </Button>
+          {onRender && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onRender}
+              disabled={renderSubmitting || isDirty}
+              className="h-7 text-[11px] px-2"
+              title={isDirty ? "Validez d'abord vos modifications" : "Envoyer au rendu"}
+            >
+              {renderSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Rendu
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

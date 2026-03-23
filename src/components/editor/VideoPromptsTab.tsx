@@ -8,6 +8,7 @@ import {
   Layers,
   Camera,
   Loader2,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import BatchActionBar from "./videoPrompts/BatchActionBar";
 import type { SourceScene } from "./videoPrompts/VideoPromptSourcePanel";
 import type { VideoPrompt, VideoPromptSource } from "./videoPrompts/types";
 import { useVideoPrompts } from "./videoPrompts/useVideoPrompts";
+import { useRenderJobs } from "./videoPrompts/useRenderJobs";
 import { mapFromVisualPrompts, mapFromScene, mapFromShot } from "./videoPrompts/mapper";
 
 type Scene = Tables<"scenes">;
@@ -48,6 +50,13 @@ export default function VideoPromptsTab({
     insertProfile,
     // profiles
   } = useVideoPrompts(projectId);
+
+  const {
+    submit: submitRender,
+    submitting: renderSubmitting,
+    getJobForPrompt,
+    activeJobCount,
+  } = useRenderJobs(projectId);
 
   const [activeSource, setActiveSource] = useState<VideoPromptSource>("visual-prompts");
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
@@ -259,6 +268,27 @@ export default function VideoPromptsTab({
     toast.success(`${selected.length} prompt(s) exporté(s)`);
   }, [state.prompts, checkedIds]);
 
+  // ── Render actions ─────────────────────────────────────────────
+
+  const handleRenderSingle = useCallback(
+    async (promptId: string) => {
+      const prompt = state.prompts.find((p) => p.id === promptId);
+      if (!prompt) return;
+      if (prompt.status !== "ready" && prompt.status !== "draft") {
+        toast.error("Ce prompt doit être en statut draft ou ready");
+        return;
+      }
+      await submitRender([prompt]);
+    },
+    [state.prompts, submitRender],
+  );
+
+  const handleRenderSelected = useCallback(async () => {
+    const selected = state.prompts.filter((p) => checkedIds.has(p.id));
+    if (selected.length === 0) return;
+    await submitRender(selected);
+  }, [state.prompts, checkedIds, submitRender]);
+
   const isEmpty = state.prompts.length === 0;
   const sceneCount = manifest.scenes.length;
   const shotCount = manifest.totalShots;
@@ -301,6 +331,12 @@ export default function VideoPromptsTab({
         </div>
 
         <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground">
+          {activeJobCount > 0 && (
+            <span className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {activeJobCount} rendu{activeJobCount > 1 ? "s" : ""} en cours
+            </span>
+          )}
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
             {activeProfile?.name ?? "Aucun profil"}
@@ -380,10 +416,12 @@ export default function VideoPromptsTab({
                     prompt={vp}
                     isSelected={vp.id === selectedPromptId}
                     isChecked={checkedIds.has(vp.id)}
+                    renderJob={getJobForPrompt(vp.id)}
                     onClick={() => setSelectedPromptId(vp.id)}
                     onCheckChange={(checked) => handleCheckChange(vp.id, checked)}
                     onDuplicate={() => handleDuplicate(vp.id)}
                     onDelete={() => handleDelete(vp.id)}
+                    onRender={() => handleRenderSingle(vp.id)}
                   />
                 ))}
               </div>
@@ -396,6 +434,8 @@ export default function VideoPromptsTab({
                 onApplyProfile={handleApplyProfile}
                 onDeleteSelected={handleDeleteSelected}
                 onExportSelected={handleExportSelected}
+                onRenderSelected={handleRenderSelected}
+                renderSubmitting={renderSubmitting}
                 onSelectAll={handleSelectAll}
                 onClearSelection={handleClearSelection}
               />
@@ -411,6 +451,8 @@ export default function VideoPromptsTab({
               onUpdate={handleUpdatePrompt}
               onDuplicate={() => handleDuplicate(selectedPrompt.id)}
               onDelete={() => handleDelete(selectedPrompt.id)}
+              onRender={() => handleRenderSingle(selectedPrompt.id)}
+              renderSubmitting={renderSubmitting}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
