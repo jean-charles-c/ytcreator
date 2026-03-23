@@ -164,6 +164,7 @@ export default function Editor() {
   const [saving, setSaving] = useState(false);
   const [loadingProject, setLoadingProject] = useState(!isNew);
   const [showSetup, setShowSetup] = useState(isNew);
+  const [globalContext, setGlobalContext] = useState<any>(null);
 
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
