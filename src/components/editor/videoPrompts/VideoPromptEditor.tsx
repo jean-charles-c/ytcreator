@@ -41,6 +41,8 @@ interface VideoPromptEditorProps {
   onUpdate: (patch: Partial<VideoPrompt>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onRender?: () => void;
+  renderSubmitting?: boolean;
 }
 
 const ASPECT_RATIOS: AspectRatio[] = ["16:9", "9:16", "1:1", "4:3", "21:9"];
