@@ -58,6 +58,8 @@ export interface VideoPrompt {
   profileId: string | null;
   /** Lifecycle status */
   status: VideoPromptStatus;
+  /** Whether the user has manually edited this prompt */
+  isManuallyEdited: boolean;
   /** Variant ids derived from this prompt */
   variantIds: string[];
   /** Creation timestamp */

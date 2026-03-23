@@ -76,6 +76,7 @@ export function createManual(state: VideoPromptsState, projectId: string): Video
     renderConstraints: profile?.defaults.renderConstraints ?? "",
     profileId: profile?.id ?? null,
     status: "draft",
+    isManuallyEdited: false,
     variantIds: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

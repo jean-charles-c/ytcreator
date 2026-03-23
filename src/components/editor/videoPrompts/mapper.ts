@@ -156,6 +156,7 @@ function buildVideoPrompt(p: BuildParams): VideoPrompt {
     renderConstraints: defaults?.renderConstraints ?? "",
     profileId: p.profile?.id ?? null,
     status: "draft",
+    isManuallyEdited: false,
     variantIds: [],
     createdAt: p.now,
     updatedAt: p.now,
