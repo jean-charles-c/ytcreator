@@ -1,17 +1,25 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { VisualPromptManifest } from "./visualPromptTypes";
 import type { ShotTimepoint } from "./timelineAssembly";
 import { buildManifestTiming, type ManifestTiming } from "./manifestTiming";
-import { runQaValidation, type QaReport, type QaIssue } from "./qaValidation";
+import { runQaValidation, type QaReport, type QaCategory } from "./qaValidation";
 
 interface QaPanelProps {
   projectId: string;
   manifest: VisualPromptManifest;
   onExportAllowedChange?: (allowed: boolean) => void;
 }
+
+const categoryLabels: Record<QaCategory, string> = {
+  structure: "Structure",
+  timing: "Timing",
+  allocation: "Allocation",
+  redundancy: "Redondance",
+  length: "Longueur",
+};
 
 const levelConfig = {
   critical: {
@@ -81,6 +89,13 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
       ? `${report.warningCount} avertissement(s)`
       : "Aucun problème détecté";
 
+  // Group issues by category
+  const groupedIssues = report.issues.reduce((acc, issue) => {
+    if (!acc[issue.category]) acc[issue.category] = [];
+    acc[issue.category].push(issue);
+    return acc;
+  }, {} as Record<string, typeof report.issues>);
+
   return (
     <div className="space-y-3">
       {/* Summary bar */}
@@ -110,34 +125,64 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
         )}
       </div>
 
-      {/* Issues list */}
-      {report.issues.length > 0 && (
-        <div className="rounded border border-border bg-secondary/30 p-2 space-y-1.5 max-h-48 overflow-y-auto">
-          {report.issues.map((issue, i) => {
-            const cfg = levelConfig[issue.level];
-            return (
-              <div
-                key={i}
-                className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1 sm:py-0.5 ${cfg.row}`}
-              >
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
-                    {cfg.label}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {issue.category === "structure" ? "Structure" : "Timing"}
-                    {issue.sceneOrder != null && ` • Scène ${issue.sceneOrder}`}
-                    {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
-                  </span>
-                </div>
-                <span className="text-foreground break-words">{issue.message}</span>
+      {/* Allocation summaries */}
+      {report.allocationSummaries.length > 0 && (
+        <details className="rounded border border-border bg-card">
+          <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
+            <ChevronDown className="h-3 w-3" />
+            Couverture textuelle par scène
+          </summary>
+          <div className="p-2 space-y-1">
+            {report.allocationSummaries.map((s) => (
+              <div key={s.sceneOrder} className={`flex items-center gap-2 text-[10px] px-2 py-1 rounded ${s.valid ? "bg-emerald-500/5" : "bg-amber-500/5"}`}>
+                <span className={`font-mono font-medium ${s.valid ? "text-emerald-600" : "text-amber-600"}`}>
+                  {s.coveragePercent}%
+                </span>
+                <span className="text-muted-foreground">Scène {s.sceneOrder}</span>
+                <span className="text-foreground truncate">« {s.sceneTitle} »</span>
+                {s.gapCount > 0 && (
+                  <span className="text-amber-600 text-[9px]">({s.gapCount} trou{s.gapCount > 1 ? "s" : ""})</span>
+                )}
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </details>
+      )}
+
+      {/* Issues grouped by category */}
+      {report.issues.length > 0 && (
+        <div className="rounded border border-border bg-secondary/30 p-2 space-y-2 max-h-64 overflow-y-auto">
+          {Object.entries(groupedIssues).map(([cat, catIssues]) => (
+            <div key={cat} className="space-y-1">
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                {categoryLabels[cat as QaCategory] ?? cat}
+              </span>
+              {catIssues.map((issue, i) => {
+                const cfg = levelConfig[issue.level];
+                return (
+                  <div
+                    key={i}
+                    className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1 sm:py-0.5 ${cfg.row}`}
+                  >
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
+                        {cfg.label}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {issue.sceneOrder != null && `S${issue.sceneOrder}`}
+                        {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
+                      </span>
+                    </div>
+                    <span className="text-foreground break-words">{issue.message}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Debug timing table — card layout on mobile, table on desktop */}
+      {/* Debug timing table */}
       {timing && timing.entries.length > 0 && (
         <details className="rounded border border-border bg-card">
           <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center">
@@ -146,7 +191,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
 
           {/* Mobile: card layout */}
           <div className="sm:hidden p-2 space-y-2">
-            {timing.entries.map((entry, i) => {
+            {timing.entries.map((entry) => {
               const hasIssue = timing.issues.some((iss) => iss.shotId === entry.shotId);
               return (
                 <div
