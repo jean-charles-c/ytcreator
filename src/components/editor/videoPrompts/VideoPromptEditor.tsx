@@ -83,6 +83,8 @@ export default function VideoPromptEditor({
   onUpdate,
   onDuplicate,
   onDelete,
+  onRender,
+  renderSubmitting,
 }: VideoPromptEditorProps) {
   // Track "dirty" state by comparing with snapshot at selection time
   const snapshotRef = useRef<string>("");
