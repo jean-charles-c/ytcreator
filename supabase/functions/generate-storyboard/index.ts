@@ -251,8 +251,14 @@ const splitLongSentenceIntoSegments = (
 const splitSceneIntoShotSegments = (text: string): string[] =>
   splitSentences(text).flatMap((sentence) => splitLongSentenceIntoSegments(sentence));
 
-const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
-  `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+const fallbackPrompt = (sentence: string, scene?: any, shotType?: string): string => {
+  const ctx = scene?.scene_context as Record<string, string> | null;
+  const contextAnchor = ctx
+    ? `In ${ctx.epoque || "the historical period"}, ${ctx.lieu || "the described location"}, `
+    : "";
+  const visualIntention = scene?.visual_intention || "faithful representation of the narration";
+  return `${contextAnchor}${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+};
 
 const fallbackDescription = (sentence: string): string =>
   `Description visuelle du segment narratif : "${sentence}"`;
@@ -282,8 +288,8 @@ const buildSegmentShot = (
     source_sentence: segment,
     source_sentence_fr: sourceSentenceFr,
     prompt_export: reuseGeneratedContent
-      ? baseShot?.prompt_export || fallbackPrompt(segment, scene.visual_intention, shotType)
-      : fallbackPrompt(segment, scene.visual_intention, shotType),
+      ? baseShot?.prompt_export || fallbackPrompt(segment, scene, shotType)
+      : fallbackPrompt(segment, scene, shotType),
     guardrails: baseShot?.guardrails || "historically accurate clothing, architecture, and materials",
   };
 };
@@ -549,7 +555,20 @@ serve(async (req) => {
         s.scene_type ? `Scene type: ${s.scene_type}` : null,
         s.continuity ? `Continuity: ${s.continuity}` : null,
       ].filter(Boolean).join(" | ");
-      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""} — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+
+      // Inject scene_context (BlocContexteScene) for richer visual grounding
+      const ctx = s.scene_context as Record<string, string> | null;
+      const contextBlock = ctx ? [
+        `  CONTEXTE DE LA SCÈNE:`,
+        `    Contexte: ${ctx.contexte_scene || "Non déterminé"}`,
+        `    Sujet: ${ctx.sujet || "Non déterminé"}`,
+        `    Lieu: ${ctx.lieu || "Non déterminé"}`,
+        `    Époque: ${ctx.epoque || "Non déterminé"}`,
+        `    Personnages: ${ctx.personnages || "Non déterminé"}`,
+        `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
+      ].join("\n") : "";
+
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
@@ -569,7 +588,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM },
-            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location of the project (e.g. "In 15th-century Great Zimbabwe, southeastern Africa, ..."). This anchoring is MANDATORY in every single prompt_export. All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be specific to that era, culture, and place. Never use generic, Western, or anachronistic elements.\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE.\n2. Each shot must correspond to one precise visual moment from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence segment copied verbatim.\n5. prompt_export MUST be in ENGLISH and must illustrate ONLY that exact source_sentence segment.\n6. Do NOT merge sentences. Do NOT skip sentences or segments.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly open with the historical period/era and geographic location — this is MANDATORY for every single prompt.${translationRule}\n\n${sceneDescriptions}` },
+            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque). This anchoring is MANDATORY in every single prompt_export. All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be specific to that era, culture, and place. Never use generic, Western, or anachronistic elements.\n\nSCENE CONTEXT USAGE RULE:\nEach scene below includes a CONTEXTE DE LA SCÈNE block with: Contexte, Sujet, Lieu, Époque, Personnages, and Cohérence. You MUST use this information to:\n- Ground every prompt_export in the correct lieu and époque\n- Include the relevant personnages when they appear in the narration\n- Maintain visual coherence with the global subject and context\n- Adapt visual elements (architecture, clothing, objects) to match the époque and lieu\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE.\n2. Each shot must correspond to one precise visual moment from the narration.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT original sentence segment copied verbatim.\n5. prompt_export MUST be in ENGLISH and must illustrate ONLY that exact source_sentence segment.\n6. Do NOT merge sentences. Do NOT skip sentences or segments.\n7. Prompts must stay strictly faithful to the scene text.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly open with the historical period/era and geographic location from the scene's CONTEXTE — this is MANDATORY for every single prompt.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
@@ -769,7 +788,7 @@ serve(async (req) => {
           description: shot?.description || fallbackDescription(fbSentence),
           source_sentence: shot?.source_sentence || fbSentence,
           source_sentence_fr: shot?.source_sentence_fr || null,
-          prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene.visual_intention, fbType),
+          prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene, fbType),
           guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });
       }
