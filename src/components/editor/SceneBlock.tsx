@@ -14,8 +14,18 @@ import {
   Users,
   Clapperboard,
   ArrowRight,
+  BookOpen,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+
+interface SceneContext {
+  contexte_scene: string;
+  sujet: string;
+  lieu: string;
+  epoque: string;
+  personnages: string;
+  coherence_globale: string;
+}
 
 type Scene = Tables<"scenes">;
 
