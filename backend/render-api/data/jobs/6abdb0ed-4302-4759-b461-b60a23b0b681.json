@@ -1,0 +1,16 @@
+{
+  "id": "6abdb0ed-4302-4759-b461-b60a23b0b681",
+  "projectId": "test-123",
+  "videoPromptIds": [
+    "vp-1",
+    "vp-2"
+  ],
+  "status": "queued",
+  "payload": {
+    "quality": "high"
+  },
+  "createdAt": "2026-03-23T18:02:47.286Z",
+  "updatedAt": "2026-03-23T18:02:47.286Z",
+  "errorMessage": null,
+  "resultUrl": null
+}
