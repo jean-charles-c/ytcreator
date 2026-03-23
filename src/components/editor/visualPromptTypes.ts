@@ -307,6 +307,7 @@ export function computeMerge(
   survivorUpdate: { id: string; source_sentence: string; source_sentence_fr: string | null };
   absorbedId: string;
   action: ManifestAction;
+  allocationValid: boolean;
 } | null {
   const sorted = [...sceneShots].sort((a, b) => a.shot_order - b.shot_order);
   const idx = sorted.findIndex((s) => s.id === shotId);
@@ -318,6 +319,12 @@ export function computeMerge(
   const mergedSentence = [shot.source_sentence, next.source_sentence].filter(Boolean).join(" ");
   const mergedSentenceFr = [shot.source_sentence_fr, next.source_sentence_fr].filter(Boolean).join(" ") || null;
 
+  // Validate allocation after merge
+  const remainingFragments = sorted
+    .filter((s) => s.id !== next.id)
+    .map((s) => s.id === shot.id ? mergedSentence : (s.source_sentence || ""));
+  const allocationReport = validateAllocation(scene.source_text, remainingFragments);
+
   return {
     survivorUpdate: {
       id: shot.id,
@@ -325,12 +332,13 @@ export function computeMerge(
       source_sentence_fr: mergedSentenceFr,
     },
     absorbedId: next.id,
+    allocationValid: allocationReport.valid,
     action: {
       type: "merge",
       timestamp: new Date().toISOString(),
       sceneId: scene.id,
       shotIds: [shot.id, next.id],
-      description: `Shot merged: absorbed shot ${next.shot_order} into shot ${shot.shot_order} in scene "${scene.title}"`,
+      description: `Shot merged: absorbed shot ${next.shot_order} into shot ${shot.shot_order} in scene "${scene.title}" (coverage: ${allocationReport.coveragePercent}%)`,
     },
   };
 }
