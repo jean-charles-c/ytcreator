@@ -251,8 +251,14 @@ const splitLongSentenceIntoSegments = (
 const splitSceneIntoShotSegments = (text: string): string[] =>
   splitSentences(text).flatMap((sentence) => splitLongSentenceIntoSegments(sentence));
 
-const fallbackPrompt = (sentence: string, visualIntention?: string | null, shotType?: string): string =>
-  `${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention || "faithful representation of the narration"}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+const fallbackPrompt = (sentence: string, scene?: any, shotType?: string): string => {
+  const ctx = scene?.scene_context as Record<string, string> | null;
+  const contextAnchor = ctx
+    ? `In ${ctx.epoque || "the historical period"}, ${ctx.lieu || "the described location"}, `
+    : "";
+  const visualIntention = scene?.visual_intention || "faithful representation of the narration";
+  return `${contextAnchor}${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+};
 
 const fallbackDescription = (sentence: string): string =>
   `Description visuelle du segment narratif : "${sentence}"`;
