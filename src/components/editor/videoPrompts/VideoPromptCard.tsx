@@ -1,5 +1,5 @@
 /**
- * VideoPromptCard — Card with checkbox, render status, and actions.
+ * VideoPromptCard — Card with checkbox, readiness status, render status, and actions.
  */
 
 import {
@@ -11,11 +11,13 @@ import {
   Wind,
   PenLine,
   Send,
+  AlertTriangle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { VideoPrompt } from "./types";
 import RenderJobStatusBadge from "./RenderJobStatusBadge";
 import type { RenderJob } from "./renderPipelineClient";
+import { getReadinessLabel, getReadinessColor, getPromptWarnings } from "./readiness";
 
 interface VideoPromptCardProps {
   prompt: VideoPrompt;
@@ -47,6 +49,10 @@ export default function VideoPromptCard({
   onDelete,
   onRender,
 }: VideoPromptCardProps) {
+  const warnings = getPromptWarnings(prompt);
+  const readinessLabel = getReadinessLabel(prompt);
+  const readinessColor = getReadinessColor(prompt);
+
   return (
     <div
       onClick={onClick}
@@ -78,17 +84,17 @@ export default function VideoPromptCard({
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
             {SOURCE_LABELS[prompt.source] ?? prompt.source}
           </span>
-          <span
-            className={`text-[9px] px-1.5 py-0.5 rounded ${
-              prompt.status === "ready"
-                ? "bg-primary/10 text-primary"
-                : prompt.status === "error"
-                ? "bg-destructive/10 text-destructive"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
-            {prompt.status}
+          <span className={`text-[9px] px-1.5 py-0.5 rounded ${readinessColor}`}>
+            {readinessLabel}
           </span>
+          {warnings.length > 0 && (
+            <span
+              className="text-destructive"
+              title={warnings.join(", ")}
+            >
+              <AlertTriangle className="h-3 w-3" />
+            </span>
+          )}
         </span>
       </div>
 
@@ -115,6 +121,11 @@ export default function VideoPromptCard({
           <span className="flex items-center gap-0.5">
             <Wind className="h-3 w-3" />
             {prompt.sceneMotion}
+          </span>
+        )}
+        {prompt.isManuallyEdited && (
+          <span className="flex items-center gap-0.5 text-primary">
+            <PenLine className="h-3 w-3" />
           </span>
         )}
         {prompt.variantIds.length > 0 && (
