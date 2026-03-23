@@ -565,7 +565,10 @@ export default function Editor() {
     }
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
-    bgStartSegmentation({ projectId });
+    bgStartSegmentation({
+      projectId,
+      onContextReady: (ctx: any) => setGlobalContext(ctx),
+    });
   }, [projectId, narration, bgStartSegmentation, getTask]);
 
   const stopSegmentation = useCallback(() => {
