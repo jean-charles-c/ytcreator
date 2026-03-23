@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2 } from "lucide-react";
+import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -382,6 +382,19 @@ export default function ChapterCollapse({
             >
               {batchGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
               Générer les 10 titres
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onChapterStateChange(normalizeChapterState(chapterState));
+                toast.success("Chapitres rafraîchis depuis le script");
+              }}
+              className="h-7 text-xs gap-1"
+              title="Rafraîchir les phrases depuis le script actuel"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Rafraîchir
             </Button>
             <Button
               variant="outline"
