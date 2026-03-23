@@ -58,7 +58,6 @@ export class JobStore {
   /** @returns {number} */
   count() {
     try {
-      const { readdirSync } = await import("fs");
       return readdirSync(this.dir).filter((f) => f.endsWith(".json")).length;
     } catch {
       return 0;
