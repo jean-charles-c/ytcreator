@@ -357,9 +357,24 @@ ABSOLUTE RULES:
 4. Each SceneBlock corresponds to ONE narrative action. A scene can contain ANY number of sentences — as many as needed to cover the full action. Do NOT split a continuous action into multiple scenes.
 5. If two consecutive actions are very short and closely related, you MAY merge them into one scene. Use your judgment.
 6. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
-7. Generate narrative_action: what is the core narrative beat or event.
-8. Generate characters, location, scene_type, and continuity for each scene.
-${needsFrenchTranslation ? `9. **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "9. The narration is already in French. Do NOT include source_text_fr."}
+7. Generate narrative_action IN FRENCH: what is the core narrative beat or event.
+8. Generate title IN FRENCH: short descriptive title for the scene.
+
+CHARACTER TRACKING RULES:
+- "characters" must list ONLY characters/subjects PRESENT or ACTING in the scene, NOT merely mentioned or referenced historically.
+- Format: "Nom (rôle)" separated by commas. Example: "Gertrude Caton-Thompson (archéologue), David Beach (historien)"
+- If no named character is present but a group is described, use the group designation: "Les bâtisseurs Shona", "Les archéologues européens"
+- If truly no character/subject is acting: "Aucun personnage actif"
+- Do NOT invent names not in the script. Use designations from the text.
+- Distinguish between: characters physically present/acting vs. characters merely referenced.
+
+LOCATION TRACKING RULES:
+- "location" must be the SPECIFIC location of the scene action, not the general script setting.
+- If the scene describes a specific sub-location (e.g., "the Hill Complex" within "Great Zimbabwe"), use the specific one.
+- If no specific location is mentioned in THIS scene's text, write "Non spécifié" — the system will inherit from global context.
+- Do NOT repeat the global location if the scene text doesn't explicitly mention it.
+
+${needsFrenchTranslation ? `TRANSLATION RULE: **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "The narration is already in French. Do NOT include source_text_fr."}
 
 Return data via the segment_narration tool call only.`
       },
