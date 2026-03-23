@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateShotOperation, buildNeighborAvoidancePrompt } from "../_shared/shot-operation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,15 +57,50 @@ serve(async (req) => {
       .single();
     if (!scene) throw new Error("Scene not found");
 
-    const { count: sceneShotCount } = await supabase
+    // Fetch ALL sibling shots for neighbor comparison
+    const { data: siblingShots } = await supabase
       .from("shots")
-      .select("id", { count: "exact", head: true })
-      .eq("scene_id", shot.scene_id);
+      .select("id, shot_order, shot_type, prompt_export, source_sentence")
+      .eq("scene_id", shot.scene_id)
+      .order("shot_order", { ascending: true });
 
-    const isOnlyShot = (sceneShotCount ?? 0) <= 1;
+    const siblings = siblingShots || [];
+    const shotIdx = siblings.findIndex((s: any) => s.id === shot_id);
+    const neighborsBefore = shotIdx > 0 ? siblings.slice(Math.max(0, shotIdx - 2), shotIdx) : [];
+    const neighborsAfter = shotIdx < siblings.length - 1 ? siblings.slice(shotIdx + 1, shotIdx + 3) : [];
+    const isOnlyShot = siblings.length <= 1;
+
     const sourceText = isOnlyShot
       ? (scene.source_text || shot.source_sentence || shot.description)
       : (shot.source_sentence || shot.description);
+
+    // Validate operation using shared rules
+    const sceneContext = scene.scene_context as Record<string, string> | null;
+    const opValidation = validateShotOperation({
+      type: "regenerate",
+      shotFragment: sourceText,
+      sceneText: scene.source_text || "",
+      sceneContext,
+      neighborsBefore,
+      neighborsAfter,
+    });
+
+    // Build neighbor avoidance prompt
+    const neighborPrompt = buildNeighborAvoidancePrompt(neighborsBefore, neighborsAfter);
+
+    // Build scene context block for the AI
+    const contextBlock = sceneContext ? [
+      `SCENE CONTEXT:`,
+      `  Lieu: ${sceneContext.lieu || "Non déterminé"}`,
+      `  Époque: ${sceneContext.epoque || "Non déterminé"}`,
+      `  Personnages: ${sceneContext.personnages || "Non déterminé"}`,
+      sceneContext.ambiance ? `  Ambiance: ${sceneContext.ambiance}` : null,
+      sceneContext.ton ? `  Ton: ${sceneContext.ton}` : null,
+    ].filter(Boolean).join("\n") : "";
+
+    const avoidCamerasNote = opValidation.avoidCameraTypes.length > 0
+      ? `\nCAMERA TYPES TO AVOID (used by neighbors): ${opValidation.avoidCameraTypes.join(", ")}`
+      : "";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -95,42 +131,48 @@ LANGUAGE RULES:
 - prompt_export MUST be in ENGLISH, at least 100 words, one continuous paragraph${translationRule}
 
 CONTEXTUAL ANCHORING RULE — CRITICAL:
-Every prompt_export MUST begin by explicitly stating the historical period/era and geographic location of the project.
-Example opening: "In 15th-century Great Zimbabwe, southeastern Africa, ..."
-This anchoring is MANDATORY in every single prompt_export. Never produce a prompt without it.
+Every prompt_export MUST begin by explicitly stating the historical period/era and geographic location.
+This anchoring is MANDATORY. Never produce a prompt without it.
 All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be accurate to that specific era, culture, and place.
-Never use generic, Western, or anachronistic elements.
+
+FRAGMENT-SPECIFIC RULE:
+The prompt must illustrate ONLY what the given text fragment describes.
+Do not illustrate the entire scene — focus on the specific fragment's visual content.
+Enrich with scene context (lieu, époque, personnages) but keep the fragment as the visual subject.
 
 PROMPT STRUCTURE (prompt_export, in ENGLISH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
-2. Camera framing
-3. Scene description with objects, materials, textures, colors
-4. Characters: pose, gesture, clothing, expression — culturally accurate
-5. Environment and background — geographically accurate
-6. Foreground depth elements
+2. Camera framing (MUST differ from neighbors)
+3. Fragment-specific visual content with objects, materials, textures, colors
+4. Characters if present IN THE FRAGMENT: pose, gesture, clothing — culturally accurate
+5. Environment grounded in the scene's lieu and époque
+6. Foreground depth elements relevant to the fragment
 7. Lighting: source, direction, quality, shadows
-8. Atmosphere and mood
+8. Atmosphere and mood from the fragment's narrative tone
 9. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
 
 Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
             },
             {
               role: "user",
-              content: `Regenerate a new visual shot for this sentence from a documentary narration.
+              content: `Regenerate a new visual shot for this specific text fragment from a documentary narration.
 
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
-Scene context: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}${scene.location ? ` — Location: ${scene.location}` : ""}${scene.characters ? ` — Characters: ${scene.characters}` : ""}
+Scene: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
+${contextBlock}
 
-MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with the historical period and geographic location from the project context above. Every visual element (architecture, clothing, vegetation, materials, skin tones) MUST be specific to that era and place.
+MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with: "${opValidation.contextAnchor}".
+${opValidation.relevantCharacters ? `Characters relevant to this fragment: ${opValidation.relevantCharacters}` : ""}
 
-Sentence to illustrate: "${sourceText}"
-${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST provide "source_sentence_fr": a faithful French translation of the sentence above. This is NON-NEGOTIABLE.` : ""}
+Fragment to illustrate: "${sourceText}"
+${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST provide "source_sentence_fr": a faithful French translation. NON-NEGOTIABLE.` : ""}
 
 PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
 - Previous shot type: ${shot.shot_type}
-- Previous prompt: "${shot.prompt_export || shot.description}"
+- Previous prompt: "${(shot.prompt_export || shot.description || "").slice(0, 200)}"
+${avoidCamerasNote}${neighborPrompt}
 
-CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version. The new prompt must produce a visually distinct image. Use a different camera type from the Visual Camera Grid. Change the lighting direction, time of day feel, or perspective height.`,
+CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version AND the neighbor shots. The new prompt must produce a visually distinct image.`,
             },
           ],
           tools: [
@@ -161,6 +203,16 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI error:", aiResponse.status, errText);
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add credits." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error("AI gateway error");
     }
 
@@ -183,7 +235,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       console.warn("Failed to parse AI response for shot regeneration", e);
     }
 
-    // Fallback: if translation was required but AI didn't provide it, generate one
+    // Fallback translation if needed
     if (needsTranslation && !newShot.source_sentence_fr && sourceText) {
       console.warn("AI did not return source_sentence_fr, generating fallback translation");
       try {
