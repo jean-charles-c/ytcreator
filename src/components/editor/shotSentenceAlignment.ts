@@ -155,25 +155,7 @@ export function alignShotSentencesToScript(
     const shot = shotEntries[shotIdx];
     const normalizedShotText = normalizeText(shot.text);
 
-    const directCoverageLength = getCoverageLength(
-      normalizedShotText,
-      normalizedScriptSentences,
-      scriptIndex
-    );
-
-    if (directCoverageLength > 0) {
-      // Full match — reset sub-sentence tracking and advance
-      subSentenceFragmentCount = 0;
-      result.push({
-        ...shot,
-        text: scriptSentences.slice(scriptIndex, scriptIndex + directCoverageLength).map((s) => s.text).join(" "),
-        isNewScene: resolveIsNewScene(shot, scriptSentences, scriptIndex),
-      });
-      scriptIndex += directCoverageLength;
-      continue;
-    }
-
-    // ── Sub-sentence fragment detection ──
+    // ── Sub-sentence fragment detection (checked FIRST) ──
     // If the shot's text is contained WITHIN the current script sentence but doesn't cover
     // enough to be a full match, keep the shot's original text and don't advance scriptIndex.
     // This handles cases where shots split a single sentence at commas or other non-terminal punctuation.
@@ -192,8 +174,7 @@ export function alignShotSentencesToScript(
       if (nextShot) {
         const nextNormalized = normalizeText(nextShot.text);
         const nextIsFragment = isSubSentenceFragment(nextNormalized, normalizedScriptSentences[scriptIndex]);
-        const nextIsFullMatch = getCoverageLength(nextNormalized, normalizedScriptSentences, scriptIndex) > 0;
-        if (!nextIsFragment && !nextIsFullMatch) {
+        if (!nextIsFragment) {
           // Next shot doesn't match this sentence anymore — advance
           scriptIndex += 1;
           subSentenceFragmentCount = 0;
@@ -210,6 +191,22 @@ export function alignShotSentencesToScript(
     if (subSentenceFragmentCount > 0) {
       scriptIndex += 1;
       subSentenceFragmentCount = 0;
+    }
+
+    const directCoverageLength = getCoverageLength(
+      normalizedShotText,
+      normalizedScriptSentences,
+      scriptIndex
+    );
+
+    if (directCoverageLength > 0) {
+      result.push({
+        ...shot,
+        text: scriptSentences.slice(scriptIndex, scriptIndex + directCoverageLength).map((s) => s.text).join(" "),
+        isNewScene: resolveIsNewScene(shot, scriptSentences, scriptIndex),
+      });
+      scriptIndex += directCoverageLength;
+      continue;
     }
 
     let matchedLookahead: { offset: number; coverageLength: number } | null = null;
