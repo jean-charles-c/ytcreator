@@ -859,21 +859,28 @@ serve(async (req) => {
     // Delete existing scenes
     await supabase.from("scenes").delete().eq("project_id", project_id);
 
-    // Insert new scenes with scene_context
-    const sceneRows = allScenes.map((s, i) => ({
-      project_id,
-      scene_order: i + 1,
-      title: s.title,
-      source_text: s.source_text,
-      source_text_fr: s.source_text_fr || null,
-      visual_intention: s.visual_intention,
-      narrative_action: s.narrative_action,
-      characters: s.characters,
-      location: s.location,
-      scene_type: s.scene_type,
-      continuity: s.continuity,
-      scene_context: buildSceneContext(s),
-    }));
+    // Insert new scenes with scene_context — sequential to pass previous context
+    const sceneRows: any[] = [];
+    let prevCtx: Record<string, any> | null = null;
+    for (let i = 0; i < allScenes.length; i++) {
+      const s = allScenes[i];
+      const ctx = buildSceneContext(s, i, prevCtx);
+      sceneRows.push({
+        project_id,
+        scene_order: i + 1,
+        title: s.title,
+        source_text: s.source_text,
+        source_text_fr: s.source_text_fr || null,
+        visual_intention: s.visual_intention,
+        narrative_action: s.narrative_action,
+        characters: s.characters,
+        location: s.location,
+        scene_type: s.scene_type,
+        continuity: s.continuity,
+        scene_context: ctx,
+      });
+      prevCtx = ctx;
+    }
 
     const { error: insertErr } = await supabase.from("scenes").insert(sceneRows);
     if (insertErr) {
