@@ -45,8 +45,9 @@ import ContentPublishTab from "@/components/editor/ContentPublishTab";
 import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 import VideoEditTab from "@/components/editor/VideoEditTab";
+import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
 
-type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "videoedit" | "export";
+type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
@@ -102,6 +103,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script-creator", label: "ScriptCreator", icon: FileText },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "VisualPrompts", icon: Clapperboard },
+  { key: "videoprompts", label: "VideoPrompts", icon: Film },
   { key: "seo", label: "SEO", icon: Youtube },
   { key: "cp", label: "CP", icon: Save },
   { key: "vo", label: "VO", icon: Mic },
@@ -1394,6 +1396,19 @@ export default function Editor() {
             shots={shots}
             exportBlocked={!qaExportAllowed}
             musicTracks={selectedMusicTracks}
+          />
+        )}
+
+        {/* VideoPrompts tab */}
+        {!showSetup && activeTab === "videoprompts" && projectId && (
+          <VideoPromptsTab
+            projectId={projectId}
+            onImportFromVisualPrompts={() => {
+              toast.info("Import depuis VisualPrompts — à venir");
+            }}
+            onCreateManual={() => {
+              toast.info("Création manuelle — à venir");
+            }}
           />
         )}
 
