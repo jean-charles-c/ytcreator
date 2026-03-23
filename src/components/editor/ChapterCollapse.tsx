@@ -101,6 +101,24 @@ export default function ChapterCollapse({
     return CORE_SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
   }, []);
 
+  // Auto-refresh sourceText & startSentence when scriptSections change
+  const prevSourceTextsRef = useRef<string>("");
+  useEffect(() => {
+    const freshKey = chaptersFromSections.map((c) => c.sourceText).join("||");
+    if (freshKey === prevSourceTextsRef.current) return;
+    prevSourceTextsRef.current = freshKey;
+
+    if (chapterState && !isLegacyChapterState(chapterState)) {
+      const needsUpdate = chapterState.chapters.some((ch) => {
+        const fresh = chaptersFromSections.find((f) => f.id === ch.id);
+        return fresh && fresh.sourceText !== ch.sourceText;
+      });
+      if (needsUpdate) {
+        onChapterStateChange(normalizeChapterState(chapterState));
+      }
+    }
+  }, [chaptersFromSections, chapterState, isLegacyChapterState, normalizeChapterState, onChapterStateChange]);
+
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
