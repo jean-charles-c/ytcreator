@@ -732,7 +732,6 @@ serve(async (req) => {
       }
 
       // ── SORT SHOTS BY READING ORDER ──
-      // Sort shots so their source_sentence appears in the same order as in the scene text
       const sceneTextLower = sceneText.toLowerCase();
       sceneShots.sort((a: any, b: any) => {
         const sentA = (a.source_sentence || "").trim().toLowerCase();
@@ -741,6 +740,22 @@ serve(async (req) => {
         const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
         return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
       });
+
+      // ── ALLOCATION VALIDATION & REPAIR ──
+      const currentFragments = sceneShots.map((s: any) => s.source_sentence || "");
+      const allocationReport = validateAllocation(sceneText, currentFragments);
+
+      if (!allocationReport.valid) {
+        console.log(`Scene ${scene.id}: allocation invalid (${allocationReport.coveragePercent}% coverage, ${allocationReport.issues.length} issues). Repairing...`);
+        const repairedFragments = repairAllocation(sceneText, expectedSegments, currentFragments);
+        sceneShots = repairedFragments.map((fragment, idx) => {
+          const existingShot = sceneShots[idx];
+          return buildSegmentShot(fragment, scene, idx, existingShot, false);
+        });
+        console.log(`Scene ${scene.id}: repaired to ${sceneShots.length} shots`);
+      } else {
+        console.log(`Scene ${scene.id}: allocation valid (${allocationReport.coveragePercent}% coverage)`);
+      }
 
       if (needsTranslation) {
         const missingSegments = sceneShots
