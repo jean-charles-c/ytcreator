@@ -1,10 +1,10 @@
 /**
  * JobStore — File-based persistent storage for render jobs.
  * Each job is stored as a JSON file: <storageDir>/<jobId>.json
- * Simple, no external DB dependency. Replace with Postgres/Redis later if needed.
  */
 
 import { readFile, writeFile, readdir, mkdir } from "fs/promises";
+import { readdirSync } from "fs";
 import { join } from "path";
 
 export class JobStore {
