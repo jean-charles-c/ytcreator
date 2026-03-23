@@ -549,7 +549,20 @@ serve(async (req) => {
         s.scene_type ? `Scene type: ${s.scene_type}` : null,
         s.continuity ? `Continuity: ${s.continuity}` : null,
       ].filter(Boolean).join(" | ");
-      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""} — ${s.source_text} — Visual intention: ${s.visual_intention || "N/A"}`;
+
+      // Inject scene_context (BlocContexteScene) for richer visual grounding
+      const ctx = s.scene_context as Record<string, string> | null;
+      const contextBlock = ctx ? [
+        `  CONTEXTE DE LA SCÈNE:`,
+        `    Contexte: ${ctx.contexte_scene || "Non déterminé"}`,
+        `    Sujet: ${ctx.sujet || "Non déterminé"}`,
+        `    Lieu: ${ctx.lieu || "Non déterminé"}`,
+        `    Époque: ${ctx.epoque || "Non déterminé"}`,
+        `    Personnages: ${ctx.personnages || "Non déterminé"}`,
+        `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
+      ].join("\n") : "";
+
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
