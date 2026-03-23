@@ -288,8 +288,8 @@ const buildSegmentShot = (
     source_sentence: segment,
     source_sentence_fr: sourceSentenceFr,
     prompt_export: reuseGeneratedContent
-      ? baseShot?.prompt_export || fallbackPrompt(segment, scene.visual_intention, shotType)
-      : fallbackPrompt(segment, scene.visual_intention, shotType),
+      ? baseShot?.prompt_export || fallbackPrompt(segment, scene, shotType)
+      : fallbackPrompt(segment, scene, shotType),
     guardrails: baseShot?.guardrails || "historically accurate clothing, architecture, and materials",
   };
 };
