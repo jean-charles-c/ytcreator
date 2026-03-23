@@ -451,6 +451,8 @@ export default function VideoPromptsTab({
               onUpdate={handleUpdatePrompt}
               onDuplicate={() => handleDuplicate(selectedPrompt.id)}
               onDelete={() => handleDelete(selectedPrompt.id)}
+              onRender={() => handleRenderSingle(selectedPrompt.id)}
+              renderSubmitting={renderSubmitting}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
