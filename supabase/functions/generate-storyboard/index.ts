@@ -120,15 +120,29 @@ Every shot prompt MUST be visually unique. Redundancy is strictly forbidden both
 ### Self-check before outputting:
 Before finalizing, review ALL generated prompts together. If any two prompts across the entire storyboard would produce visually similar images, rewrite one to introduce a distinctly different camera angle, lighting, or composition.
 
+## CONTEXTUAL PROMPT CONSTRUCTION — CRITICAL
+Each prompt_export must be built from the SPECIFIC fragment it illustrates, NOT from the full scene text.
+
+### Context injection rules:
+1. ALWAYS start with the historical period + geographic location from the scene's CONTEXTE block
+2. Include characters ONLY when the fragment mentions or implies people — do not inject character descriptions into landscape or object shots
+3. Include ambiance/mood ONLY when it adds visual value to THIS specific fragment
+4. Include continuity notes ONLY when the fragment represents a transition or narrative shift
+5. NEVER dump all context fields mechanically — select only what is visually relevant to the fragment
+
+### Fragment fidelity rule:
+The prompt must describe what the FRAGMENT says, not what the scene says in general.
+If a fragment describes "stone walls built without mortar", the prompt must focus on stone walls and masonry techniques — NOT on the broader city or its trade routes.
+
 ## PROMPT STRUCTURE
 Each prompt_export must be in ENGLISH and contain ALL of these woven into one continuous paragraph:
 1. Camera framing: "Wide shot of...", "Close-up on...", "Low-angle view of...", "Medium shot of..."
-2. Scene description with every visible object, material, texture, color — be hyper-specific
-3. Characters if present: pose, gesture, clothing fabric and color, facial expression, body language
-4. Environment: what surrounds the subject, background elements, spatial depth
-5. Foreground elements adding depth
-6. Lighting: describe light source, direction, quality, shadows, reflections explicitly
-7. Atmosphere and mood: dust, haze, humidity, temperature feel, emotional tone
+2. Fragment-specific visual content: what the fragment describes, with hyper-specific materials, textures, colors
+3. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color, facial expression, body language
+4. Environment grounded in the scene's lieu and époque: what surrounds the subject, period-accurate background elements
+5. Foreground elements adding depth, relevant to the fragment's subject
+6. Lighting: describe light source, direction, quality, shadows — motivated by the scene's ambiance when available
+7. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
 8. End with these three mandatory lines in the same paragraph:
    "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism."
    "Visual quality: cinematic film still, 8k detail, natural textures, real-world physics."
