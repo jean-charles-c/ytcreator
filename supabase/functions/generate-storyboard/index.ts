@@ -253,14 +253,64 @@ const splitLongSentenceIntoSegments = (
 const splitSceneIntoShotSegments = (text: string): string[] =>
   getNarrativeSegments(text);
 
-const fallbackPrompt = (sentence: string, scene?: any, shotType?: string): string => {
+const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
-  const contextAnchor = ctx
-    ? `In ${ctx.epoque || "the historical period"}, ${ctx.lieu || "the described location"}, `
-    : "";
-  const visualIntention = scene?.visual_intention || "faithful representation of the narration";
-  return `${contextAnchor}${shotType || "Cinematic shot"} of ${sentence}. Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Visual intention: ${visualIntention}. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+
+  // 1. Historical & geographic anchor (mandatory first sentence)
+  const epoque = ctx?.epoque || "the historical period";
+  const lieu = ctx?.lieu || "the described location";
+  const anchor = `In ${epoque}, ${lieu}`;
+
+  // 2. Camera framing from shot type
+  const cameraMap: Record<string, string> = {
+    "Plan d'ensemble": "Wide establishing shot",
+    "Plan d'activité": "Medium shot capturing action",
+    "Plan d'interaction": "Two-shot or group composition",
+    "Plan environnemental": "Atmospheric environmental shot",
+    "Plan de détail d'artefact": "Close-up detail shot",
+    "Plan de détail scientifique": "Macro examination shot",
+    "Plan portrait": "Portrait shot",
+    "Plan subjectif": "Point-of-view shot",
+  };
+  const cameraFraming = cameraMap[shotType || ""] || "Cinematic shot";
+
+  // 3. Characters (only if relevant to this fragment)
+  const personnages = ctx?.personnages;
+  const fragmentLower = fragment.toLowerCase();
+  let characterNote = "";
+  if (personnages && personnages !== "Non déterminé") {
+    // Only inject character details if the fragment mentions people or actions
+    const hasHumanCue = /\b(people|person|king|queen|ruler|trader|craftsmen|builder|worker|priest|warrior|chief|community|population|inhabitants|they|he|she|them)\b/i.test(fragment)
+      || /\b(peuple|roi|reine|dirigeant|commerçant|artisan|bâtisseur|ouvrier|prêtre|guerrier|chef|communauté|population|habitants|ils|il|elle|eux)\b/i.test(fragment);
+    if (hasHumanCue) {
+      characterNote = ` Characters present: ${personnages}.`;
+    }
+  }
+
+  // 4. Ambiance & tone (selective injection)
+  const ambiance = ctx?.ambiance;
+  const ton = ctx?.ton;
+  let moodNote = "";
+  if (ambiance && ambiance !== "Non déterminé") {
+    moodNote = ` Atmosphere: ${ambiance}.`;
+  } else if (ton && ton !== "Non déterminé") {
+    moodNote = ` Tone: ${ton}.`;
+  }
+
+  // 5. Visual intention (scene-level)
+  const visualIntention = scene?.visual_intention;
+  const intentionNote = visualIntention ? ` Visual intention: ${visualIntention}.` : "";
+
+  // 6. Scene continuity for coherence
+  const continuity = scene?.continuity;
+  const continuityNote = continuity ? ` Scene continuity: ${continuity}.` : "";
+
+  // 7. Build the prompt — fragment is the core subject
+  return `${anchor}, ${cameraFraming.toLowerCase()} illustrating: "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote} Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 };
+
+// Keep legacy name for compatibility
+const fallbackPrompt = buildContextualPrompt;
 
 const fallbackDescription = (sentence: string): string =>
   `Description visuelle du segment narratif : "${sentence}"`;
