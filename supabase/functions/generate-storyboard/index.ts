@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { segmentSceneNarrative, getNarrativeSegments, computeNarrativeShotCount } from "../_shared/narrative-segmentation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,14 +39,14 @@ If a sentence is long, it must be split into consecutive exact segments that tog
 Very short sentences must still generate visual shots.
 Short sentences often represent strong documentary beats and must not be merged.
 
-## VISUAL SHOT DENSITY RULE
-Each sentence shorter than 100 characters must produce exactly one visual shot.
-If a sentence is 100 characters or longer, split it into consecutive exact narration segments, aiming for roughly one shot per 100 characters.
-Use natural clause breaks whenever possible: commas, semicolons, colons, em dashes, en dashes.
-Generate exactly one shot per resulting segment.
-Do NOT merge multiple sentences into a single shot.
-Do NOT skip any sentence or segment.
-Shots must represent different cinematic views corresponding to each exact sentence or sentence segment.
+## NARRATIVE SEGMENTATION RULE
+Each scene is pre-segmented into narrative units (NarrativeUnits) based on sense, not character count.
+The MANDATORY_shot_count reflects this narrative segmentation.
+Each shot must correspond to exactly one narrative unit — an illustrable visual moment.
+Do NOT merge multiple narrative units into one shot.
+Do NOT split a single narrative unit across multiple shots.
+If a sentence is short but represents a distinct beat, it must have its own shot.
+If a sentence is long but carries a single coherent idea, it should remain one shot.
 
 ## SHOT SEGMENTATION RULE — CRITICAL
 For long sentences, the ordered source_sentence values must partition the original sentence without overlap and without duplication.
@@ -249,7 +250,7 @@ const splitLongSentenceIntoSegments = (
 };
 
 const splitSceneIntoShotSegments = (text: string): string[] =>
-  splitSentences(text).flatMap((sentence) => splitLongSentenceIntoSegments(sentence));
+  getNarrativeSegments(text);
 
 const fallbackPrompt = (sentence: string, scene?: any, shotType?: string): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
@@ -531,10 +532,9 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Shot count: 1 shot per exact narration segment, with long sentences split into ~100-char chunks
+    // Shot count: narrative segmentation based on sense units
     const calcShotCount = (text: string): number => {
-      const segments = splitSceneIntoShotSegments(text);
-      return Math.max(1, segments.length);
+      return computeNarrativeShotCount(text);
     };
 
     const scriptLang = project.script_language || "fr";
