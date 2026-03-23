@@ -174,7 +174,7 @@ export function assembleTimeline(
 export function recalcStartTimes(segments: ShotSegment[]): ShotSegment[] {
   let t = 0;
   return segments.map((seg) => {
-    const updated = { ...seg, startTime: Math.round(t * 100) / 100 };
+    const updated = { ...seg, startTime: t };
     t += seg.duration;
     return updated;
   });
