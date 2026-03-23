@@ -11,6 +11,7 @@ import { isEditorialSection } from "./canonicalScriptTypes";
 export interface ScriptVersion {
   id: number;
   content: string;
+  style?: string;
 }
 
 type BlockState = "empty" | "loading" | "error" | "success";
