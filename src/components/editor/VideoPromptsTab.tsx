@@ -416,10 +416,12 @@ export default function VideoPromptsTab({
                     prompt={vp}
                     isSelected={vp.id === selectedPromptId}
                     isChecked={checkedIds.has(vp.id)}
+                    renderJob={getJobForPrompt(vp.id)}
                     onClick={() => setSelectedPromptId(vp.id)}
                     onCheckChange={(checked) => handleCheckChange(vp.id, checked)}
                     onDuplicate={() => handleDuplicate(vp.id)}
                     onDelete={() => handleDelete(vp.id)}
+                    onRender={() => handleRenderSingle(vp.id)}
                   />
                 ))}
               </div>
