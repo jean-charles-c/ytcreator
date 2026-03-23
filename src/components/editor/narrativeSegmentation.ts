@@ -32,7 +32,7 @@ export interface SegmentationResult {
 // ── Constants ──────────────────────────────────────────────────────
 
 const MIN_CHARS_SOFT = 40;
-const MAX_CHARS_SOFT = 100;
+const MAX_CHARS_SOFT = 120;
 const MAX_CHARS_HARD = 180;
 
 // ── Sentence splitting ─────────────────────────────────────────────
