@@ -118,13 +118,12 @@ export function assembleTimeline(
     realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
   );
 
-  const roundedAudioDuration = Math.round(audioDuration * 100) / 100;
-  const roundedStarts = sortedShots.map((shot) => {
+  const exactStarts = sortedShots.map((shot) => {
     const start = timepointMap.get(shot.id);
     if (start === undefined) {
       throw new Error(`Sync audio bloquée — timepoint manquant pour le shot ${shot.id.slice(0, 8)}.`);
     }
-    return Math.round(start * 100) / 100;
+    return start;
   });
 
   const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
