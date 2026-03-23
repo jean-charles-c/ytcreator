@@ -566,6 +566,38 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               throw new Error(timing.issues[0]?.message ?? "Export XML bloqué — manifest timing exact invalide.");
             }
             manifestEntries = timing.entries;
+
+            // Refresh image URLs from DB to pick up regenerated shots
+            const shotImageMap = new Map<string, string | null>();
+            const shotDescMap = new Map<string, string>();
+            const shotSentenceMap = new Map<string, string | null>();
+            const shotSentenceFrMap = new Map<string, string | null>();
+            const shotTypeMap = new Map<string, string>();
+            for (const shot of dbShots) {
+              shotImageMap.set(shot.id, shot.image_url);
+              shotDescMap.set(shot.id, shot.description);
+              shotSentenceMap.set(shot.id, shot.source_sentence);
+              shotSentenceFrMap.set(shot.id, shot.source_sentence_fr);
+              shotTypeMap.set(shot.id, shot.shot_type);
+            }
+            // Update timeline segments with fresh DB data
+            for (const seg of params.timeline.videoTrack.segments) {
+              if (shotImageMap.has(seg.id)) {
+                seg.imageUrl = shotImageMap.get(seg.id) ?? null;
+              }
+              if (shotDescMap.has(seg.id)) {
+                seg.description = shotDescMap.get(seg.id)!;
+              }
+              if (shotSentenceMap.has(seg.id)) {
+                seg.sentence = shotSentenceMap.get(seg.id) ?? "";
+              }
+              if (shotSentenceFrMap.has(seg.id)) {
+                seg.sentenceFr = shotSentenceFrMap.get(seg.id) ?? null;
+              }
+              if (shotTypeMap.has(seg.id)) {
+                seg.shotType = shotTypeMap.get(seg.id)!;
+              }
+            }
           } else {
             throw new Error("Export XML bloqué — audio sélectionné introuvable pour construire le manifest timing exact.");
           }
