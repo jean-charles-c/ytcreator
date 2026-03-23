@@ -34,6 +34,9 @@ export default function Dashboard() {
   const { signOut } = useAuth();
   const [projects, setProjects] = useState<ProjectWithShotCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { document.title = "Dashboard — YouTube Creator Toolkit"; }, []);
 
