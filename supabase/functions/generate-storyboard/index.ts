@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { segmentSceneNarrative, getNarrativeSegments, computeNarrativeShotCount } from "../_shared/narrative-segmentation.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
+import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
