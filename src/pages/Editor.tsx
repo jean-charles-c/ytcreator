@@ -46,7 +46,7 @@ import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 import VideoEditTab from "@/components/editor/VideoEditTab";
 
-type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "seo" | "cp" | "vo" | "videoedit" | "export";
+type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
