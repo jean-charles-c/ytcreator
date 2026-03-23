@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2 } from "lucide-react";
+import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2, Pencil, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -33,6 +34,9 @@ export default function Dashboard() {
   const { signOut } = useAuth();
   const [projects, setProjects] = useState<ProjectWithShotCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { document.title = "Dashboard — YouTube Creator Toolkit"; }, []);
 
@@ -57,10 +61,31 @@ export default function Dashboard() {
     fetchProjects();
   }, []);
 
+  const startRename = (e: React.MouseEvent, project: ProjectWithShotCount) => {
+    e.stopPropagation();
+    setEditingId(project.id);
+    setEditTitle(project.title);
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  const confirmRename = async (e: React.MouseEvent | React.FormEvent) => {
+    e.stopPropagation();
+    if (!editingId || !editTitle.trim()) return;
+    const { error } = await supabase.from("projects").update({ title: editTitle.trim() }).eq("id", editingId);
+    if (error) { toast.error("Erreur de renommage"); return; }
+    setProjects((prev) => prev.map((p) => p.id === editingId ? { ...p, title: editTitle.trim() } : p));
+    setEditingId(null);
+    toast.success("Projet renommé");
+  };
+
+  const cancelRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(null);
+  };
+
   const deleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     if (!confirm("Supprimer ce projet et toutes ses scènes/shots ?")) return;
-    // Delete shots, scenes, then project
     await supabase.from("shots").delete().eq("project_id", projectId);
     await supabase.from("scenes").delete().eq("project_id", projectId);
     const { error } = await supabase.from("projects").delete().eq("id", projectId);
@@ -109,11 +134,32 @@ export default function Dashboard() {
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
                   <div className="flex items-start justify-between mb-2 sm:mb-3">
-                    <h3 className="font-display text-sm sm:text-base font-semibold text-foreground leading-snug pr-4">
-                      {project.title}
-                    </h3>
+                    {editingId === project.id ? (
+                      <form onSubmit={confirmRename} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 flex-1 pr-2">
+                        <Input
+                          ref={editInputRef}
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="h-7 text-sm font-semibold bg-background"
+                          onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setEditingId(null); } }}
+                        />
+                        <button type="submit" className="p-1 rounded text-primary hover:bg-primary/10 transition-colors"><Check className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={cancelRename} className="p-1 rounded text-muted-foreground hover:bg-secondary transition-colors"><X className="h-3.5 w-3.5" /></button>
+                      </form>
+                    ) : (
+                      <h3 className="font-display text-sm sm:text-base font-semibold text-foreground leading-snug pr-4">
+                        {project.title}
+                      </h3>
+                    )}
                     <div className="flex items-center gap-1 shrink-0">
                       <s.icon className={`h-4 w-4 mt-0.5 ${s.color}`} />
+                      <button
+                        onClick={(e) => startRename(e, project)}
+                        className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Renommer le projet"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={(e) => deleteProject(e, project.id)}
                         className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
