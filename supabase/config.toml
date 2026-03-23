@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.elevenlabs-balance]
 verify_jwt = false
+
+[functions.render-proxy]
+verify_jwt = false
