@@ -176,6 +176,32 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       console.warn("Failed to parse AI response for shot regeneration", e);
     }
 
+    // Fallback: if translation was required but AI didn't provide it, generate one
+    if (needsTranslation && !newShot.source_sentence_fr && sourceText) {
+      console.warn("AI did not return source_sentence_fr, generating fallback translation");
+      try {
+        const trRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            max_tokens: 512,
+            messages: [
+              { role: "system", content: "Translate the following text to French. Return ONLY the French translation, nothing else." },
+              { role: "user", content: sourceText },
+            ],
+          }),
+        });
+        if (trRes.ok) {
+          const trData = await trRes.json();
+          const trText = trData.choices?.[0]?.message?.content?.trim();
+          if (trText) newShot.source_sentence_fr = trText;
+        }
+      } catch (trErr) {
+        console.warn("Fallback translation failed:", trErr);
+      }
+    }
+
     const updatePayload: Record<string, any> = {
       shot_type: newShot.shot_type,
       description: newShot.description,
