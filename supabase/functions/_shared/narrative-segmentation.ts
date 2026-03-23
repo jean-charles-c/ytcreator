@@ -33,7 +33,7 @@ export interface SegmentationResult {
 // ── Constants ──────────────────────────────────────────────────────
 
 const MIN_CHARS_SOFT = 40;
-const MAX_CHARS_SOFT = 120;
+const MAX_CHARS_SOFT = 100;
 const MAX_CHARS_HARD = 180; // absolute ceiling before forced split
 
 // ── Sentence splitting ─────────────────────────────────────────────
@@ -80,71 +80,102 @@ function detectTransitions(text: string): TransitionSignal[] {
 
 const CLAUSE_BOUNDARIES = /(?:,\s+|\s*;\s+|\s*:\s+|\s*—\s*|\s*–\s+)/g;
 
-function splitAtClauseBoundaries(sentence: string): string[] {
-  if (sentence.length <= MAX_CHARS_SOFT) return [sentence];
-
-  // Find clause boundaries
-  const boundaries: number[] = [];
+function collectBoundaryPositions(text: string, regex: RegExp): number[] {
+  regex.lastIndex = 0;
+  const positions: number[] = [];
   let match: RegExpExecArray | null;
-  const regex = new RegExp(CLAUSE_BOUNDARIES.source, "g");
-  while ((match = regex.exec(sentence)) !== null) {
-    boundaries.push(match.index + match[0].length);
+
+  while ((match = regex.exec(text)) !== null) {
+    positions.push(match.index + match[0].length);
   }
 
-  if (boundaries.length === 0) {
-    // No clause boundaries — check if truly multi-idea
-    // If it's a single coherent idea, keep it whole (exception)
-    if (sentence.length <= MAX_CHARS_HARD) return [sentence];
-    // Forced split at word boundary near midpoint
-    return forceSplitAtWordBoundary(sentence);
-  }
-
-  // Try to find optimal split points that keep segments in guard-rail range
-  return greedyClauseSplit(sentence, boundaries);
+  return positions;
 }
 
-function greedyClauseSplit(text: string, boundaries: number[]): string[] {
+function pickBoundaryPosition(
+  start: number,
+  totalLength: number,
+  remainingSegments: number,
+  maxChars: number,
+  candidates: number[]
+): number | null {
+  const remainingLength = totalLength - start;
+  const minPos = start + Math.max(1, remainingLength - maxChars * (remainingSegments - 1));
+  const maxPos = Math.min(totalLength - 1, start + maxChars);
+
+  if (minPos > maxPos) return null;
+
+  const idealPos = start + Math.ceil(remainingLength / remainingSegments);
+  const validCandidates = candidates.filter((pos) => pos >= minPos && pos <= maxPos);
+  if (validCandidates.length === 0) return null;
+
+  return validCandidates.reduce((best, pos) =>
+    Math.abs(pos - idealPos) < Math.abs(best - idealPos) ? pos : best
+  );
+}
+
+function splitLongSentence(text: string, preferredBoundaries: number[]): string[] {
+  const requiredSegments = Math.max(1, Math.ceil(text.length / MAX_CHARS_SOFT));
+  if (requiredSegments === 1) return [text];
+
+  const wordBoundaries = Array.from(new Set(
+    collectBoundaryPositions(text, /\s+/g)
+  )).sort((a, b) => a - b);
+
   const segments: string[] = [];
   let start = 0;
+  let remainingSegments = requiredSegments;
 
-  for (const boundary of boundaries) {
-    const currentLength = boundary - start;
-    const remainingLength = text.length - boundary;
+  while (remainingSegments > 1) {
+    const preferredPos = pickBoundaryPosition(
+      start,
+      text.length,
+      remainingSegments,
+      MAX_CHARS_SOFT,
+      preferredBoundaries.filter((pos) => pos > start)
+    );
 
-    // If current segment is in good range and remaining is also viable
-    if (currentLength >= MIN_CHARS_SOFT && remainingLength >= MIN_CHARS_SOFT) {
-      // Check if keeping going would exceed soft max
-      const nextBoundary = boundaries.find((b) => b > boundary);
-      const nextSegmentEnd = nextBoundary ?? text.length;
-      const withNextLength = nextSegmentEnd - start;
+    const fallbackPos = pickBoundaryPosition(
+      start,
+      text.length,
+      remainingSegments,
+      MAX_CHARS_SOFT,
+      wordBoundaries.filter((pos) => pos > start)
+    );
 
-      if (withNextLength > MAX_CHARS_SOFT && currentLength >= MIN_CHARS_SOFT) {
-        segments.push(text.slice(start, boundary).trim());
-        start = boundary;
-      }
-    }
+    const splitPos = preferredPos ?? fallbackPos ?? Math.min(text.length - 1, start + MAX_CHARS_SOFT);
+    const segment = text.slice(start, splitPos).trim();
+    if (!segment) break;
+
+    segments.push(segment);
+    start = splitPos;
+    remainingSegments -= 1;
   }
 
-  // Add remaining
   const tail = text.slice(start).trim();
-  if (tail) {
-    // If tail is too short, merge with previous
-    if (tail.length < MIN_CHARS_SOFT && segments.length > 0) {
-      segments[segments.length - 1] += " " + tail;
-    } else {
-      segments.push(tail);
-    }
-  }
+  if (tail) segments.push(tail);
 
   return segments.length > 0 ? segments : [text];
 }
 
+function splitAtClauseBoundaries(sentence: string): string[] {
+  if (sentence.length <= MAX_CHARS_SOFT) return [sentence];
+
+  const preferredBoundaries = Array.from(new Set(
+    collectBoundaryPositions(sentence, new RegExp(CLAUSE_BOUNDARIES.source, "g"))
+  )).sort((a, b) => a - b);
+
+  if (preferredBoundaries.length === 0) {
+    // No clause boundaries — keep coherent mono-idea sentences unless they exceed the hard ceiling
+    if (sentence.length <= MAX_CHARS_HARD) return [sentence];
+    return forceSplitAtWordBoundary(sentence);
+  }
+
+  return splitLongSentence(sentence, preferredBoundaries);
+}
+
 function forceSplitAtWordBoundary(text: string): string[] {
-  const words = text.split(/\s+/);
-  const midWord = Math.ceil(words.length / 2);
-  const first = words.slice(0, midWord).join(" ");
-  const second = words.slice(midWord).join(" ");
-  return [first, second].filter(Boolean);
+  return splitLongSentence(text, []);
 }
 
 // ── Core segmentation logic ────────────────────────────────────────
