@@ -219,16 +219,16 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
   );
 
   return (
-    <div className="container max-w-6xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
-      <div className="mb-4 sm:mb-6">
-        <h2 className="font-display text-lg sm:text-xl lg:text-2xl font-semibold text-foreground mb-1">RsearchEngine</h2>
-        <p className="text-xs sm:text-sm text-muted-foreground">
+    <div className="container max-w-6xl py-3 sm:py-4 lg:py-10 px-2 sm:px-4 animate-fade-in">
+      <div className="mb-3 sm:mb-6">
+        <h2 className="font-display text-base sm:text-lg lg:text-2xl font-semibold text-foreground mb-0.5 sm:mb-1">RsearchEngine</h2>
+        <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground">
           Générez un dossier de recherche approfondi et structuré, prêt pour la création de contenu.
         </p>
       </div>
 
       {!hasContent && !generating && (
-        <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid items-start gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
           </div>
@@ -241,7 +241,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
       )}
 
       {(hasContent || generating) && (
-        <div className="flex gap-4 lg:gap-6">
+        <div className="flex gap-3 sm:gap-4 lg:gap-6">
           {/* Sidebar nav — desktop only */}
           <div className="hidden lg:block w-56 shrink-0 sticky top-4 self-start">
             <ResearchSectionNav
@@ -274,15 +274,15 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           {/* Main content */}
           <div className="flex-1 min-w-0">
             {/* Mobile controls */}
-            <div className="lg:hidden flex items-center gap-2 mb-4 flex-wrap">
+            <div className="lg:hidden flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4 flex-wrap">
               {sectionNavDrawer}
               {mobileActionButtons}
             </div>
 
             {generating && (
-              <div className="flex items-center gap-2 mb-4 p-3 rounded border border-primary/20 bg-primary/5">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <p className="text-xs sm:text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 mb-3 sm:mb-4 p-2 sm:p-3 rounded border border-primary/20 bg-primary/5">
+                <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground">
                   {progress
                     ? `Section ${progress.current}/${progress.total} : ${progress.section}…`
                     : "Connexion au service de recherche…"}
@@ -290,7 +290,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
               </div>
             )}
 
-            <div className="rounded-lg border border-border bg-card p-3 sm:p-5 lg:p-8">
+            <div className="rounded-lg border border-border bg-card p-2.5 sm:p-4 lg:p-8">
               <ResearchDossierView
                 ref={exportRef}
                 content={content}
@@ -300,7 +300,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
             </div>
 
             {hasContent && (
-              <p className="text-xs text-muted-foreground mt-3 text-right">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 sm:mt-3 text-right">
                 {content.split(/\s+/).length.toLocaleString()} mots · {content.length.toLocaleString()} caractères
               </p>
             )}

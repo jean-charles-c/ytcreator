@@ -36,7 +36,7 @@ export default function ResearchSectionNav({ activeSections, currentSection, onN
             onClick={() => isAvailable && onNavigate(section)}
             disabled={!isAvailable}
             className={cn(
-              "w-full text-left text-xs px-2.5 py-1.5 rounded transition-colors truncate",
+              "w-full text-left text-xs px-2.5 py-2 sm:py-1.5 rounded transition-colors truncate min-h-[36px] sm:min-h-0",
               isActive
                 ? "bg-primary/10 text-primary font-medium"
                 : isAvailable

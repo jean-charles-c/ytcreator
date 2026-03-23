@@ -791,6 +791,14 @@ REPLACEMENT STRATEGY: Instead of flagging and leaving gaps, REWRITE using concre
 - Complex metaphors or poetic abstractions → replace with concrete imagery
 - Dense academic sentences → split into oral-ready units
 
+### CATEGORY 5: FORBIDDEN PUNCTUATION (hard ban)
+
+**NEVER use the em dash character "—" (U+2014) anywhere in the script.** This character causes rendering and TTS issues.
+- Instead of "—", use a comma, a period, a semicolon, or restructure the sentence.
+- Also avoid "–" (en dash, U+2013) for parenthetical insertions. Use commas or parentheses instead.
+- Hyphens "-" for compound words are fine (e.g., "well-known").
+- This rule applies to ALL 13 blocks including editorial blocks.
+
 ---
 
 ## LENGTH — HARD CONSTRAINT
@@ -799,8 +807,11 @@ Your CORE SCRIPT (blocks 1-10) MUST be between ${charMin.toLocaleString()} and $
 Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString()} words).
 
 ⚠️ Under ${charMin.toLocaleString()} characters = FAILURE. Aim to slightly exceed the target rather than fall short.
+⚠️ Over ${charMax.toLocaleString()} characters = FAILURE. You MUST stay within the upper limit. If your draft exceeds the maximum, CUT secondary examples and supporting details until you are within range. NEVER exceed the maximum.
 ⚠️ The section tags ([[HOOK]], [[CONTEXT]], etc.) do NOT count toward the character limit.
 ⚠️ The editorial blocks (11-13) do NOT count toward the character limit.
+
+CRITICAL LENGTH ENFORCEMENT: Before outputting your final script, COUNT the total characters of blocks 1-10 (excluding tags). If the count exceeds ${charMax.toLocaleString()}, you MUST revise and compress until you are within range. Exceeding the maximum is as serious a failure as falling short of the minimum.
 
 ---
 
@@ -840,8 +851,11 @@ Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString(
 23. No sequence of 3+ facts presented as a list without narrative connection.
 
 ### Volume Compliance
-24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters.
+24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters. If OVER the max, compress NOW before outputting.
 25. Each section approximately respects its VolumeAllocator budget (±30% tolerance).
+
+### Forbidden Punctuation
+26. ZERO occurrences of "—" (em dash) or "–" (en dash used as parenthetical) in the entire output.
 
 ### Editorial Blocks
 26. TRANSITIONS audit covers all 9 boundaries with ratings.
@@ -891,7 +905,7 @@ function buildUserMessage(
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. HARD LIMIT for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit.`);
+  parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. HARD LIMIT for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
 
   return parts.join("\n\n");
 }

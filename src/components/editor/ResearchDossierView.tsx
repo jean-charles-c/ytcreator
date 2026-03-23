@@ -41,12 +41,12 @@ const ResearchDossierView = forwardRef<HTMLDivElement, ResearchDossierViewProps>
     const sections = useMemo(() => parseSections(content), [content]);
 
     return (
-      <div ref={ref} className="research-dossier-export">
+      <div ref={ref} className="research-dossier-export break-words overflow-hidden">
         {/* Topic header for PDF and display */}
         {topic && (
-          <div className="mb-8 pb-4 border-b-2 border-primary/30">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">Dossier de recherche</p>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+          <div className="mb-4 sm:mb-8 pb-3 sm:pb-4 border-b-2 border-primary/30">
+            <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground mb-1 sm:mb-2">Dossier de recherche</p>
+            <h1 className="font-display text-lg sm:text-2xl lg:text-3xl font-bold text-foreground leading-tight break-words">
               {topic}
             </h1>
           </div>
@@ -55,9 +55,9 @@ const ResearchDossierView = forwardRef<HTMLDivElement, ResearchDossierViewProps>
         {sections.map((section, i) => {
           if (section.name === "__preamble__") {
             return (
-              <div key="preamble" className="mb-6">
+              <div key="preamble" className="mb-4 sm:mb-6">
                 <p
-                  className="text-sm leading-relaxed text-muted-foreground mb-3"
+                  className="text-xs sm:text-sm leading-relaxed text-muted-foreground mb-2 sm:mb-3 break-words"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(section.content) }}
                 />
               </div>
@@ -68,16 +68,16 @@ const ResearchDossierView = forwardRef<HTMLDivElement, ResearchDossierViewProps>
             <div
               key={section.name}
               ref={(el) => { sectionRefs.current[section.name] = el; }}
-              className="mb-8 scroll-mt-4"
+              className="mb-5 sm:mb-8 scroll-mt-4"
             >
-              <h2 className="font-display text-lg sm:text-xl font-bold text-foreground mb-3 pb-2 border-b border-border">
-                <span className="text-primary mr-2 text-base font-semibold">{i}.</span>
+              <h2 className="font-display text-sm sm:text-lg lg:text-xl font-bold text-foreground mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-border break-words">
+                <span className="text-primary mr-1.5 sm:mr-2 text-xs sm:text-base font-semibold">{i}.</span>
                 {section.name}
               </h2>
               <div
-                className="text-sm leading-relaxed text-muted-foreground"
+                className="text-xs sm:text-sm leading-relaxed text-muted-foreground break-words"
                 dangerouslySetInnerHTML={{
-                  __html: `<p class="text-sm leading-relaxed text-muted-foreground mb-3">${renderMarkdown(section.content)}</p>`,
+                  __html: `<p class="text-xs sm:text-sm leading-relaxed text-muted-foreground mb-2 sm:mb-3">${renderMarkdown(section.content)}</p>`,
                 }}
               />
             </div>
