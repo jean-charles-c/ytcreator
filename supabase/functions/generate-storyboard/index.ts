@@ -863,39 +863,38 @@ serve(async (req) => {
       }
       sceneShots = postSplitShots;
 
+      // ── TRANSLATION: translate missing source_sentence_fr ──
+      const missingSegments = sceneShots
+        .map((shot: any) => ({
+          source_sentence: normalizeNarrationText(shot?.source_sentence || ""),
+          source_sentence_fr: typeof shot?.source_sentence_fr === "string"
+            ? shot.source_sentence_fr.trim()
+            : "",
+        }))
+        .filter((shot: any) => shot.source_sentence && !shot.source_sentence_fr)
+        .map((shot: any) => shot.source_sentence);
 
-        const missingSegments = sceneShots
-          .map((shot: any) => ({
-            source_sentence: normalizeNarrationText(shot?.source_sentence || ""),
-            source_sentence_fr: typeof shot?.source_sentence_fr === "string"
-              ? shot.source_sentence_fr.trim()
-              : "",
-          }))
-          .filter((shot: any) => shot.source_sentence && !shot.source_sentence_fr)
-          .map((shot: any) => shot.source_sentence);
+      if (missingSegments.length > 0) {
+        const translations = await translateSegmentsToFrench(missingSegments, LOVABLE_API_KEY);
+        sceneShots = sceneShots.map((shot: any) => {
+          const existingTranslation = typeof shot?.source_sentence_fr === "string"
+            ? shot.source_sentence_fr.trim()
+            : "";
 
-        if (missingSegments.length > 0) {
-          const translations = await translateSegmentsToFrench(missingSegments, LOVABLE_API_KEY);
-          sceneShots = sceneShots.map((shot: any) => {
-            const existingTranslation = typeof shot?.source_sentence_fr === "string"
-              ? shot.source_sentence_fr.trim()
-              : "";
+          if (existingTranslation) {
+            return { ...shot, source_sentence_fr: existingTranslation };
+          }
 
-            if (existingTranslation) {
-              return { ...shot, source_sentence_fr: existingTranslation };
-            }
+          const normalizedSource = normalizeNarrationText(shot?.source_sentence || "");
+          const translated = normalizedSource
+            ? translations.get(normalizeTranslationKey(normalizedSource))
+            : null;
 
-            const normalizedSource = normalizeNarrationText(shot?.source_sentence || "");
-            const translated = normalizedSource
-              ? translations.get(normalizeTranslationKey(normalizedSource))
-              : null;
-
-            return {
-              ...shot,
-              source_sentence_fr: translated || null,
-            };
-          });
-        }
+          return {
+            ...shot,
+            source_sentence_fr: translated || null,
+          };
+        });
       }
 
       for (let j = 0; j < sceneShots.length; j++) {
