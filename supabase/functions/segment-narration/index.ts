@@ -687,7 +687,47 @@ serve(async (req) => {
       console.warn("Could not load global_context:", e);
     }
 
-    // ─── Build BlocContexteScene with inheritance rules ───────────
+    // ─── Variation Detection Helpers ─────────────────────────────────
+    const TEMPORAL_KEYWORDS = [
+      "today", "now", "modern", "contemporary", "present", "currently", "recent",
+      "aujourd'hui", "moderne", "contemporain", "actuel", "récent",
+      "century", "siècle", "ancient", "ancien", "medieval", "médiéval",
+      "flashback", "earlier", "later", "previously", "autrefois", "jadis",
+      "before", "after", "archive", "historical", "historique",
+    ];
+
+    const detectTemporalVariation = (sceneText: string, globalEpoque: string): string | null => {
+      const textLower = sceneText.toLowerCase();
+      const globalLower = (globalEpoque || "").toLowerCase();
+
+      // Check for explicit temporal markers that differ from global epoch
+      for (const kw of TEMPORAL_KEYWORDS) {
+        if (textLower.includes(kw) && !globalLower.includes(kw)) {
+          // Found a temporal keyword not present in global epoch — potential shift
+          if (kw === "today" || kw === "now" || kw === "modern" || kw === "contemporary" ||
+              kw === "present" || kw === "currently" || kw === "recent" ||
+              kw === "aujourd'hui" || kw === "moderne" || kw === "contemporain" ||
+              kw === "actuel" || kw === "récent") {
+            return "Époque contemporaine / moderne";
+          }
+          if (kw === "flashback" || kw === "earlier" || kw === "previously" ||
+              kw === "autrefois" || kw === "jadis") {
+            return "Flashback — époque antérieure";
+          }
+          if (kw === "archive" || kw === "historical" || kw === "historique") {
+            return "Référence historique / archive";
+          }
+        }
+      }
+      return null;
+    };
+
+    const isLocalVariation = (localValue: string | null, globalValue: string | null): boolean => {
+      if (!localValue || !globalValue) return false;
+      return localValue.toLowerCase().trim() !== globalValue.toLowerCase().trim();
+    };
+
+    // ─── Build BlocContexteScene with inheritance + variation handling ─
     const buildSceneContext = (scene: ReturnType<typeof validateSceneBlock>) => {
       const gc = globalContext || {};
 
@@ -699,27 +739,68 @@ serve(async (req) => {
       const localPersonnages = scene.characters && scene.characters !== "none" && scene.characters !== "Non spécifié"
         ? scene.characters : null;
 
-      // Inheritance: local value takes priority, fallback to global
+      // Temporal variation detection from scene text
+      const temporalShift = detectTemporalVariation(scene.source_text, gc.epoque || "");
+
+      // Determine epoch: local temporal shift > global
+      const resolvedEpoque = temporalShift || gc.epoque || "Non déterminé";
+
+      // Determine location: local if explicitly different and justified, else global
+      const resolvedLieu = localLieu || gc.lieu_principal || "Non déterminé";
+
+      // Determine characters: local if present, else meaningful global subset
+      const globalChars = gc.personnages?.length > 0
+        ? gc.personnages.map((p: any) => p.nom).join(", ")
+        : "Non déterminé";
+      const resolvedPersonnages = localPersonnages || globalChars;
+
       return {
         contexte_scene: localSujet || gc.contexte_narratif || "Non déterminé",
         sujet: gc.sujet_principal || "Non déterminé",
-        lieu: localLieu || gc.lieu_principal || "Non déterminé",
-        epoque: gc.epoque || "Non déterminé",
-        personnages: localPersonnages || (gc.personnages?.length > 0
-          ? gc.personnages.map((p: any) => p.nom).join(", ")
-          : "Non déterminé"),
-        coherence_globale: buildCoherenceNote(scene, gc),
+        lieu: resolvedLieu,
+        epoque: resolvedEpoque,
+        personnages: resolvedPersonnages,
+        coherence_globale: buildCoherenceNote(scene, gc, temporalShift),
       };
     };
 
-    const buildCoherenceNote = (scene: ReturnType<typeof validateSceneBlock>, gc: Record<string, any>): string => {
+    const buildCoherenceNote = (
+      scene: ReturnType<typeof validateSceneBlock>,
+      gc: Record<string, any>,
+      temporalShift: string | null
+    ): string => {
       const notes: string[] = [];
       const localLieu = scene.location && scene.location !== "unspecified" ? scene.location : null;
       const globalLieu = gc.lieu_principal || null;
 
-      if (localLieu && globalLieu && localLieu.toLowerCase() !== globalLieu.toLowerCase()) {
+      // Location variation
+      if (isLocalVariation(localLieu, globalLieu)) {
         notes.push(`Lieu spécifique : ${localLieu} (contexte global : ${globalLieu})`);
       }
+
+      // Temporal variation
+      if (temporalShift) {
+        notes.push(`Variation temporelle : ${temporalShift} (époque globale : ${gc.epoque || "non définie"})`);
+      }
+
+      // Character variation
+      const localChars = scene.characters && scene.characters !== "none" ? scene.characters : null;
+      const globalChars = gc.personnages?.length > 0
+        ? gc.personnages.map((p: any) => p.nom?.toLowerCase()).join(", ")
+        : null;
+      if (localChars && globalChars) {
+        const localNames = localChars.toLowerCase().split(/,\s*/);
+        const newChars = localNames.filter((n: string) => !globalChars.includes(n.trim()));
+        if (newChars.length > 0) {
+          notes.push(`Personnages ponctuels : ${newChars.join(", ")}`);
+        }
+      }
+
+      // Scene type variations
+      if (scene.scene_type === "transition") {
+        notes.push("Scène de transition");
+      }
+
       if (!notes.length) {
         notes.push("Cohérent avec le contexte global");
       }
