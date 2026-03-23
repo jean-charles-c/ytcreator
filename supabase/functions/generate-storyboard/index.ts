@@ -39,14 +39,14 @@ If a sentence is long, it must be split into consecutive exact segments that tog
 Very short sentences must still generate visual shots.
 Short sentences often represent strong documentary beats and must not be merged.
 
-## VISUAL SHOT DENSITY RULE
-Each sentence shorter than 100 characters must produce exactly one visual shot.
-If a sentence is 100 characters or longer, split it into consecutive exact narration segments, aiming for roughly one shot per 100 characters.
-Use natural clause breaks whenever possible: commas, semicolons, colons, em dashes, en dashes.
-Generate exactly one shot per resulting segment.
-Do NOT merge multiple sentences into a single shot.
-Do NOT skip any sentence or segment.
-Shots must represent different cinematic views corresponding to each exact sentence or sentence segment.
+## NARRATIVE SEGMENTATION RULE
+Each scene is pre-segmented into narrative units (NarrativeUnits) based on sense, not character count.
+The MANDATORY_shot_count reflects this narrative segmentation.
+Each shot must correspond to exactly one narrative unit — an illustrable visual moment.
+Do NOT merge multiple narrative units into one shot.
+Do NOT split a single narrative unit across multiple shots.
+If a sentence is short but represents a distinct beat, it must have its own shot.
+If a sentence is long but carries a single coherent idea, it should remain one shot.
 
 ## SHOT SEGMENTATION RULE — CRITICAL
 For long sentences, the ordered source_sentence values must partition the original sentence without overlap and without duplication.
