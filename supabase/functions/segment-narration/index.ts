@@ -357,9 +357,24 @@ ABSOLUTE RULES:
 4. Each SceneBlock corresponds to ONE narrative action. A scene can contain ANY number of sentences — as many as needed to cover the full action. Do NOT split a continuous action into multiple scenes.
 5. If two consecutive actions are very short and closely related, you MAY merge them into one scene. Use your judgment.
 6. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
-7. Generate narrative_action: what is the core narrative beat or event.
-8. Generate characters, location, scene_type, and continuity for each scene.
-${needsFrenchTranslation ? `9. **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "9. The narration is already in French. Do NOT include source_text_fr."}
+7. Generate narrative_action IN FRENCH: what is the core narrative beat or event.
+8. Generate title IN FRENCH: short descriptive title for the scene.
+
+CHARACTER TRACKING RULES:
+- "characters" must list ONLY characters/subjects PRESENT or ACTING in the scene, NOT merely mentioned or referenced historically.
+- Format: "Nom (rôle)" separated by commas. Example: "Gertrude Caton-Thompson (archéologue), David Beach (historien)"
+- If no named character is present but a group is described, use the group designation: "Les bâtisseurs Shona", "Les archéologues européens"
+- If truly no character/subject is acting: "Aucun personnage actif"
+- Do NOT invent names not in the script. Use designations from the text.
+- Distinguish between: characters physically present/acting vs. characters merely referenced.
+
+LOCATION TRACKING RULES:
+- "location" must be the SPECIFIC location of the scene action, not the general script setting.
+- If the scene describes a specific sub-location (e.g., "the Hill Complex" within "Great Zimbabwe"), use the specific one.
+- If no specific location is mentioned in THIS scene's text, write "Non spécifié" — the system will inherit from global context.
+- Do NOT repeat the global location if the scene text doesn't explicitly mention it.
+
+${needsFrenchTranslation ? `TRANSLATION RULE: **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "The narration is already in French. Do NOT include source_text_fr."}
 
 Return data via the segment_narration tool call only.`
       },
@@ -727,8 +742,12 @@ serve(async (req) => {
       return localValue.toLowerCase().trim() !== globalValue.toLowerCase().trim();
     };
 
-    // ─── Build BlocContexteScene with inheritance + variation handling ─
-    const buildSceneContext = (scene: ReturnType<typeof validateSceneBlock>) => {
+    // ─── Build BlocContexteScene with inheritance + variation handling + continuity tracking ─
+    const buildSceneContext = (
+      scene: ReturnType<typeof validateSceneBlock>,
+      sceneIndex: number,
+      prevContext: Record<string, any> | null
+    ) => {
       const gc = globalContext || {};
 
       // Local values from scene metadata
@@ -737,22 +756,32 @@ serve(async (req) => {
       const localLieu = scene.location && scene.location !== "unspecified" && scene.location !== "Non spécifié"
         ? scene.location : null;
       const localPersonnages = scene.characters && scene.characters !== "none" && scene.characters !== "Non spécifié"
+        && scene.characters !== "Aucun personnage actif"
         ? scene.characters : null;
 
       // Temporal variation detection from scene text
       const temporalShift = detectTemporalVariation(scene.source_text, gc.epoque || "");
 
-      // Determine epoch: local temporal shift > global
-      const resolvedEpoque = temporalShift || gc.epoque || "Non déterminé";
+      // Determine epoch: temporal shift > previous scene epoch (stability) > global
+      const prevEpoque = prevContext?.epoque || null;
+      const resolvedEpoque = temporalShift
+        || (prevEpoque && prevEpoque !== "Non déterminé" && !temporalShift ? prevEpoque : null)
+        || gc.epoque || "Non déterminé";
 
-      // Determine location: local if explicitly different and justified, else global
-      const resolvedLieu = localLieu || gc.lieu_principal || "Non déterminé";
+      // Determine location: local > previous scene (stability unless scene changes it) > global
+      const prevLieu = prevContext?.lieu || null;
+      const resolvedLieu = localLieu
+        || (prevLieu && prevLieu !== "Non déterminé" && scene.continuity !== "new" ? prevLieu : null)
+        || gc.lieu_principal || "Non déterminé";
 
-      // Determine characters: local if present, else meaningful global subset
+      // Determine characters: local if present, else inherit from previous scene if continuity
       const globalChars = gc.personnages?.length > 0
-        ? gc.personnages.map((p: any) => p.nom).join(", ")
+        ? gc.personnages.map((p: any) => `${p.nom} (${p.role || "personnage"})`).join(", ")
         : "Non déterminé";
-      const resolvedPersonnages = localPersonnages || globalChars;
+      const prevChars = prevContext?.personnages || null;
+      const resolvedPersonnages = localPersonnages
+        || (prevChars && scene.continuity === "continues" ? prevChars : null)
+        || globalChars;
 
       return {
         contexte_scene: localSujet || gc.contexte_narratif || "Non déterminé",
@@ -760,71 +789,98 @@ serve(async (req) => {
         lieu: resolvedLieu,
         epoque: resolvedEpoque,
         personnages: resolvedPersonnages,
-        coherence_globale: buildCoherenceNote(scene, gc, temporalShift),
+        coherence_globale: buildCoherenceNote(scene, gc, temporalShift, prevContext),
       };
     };
 
     const buildCoherenceNote = (
       scene: ReturnType<typeof validateSceneBlock>,
       gc: Record<string, any>,
-      temporalShift: string | null
+      temporalShift: string | null,
+      prevContext: Record<string, any> | null
     ): string => {
       const notes: string[] = [];
       const localLieu = scene.location && scene.location !== "unspecified" ? scene.location : null;
       const globalLieu = gc.lieu_principal || null;
+      const prevLieu = prevContext?.lieu || null;
+
+      // Classify continuity type
+      let continuityType = "Continuité totale";
 
       // Location variation
       if (isLocalVariation(localLieu, globalLieu)) {
-        notes.push(`Lieu spécifique : ${localLieu} (contexte global : ${globalLieu})`);
+        if (isLocalVariation(localLieu, prevLieu)) {
+          notes.push(`Changement de lieu : ${localLieu} (scène précédente : ${prevLieu || globalLieu})`);
+          continuityType = "Variation locale justifiée";
+        } else {
+          notes.push(`Lieu spécifique : ${localLieu} (contexte global : ${globalLieu})`);
+          continuityType = "Variation locale justifiée";
+        }
       }
 
       // Temporal variation
       if (temporalShift) {
         notes.push(`Variation temporelle : ${temporalShift} (époque globale : ${gc.epoque || "non définie"})`);
+        continuityType = "Exception narrative cohérente";
       }
 
-      // Character variation
-      const localChars = scene.characters && scene.characters !== "none" ? scene.characters : null;
+      // Character variation — detect new/punctual characters
+      const localChars = scene.characters && scene.characters !== "none"
+        && scene.characters !== "Aucun personnage actif" ? scene.characters : null;
       const globalChars = gc.personnages?.length > 0
         ? gc.personnages.map((p: any) => p.nom?.toLowerCase()).join(", ")
         : null;
       if (localChars && globalChars) {
-        const localNames = localChars.toLowerCase().split(/,\s*/);
-        const newChars = localNames.filter((n: string) => !globalChars.includes(n.trim()));
+        // Extract names (before parenthesis if role format "Nom (rôle)")
+        const extractNames = (s: string) => s.split(",").map(n => n.replace(/\(.*\)/, "").trim().toLowerCase());
+        const localNames = extractNames(localChars);
+        const globalNames = extractNames(globalChars);
+        const newChars = localNames.filter((n: string) => n && !globalNames.some(g => g.includes(n) || n.includes(g)));
         if (newChars.length > 0) {
           notes.push(`Personnages ponctuels : ${newChars.join(", ")}`);
+          if (continuityType === "Continuité totale") continuityType = "Adaptation interprétée";
         }
       }
 
-      // Scene type variations
+      // Scene type transitions
       if (scene.scene_type === "transition") {
         notes.push("Scène de transition");
+        if (continuityType === "Continuité totale") continuityType = "Variation locale justifiée";
       }
 
+      // Prefix with continuity classification
+      const prefix = `[${continuityType}]`;
       if (!notes.length) {
-        notes.push("Cohérent avec le contexte global");
+        return `${prefix} Cohérent avec le contexte global`;
       }
-      return notes.join(". ");
+      return `${prefix} ${notes.join(". ")}`;
     };
 
     // Delete existing scenes
     await supabase.from("scenes").delete().eq("project_id", project_id);
 
-    // Insert new scenes with scene_context
-    const sceneRows = allScenes.map((s, i) => ({
-      project_id,
-      scene_order: i + 1,
-      title: s.title,
-      source_text: s.source_text,
-      source_text_fr: s.source_text_fr || null,
-      visual_intention: s.visual_intention,
-      narrative_action: s.narrative_action,
-      characters: s.characters,
-      location: s.location,
-      scene_type: s.scene_type,
-      continuity: s.continuity,
-      scene_context: buildSceneContext(s),
-    }));
+    // Insert new scenes with scene_context — sequential to pass previous context
+    const sceneRows: any[] = [];
+    let prevCtx: Record<string, any> | null = null;
+    for (let i = 0; i < allScenes.length; i++) {
+      const s = allScenes[i];
+      const ctx = buildSceneContext(s, i, prevCtx);
+      sceneRows.push({
+        project_id,
+        scene_order: i + 1,
+        title: s.title,
+        source_text: s.source_text,
+        source_text_fr: s.source_text_fr || null,
+        visual_intention: s.visual_intention,
+        narrative_action: s.narrative_action,
+        characters: s.characters,
+        location: s.location,
+        scene_type: s.scene_type,
+        continuity: s.continuity,
+        scene_context: ctx,
+      });
+      prevCtx = ctx;
+    }
 
     const { error: insertErr } = await supabase.from("scenes").insert(sceneRows);
     if (insertErr) {
