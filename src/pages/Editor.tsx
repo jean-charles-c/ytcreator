@@ -1563,6 +1563,9 @@ export default function Editor() {
                     </div>
                   </details>
                 )}
+                {/* Segmentation QA Panel */}
+                <SegmentationQaPanel scenes={scenes} />
+
                 <div className="space-y-4">
                   {scenes.map((scene, i) => (
                     <SceneBlock
