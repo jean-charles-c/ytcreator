@@ -128,9 +128,9 @@ export function assembleTimeline(
 
   const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
     const scene = sceneMap.get(shot.scene_id);
-    const startTime = roundedStarts[idx];
-    const nextStart = idx < sortedShots.length - 1 ? roundedStarts[idx + 1] : roundedAudioDuration;
-    const duration = Math.round((nextStart - startTime) * 100) / 100;
+    const startTime = exactStarts[idx];
+    const nextStart = idx < sortedShots.length - 1 ? exactStarts[idx + 1] : audioDuration;
+    const duration = nextStart - startTime;
 
     if (!(duration > 0)) {
       throw new Error(`Sync audio bloquée — durée invalide entre les shots ${idx + 1}${idx < sortedShots.length - 1 ? ` et ${idx + 2}` : " et la fin audio"}.`);
@@ -155,7 +155,7 @@ export function assembleTimeline(
   const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vo-audio/${audioFile.file_path}`;
 
   return {
-    videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration: roundedAudioDuration },
+    videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration: audioDuration },
     audioTrack: {
       audioId: audioFile.id,
       fileName: audioFile.file_name,
@@ -163,7 +163,7 @@ export function assembleTimeline(
       durationEstimate: audioDuration,
       audioUrl,
     },
-    totalDuration: roundedAudioDuration,
+    totalDuration: audioDuration,
     segmentCount: segments.length,
     createdAt: new Date().toLocaleString("fr-FR"),
     shotTimepoints: shotTimepoints ?? null,
