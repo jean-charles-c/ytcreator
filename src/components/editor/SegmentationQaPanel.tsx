@@ -163,32 +163,34 @@ export default function SegmentationQaPanel({ scenes }: SegmentationQaPanelProps
   const scoreColor = globalScore >= 80 ? "text-green-500" : globalScore >= 50 ? "text-amber-500" : "text-red-500";
 
   return (
-    <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group">
-      <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
-        <BarChart3 className="h-4 w-4 text-primary" />
-        Validation Qualité Segmentation
-        <span className={`ml-2 text-xs font-bold ${scoreColor}`}>{globalScore}%</span>
-        <span className="ml-1 text-xs text-muted-foreground font-normal">— {results.length} scènes analysées</span>
+    <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
+      <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden flex-wrap min-h-[44px]">
+        <BarChart3 className="h-4 w-4 text-primary shrink-0" />
+        <span className="hidden sm:inline">Validation Qualité Segmentation</span>
+        <span className="sm:hidden">Qualité</span>
+        <span className={`ml-1 sm:ml-2 text-xs font-bold ${scoreColor}`}>{globalScore}%</span>
+        <span className="hidden sm:inline ml-1 text-xs text-muted-foreground font-normal">— {results.length} scènes</span>
         <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
       </summary>
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
         {/* Global indicators */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
           {[
-            { icon: <BookOpen className="h-3.5 w-3.5" />, label: "Contexte complet", value: stats.contextComplete, total: stats.total },
-            { icon: <MapPin className="h-3.5 w-3.5" />, label: "Lieu stable", value: stats.locationStable, total: stats.total },
-            { icon: <Clock className="h-3.5 w-3.5" />, label: "Époque stable", value: stats.epochStable, total: stats.total },
-            { icon: <Users className="h-3.5 w-3.5" />, label: "Personnages suivis", value: stats.charsTracked, total: stats.total },
-            { icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: "Visuel prêt", value: stats.visualReady, total: stats.total },
+            { icon: <BookOpen className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, label: "Contexte", labelFull: "Contexte complet", value: stats.contextComplete, total: stats.total },
+            { icon: <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, label: "Lieu", labelFull: "Lieu stable", value: stats.locationStable, total: stats.total },
+            { icon: <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, label: "Époque", labelFull: "Époque stable", value: stats.epochStable, total: stats.total },
+            { icon: <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, label: "Perso.", labelFull: "Personnages suivis", value: stats.charsTracked, total: stats.total },
+            { icon: <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />, label: "Visuel", labelFull: "Visuel prêt", value: stats.visualReady, total: stats.total },
           ].map((stat) => {
             const pct = stat.total > 0 ? Math.round((stat.value / stat.total) * 100) : 0;
             const color = pct >= 80 ? "text-green-600 bg-green-500/10 border-green-500/20" : pct >= 50 ? "text-amber-600 bg-amber-500/10 border-amber-500/20" : "text-red-600 bg-red-500/10 border-red-500/20";
             return (
-              <div key={stat.label} className={`rounded border p-2 text-center ${color}`}>
+              <div key={stat.labelFull} className={`rounded border p-1.5 sm:p-2 text-center ${color}`}>
                 <div className="flex items-center justify-center gap-1 mb-0.5">{stat.icon}</div>
-                <div className="text-lg font-bold">{stat.value}/{stat.total}</div>
-                <div className="text-[10px] leading-tight">{stat.label}</div>
+                <div className="text-sm sm:text-lg font-bold">{stat.value}/{stat.total}</div>
+                <div className="text-[9px] sm:text-[10px] leading-tight hidden sm:block">{stat.labelFull}</div>
+                <div className="text-[9px] leading-tight sm:hidden">{stat.label}</div>
               </div>
             );
           })}
@@ -203,21 +205,21 @@ export default function SegmentationQaPanel({ scenes }: SegmentationQaPanelProps
               <div key={r.scene.id} className="rounded border border-border bg-background">
                 <button
                   onClick={() => setExpanded(isExpanded ? null : r.scene.id)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/50 transition-colors"
+                  className="w-full flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 text-left text-sm hover:bg-secondary/50 transition-colors min-h-[44px]"
                 >
                   {STATUS_ICON[worstStatus]}
-                  <span className="font-medium text-foreground text-xs">Scène {r.scene.scene_order}</span>
-                  <span className="text-xs text-muted-foreground truncate flex-1">{r.scene.title}</span>
-                  <span className={`text-[10px] font-bold ${r.score >= 80 ? "text-green-500" : r.score >= 50 ? "text-amber-500" : "text-red-500"}`}>{r.score}%</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                  <span className="font-medium text-foreground text-xs shrink-0">S{r.scene.scene_order}</span>
+                  <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{r.scene.title}</span>
+                  <span className={`text-[10px] font-bold shrink-0 ${r.score >= 80 ? "text-green-500" : r.score >= 50 ? "text-amber-500" : "text-red-500"}`}>{r.score}%</span>
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
                 {isExpanded && (
-                  <div className="px-3 pb-3 space-y-1.5 border-t border-border pt-2">
+                  <div className="px-2 sm:px-3 pb-2 sm:pb-3 space-y-1.5 border-t border-border pt-2">
                     {r.checks.map((c, ci) => (
-                      <div key={ci} className="flex items-start gap-2 text-xs">
-                        {STATUS_ICON[c.status]}
-                        <span className="font-medium text-foreground w-28 shrink-0">{c.label}</span>
-                        <span className="text-muted-foreground">{c.detail}</span>
+                      <div key={ci} className="flex items-start gap-1.5 sm:gap-2 text-xs">
+                        <span className="shrink-0 mt-0.5">{STATUS_ICON[c.status]}</span>
+                        <span className="font-medium text-foreground w-20 sm:w-28 shrink-0">{c.label}</span>
+                        <span className="text-muted-foreground break-words min-w-0">{c.detail}</span>
                       </div>
                     ))}
                   </div>
