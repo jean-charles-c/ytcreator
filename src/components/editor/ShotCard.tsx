@@ -238,7 +238,19 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
         </div>
         {shot.source_sentence && (
           <div className="mb-2 rounded bg-secondary/50 border border-border px-2 sm:px-3 py-2">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
+              {(() => {
+                const len = shot.source_sentence.trim().length;
+                const isShort = len < 40;
+                const isLong = len > 180;
+                const isOverSoft = len > 120 && len <= 180;
+                if (isShort) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-600 border-amber-500/20">Court ({len}c) — exception</span>;
+                if (isLong) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-destructive/10 text-destructive border-destructive/20">Long ({len}c) — re-segmenter</span>;
+                if (isOverSoft) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-600 border-amber-500/20">{len}c — toléré</span>;
+                return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">{len}c ✓</span>;
+              })()}
+            </div>
             <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
             {shot.source_sentence_fr && (
               <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1 break-words">🇫🇷 "{shot.source_sentence_fr}"</p>
