@@ -214,8 +214,13 @@ export default function NarrativeScriptBlock({
                         }`}
                       >
                         V{version.id}
+                        {version.style && (
+                          <span className="ml-1 text-[9px] opacity-70">
+                            {getNarrativeStyleById(version.style)?.label || version.style}
+                          </span>
+                        )}
                         {currentVersionId === version.id && (
-                          <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                          <span className="ml-1 text-[9px] opacity-70">· actuelle</span>
                         )}
                       </button>
                     ))}

@@ -279,7 +279,8 @@ export default function PdfDocumentaryTab({
 
   useEffect(() => {
     if (!generatingScript && script && script.trim() !== "" && scriptVersions.length === 0) {
-      onScriptVersionsChange([{ id: 1, content: script }]);
+      const versionStyle = narrativeStyleId === "custom" ? (customStyleLabel || "custom") : narrativeStyleId;
+      onScriptVersionsChange([{ id: 1, content: script, style: versionStyle }]);
       onCurrentVersionIdChange(1);
     }
   }, [script, generatingScript, scriptVersions.length]);
