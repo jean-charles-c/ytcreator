@@ -203,20 +203,23 @@ export default function SceneBlock({
           {(scene as any).scene_context && (() => {
             const ctx = (scene as any).scene_context as SceneContext;
             return (
-              <div className="mb-3 rounded border border-accent/30 bg-accent/5 p-3 space-y-1">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <BookOpen className="h-3 w-3 text-accent-foreground/70" />
+              <details className="mb-3 rounded border border-accent/30 bg-accent/5 group/ctx" open>
+                <summary className="flex items-center gap-1.5 p-2.5 sm:p-3 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[40px]">
+                  <BookOpen className="h-3 w-3 text-accent-foreground/70 shrink-0" />
                   <span className="text-[10px] font-semibold text-accent-foreground/80 uppercase tracking-wider">Contexte</span>
+                  <span className="ml-auto text-muted-foreground text-[10px] group-open/ctx:rotate-90 transition-transform">▶</span>
+                </summary>
+                <div className="px-2.5 pb-2.5 sm:px-3 sm:pb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div className="break-words"><span className="font-medium text-foreground/80">Contexte :</span> <span className="text-muted-foreground">{ctx.contexte_scene}</span></div>
+                    <div className="break-words"><span className="font-medium text-foreground/80">Sujet :</span> <span className="text-muted-foreground">{ctx.sujet}</span></div>
+                    <div className="break-words"><span className="font-medium text-foreground/80">Lieu :</span> <span className="text-muted-foreground">{ctx.lieu}</span></div>
+                    <div className="break-words"><span className="font-medium text-foreground/80">Époque :</span> <span className="text-muted-foreground">{ctx.epoque}</span></div>
+                    <div className="break-words"><span className="font-medium text-foreground/80">Personnages :</span> <span className="text-muted-foreground">{ctx.personnages}</span></div>
+                    <div className="break-words sm:col-span-2"><span className="font-medium text-foreground/80">Cohérence :</span> <span className="text-muted-foreground">{ctx.coherence_globale}</span></div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                  <div><span className="font-medium text-foreground/80">Contexte :</span> <span className="text-muted-foreground">{ctx.contexte_scene}</span></div>
-                  <div><span className="font-medium text-foreground/80">Sujet :</span> <span className="text-muted-foreground">{ctx.sujet}</span></div>
-                  <div><span className="font-medium text-foreground/80">Lieu :</span> <span className="text-muted-foreground">{ctx.lieu}</span></div>
-                  <div><span className="font-medium text-foreground/80">Époque :</span> <span className="text-muted-foreground">{ctx.epoque}</span></div>
-                  <div><span className="font-medium text-foreground/80">Personnages :</span> <span className="text-muted-foreground">{ctx.personnages}</span></div>
-                  <div><span className="font-medium text-foreground/80">Cohérence :</span> <span className="text-muted-foreground">{ctx.coherence_globale}</span></div>
-                </div>
-              </div>
+              </details>
             );
           })()}
 
