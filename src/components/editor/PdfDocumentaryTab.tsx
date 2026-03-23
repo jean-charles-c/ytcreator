@@ -1112,6 +1112,19 @@ export default function PdfDocumentaryTab({
         }
       />
 
+      {/* Chapitres de la vidéo */}
+      <div className="mt-6">
+        <ChapterCollapse
+          scriptSections={sections}
+          narration={narration}
+          chapterState={chapterState}
+          onChapterStateChange={setChapterState}
+          scriptLanguage={scriptLanguage}
+          shots={shots}
+          scenesForShotOrder={scenesForShotOrder}
+        />
+      </div>
+
       {/* ScriptInput — collapsible */}
       <Collapsible className="mt-6">
         <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
@@ -1149,19 +1162,6 @@ export default function PdfDocumentaryTab({
           </div>
         </CollapsibleContent>
       </Collapsible>
-
-      {/* Chapitres de la vidéo */}
-      <div className="mt-6">
-        <ChapterCollapse
-          scriptSections={sections}
-          narration={narration}
-          chapterState={chapterState}
-          onChapterStateChange={setChapterState}
-          scriptLanguage={scriptLanguage}
-          shots={shots}
-          scenesForShotOrder={scenesForShotOrder}
-        />
-      </div>
 
     </div>
   );
