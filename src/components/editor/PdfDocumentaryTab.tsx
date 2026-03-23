@@ -601,15 +601,16 @@ export default function PdfDocumentaryTab({
         const full = task.streamedText;
         onScriptChange(full);
         onScriptReady?.(full);
-        // Add to versions
+        // Add to versions with style info
+        const versionStyle = narrativeStyleId === "custom" ? (customStyleLabel || "custom") : narrativeStyleId;
         onScriptVersionsChange((prev) => {
           if (prev.length > 0) {
             const nextId = Math.max(...prev.map((v) => v.id)) + 1;
             onCurrentVersionIdChange(nextId);
-            return [...prev, { id: nextId, content: full }];
+            return [...prev, { id: nextId, content: full, style: versionStyle }];
           }
           onCurrentVersionIdChange(1);
-          return [{ id: 1, content: full }];
+          return [{ id: 1, content: full, style: versionStyle }];
         });
         // Auto-trigger AI analysis after generation
         handleAnalyzeScript(full);
