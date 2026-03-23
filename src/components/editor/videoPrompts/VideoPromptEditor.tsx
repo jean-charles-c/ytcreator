@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import type { VideoPrompt, AspectRatio, CameraMovement, SceneMotion } from "./types";
+import { getReadinessLabel, getReadinessColor, getPromptWarnings } from "./readiness";
 
 interface VideoPromptEditorProps {
   prompt: VideoPrompt;
