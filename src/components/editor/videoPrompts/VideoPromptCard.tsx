@@ -1,5 +1,5 @@
 /**
- * VideoPromptCard — Single prompt card in the central list.
+ * VideoPromptCard — Card with checkbox for multi-select.
  */
 
 import {
@@ -9,13 +9,17 @@ import {
   Trash2,
   Ratio,
   Wind,
+  PenLine,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { VideoPrompt } from "./types";
 
 interface VideoPromptCardProps {
   prompt: VideoPrompt;
   isSelected: boolean;
+  isChecked: boolean;
   onClick: () => void;
+  onCheckChange: (checked: boolean) => void;
   onDuplicate: () => void;
   onDelete: () => void;
 }
@@ -30,7 +34,9 @@ const SOURCE_LABELS: Record<string, string> = {
 export default function VideoPromptCard({
   prompt,
   isSelected,
+  isChecked,
   onClick,
+  onCheckChange,
   onDuplicate,
   onDelete,
 }: VideoPromptCardProps) {
@@ -40,11 +46,21 @@ export default function VideoPromptCard({
       className={`rounded border p-3 transition-colors cursor-pointer group ${
         isSelected
           ? "border-primary bg-primary/5"
+          : isChecked
+          ? "border-primary/40 bg-primary/5"
           : "border-border bg-card hover:border-primary/30"
       }`}
     >
-      {/* Row 1: order + scene + badges */}
+      {/* Row 1: checkbox + order + scene + badges */}
       <div className="flex items-center gap-2 mb-1.5">
+        <Checkbox
+          checked={isChecked}
+          onCheckedChange={(v) => {
+            onCheckChange(!!v);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="h-3.5 w-3.5 shrink-0"
+        />
         <span className="font-mono text-[10px] text-muted-foreground shrink-0">
           {String(prompt.order).padStart(4, "0")}
         </span>
@@ -70,12 +86,12 @@ export default function VideoPromptCard({
       </div>
 
       {/* Row 2: prompt text */}
-      <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed mb-1.5">
+      <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed mb-1.5 pl-6">
         {prompt.prompt || "Prompt vide — cliquez pour éditer"}
       </p>
 
-      {/* Row 3: meta chips */}
-      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+      {/* Row 3: meta chips + actions */}
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground pl-6">
         <span className="flex items-center gap-0.5">
           <Clock className="h-3 w-3" />
           {prompt.durationSec}s
@@ -94,13 +110,17 @@ export default function VideoPromptCard({
             {prompt.sceneMotion}
           </span>
         )}
+        {prompt.variantIds.length > 0 && (
+          <span className="text-primary">
+            +{prompt.variantIds.length} var.
+          </span>
+        )}
 
-        {/* Actions (visible on hover) */}
         <span className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
             className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
-            title="Dupliquer"
+            title="Dupliquer / Variante"
           >
             <Copy className="h-3 w-3" />
           </button>
@@ -116,7 +136,7 @@ export default function VideoPromptCard({
 
       {/* Row 4: narrative fragment */}
       {prompt.narrativeFragment && (
-        <p className="text-[10px] text-muted-foreground/60 mt-1.5 italic line-clamp-1 border-t border-border pt-1.5">
+        <p className="text-[10px] text-muted-foreground/60 mt-1.5 italic line-clamp-1 border-t border-border pt-1.5 pl-6">
           📝 {prompt.narrativeFragment}
         </p>
       )}
