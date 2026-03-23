@@ -307,6 +307,11 @@ function shouldReducePause(currentSentence: string, _nextSentence: string): bool
 }
 
 const CONTINUITY_PAUSE_RATIO = 0.4; // reduce pause to 40% of normal
+const SHOT_BOUNDARY_BREAK_MS = 1;
+
+function endsWithSentenceTerminal(text: string): boolean {
+  return /[.!?]["')\]]*\s*$/.test(text.trim());
+}
 
 /**
  * Build SSML with <mark> tags between shot sentences for precise timepointing.
@@ -347,7 +352,13 @@ function buildMarkedSsml(
       // Use paragraph pause at scene boundaries, sentence pause otherwise
       const nextShot = shotSentences[i + 1];
       const isSceneBreak = nextShot?.isNewScene === true;
+      const endsSentence = endsWithSentenceTerminal(p.text);
       const basePause = isSceneBreak ? pauseBetweenParagraphs : pauseAfterSentences;
+
+      if (!isSceneBreak && !endsSentence) {
+        return `${p.ssml}<break time="${SHOT_BOUNDARY_BREAK_MS}ms"/>`;
+      }
+
       if (basePause > 0) {
         let pause = jitterPause(basePause, dynamicPauseVariation, dynamicPauseEnabled);
         // Reduce pause for prosodic continuity (only for non-scene-breaks)
