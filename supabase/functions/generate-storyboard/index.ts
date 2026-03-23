@@ -532,10 +532,9 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Shot count: 1 shot per exact narration segment, with long sentences split into ~100-char chunks
+    // Shot count: narrative segmentation based on sense units
     const calcShotCount = (text: string): number => {
-      const segments = splitSceneIntoShotSegments(text);
-      return Math.max(1, segments.length);
+      return computeNarrativeShotCount(text);
     };
 
     const scriptLang = project.script_language || "fr";
