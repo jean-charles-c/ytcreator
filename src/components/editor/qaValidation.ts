@@ -48,6 +48,7 @@ export interface AllocationSummary {
 const MIN_CHARS_SOFT = 40;
 const MAX_CHARS_SOFT = 120;
 const MAX_CHARS_HARD = 180;
+const SHOT_SPLIT_THRESHOLD = 100;
 
 // ── Structure checks ──────────────────────────────────────────────
 
