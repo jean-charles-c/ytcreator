@@ -439,6 +439,202 @@ export type Database = {
           },
         ]
       }
+      video_prompt_variants: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          negative_prompt: string
+          overrides: Json
+          parent_id: string
+          prompt: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          negative_prompt?: string
+          overrides?: Json
+          parent_id: string
+          prompt?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          negative_prompt?: string
+          overrides?: Json
+          parent_id?: string
+          prompt?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_prompt_variants_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "video_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_prompts: {
+        Row: {
+          aspect_ratio: string
+          camera_movement: string
+          created_at: string
+          display_order: number
+          duration_sec: number
+          id: string
+          is_manually_edited: boolean
+          mood: string
+          narrative_fragment: string
+          negative_prompt: string
+          profile_id: string | null
+          project_id: string
+          prompt: string
+          render_constraints: string
+          scene_motion: string
+          scene_title: string
+          source: string
+          source_scene_id: string | null
+          source_shot_id: string | null
+          status: string
+          style: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          camera_movement?: string
+          created_at?: string
+          display_order?: number
+          duration_sec?: number
+          id?: string
+          is_manually_edited?: boolean
+          mood?: string
+          narrative_fragment?: string
+          negative_prompt?: string
+          profile_id?: string | null
+          project_id: string
+          prompt?: string
+          render_constraints?: string
+          scene_motion?: string
+          scene_title?: string
+          source?: string
+          source_scene_id?: string | null
+          source_shot_id?: string | null
+          status?: string
+          style?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aspect_ratio?: string
+          camera_movement?: string
+          created_at?: string
+          display_order?: number
+          duration_sec?: number
+          id?: string
+          is_manually_edited?: boolean
+          mood?: string
+          narrative_fragment?: string
+          negative_prompt?: string
+          profile_id?: string | null
+          project_id?: string
+          prompt?: string
+          render_constraints?: string
+          scene_motion?: string
+          scene_title?: string
+          source?: string
+          source_scene_id?: string | null
+          source_shot_id?: string | null
+          status?: string
+          style?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_prompts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "video_settings_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_prompts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_settings_profiles: {
+        Row: {
+          aspect_ratio: string
+          camera_movement: string
+          created_at: string
+          duration_sec: number
+          id: string
+          is_default: boolean
+          mood: string
+          name: string
+          negative_prompt: string
+          project_id: string
+          render_constraints: string
+          scene_motion: string
+          style: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          camera_movement?: string
+          created_at?: string
+          duration_sec?: number
+          id?: string
+          is_default?: boolean
+          mood?: string
+          name?: string
+          negative_prompt?: string
+          project_id: string
+          render_constraints?: string
+          scene_motion?: string
+          style?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aspect_ratio?: string
+          camera_movement?: string
+          created_at?: string
+          duration_sec?: number
+          id?: string
+          is_default?: boolean
+          mood?: string
+          name?: string
+          negative_prompt?: string
+          project_id?: string
+          render_constraints?: string
+          scene_motion?: string
+          style?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_settings_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vo_audio_history: {
         Row: {
           created_at: string | null
