@@ -8,6 +8,8 @@ import {
   User,
   X,
   CheckSquare,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SettingsProfile } from "./types";
@@ -19,6 +21,8 @@ interface BatchActionBarProps {
   onApplyProfile: (profileId: string) => void;
   onDeleteSelected: () => void;
   onExportSelected: () => void;
+  onRenderSelected: () => void;
+  renderSubmitting: boolean;
   onSelectAll: () => void;
   onClearSelection: () => void;
 }
