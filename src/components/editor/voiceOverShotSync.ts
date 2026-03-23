@@ -55,13 +55,15 @@ export function buildExactShotSentences(sortedShots: VoiceOverShotSyncSource[]):
       const isNewScene = previousSceneId !== null && shot.scene_id !== previousSceneId;
       previousSceneId = shot.scene_id;
 
-      return {
+      const entry: VoiceOverShotSentence = {
         id: shot.id,
         text,
         isNewScene,
       };
+
+      return entry;
     })
-    .filter((shot): shot is VoiceOverShotSentence => shot !== null);
+    .filter((shot): shot is VoiceOverShotSentence => Boolean(shot));
 }
 
 export function normalizeExactSyncText(text: string): string {
