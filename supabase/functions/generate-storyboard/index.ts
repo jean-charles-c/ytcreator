@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { segmentSceneNarrative, getNarrativeSegments, computeNarrativeShotCount } from "../_shared/narrative-segmentation.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
+import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -829,7 +830,20 @@ serve(async (req) => {
         console.log(`Scene ${scene.id}: allocation valid (${allocationReport.coveragePercent}% coverage)`);
       }
 
-      if (needsTranslation) {
+      // ── NON-REDUNDANCY ENFORCEMENT ──
+      const redundancyReport = analyzeRedundancy(scene.id, sceneShots);
+      if (redundancyReport.hasHighSeverity) {
+        console.log(`Scene ${scene.id}: redundancy detected (score: ${redundancyReport.diversityScore}/100, ${redundancyReport.issues.length} issues). Enforcing camera rotation.`);
+        const fixedCameras = enforceCameraRotation(sceneShots);
+        sceneShots = sceneShots.map((shot: any, idx: number) => ({
+          ...shot,
+          shot_type: fixedCameras[idx],
+        }));
+      } else {
+        console.log(`Scene ${scene.id}: diversity OK (score: ${redundancyReport.diversityScore}/100)`);
+      }
+
+
         const missingSegments = sceneShots
           .map((shot: any) => ({
             source_sentence: normalizeNarrationText(shot?.source_sentence || ""),
