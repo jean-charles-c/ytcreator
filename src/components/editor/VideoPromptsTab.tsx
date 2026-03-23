@@ -9,6 +9,8 @@ import {
   Camera,
   Loader2,
   Send,
+  Download,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,11 +21,13 @@ import VideoPromptSourcePanel from "./videoPrompts/VideoPromptSourcePanel";
 import VideoPromptCard from "./videoPrompts/VideoPromptCard";
 import VideoPromptEditor from "./videoPrompts/VideoPromptEditor";
 import BatchActionBar from "./videoPrompts/BatchActionBar";
+import VideoPromptsExportDialog from "./videoPrompts/VideoPromptsExportDialog";
 import type { SourceScene } from "./videoPrompts/VideoPromptSourcePanel";
 import type { VideoPrompt, VideoPromptSource } from "./videoPrompts/types";
 import { useVideoPrompts } from "./videoPrompts/useVideoPrompts";
 import { useRenderJobs } from "./videoPrompts/useRenderJobs";
 import { mapFromVisualPrompts, mapFromScene, mapFromShot } from "./videoPrompts/mapper";
+import { getPromptWarnings } from "./videoPrompts/readiness";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -48,7 +52,6 @@ export default function VideoPromptsTab({
     deletePrompt,
     deleteManyPrompts,
     insertProfile,
-    // profiles
   } = useVideoPrompts(projectId);
 
   const {
@@ -63,6 +66,8 @@ export default function VideoPromptsTab({
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "selection">("all");
 
   const manifest = useMemo(
     () => buildManifest(projectId, scenes, shots),
@@ -72,6 +77,11 @@ export default function VideoPromptsTab({
   const hasVisualPrompts = manifest.totalShots > 0;
   const activeProfile = state.profiles.find((p) => p.id === state.activeProfileId) ?? null;
   const selectedPrompt = state.prompts.find((p) => p.id === selectedPromptId) ?? null;
+
+  const warningCount = useMemo(
+    () => state.prompts.filter((p) => getPromptWarnings(p).length > 0).length,
+    [state.prompts],
+  );
 
   const sourceScenes: SourceScene[] = useMemo(
     () =>
@@ -256,17 +266,14 @@ export default function VideoPromptsTab({
   );
 
   const handleExportSelected = useCallback(() => {
-    const selected = state.prompts.filter((p) => checkedIds.has(p.id));
-    const json = JSON.stringify(selected, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `video-prompts-export-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`${selected.length} prompt(s) exporté(s)`);
-  }, [state.prompts, checkedIds]);
+    setExportScope("selection");
+    setExportOpen(true);
+  }, []);
+
+  const handleExportAll = useCallback(() => {
+    setExportScope("all");
+    setExportOpen(true);
+  }, []);
 
   // ── Render actions ─────────────────────────────────────────────
 
@@ -292,6 +299,10 @@ export default function VideoPromptsTab({
   const isEmpty = state.prompts.length === 0;
   const sceneCount = manifest.scenes.length;
   const shotCount = manifest.totalShots;
+
+  const exportPrompts = exportScope === "selection"
+    ? state.prompts.filter((p) => checkedIds.has(p.id))
+    : state.prompts;
 
   if (loading) {
     return (
@@ -328,6 +339,12 @@ export default function VideoPromptsTab({
               {state.prompts.length} prompt{state.prompts.length > 1 ? "s" : ""}
             </span>
           )}
+          {warningCount > 0 && (
+            <span className="flex items-center gap-1 bg-destructive/10 text-destructive px-2 py-0.5 rounded">
+              <AlertTriangle className="h-3 w-3" />
+              {warningCount} incomplet{warningCount > 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground">
@@ -336,6 +353,12 @@ export default function VideoPromptsTab({
               <Loader2 className="h-3 w-3 animate-spin" />
               {activeJobCount} rendu{activeJobCount > 1 ? "s" : ""} en cours
             </span>
+          )}
+          {state.prompts.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleExportAll} className="h-6 text-[11px] px-2">
+              <Download className="h-3 w-3" />
+              Export
+            </Button>
           )}
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
@@ -479,6 +502,13 @@ export default function VideoPromptsTab({
           </Button>
         )}
       </div>
+
+      {/* Export dialog */}
+      <VideoPromptsExportDialog
+        prompts={exportPrompts}
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+      />
     </div>
   );
 }

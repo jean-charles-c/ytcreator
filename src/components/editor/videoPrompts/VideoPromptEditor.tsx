@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import type { VideoPrompt, AspectRatio, CameraMovement, SceneMotion } from "./types";
+import { getReadinessLabel, getReadinessColor, getPromptWarnings } from "./readiness";
 
 interface VideoPromptEditorProps {
   prompt: VideoPrompt;
@@ -370,11 +371,28 @@ export default function VideoPromptEditor({
           />
         </div>
 
+        {/* Warnings */}
+        {(() => {
+          const warnings = getPromptWarnings(prompt);
+          if (warnings.length === 0) return null;
+          return (
+            <div className="rounded bg-destructive/10 px-2.5 py-2 space-y-0.5">
+              {warnings.map((w, i) => (
+                <p key={i} className="text-[10px] text-destructive flex items-center gap-1">
+                  ⚠ {w}
+                </p>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Status info */}
         <div className="pt-2 border-t border-border">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground">
             <span>Source: {prompt.source}</span>
-            <span>Status: {prompt.status}</span>
+            <span className={`px-1.5 py-0.5 rounded ${getReadinessColor(prompt)}`}>
+              {getReadinessLabel(prompt)}
+            </span>
           </div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-0.5">
             <span>Créé: {new Date(prompt.createdAt).toLocaleDateString("fr-FR")}</span>
