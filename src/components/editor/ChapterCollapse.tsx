@@ -386,6 +386,19 @@ export default function ChapterCollapse({
             <Button
               variant="outline"
               size="sm"
+              onClick={() => {
+                onChapterStateChange(normalizeChapterState(chapterState));
+                toast.success("Chapitres rafraîchis depuis le script");
+              }}
+              className="h-7 text-xs gap-1"
+              title="Rafraîchir les phrases depuis le script actuel"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Rafraîchir
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleValidateAll}
               className="h-7 text-xs gap-1"
             >
