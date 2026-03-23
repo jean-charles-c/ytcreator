@@ -16,6 +16,7 @@ import { buildManifest } from "./visualPromptTypes";
 import VideoPromptSourcePanel from "./videoPrompts/VideoPromptSourcePanel";
 import VideoPromptCard from "./videoPrompts/VideoPromptCard";
 import VideoPromptEditor from "./videoPrompts/VideoPromptEditor";
+import BatchActionBar from "./videoPrompts/BatchActionBar";
 import type { SourceScene } from "./videoPrompts/VideoPromptSourcePanel";
 import type { VideoPrompt, VideoPromptSource, VideoPromptsState } from "./videoPrompts/types";
 import { createInitialState, updatePrompt, deletePrompt } from "./videoPrompts/store";
@@ -41,6 +42,7 @@ export default function VideoPromptsTab({
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
   const manifest = useMemo(
     () => buildManifest(projectId, scenes, shots),
@@ -82,6 +84,7 @@ export default function VideoPromptsTab({
       toast.success(`${next.prompts.length} prompts vidéo importés`);
       return next;
     });
+    setCheckedIds(new Set());
   }, [manifest]);
 
   const handleImportScene = useCallback(
@@ -148,12 +151,81 @@ export default function VideoPromptsTab({
   const handleDelete = useCallback((id: string) => {
     setState((prev) => deletePrompt(prev, id));
     if (selectedPromptId === id) setSelectedPromptId(null);
+    setCheckedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     toast.success("Prompt supprimé");
   }, [selectedPromptId]);
 
-  const isEmpty = state.prompts.length === 0;
+  // ── Checkbox / Batch ───────────────────────────────────────────
 
-  // ── Granularity counts ─────────────────────────────────────────
+  const handleCheckChange = useCallback((id: string, checked: boolean) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setCheckedIds(new Set(state.prompts.map((p) => p.id)));
+  }, [state.prompts]);
+
+  const handleClearSelection = useCallback(() => {
+    setCheckedIds(new Set());
+  }, []);
+
+  const handleDeleteSelected = useCallback(() => {
+    setState((prev) => {
+      let next = prev;
+      for (const id of checkedIds) {
+        next = deletePrompt(next, id);
+      }
+      return next;
+    });
+    if (selectedPromptId && checkedIds.has(selectedPromptId)) {
+      setSelectedPromptId(null);
+    }
+    toast.success(`${checkedIds.size} prompt(s) supprimé(s)`);
+    setCheckedIds(new Set());
+  }, [checkedIds, selectedPromptId]);
+
+  const handleApplyProfile = useCallback((profileId: string) => {
+    setState((prev) => {
+      let next = prev;
+      const profile = prev.profiles.find((p) => p.id === profileId);
+      if (!profile) return prev;
+      for (const id of checkedIds) {
+        next = updatePrompt(next, id, {
+          durationSec: profile.defaults.durationSec,
+          aspectRatio: profile.defaults.aspectRatio,
+          style: profile.defaults.style,
+          cameraMovement: profile.defaults.cameraMovement,
+          sceneMotion: profile.defaults.sceneMotion,
+          mood: profile.defaults.mood,
+          renderConstraints: profile.defaults.renderConstraints,
+          negativePrompt: profile.defaults.negativePrompt,
+          profileId: profile.id,
+        });
+      }
+      return next;
+    });
+    toast.success(`Profil appliqué à ${checkedIds.size} prompt(s)`);
+  }, [checkedIds]);
+
+  const handleExportSelected = useCallback(() => {
+    const selected = state.prompts.filter((p) => checkedIds.has(p.id));
+    const json = JSON.stringify(selected, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `video-prompts-export-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${selected.length} prompt(s) exporté(s)`);
+  }, [state.prompts, checkedIds]);
+
+  const isEmpty = state.prompts.length === 0;
   const sceneCount = manifest.scenes.length;
   const shotCount = manifest.totalShots;
 
@@ -168,7 +240,6 @@ export default function VideoPromptsTab({
           </h2>
         </div>
 
-        {/* Stats chips */}
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded">
             <Layers className="h-3 w-3" />
@@ -186,7 +257,6 @@ export default function VideoPromptsTab({
           )}
         </div>
 
-        {/* Right side: profile + language */}
         <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
@@ -209,14 +279,8 @@ export default function VideoPromptsTab({
             onSourceChange={setActiveSource}
             selectedSceneId={selectedSceneId}
             selectedShotId={selectedShotId}
-            onSelectScene={(id) => {
-              setSelectedSceneId(id);
-              setSelectedShotId(null);
-            }}
-            onSelectShot={(shotId, sceneId) => {
-              setSelectedShotId(shotId);
-              setSelectedSceneId(sceneId);
-            }}
+            onSelectScene={(id) => { setSelectedSceneId(id); setSelectedShotId(null); }}
+            onSelectShot={(shotId, sceneId) => { setSelectedShotId(shotId); setSelectedSceneId(sceneId); }}
             onImportAll={handleImportAll}
             onImportScene={handleImportScene}
             onImportShot={handleImportShot}
@@ -225,9 +289,9 @@ export default function VideoPromptsTab({
         </div>
 
         {/* Col 2: Prompt list */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           {isEmpty ? (
-            <Card className="border-dashed border-2 border-border bg-secondary/20 h-full">
+            <Card className="border-dashed border-2 border-border bg-secondary/20 flex-1">
               <CardContent className="flex flex-col items-center justify-center h-full py-16 gap-6 text-center">
                 <div className="rounded-full bg-primary/10 p-4">
                   <Film className="h-8 w-8 text-primary" />
@@ -256,43 +320,54 @@ export default function VideoPromptsTab({
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
+            <>
+              <div className="flex items-center justify-between mb-2 shrink-0">
                 <p className="text-xs text-muted-foreground">
                   {state.prompts.length} prompt{state.prompts.length > 1 ? "s" : ""} vidéo
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCreateManual}
-                  className="h-7 text-xs"
-                >
+                <Button variant="outline" size="sm" onClick={handleCreateManual} className="h-7 text-xs">
                   <PlusCircle className="h-3 w-3" />
                   Ajouter
                 </Button>
               </div>
-              <div className="space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 260px)" }}>
+              <div className="space-y-1.5 flex-1 overflow-y-auto" style={{ maxHeight: "calc(100vh - 260px)" }}>
                 {state.prompts.map((vp) => (
                   <VideoPromptCard
                     key={vp.id}
                     prompt={vp}
                     isSelected={vp.id === selectedPromptId}
+                    isChecked={checkedIds.has(vp.id)}
                     onClick={() => setSelectedPromptId(vp.id)}
+                    onCheckChange={(checked) => handleCheckChange(vp.id, checked)}
                     onDuplicate={() => handleDuplicate(vp.id)}
                     onDelete={() => handleDelete(vp.id)}
                   />
                 ))}
               </div>
-            </div>
+
+              {/* Batch action bar */}
+              <BatchActionBar
+                selectedCount={checkedIds.size}
+                totalCount={state.prompts.length}
+                profiles={state.profiles}
+                onApplyProfile={handleApplyProfile}
+                onDeleteSelected={handleDeleteSelected}
+                onExportSelected={handleExportSelected}
+                onSelectAll={handleSelectAll}
+                onClearSelection={handleClearSelection}
+              />
+            </>
           )}
         </div>
 
         {/* Col 3: Editor panel */}
-        <div className="w-72 shrink-0 rounded-lg border border-border overflow-hidden hidden md:flex flex-col bg-card">
+        <div className="w-80 shrink-0 rounded-lg border border-border overflow-hidden hidden md:flex flex-col bg-card">
           {selectedPrompt ? (
             <VideoPromptEditor
               prompt={selectedPrompt}
               onUpdate={handleUpdatePrompt}
+              onDuplicate={() => handleDuplicate(selectedPrompt.id)}
+              onDelete={() => handleDelete(selectedPrompt.id)}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
