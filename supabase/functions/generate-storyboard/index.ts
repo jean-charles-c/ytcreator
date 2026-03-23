@@ -250,7 +250,7 @@ const splitLongSentenceIntoSegments = (
 };
 
 const splitSceneIntoShotSegments = (text: string): string[] =>
-  splitSentences(text).flatMap((sentence) => splitLongSentenceIntoSegments(sentence));
+  getNarrativeSegments(text);
 
 const fallbackPrompt = (sentence: string, scene?: any, shotType?: string): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
