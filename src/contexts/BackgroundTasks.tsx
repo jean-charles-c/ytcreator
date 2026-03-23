@@ -308,8 +308,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  // ─── Segmentation ──────────────────────────────────────────────────
-  const startSegmentation = useCallback((params: SegmentationParams) => {
+  // ─── Segmentation (with mandatory context analysis first) ────────
+  const startSegmentation = useCallback((params: SegmentationParams & { onContextReady?: (ctx: any) => void }) => {
     const key = taskKey(params.projectId, "segmentation");
     // Skip if already running
     if (tasks[key]?.status === "running") return;
@@ -327,15 +327,43 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const session = (await supabase.auth.getSession()).data.session;
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        };
+
+        // ── Step 1: Analyse contextuelle globale ──────────────────
+        console.log("=== Step 1: Analyse contextuelle globale ===");
+        toast.info("Analyse contextuelle du script en cours...");
+        const ctxResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-context`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ project_id: params.projectId }),
+            signal: ac.signal,
+          }
+        );
+        const ctxData = await ctxResponse.json();
+        if (!ctxResponse.ok || ctxData?.error) {
+          console.warn("Context analysis failed:", ctxData?.error);
+          toast.warning("Analyse contextuelle échouée — segmentation directe");
+        } else {
+          console.log("ContexteGlobal built:", ctxData.global_context?.sujet_principal);
+          toast.success("Contexte global analysé");
+          params.onContextReady?.(ctxData.global_context);
+        }
+
+        if (ac.signal.aborted) { toast.info("Segmentation annulée"); removeTask(key); return; }
+
+        // ── Step 2: Segmentation ──────────────────────────────────
+        console.log("=== Step 2: Segmentation ===");
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/segment-narration`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.access_token}`,
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            },
+            headers,
             body: JSON.stringify({ project_id: params.projectId }),
             signal: ac.signal,
           }
