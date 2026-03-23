@@ -807,8 +807,11 @@ Your CORE SCRIPT (blocks 1-10) MUST be between ${charMin.toLocaleString()} and $
 Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString()} words).
 
 ⚠️ Under ${charMin.toLocaleString()} characters = FAILURE. Aim to slightly exceed the target rather than fall short.
+⚠️ Over ${charMax.toLocaleString()} characters = FAILURE. You MUST stay within the upper limit. If your draft exceeds the maximum, CUT secondary examples and supporting details until you are within range. NEVER exceed the maximum.
 ⚠️ The section tags ([[HOOK]], [[CONTEXT]], etc.) do NOT count toward the character limit.
 ⚠️ The editorial blocks (11-13) do NOT count toward the character limit.
+
+CRITICAL LENGTH ENFORCEMENT: Before outputting your final script, COUNT the total characters of blocks 1-10 (excluding tags). If the count exceeds ${charMax.toLocaleString()}, you MUST revise and compress until you are within range. Exceeding the maximum is as serious a failure as falling short of the minimum.
 
 ---
 
