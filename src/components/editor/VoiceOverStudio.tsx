@@ -10,9 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
-import { alignShotSentencesToScript } from "./shotSentenceAlignment";
 import { validateExactAlignedShotSentences } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
+import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
 
 interface VoiceOverStudioProps {
   narration: string;
@@ -75,41 +75,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const sorted = getSortedShots();
     if (sorted.length === 0) return "";
 
-    // Build a map of scene source_text to preserve internal \n\n paragraph breaks
-    const sceneSourceMap = new Map<string, string>();
-    if (scenes) {
-      for (const s of scenes) {
-        if (s.source_text) sceneSourceMap.set(s.id, s.source_text);
-      }
-    }
-
-    // Group shots by scene in order
-    const sceneIds: string[] = [];
-    for (const shot of sorted) {
-      const text = (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
-      if (!text) continue;
-      if (!sceneIds.includes(shot.scene_id)) {
-        sceneIds.push(shot.scene_id);
-      }
-    }
-
-    // For each scene, prefer source_text (preserves \n\n) over shot sentence concatenation
-    const sceneBlocks: string[] = [];
-    for (const sceneId of sceneIds) {
-      const sourceText = sceneSourceMap.get(sceneId);
-      if (sourceText?.trim()) {
-        sceneBlocks.push(sourceText.trim());
-      } else {
-        // Fallback: join shot sentences
-        const shotTexts = sorted
-          .filter((s) => s.scene_id === sceneId)
-          .map((s) => (s.source_sentence || s.source_sentence_fr || s.description || "").trim())
-          .filter(Boolean);
-        if (shotTexts.length > 0) sceneBlocks.push(shotTexts.join(" "));
-      }
-    }
-
-    return stripThousandSeparators(sceneBlocks.join("\n\n"));
+    return stripThousandSeparators(buildExactShotScript(sorted));
   };
 
   const handlePasteFromScript = () => {
@@ -188,22 +154,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const sorted = getSortedShots();
     if (sorted.length === 0) return null;
 
-    let lastSceneId = "";
-    const shotEntries = sorted
-      .map((s) => {
-        const isNewScene = s.scene_id !== lastSceneId && lastSceneId !== "";
-        lastSceneId = s.scene_id;
-        return {
-          id: s.id,
-          text: (s.source_sentence || s.source_sentence_fr || s.description || "").trim(),
-          isNewScene,
-        };
-      })
-      .filter((s) => s.text.length > 0);
+    const shotEntries = buildExactShotSentences(sorted);
 
     if (shotEntries.length === 0) return null;
 
-    return alignShotSentencesToScript(shotEntries, voScript);
+    return shotEntries;
   };
 
   const handleGenerate = async () => {
@@ -229,9 +184,27 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       let useMarkedSync = false;
       let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
+      if (expectedShotIds.length > 0 && userEditedScript) {
+        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération.");
+        return;
+      }
+
       if (!userEditedScript) {
         shotSentences = buildShotSentences();
         const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
+        const exactShotScript = stripThousandSeparators(buildExactShotScript(getSortedShots()));
+        const voMatchesShots = normalizeExactSyncText(voScript) === normalizeExactSyncText(exactShotScript);
+
+        if (expectedShotIds.length > 0 && !voMatchesShots) {
+          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le depuis les shots avant de générer.");
+          return;
+        }
+
+        if (expectedShotIds.length > 0 && !syncValidation.ok) {
+          toast.error(syncValidation.errors[0] || "Synchronisation exacte impossible avec les shots actuels.");
+          return;
+        }
+
         useMarkedSync = syncValidation.ok && shotSentences != null && shotSentences.length > 0;
 
         if (!useMarkedSync && expectedShotIds.length > 0 && shotSentences && shotSentences.length > 0) {
