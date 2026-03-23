@@ -671,10 +671,65 @@ serve(async (req) => {
 
     console.log(`Final result: ${allScenes.length} SceneBlocks (from ${wordCount} words)`);
 
+    // ─── Fetch ContexteGlobal for inheritance ─────────────────────
+    let globalContext: Record<string, any> | null = null;
+    try {
+      const { data: scState } = await supabase
+        .from("project_scriptcreator_state")
+        .select("global_context")
+        .eq("project_id", project_id)
+        .maybeSingle();
+      if (scState?.global_context) {
+        globalContext = scState.global_context as Record<string, any>;
+        console.log("ContexteGlobal loaded for inheritance:", globalContext.sujet_principal);
+      }
+    } catch (e) {
+      console.warn("Could not load global_context:", e);
+    }
+
+    // ─── Build BlocContexteScene with inheritance rules ───────────
+    const buildSceneContext = (scene: ReturnType<typeof validateSceneBlock>) => {
+      const gc = globalContext || {};
+
+      // Local values from scene metadata
+      const localSujet = scene.visual_intention && scene.visual_intention !== "Non spécifié"
+        ? scene.visual_intention : null;
+      const localLieu = scene.location && scene.location !== "unspecified" && scene.location !== "Non spécifié"
+        ? scene.location : null;
+      const localPersonnages = scene.characters && scene.characters !== "none" && scene.characters !== "Non spécifié"
+        ? scene.characters : null;
+
+      // Inheritance: local value takes priority, fallback to global
+      return {
+        contexte_scene: localSujet || gc.contexte_narratif || "Non déterminé",
+        sujet: gc.sujet_principal || "Non déterminé",
+        lieu: localLieu || gc.lieu_principal || "Non déterminé",
+        epoque: gc.epoque || "Non déterminé",
+        personnages: localPersonnages || (gc.personnages?.length > 0
+          ? gc.personnages.map((p: any) => p.nom).join(", ")
+          : "Non déterminé"),
+        coherence_globale: buildCoherenceNote(scene, gc),
+      };
+    };
+
+    const buildCoherenceNote = (scene: ReturnType<typeof validateSceneBlock>, gc: Record<string, any>): string => {
+      const notes: string[] = [];
+      const localLieu = scene.location && scene.location !== "unspecified" ? scene.location : null;
+      const globalLieu = gc.lieu_principal || null;
+
+      if (localLieu && globalLieu && localLieu.toLowerCase() !== globalLieu.toLowerCase()) {
+        notes.push(`Lieu spécifique : ${localLieu} (contexte global : ${globalLieu})`);
+      }
+      if (!notes.length) {
+        notes.push("Cohérent avec le contexte global");
+      }
+      return notes.join(". ");
+    };
+
     // Delete existing scenes
     await supabase.from("scenes").delete().eq("project_id", project_id);
 
-    // Insert new scenes
+    // Insert new scenes with scene_context
     const sceneRows = allScenes.map((s, i) => ({
       project_id,
       scene_order: i + 1,
@@ -687,6 +742,7 @@ serve(async (req) => {
       location: s.location,
       scene_type: s.scene_type,
       continuity: s.continuity,
+      scene_context: buildSceneContext(s),
     }));
 
     const { error: insertErr } = await supabase.from("scenes").insert(sceneRows);

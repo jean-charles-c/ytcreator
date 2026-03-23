@@ -14,8 +14,18 @@ import {
   Users,
   Clapperboard,
   ArrowRight,
+  BookOpen,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+
+interface SceneContext {
+  contexte_scene: string;
+  sujet: string;
+  lieu: string;
+  epoque: string;
+  personnages: string;
+  coherence_globale: string;
+}
 
 type Scene = Tables<"scenes">;
 
@@ -188,6 +198,27 @@ export default function SceneBlock({
       ) : (
         <>
           <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
+
+          {/* BlocContexteScene */}
+          {(scene as any).scene_context && (() => {
+            const ctx = (scene as any).scene_context as SceneContext;
+            return (
+              <div className="mb-3 rounded border border-accent/30 bg-accent/5 p-3 space-y-1">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <BookOpen className="h-3 w-3 text-accent-foreground/70" />
+                  <span className="text-[10px] font-semibold text-accent-foreground/80 uppercase tracking-wider">Contexte</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                  <div><span className="font-medium text-foreground/80">Contexte :</span> <span className="text-muted-foreground">{ctx.contexte_scene}</span></div>
+                  <div><span className="font-medium text-foreground/80">Sujet :</span> <span className="text-muted-foreground">{ctx.sujet}</span></div>
+                  <div><span className="font-medium text-foreground/80">Lieu :</span> <span className="text-muted-foreground">{ctx.lieu}</span></div>
+                  <div><span className="font-medium text-foreground/80">Époque :</span> <span className="text-muted-foreground">{ctx.epoque}</span></div>
+                  <div><span className="font-medium text-foreground/80">Personnages :</span> <span className="text-muted-foreground">{ctx.personnages}</span></div>
+                  <div><span className="font-medium text-foreground/80">Cohérence :</span> <span className="text-muted-foreground">{ctx.coherence_globale}</span></div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Narrative action */}
           {scene.narrative_action && scene.narrative_action !== "Non spécifié" && (

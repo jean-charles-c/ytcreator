@@ -317,6 +317,7 @@ export type Database = {
           location: string | null
           narrative_action: string | null
           project_id: string
+          scene_context: Json | null
           scene_order: number
           scene_type: string | null
           source_text: string
@@ -334,6 +335,7 @@ export type Database = {
           location?: string | null
           narrative_action?: string | null
           project_id: string
+          scene_context?: Json | null
           scene_order: number
           scene_type?: string | null
           source_text: string
@@ -351,6 +353,7 @@ export type Database = {
           location?: string | null
           narrative_action?: string | null
           project_id?: string
+          scene_context?: Json | null
           scene_order?: number
           scene_type?: string | null
           source_text?: string
