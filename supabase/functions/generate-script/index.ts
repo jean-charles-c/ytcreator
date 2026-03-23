@@ -791,6 +791,14 @@ REPLACEMENT STRATEGY: Instead of flagging and leaving gaps, REWRITE using concre
 - Complex metaphors or poetic abstractions → replace with concrete imagery
 - Dense academic sentences → split into oral-ready units
 
+### CATEGORY 5: FORBIDDEN PUNCTUATION (hard ban)
+
+**NEVER use the em dash character "—" (U+2014) anywhere in the script.** This character causes rendering and TTS issues.
+- Instead of "—", use a comma, a period, a semicolon, or restructure the sentence.
+- Also avoid "–" (en dash, U+2013) for parenthetical insertions. Use commas or parentheses instead.
+- Hyphens "-" for compound words are fine (e.g., "well-known").
+- This rule applies to ALL 13 blocks including editorial blocks.
+
 ---
 
 ## LENGTH — HARD CONSTRAINT
