@@ -8,6 +8,8 @@ const SCRIPT_SENTENCE_SPLIT_REGEX = /(?<=[.!?])\s+/;
 const MAX_MULTI_SENTENCES_PER_SHOT = 3;
 const MAX_LOOKAHEAD_SENTENCES = 5;
 const FUZZY_WORD_OVERLAP_THRESHOLD = 0.45;
+/** Minimum ratio of shot text length vs script sentence length for reverse inclusion to count as a full match */
+const REVERSE_INCLUSION_MIN_COVERAGE = 0.85;
 
 function normalizeText(value: string): string {
   return value
@@ -68,13 +70,28 @@ function strictMatch(shotTextNormalized: string, scriptBlockNormalized: string):
   return false;
 }
 
-/** Fuzzy matching: includes strict + reverse inclusion + word overlap (single sentences) */
+/** Fuzzy matching: includes strict + reverse inclusion (if coverage is high enough) + word overlap */
 function fuzzyMatch(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
   if (strictMatch(shotTextNormalized, scriptSentenceNormalized)) return true;
   // Reverse inclusion: script contains shot text (shot is shortened version)
-  if (scriptSentenceNormalized.includes(shotTextNormalized) && shotTextNormalized.length > 10) return true;
+  // Only count as full match if the shot covers most of the sentence
+  if (scriptSentenceNormalized.includes(shotTextNormalized) && shotTextNormalized.length > 10) {
+    const coverageRatio = shotTextNormalized.length / scriptSentenceNormalized.length;
+    if (coverageRatio >= REVERSE_INCLUSION_MIN_COVERAGE) return true;
+  }
   if (wordOverlapRatio(shotTextNormalized, scriptSentenceNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
   return false;
+}
+
+/**
+ * Check if a shot text is a sub-sentence fragment of a script sentence.
+ * Returns true if the shot text is contained in the sentence but covers less than REVERSE_INCLUSION_MIN_COVERAGE.
+ */
+function isSubSentenceFragment(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
+  if (shotTextNormalized.length <= 10) return false;
+  if (!scriptSentenceNormalized.includes(shotTextNormalized)) return false;
+  const coverageRatio = shotTextNormalized.length / scriptSentenceNormalized.length;
+  return coverageRatio < REVERSE_INCLUSION_MIN_COVERAGE;
 }
 
 function getCoverageLength(
@@ -131,9 +148,50 @@ export function alignShotSentencesToScript(
   const result: ShotSentenceEntry[] = [];
   let scriptIndex = 0;
   let missingCounter = 0;
+  /** Track how many consecutive shots have been sub-sentence fragments of the current script sentence */
+  let subSentenceFragmentCount = 0;
 
-  for (const shot of shotEntries) {
+  for (let shotIdx = 0; shotIdx < shotEntries.length; shotIdx++) {
+    const shot = shotEntries[shotIdx];
     const normalizedShotText = normalizeText(shot.text);
+
+    // ── Sub-sentence fragment detection (checked FIRST) ──
+    // If the shot's text is contained WITHIN the current script sentence but doesn't cover
+    // enough to be a full match, keep the shot's original text and don't advance scriptIndex.
+    // This handles cases where shots split a single sentence at commas or other non-terminal punctuation.
+    if (scriptIndex < scriptSentences.length &&
+        isSubSentenceFragment(normalizedShotText, normalizedScriptSentences[scriptIndex])) {
+      subSentenceFragmentCount++;
+      result.push({
+        ...shot,
+        text: shot.text, // keep original sub-sentence fragment
+        isNewScene: subSentenceFragmentCount === 1
+          ? resolveIsNewScene(shot, scriptSentences, scriptIndex)
+          : shot.isNewScene === true,
+      });
+      // Check if the NEXT shot will also match this sentence — if not, advance past it
+      const nextShot = shotIdx + 1 < shotEntries.length ? shotEntries[shotIdx + 1] : null;
+      if (nextShot) {
+        const nextNormalized = normalizeText(nextShot.text);
+        const nextIsFragment = isSubSentenceFragment(nextNormalized, normalizedScriptSentences[scriptIndex]);
+        if (!nextIsFragment) {
+          // Next shot doesn't match this sentence anymore — advance
+          scriptIndex += 1;
+          subSentenceFragmentCount = 0;
+        }
+      } else {
+        // Last shot — advance
+        scriptIndex += 1;
+        subSentenceFragmentCount = 0;
+      }
+      continue;
+    }
+
+    // Reset sub-sentence tracking when moving to a different match type
+    if (subSentenceFragmentCount > 0) {
+      scriptIndex += 1;
+      subSentenceFragmentCount = 0;
+    }
 
     const directCoverageLength = getCoverageLength(
       normalizedShotText,
