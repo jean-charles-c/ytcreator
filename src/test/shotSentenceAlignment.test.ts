@@ -147,4 +147,53 @@ describe("alignShotSentencesToScript", () => {
 
     expect(result[1].isNewScene).toBe(true);
   });
+
+  it("keeps original text when shots split a single sentence at commas (sub-sentence fragments)", () => {
+    const shots: ShotSentenceEntry[] = [
+      {
+        id: "shot-4",
+        text: "Across the Zimbabwean plateau, from Great Zimbabwe to Khami, Dhlo Dhlo, and Naletale,",
+      },
+      {
+        id: "shot-5",
+        text: "more than 200 dry-stone complexes testify to a civilization that prospered between the 11th and 15th centuries.",
+      },
+    ];
+
+    const result = alignShotSentencesToScript(
+      shots,
+      "Across the Zimbabwean plateau, from Great Zimbabwe to Khami, Dhlo Dhlo, and Naletale, more than 200 dry-stone complexes testify to a civilization that prospered between the 11th and 15th centuries."
+    );
+
+    // Each shot should keep its original sub-sentence fragment, NOT get the full sentence
+    expect(result).toEqual([
+      {
+        id: "shot-4",
+        text: "Across the Zimbabwean plateau, from Great Zimbabwe to Khami, Dhlo Dhlo, and Naletale,",
+        isNewScene: false,
+      },
+      {
+        id: "shot-5",
+        text: "more than 200 dry-stone complexes testify to a civilization that prospered between the 11th and 15th centuries.",
+        isNewScene: false,
+      },
+    ]);
+  });
+
+  it("handles sub-sentence fragments followed by normal sentence matches", () => {
+    const shots: ShotSentenceEntry[] = [
+      { id: "shot-1", text: "On the hilltop," },
+      { id: "shot-2", text: "the walls stand tall and proud." },
+      { id: "shot-3", text: "The sun sets behind them." },
+    ];
+
+    const result = alignShotSentencesToScript(
+      shots,
+      "On the hilltop, the walls stand tall and proud. The sun sets behind them."
+    );
+
+    expect(result[0].text).toBe("On the hilltop,");
+    expect(result[1].text).toBe("the walls stand tall and proud.");
+    expect(result[2].text).toBe("The sun sets behind them.");
+  });
 });
