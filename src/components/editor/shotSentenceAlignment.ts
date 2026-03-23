@@ -148,8 +148,11 @@ export function alignShotSentencesToScript(
   const result: ShotSentenceEntry[] = [];
   let scriptIndex = 0;
   let missingCounter = 0;
+  /** Track how many consecutive shots have been sub-sentence fragments of the current script sentence */
+  let subSentenceFragmentCount = 0;
 
-  for (const shot of shotEntries) {
+  for (let shotIdx = 0; shotIdx < shotEntries.length; shotIdx++) {
+    const shot = shotEntries[shotIdx];
     const normalizedShotText = normalizeText(shot.text);
 
     const directCoverageLength = getCoverageLength(
@@ -159,6 +162,8 @@ export function alignShotSentencesToScript(
     );
 
     if (directCoverageLength > 0) {
+      // Full match — reset sub-sentence tracking and advance
+      subSentenceFragmentCount = 0;
       result.push({
         ...shot,
         text: scriptSentences.slice(scriptIndex, scriptIndex + directCoverageLength).map((s) => s.text).join(" "),
@@ -166,6 +171,45 @@ export function alignShotSentencesToScript(
       });
       scriptIndex += directCoverageLength;
       continue;
+    }
+
+    // ── Sub-sentence fragment detection ──
+    // If the shot's text is contained WITHIN the current script sentence but doesn't cover
+    // enough to be a full match, keep the shot's original text and don't advance scriptIndex.
+    // This handles cases where shots split a single sentence at commas or other non-terminal punctuation.
+    if (scriptIndex < scriptSentences.length &&
+        isSubSentenceFragment(normalizedShotText, normalizedScriptSentences[scriptIndex])) {
+      subSentenceFragmentCount++;
+      result.push({
+        ...shot,
+        text: shot.text, // keep original sub-sentence fragment
+        isNewScene: subSentenceFragmentCount === 1
+          ? resolveIsNewScene(shot, scriptSentences, scriptIndex)
+          : shot.isNewScene === true,
+      });
+      // Check if the NEXT shot will also match this sentence — if not, advance past it
+      const nextShot = shotIdx + 1 < shotEntries.length ? shotEntries[shotIdx + 1] : null;
+      if (nextShot) {
+        const nextNormalized = normalizeText(nextShot.text);
+        const nextIsFragment = isSubSentenceFragment(nextNormalized, normalizedScriptSentences[scriptIndex]);
+        const nextIsFullMatch = getCoverageLength(nextNormalized, normalizedScriptSentences, scriptIndex) > 0;
+        if (!nextIsFragment && !nextIsFullMatch) {
+          // Next shot doesn't match this sentence anymore — advance
+          scriptIndex += 1;
+          subSentenceFragmentCount = 0;
+        }
+      } else {
+        // Last shot — advance
+        scriptIndex += 1;
+        subSentenceFragmentCount = 0;
+      }
+      continue;
+    }
+
+    // Reset sub-sentence tracking when moving to a different match type
+    if (subSentenceFragmentCount > 0) {
+      scriptIndex += 1;
+      subSentenceFragmentCount = 0;
     }
 
     let matchedLookahead: { offset: number; coverageLength: number } | null = null;
