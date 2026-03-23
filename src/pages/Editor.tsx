@@ -102,6 +102,7 @@ const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "script-creator", label: "ScriptCreator", icon: FileText },
   { key: "segmentation", label: "Segmentation", icon: Layers },
   { key: "storyboard", label: "VisualPrompts", icon: Clapperboard },
+  { key: "videoprompts", label: "VideoPrompts", icon: Film },
   { key: "seo", label: "SEO", icon: Youtube },
   { key: "cp", label: "CP", icon: Save },
   { key: "vo", label: "VO", icon: Mic },
