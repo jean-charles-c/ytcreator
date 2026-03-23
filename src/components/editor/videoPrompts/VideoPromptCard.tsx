@@ -1,5 +1,5 @@
 /**
- * VideoPromptCard — Card with checkbox for multi-select.
+ * VideoPromptCard — Card with checkbox, render status, and actions.
  */
 
 import {
@@ -10,18 +10,23 @@ import {
   Ratio,
   Wind,
   PenLine,
+  Send,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { VideoPrompt } from "./types";
+import RenderJobStatusBadge from "./RenderJobStatusBadge";
+import type { RenderJob } from "./renderPipelineClient";
 
 interface VideoPromptCardProps {
   prompt: VideoPrompt;
   isSelected: boolean;
   isChecked: boolean;
+  renderJob: RenderJob | null;
   onClick: () => void;
   onCheckChange: (checked: boolean) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onRender: () => void;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
