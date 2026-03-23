@@ -1,0 +1,1 @@
+ALTER TABLE public.project_scriptcreator_state ADD COLUMN IF NOT EXISTS global_context jsonb DEFAULT NULL;
