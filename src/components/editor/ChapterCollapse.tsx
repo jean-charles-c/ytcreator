@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2 } from "lucide-react";
+import { ChevronDown, ListVideo, CheckCheck, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
