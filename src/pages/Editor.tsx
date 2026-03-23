@@ -38,6 +38,7 @@ import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
 import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
+import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
