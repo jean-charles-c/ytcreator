@@ -171,6 +171,7 @@ export type Database = {
           extracted_text: string | null
           file_name: string | null
           generated_script: string | null
+          global_context: Json | null
           page_count: number
           project_id: string
           scene_versions: Json | null
@@ -187,6 +188,7 @@ export type Database = {
           extracted_text?: string | null
           file_name?: string | null
           generated_script?: string | null
+          global_context?: Json | null
           page_count?: number
           project_id: string
           scene_versions?: Json | null
@@ -203,6 +205,7 @@ export type Database = {
           extracted_text?: string | null
           file_name?: string | null
           generated_script?: string | null
+          global_context?: Json | null
           page_count?: number
           project_id?: string
           scene_versions?: Json | null
