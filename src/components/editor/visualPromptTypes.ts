@@ -354,6 +354,7 @@ export function computeDeleteRedistribution(
 ): {
   updates: { id: string; source_sentence: string; source_sentence_fr: string | null }[];
   action: ManifestAction;
+  allocationValid: boolean;
 } | null {
   const remaining = sceneShots
     .filter((s) => s.id !== deletedShotId)
@@ -367,48 +368,59 @@ export function computeDeleteRedistribution(
   const updates: { id: string; source_sentence: string; source_sentence_fr: string | null }[] = [];
 
   if (remaining.length === 1) {
-    // Single remaining shot gets full scene text
     updates.push({
       id: remaining[0].id,
       source_sentence: sceneText,
       source_sentence_fr: sceneTextFr,
     });
   } else {
-    // Split scene text across remaining shots by sentence boundaries
-    const sentences = sceneText.match(/[^.!?]+[.!?]+/g) || [sceneText];
-    const sentencesFr = sceneTextFr
-      ? sceneTextFr.match(/[^.!?]+[.!?]+/g) || [sceneTextFr]
-      : null;
-    const perShot = Math.max(1, Math.ceil(sentences.length / remaining.length));
+    // Use narrative segmentation for redistribution (sense-based, not mechanical)
+    const narrativeSegments = getNarrativeSegments(sceneText);
+    const narrativeSegmentsFr = sceneTextFr ? getNarrativeSegments(sceneTextFr) : null;
 
-    for (let i = 0; i < remaining.length; i++) {
-      const start = i * perShot;
-      const chunk =
-        i === remaining.length - 1
-          ? sentences.slice(start).join("").trim()
-          : sentences.slice(start, start + perShot).join("").trim();
-      const chunkFr =
-        sentencesFr
-          ? i === remaining.length - 1
-            ? sentencesFr.slice(start).join("").trim()
-            : sentencesFr.slice(start, start + perShot).join("").trim()
+    if (narrativeSegments.length === remaining.length) {
+      // Perfect match: 1 narrative unit per remaining shot
+      for (let i = 0; i < remaining.length; i++) {
+        updates.push({
+          id: remaining[i].id,
+          source_sentence: narrativeSegments[i],
+          source_sentence_fr: narrativeSegmentsFr?.[i] || null,
+        });
+      }
+    } else {
+      // Distribute narrative segments across remaining shots
+      const perShot = Math.max(1, Math.ceil(narrativeSegments.length / remaining.length));
+      for (let i = 0; i < remaining.length; i++) {
+        const start = i * perShot;
+        const chunk = i === remaining.length - 1
+          ? narrativeSegments.slice(start).join(" ").trim()
+          : narrativeSegments.slice(start, start + perShot).join(" ").trim();
+        const chunkFr = narrativeSegmentsFr
+          ? (i === remaining.length - 1
+            ? narrativeSegmentsFr.slice(start).join(" ").trim()
+            : narrativeSegmentsFr.slice(start, start + perShot).join(" ").trim())
           : null;
-      updates.push({
-        id: remaining[i].id,
-        source_sentence: chunk || sceneText,
-        source_sentence_fr: chunkFr,
-      });
+        updates.push({
+          id: remaining[i].id,
+          source_sentence: chunk || sceneText,
+          source_sentence_fr: chunkFr,
+        });
+      }
     }
   }
 
+  // Validate allocation after redistribution
+  const allocationReport = validateAllocation(sceneText, updates.map((u) => u.source_sentence));
+
   return {
     updates,
+    allocationValid: allocationReport.valid,
     action: {
       type: "delete",
       timestamp: new Date().toISOString(),
       sceneId: scene.id,
       shotIds: [deletedShotId],
-      description: `Shot deleted and text reassigned across ${remaining.length} remaining shot(s) in scene "${scene.title}"`,
+      description: `Shot deleted and text reassigned across ${remaining.length} remaining shot(s) in scene "${scene.title}" (coverage: ${allocationReport.coveragePercent}%)`,
     },
   };
 }
