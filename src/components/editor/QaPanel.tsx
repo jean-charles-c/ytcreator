@@ -151,9 +151,10 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
 
       {/* Issues grouped by category */}
       {report.issues.length > 0 && (() => {
-        // Separate "length" issues into their own collapsible, rest inline
+        // Separate "length" and "timing" issues into their own collapsibles
         const lengthIssues = groupedIssues["length"] || [];
-        const otherGroups = Object.entries(groupedIssues).filter(([cat]) => cat !== "length");
+        const timingIssues = groupedIssues["timing"] || [];
+        const otherGroups = Object.entries(groupedIssues).filter(([cat]) => cat !== "length" && cat !== "timing");
 
         const renderIssueRows = (catIssues: typeof report.issues) =>
           catIssues.map((issue, i) => {
@@ -190,6 +191,18 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
                   </div>
                 ))}
               </div>
+            )}
+
+            {timingIssues.length > 0 && (
+              <details className="rounded border border-border bg-card">
+                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
+                  <ChevronDown className="h-3 w-3" />
+                  Timing ({timingIssues.length} alerte{timingIssues.length > 1 ? "s" : ""})
+                </summary>
+                <div className="p-2 space-y-1">
+                  {renderIssueRows(timingIssues)}
+                </div>
+              </details>
             )}
 
             {lengthIssues.length > 0 && (
