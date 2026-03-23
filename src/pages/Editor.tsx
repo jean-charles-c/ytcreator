@@ -301,6 +301,7 @@ export default function Editor() {
         setPdfDocStructure(Array.isArray(scriptCreatorState.doc_structure) ? scriptCreatorState.doc_structure : null);
         setGeneratedScript(typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null);
         setSeoResults(normalizeSeoResults(scriptCreatorState.seo_results));
+        setGlobalContext(scriptCreatorState.global_context ?? null);
 
         // Restore script versions
         if (Array.isArray(scriptCreatorState.script_versions) && scriptCreatorState.script_versions.length > 0) {
