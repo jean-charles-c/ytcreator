@@ -101,6 +101,8 @@ export interface VisualPromptManifest {
 // ── Builder helper ─────────────────────────────────────────────────
 
 import type { Tables } from "@/integrations/supabase/types";
+import { getNarrativeSegments } from "./narrativeSegmentation";
+import { validateAllocation } from "./shotAllocationValidator";
 
 type DBScene = Tables<"scenes">;
 type DBShot = Tables<"shots">;
