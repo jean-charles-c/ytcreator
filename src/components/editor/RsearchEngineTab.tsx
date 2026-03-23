@@ -1,9 +1,12 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { Square, Loader2, Send } from "lucide-react";
+import { Square, Loader2, Send, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import ResearchQueryForm from "./ResearchQueryForm";
 import ResearchDossierView, { parseSections } from "./ResearchDossierView";
 import ResearchSectionNav from "./ResearchSectionNav";
