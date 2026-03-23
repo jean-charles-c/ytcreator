@@ -34,6 +34,8 @@ export default function BatchActionBar({
   onApplyProfile,
   onDeleteSelected,
   onExportSelected,
+  onRenderSelected,
+  renderSubmitting,
   onSelectAll,
   onClearSelection,
 }: BatchActionBarProps) {
