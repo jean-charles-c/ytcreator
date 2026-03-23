@@ -268,6 +268,27 @@ export default function VideoPromptsTab({
     toast.success(`${selected.length} prompt(s) exporté(s)`);
   }, [state.prompts, checkedIds]);
 
+  // ── Render actions ─────────────────────────────────────────────
+
+  const handleRenderSingle = useCallback(
+    async (promptId: string) => {
+      const prompt = state.prompts.find((p) => p.id === promptId);
+      if (!prompt) return;
+      if (prompt.status !== "ready" && prompt.status !== "draft") {
+        toast.error("Ce prompt doit être en statut draft ou ready");
+        return;
+      }
+      await submitRender([prompt]);
+    },
+    [state.prompts, submitRender],
+  );
+
+  const handleRenderSelected = useCallback(async () => {
+    const selected = state.prompts.filter((p) => checkedIds.has(p.id));
+    if (selected.length === 0) return;
+    await submitRender(selected);
+  }, [state.prompts, checkedIds, submitRender]);
+
   const isEmpty = state.prompts.length === 0;
   const sceneCount = manifest.scenes.length;
   const shotCount = manifest.totalShots;
