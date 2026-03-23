@@ -450,6 +450,24 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
+        // Refresh image URLs from DB to pick up regenerated shots
+        const { data: dbShots } = await supabase
+          .from("shots")
+          .select("id, image_url, description, source_sentence, source_sentence_fr, shot_type")
+          .eq("project_id", params.projectId);
+        if (dbShots?.length) {
+          for (const seg of params.timeline.videoTrack.segments) {
+            const fresh = dbShots.find((s) => s.id === seg.id);
+            if (fresh) {
+              seg.imageUrl = fresh.image_url ?? null;
+              seg.description = fresh.description;
+              seg.sentence = fresh.source_sentence ?? "";
+              seg.sentenceFr = fresh.source_sentence_fr ?? null;
+              seg.shotType = fresh.shot_type;
+            }
+          }
+        }
+
         const onProgress = (p: ExportProgress) => {
           if (ac.signal.aborted) return;
           updateTask(key, { exportProgress: p });
