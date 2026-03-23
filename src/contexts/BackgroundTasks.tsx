@@ -84,6 +84,7 @@ export interface ScriptGenParams {
 
 export interface SegmentationParams {
   projectId: string;
+  onContextReady?: (ctx: any) => void;
 }
 
 export interface StoryboardParams {
