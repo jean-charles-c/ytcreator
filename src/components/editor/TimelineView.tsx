@@ -214,9 +214,9 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
   const [zoomLevel, setZoomLevel] = useState(1); // 1x to 30x
   const [segmentsOpen, setSegmentsOpen] = useState(false);
 
-  // ── Drift correction: scale segment times to match actual audio duration ──
-  // When precise TTS <mark> timepoints exist, use segments as-is (already accurate).
-  // Only apply proportional scaling as fallback when no timepoints are available.
+  // ── Use raw TTS timepoints for precise segment lookup during playback ──
+  // Build a lookup array of exact start times from shotTimepoints for findSegmentAt.
+  // Segments already contain full-precision startTimes, so no scaling needed when timepoints exist.
   const scaledSegments = useMemo(() => {
     const hasTimepoints = !!timeline.shotTimepoints && timeline.shotTimepoints.length > 0;
     if (hasTimepoints) return segments;
@@ -227,8 +227,8 @@ export default function TimelineView({ timeline, onTimelineChange, imageOffsetMs
     if (Math.abs(scale - 1) < 0.01) return segments;
     return segments.map((seg) => ({
       ...seg,
-      startTime: Math.round(seg.startTime * scale * 100) / 100,
-      duration: Math.round(seg.duration * scale * 100) / 100,
+      startTime: seg.startTime * scale,
+      duration: seg.duration * scale,
     }));
   }, [segments, audioDuration, timeline.totalDuration, timeline.shotTimepoints]);
 

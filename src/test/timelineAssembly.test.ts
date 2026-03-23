@@ -110,11 +110,12 @@ describe("assembleTimeline", () => {
 
     const timeline = assembleTimeline(scenes, shots, audioFile, shotTimepoints);
 
-    expect(timeline.videoTrack.segments[0].startTime).toBe(0.02);
-    expect(timeline.videoTrack.segments[0].duration).toBe(5.26);
-    expect(timeline.videoTrack.segments[1].startTime).toBe(5.28);
-    expect(timeline.videoTrack.segments[1].duration).toBe(5.12);
-    expect(timeline.videoTrack.segments[2].startTime).toBe(10.4);
-    expect(timeline.videoTrack.segments[2].duration).toBe(2.16);
+    // Full precision preserved — no rounding
+    expect(timeline.videoTrack.segments[0].startTime).toBe(0.015);
+    expect(timeline.videoTrack.segments[0].duration).toBeCloseTo(5.261, 10);
+    expect(timeline.videoTrack.segments[1].startTime).toBe(5.276);
+    expect(timeline.videoTrack.segments[1].duration).toBeCloseTo(5.122, 10);
+    expect(timeline.videoTrack.segments[2].startTime).toBe(10.398);
+    expect(timeline.videoTrack.segments[2].duration).toBeCloseTo(2.162, 10);
   });
 });
