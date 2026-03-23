@@ -185,6 +185,19 @@ export default function VideoPromptEditor({
           >
             <Copy className="h-3 w-3" />
           </Button>
+          {onRender && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onRender}
+              disabled={renderSubmitting || isDirty}
+              className="h-7 text-[11px] px-2"
+              title={isDirty ? "Validez d'abord vos modifications" : "Envoyer au rendu"}
+            >
+              {renderSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Rendu
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
