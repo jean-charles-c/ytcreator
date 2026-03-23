@@ -265,6 +265,14 @@ const buildSegmentShot = (
   reuseGeneratedContent = false
 ) => {
   const shotType = baseShot?.shot_type || CAMERA_TYPES[shotIndex % CAMERA_TYPES.length];
+  const normalizedSegment = normalizeNarrationText(segment);
+  const normalizedSceneText = normalizeNarrationText(scene?.source_text || "");
+  const inheritedSceneTranslation = normalizedSegment && normalizedSegment === normalizedSceneText
+    ? scene?.source_text_fr || null
+    : null;
+  const sourceSentenceFr = reuseGeneratedContent
+    ? baseShot?.source_sentence_fr?.trim() || inheritedSceneTranslation
+    : inheritedSceneTranslation;
 
   return {
     shot_type: shotType,
@@ -272,7 +280,7 @@ const buildSegmentShot = (
       ? baseShot?.description || fallbackDescription(segment)
       : fallbackDescription(segment),
     source_sentence: segment,
-    source_sentence_fr: reuseGeneratedContent ? baseShot?.source_sentence_fr || null : null,
+    source_sentence_fr: sourceSentenceFr,
     prompt_export: reuseGeneratedContent
       ? baseShot?.prompt_export || fallbackPrompt(segment, scene.visual_intention, shotType)
       : fallbackPrompt(segment, scene.visual_intention, shotType),
@@ -290,6 +298,185 @@ const buildFallbackStoryboard = (scenes: any[]) =>
     scene_id: scene.id,
     shots: buildFallbackShots(scene),
   }));
+
+const normalizeTranslationKey = (value: string): string =>
+  normalizeNarrationText(value).toLowerCase();
+
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+};
+
+const extractMessageText = (content: unknown): string => {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .map((part: any) => {
+      if (typeof part === "string") return part;
+      if (typeof part?.text === "string") return part.text;
+      return "";
+    })
+    .join(" ")
+    .trim();
+};
+
+const parseTranslationToolOutput = (
+  payload: any,
+): Array<{ source_sentence: string; source_sentence_fr: string }> => {
+  const toolCall = payload?.choices?.[0]?.message?.tool_calls?.[0];
+
+  try {
+    if (toolCall?.function?.arguments) {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      return Array.isArray(parsed?.translations) ? parsed.translations : [];
+    }
+
+    const rawContent = extractMessageText(payload?.choices?.[0]?.message?.content);
+    if (!rawContent) return [];
+
+    const parsed = JSON.parse(rawContent);
+    return Array.isArray(parsed?.translations) ? parsed.translations : [];
+  } catch (error) {
+    console.warn("Failed to parse translation payload", error);
+    return [];
+  }
+};
+
+const translateSegmentToFrench = async (
+  segment: string,
+  apiKey: string,
+): Promise<string | null> => {
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-lite",
+      max_tokens: 256,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Translate the following narration segment to French. Return ONLY the French translation, nothing else.",
+        },
+        { role: "user", content: segment },
+      ],
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errText = await aiResponse.text();
+    console.warn("Single-segment translation failed", aiResponse.status, errText);
+    return null;
+  }
+
+  const aiData = await aiResponse.json();
+  const translated = extractMessageText(aiData?.choices?.[0]?.message?.content);
+  return translated || null;
+};
+
+const translateSegmentsToFrench = async (
+  segments: string[],
+  apiKey: string,
+): Promise<Map<string, string>> => {
+  const uniqueSegments = Array.from(
+    new Map(
+      segments
+        .map((segment) => normalizeNarrationText(segment))
+        .filter(Boolean)
+        .map((segment) => [normalizeTranslationKey(segment), segment]),
+    ).entries(),
+  );
+
+  const translations = new Map<string, string>();
+  const chunks = chunkArray(uniqueSegments, 20);
+
+  for (const chunk of chunks) {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        max_tokens: 4096,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Translate narration segments to French. Be faithful, concise, and preserve meaning exactly. Return only the requested tool call.",
+          },
+          {
+            role: "user",
+            content: `Translate these narration segments to French and return one translation for each source sentence.\n\n${chunk
+              .map(([, segment], index) => `${index + 1}. ${segment}`)
+              .join("\n")}`,
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "translate_segments",
+              description: "Returns faithful French translations for narration segments.",
+              parameters: {
+                type: "object",
+                properties: {
+                  translations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        source_sentence: { type: "string" },
+                        source_sentence_fr: { type: "string" },
+                      },
+                      required: ["source_sentence", "source_sentence_fr"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["translations"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "translate_segments" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.warn("Batch translation failed", aiResponse.status, errText);
+    } else {
+      const aiData = await aiResponse.json();
+      const parsedTranslations = parseTranslationToolOutput(aiData);
+
+      for (const item of parsedTranslations) {
+        const source = normalizeNarrationText(item?.source_sentence || "");
+        const translation = typeof item?.source_sentence_fr === "string"
+          ? item.source_sentence_fr.trim()
+          : "";
+        if (source && translation) {
+          translations.set(normalizeTranslationKey(source), translation);
+        }
+      }
+    }
+
+    for (const [key, segment] of chunk) {
+      if (translations.has(key)) continue;
+      const fallbackTranslation = await translateSegmentToFrench(segment, apiKey);
+      if (fallbackTranslation) translations.set(key, fallbackTranslation);
+    }
+  }
+
+  return translations;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -534,6 +721,41 @@ serve(async (req) => {
         const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
         return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
       });
+
+      if (needsTranslation) {
+        const missingSegments = sceneShots
+          .map((shot: any) => ({
+            source_sentence: normalizeNarrationText(shot?.source_sentence || ""),
+            source_sentence_fr: typeof shot?.source_sentence_fr === "string"
+              ? shot.source_sentence_fr.trim()
+              : "",
+          }))
+          .filter((shot: any) => shot.source_sentence && !shot.source_sentence_fr)
+          .map((shot: any) => shot.source_sentence);
+
+        if (missingSegments.length > 0) {
+          const translations = await translateSegmentsToFrench(missingSegments, LOVABLE_API_KEY);
+          sceneShots = sceneShots.map((shot: any) => {
+            const existingTranslation = typeof shot?.source_sentence_fr === "string"
+              ? shot.source_sentence_fr.trim()
+              : "";
+
+            if (existingTranslation) {
+              return { ...shot, source_sentence_fr: existingTranslation };
+            }
+
+            const normalizedSource = normalizeNarrationText(shot?.source_sentence || "");
+            const translated = normalizedSource
+              ? translations.get(normalizeTranslationKey(normalizedSource))
+              : null;
+
+            return {
+              ...shot,
+              source_sentence_fr: translated || null,
+            };
+          });
+        }
+      }
 
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
