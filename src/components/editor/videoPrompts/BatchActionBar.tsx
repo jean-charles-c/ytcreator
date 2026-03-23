@@ -72,6 +72,18 @@ export default function BatchActionBar({
           </Button>
         )}
 
+        {/* Render */}
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onRenderSelected}
+          disabled={renderSubmitting}
+          className="h-7 text-[11px] px-2"
+        >
+          {renderSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          Rendu
+        </Button>
+
         {/* Export */}
         <Button variant="outline" size="sm" onClick={onExportSelected} className="h-7 text-[11px] px-2">
           <Download className="h-3 w-3" />
