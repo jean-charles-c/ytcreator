@@ -613,7 +613,8 @@ serve(async (req) => {
     ].filter(Boolean).join("\n");
 
     const sceneDescriptions = scenes.map((s: any) => {
-      const shotCount = calcShotCount(s.source_text);
+      const narrativeSegments = getNarrativeSegments(s.source_text);
+      const shotCount = Math.max(1, narrativeSegments.length);
       const meta = [
         s.location ? `Location: ${s.location}` : null,
         s.characters ? `Characters: ${s.characters}` : null,
@@ -630,10 +631,17 @@ serve(async (req) => {
         `    Lieu: ${ctx.lieu || "Non déterminé"}`,
         `    Époque: ${ctx.epoque || "Non déterminé"}`,
         `    Personnages: ${ctx.personnages || "Non déterminé"}`,
+        ctx.ambiance ? `    Ambiance: ${ctx.ambiance}` : null,
+        ctx.ton ? `    Ton: ${ctx.ton}` : null,
         `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
-      ].join("\n") : "";
+      ].filter(Boolean).join("\n") : "";
 
-      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}`;
+      // List pre-computed narrative fragments so the AI knows exactly which text each shot must illustrate
+      const fragmentList = narrativeSegments
+        .map((seg, idx) => `    Fragment ${idx + 1}: "${seg}"`)
+        .join("\n");
+
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
