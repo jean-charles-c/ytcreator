@@ -1,15 +1,26 @@
 import { useState, useMemo, useCallback } from "react";
-import { Film, Import, PlusCircle } from "lucide-react";
+import {
+  Film,
+  Import,
+  PlusCircle,
+  Globe,
+  User,
+  Layers,
+  Camera,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { buildManifest } from "./visualPromptTypes";
 import VideoPromptSourcePanel from "./videoPrompts/VideoPromptSourcePanel";
+import VideoPromptCard from "./videoPrompts/VideoPromptCard";
+import VideoPromptEditor from "./videoPrompts/VideoPromptEditor";
 import type { SourceScene } from "./videoPrompts/VideoPromptSourcePanel";
-import type { VideoPromptSource, VideoPromptsState } from "./videoPrompts/types";
-import { createInitialState } from "./videoPrompts/store";
+import type { VideoPrompt, VideoPromptSource, VideoPromptsState } from "./videoPrompts/types";
+import { createInitialState, updatePrompt, deletePrompt } from "./videoPrompts/store";
 import * as service from "./videoPrompts/service";
+import { getActiveProfile } from "./videoPrompts/store";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -29,16 +40,17 @@ export default function VideoPromptsTab({
   const [activeSource, setActiveSource] = useState<VideoPromptSource>("visual-prompts");
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
-  // Build manifest for mapping
   const manifest = useMemo(
     () => buildManifest(projectId, scenes, shots),
     [projectId, scenes, shots],
   );
 
   const hasVisualPrompts = manifest.totalShots > 0;
+  const activeProfile = getActiveProfile(state);
+  const selectedPrompt = state.prompts.find((p) => p.id === selectedPromptId) ?? null;
 
-  // Build source panel data from manifest
   const sourceScenes: SourceScene[] = useMemo(
     () =>
       manifest.scenes.map((s) => ({
@@ -62,7 +74,7 @@ export default function VideoPromptsTab({
     [manifest],
   );
 
-  // ── Import handlers ────────────────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────────
 
   const handleImportAll = useCallback(() => {
     setState((prev) => {
@@ -79,7 +91,7 @@ export default function VideoPromptsTab({
       setState((prev) => {
         const next = service.importScene(prev, projectId, normScene);
         const added = next.prompts.length - prev.prompts.length;
-        toast.success(`${added} prompt(s) importé(s) depuis "${normScene.title}"`);
+        toast.success(`${added} prompt(s) importé(s)`);
         return next;
       });
     },
@@ -103,33 +115,94 @@ export default function VideoPromptsTab({
   const handleCreateManual = useCallback(() => {
     setState((prev) => {
       const next = service.createManual(prev, projectId);
+      const newPrompt = next.prompts[next.prompts.length - 1];
+      setSelectedPromptId(newPrompt.id);
       toast.success("Prompt vidéo manuel créé");
       return next;
     });
   }, [projectId]);
 
+  const handleUpdatePrompt = useCallback((patch: Partial<VideoPrompt>) => {
+    if (!selectedPromptId) return;
+    setState((prev) => updatePrompt(prev, selectedPromptId, patch));
+  }, [selectedPromptId]);
+
+  const handleDuplicate = useCallback((id: string) => {
+    setState((prev) => {
+      const source = prev.prompts.find((p) => p.id === id);
+      if (!source) return prev;
+      const dup: VideoPrompt = {
+        ...source,
+        id: crypto.randomUUID(),
+        order: prev.prompts.length + 1,
+        status: "draft",
+        variantIds: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return { ...prev, prompts: [...prev.prompts, dup] };
+    });
+    toast.success("Prompt dupliqué");
+  }, []);
+
+  const handleDelete = useCallback((id: string) => {
+    setState((prev) => deletePrompt(prev, id));
+    if (selectedPromptId === id) setSelectedPromptId(null);
+    toast.success("Prompt supprimé");
+  }, [selectedPromptId]);
+
   const isEmpty = state.prompts.length === 0;
 
-  return (
-    <div className="container max-w-6xl py-6 sm:py-10 px-4 animate-fade-in">
-      <div className="flex items-center gap-2 mb-2">
-        <Film className="h-5 w-5 text-primary" />
-        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground">
-          VideoPrompts
-        </h2>
-        {state.prompts.length > 0 && (
-          <span className="ml-2 text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">
-            {state.prompts.length} prompt{state.prompts.length > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
-      <p className="text-sm text-muted-foreground mb-6">
-        Transformez vos prompts visuels en directives vidéo structurées pour le pipeline de rendu.
-      </p>
+  // ── Granularity counts ─────────────────────────────────────────
+  const sceneCount = manifest.scenes.length;
+  const shotCount = manifest.totalShots;
 
-      <div className="flex gap-4" style={{ minHeight: 480 }}>
-        {/* Left: Source panel */}
-        <div className="w-64 shrink-0 rounded-lg border border-border overflow-hidden hidden sm:flex flex-col">
+  return (
+    <div className="py-4 sm:py-6 px-4 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
+      {/* ── Context header ────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 pb-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Film className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
+            VideoPrompts
+          </h2>
+        </div>
+
+        {/* Stats chips */}
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded">
+            <Layers className="h-3 w-3" />
+            {sceneCount} scène{sceneCount > 1 ? "s" : ""}
+          </span>
+          <span className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded">
+            <Camera className="h-3 w-3" />
+            {shotCount} shot{shotCount > 1 ? "s" : ""}
+          </span>
+          {state.prompts.length > 0 && (
+            <span className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded">
+              <Film className="h-3 w-3" />
+              {state.prompts.length} prompt{state.prompts.length > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {/* Right side: profile + language */}
+        <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <User className="h-3 w-3" />
+            {activeProfile?.name ?? "Aucun profil"}
+          </span>
+          <span className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            {scenes[0]?.source_text_fr ? "EN + FR" : "EN"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 3-column layout ───────────────────────────────────────── */}
+      <div className="flex gap-3" style={{ minHeight: "calc(100vh - 200px)" }}>
+        {/* Col 1: Source panel */}
+        <div className="w-56 shrink-0 rounded-lg border border-border overflow-hidden hidden lg:flex flex-col">
           <VideoPromptSourcePanel
             scenes={sourceScenes}
             activeSource={activeSource}
@@ -151,7 +224,7 @@ export default function VideoPromptsTab({
           />
         </div>
 
-        {/* Center: Prompt list or empty state */}
+        {/* Col 2: Prompt list */}
         <div className="flex-1 min-w-0">
           {isEmpty ? (
             <Card className="border-dashed border-2 border-border bg-secondary/20 h-full">
@@ -164,7 +237,7 @@ export default function VideoPromptsTab({
                     Aucun prompt vidéo
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Sélectionnez une source dans le panneau de gauche pour importer du contexte,
+                    Sélectionnez une source à gauche pour importer du contexte,
                     ou créez manuellement vos premiers prompts vidéo.
                   </p>
                 </div>
@@ -184,64 +257,67 @@ export default function VideoPromptsTab({
             </Card>
           ) : (
             <div className="space-y-2">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-muted-foreground">
                   {state.prompts.length} prompt{state.prompts.length > 1 ? "s" : ""} vidéo
                 </p>
-                <Button variant="outline" size="sm" onClick={handleCreateManual} className="h-7 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCreateManual}
+                  className="h-7 text-xs"
+                >
                   <PlusCircle className="h-3 w-3" />
                   Ajouter
                 </Button>
               </div>
-              {state.prompts.map((vp) => (
-                <div
-                  key={vp.id}
-                  className="rounded border border-border bg-card p-3 hover:border-primary/30 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {String(vp.order).padStart(4, "0")}
-                    </span>
-                    <span className="text-xs font-medium text-foreground truncate">
-                      {vp.sceneTitle || "Manuel"}
-                    </span>
-                    <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${
-                      vp.status === "draft"
-                        ? "bg-secondary text-muted-foreground"
-                        : vp.status === "ready"
-                        ? "bg-primary/10 text-primary"
-                        : "bg-accent text-accent-foreground"
-                    }`}>
-                      {vp.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {vp.prompt || "Prompt vide — cliquez pour éditer"}
-                  </p>
-                  {vp.narrativeFragment && (
-                    <p className="text-[10px] text-muted-foreground/60 mt-1 italic line-clamp-1">
-                      📝 {vp.narrativeFragment}
-                    </p>
-                  )}
-                </div>
-              ))}
+              <div className="space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 260px)" }}>
+                {state.prompts.map((vp) => (
+                  <VideoPromptCard
+                    key={vp.id}
+                    prompt={vp}
+                    isSelected={vp.id === selectedPromptId}
+                    onClick={() => setSelectedPromptId(vp.id)}
+                    onDuplicate={() => handleDuplicate(vp.id)}
+                    onDelete={() => handleDelete(vp.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Col 3: Editor panel */}
+        <div className="w-72 shrink-0 rounded-lg border border-border overflow-hidden hidden md:flex flex-col bg-card">
+          {selectedPrompt ? (
+            <VideoPromptEditor
+              prompt={selectedPrompt}
+              onUpdate={handleUpdatePrompt}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-4">
+              <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                Sélectionnez un prompt dans la liste pour l'éditer.
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Mobile source actions */}
-      <div className="sm:hidden mt-4 flex gap-2">
-        {hasVisualPrompts && (
+      {/* Mobile actions */}
+      <div className="lg:hidden mt-4 flex gap-2">
+        {hasVisualPrompts && isEmpty && (
           <Button variant="default" size="sm" onClick={handleImportAll} className="flex-1 min-h-[44px]">
             <Import className="h-4 w-4" />
             Importer tout
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={handleCreateManual} className="flex-1 min-h-[44px]">
-          <PlusCircle className="h-4 w-4" />
-          Manuel
-        </Button>
+        {isEmpty && (
+          <Button variant="outline" size="sm" onClick={handleCreateManual} className="flex-1 min-h-[44px]">
+            <PlusCircle className="h-4 w-4" />
+            Manuel
+          </Button>
+        )}
       </div>
     </div>
   );
