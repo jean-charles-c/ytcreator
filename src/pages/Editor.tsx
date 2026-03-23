@@ -1403,12 +1403,8 @@ export default function Editor() {
         {!showSetup && activeTab === "videoprompts" && projectId && (
           <VideoPromptsTab
             projectId={projectId}
-            onImportFromVisualPrompts={() => {
-              toast.info("Import depuis VisualPrompts — à venir");
-            }}
-            onCreateManual={() => {
-              toast.info("Création manuelle — à venir");
-            }}
+            scenes={scenes}
+            shots={shots}
           />
         )}
 

@@ -246,7 +246,7 @@ export default function VideoPromptSourcePanel({
                                     {shot.narrativeFragment.length > 60 ? "…" : ""}
                                   </span>
                                 </button>
-                                {activeSource !== "manual" && (
+                                {activeSource !== "scene" && activeSource !== "shot" ? null : (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
