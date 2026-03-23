@@ -439,7 +439,6 @@ export default function VideoPromptsTab({
                 onSelectAll={handleSelectAll}
                 onClearSelection={handleClearSelection}
               />
-              />
             </>
           )}
         </div>
