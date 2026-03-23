@@ -51,6 +51,13 @@ export default function VideoPromptsTab({
     // profiles
   } = useVideoPrompts(projectId);
 
+  const {
+    submit: submitRender,
+    submitting: renderSubmitting,
+    getJobForPrompt,
+    activeJobCount,
+  } = useRenderJobs(projectId);
+
   const [activeSource, setActiveSource] = useState<VideoPromptSource>("visual-prompts");
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
