@@ -817,7 +817,37 @@ serve(async (req) => {
 
     await supabase.from("projects").update({ status: "storyboarded" }).eq("id", project_id);
 
-    return new Response(JSON.stringify({ shots_count: shotRows.length }), {
+    // ── PERSIST ALLOCATION TRACEABILITY ──
+    const allocationSummary = scenes.map((scene: any) => {
+      const scnShots = shotRows.filter((r: any) => r.scene_id === scene.id);
+      const fragments = scnShots.map((s: any) => s.source_sentence || "");
+      const report = validateAllocation(normalizeNarrationText(scene.source_text || ""), fragments);
+      return {
+        scene_id: scene.id,
+        scene_title: scene.title,
+        shot_count: scnShots.length,
+        coverage_percent: report.coveragePercent,
+        valid: report.valid,
+        issues_count: report.issues.length,
+        issues: report.issues.map((i: any) => ({ type: i.type, detail: i.detail })),
+      };
+    });
+
+    await supabase
+      .from("project_scriptcreator_state")
+      .update({
+        shot_versions: [{
+          timestamp: new Date().toISOString(),
+          total_shots: shotRows.length,
+          allocation: allocationSummary,
+        }],
+      })
+      .eq("project_id", project_id);
+
+    return new Response(JSON.stringify({
+      shots_count: shotRows.length,
+      allocation: allocationSummary,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
