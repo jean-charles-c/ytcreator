@@ -170,17 +170,65 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
 
   const hasContent = content.trim().length > 0;
 
+  const mobileActionButtons = (
+    <div className="flex items-center gap-2 flex-wrap">
+      {generating && (
+        <Button variant="destructive" size="sm" onClick={handleStop} className="min-h-[44px]">
+          <Square className="h-4 w-4" /> Arrêter
+        </Button>
+      )}
+      {hasContent && !generating && (
+        <>
+          <PdfExportButton
+            contentRef={exportRef}
+            fileName={`recherche_${projectTitle.replace(/\s+/g, "_")}`}
+          />
+          {onSendToScriptCreator && (
+            <Button variant="outline" size="sm" className="min-h-[44px]" onClick={handleSendToScriptCreator}>
+              <Send className="h-4 w-4" /> ScriptCreator
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => { setContent(""); setTopic(""); setCurrentSection(undefined); }}>
+            Nouvelle recherche
+          </Button>
+        </>
+      )}
+    </div>
+  );
+
+  const sectionNavDrawer = isMobile && activeSections.length > 0 && (
+    <Drawer>
+      <DrawerTrigger asChild>
+        <Button variant="outline" size="sm" className="min-h-[44px]">
+          <List className="h-4 w-4" /> Sections
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Sections du dossier</DrawerTitle>
+        </DrawerHeader>
+        <ScrollArea className="max-h-[60vh] px-4 pb-6">
+          <ResearchSectionNav
+            activeSections={activeSections}
+            currentSection={currentSection}
+            onNavigate={handleNavigate}
+          />
+        </ScrollArea>
+      </DrawerContent>
+    </Drawer>
+  );
+
   return (
-    <div className="container max-w-6xl py-6 sm:py-10 px-4 animate-fade-in">
-      <div className="mb-6">
-        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-1">RsearchEngine</h2>
-        <p className="text-sm text-muted-foreground">
+    <div className="container max-w-6xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="font-display text-lg sm:text-xl lg:text-2xl font-semibold text-foreground mb-1">RsearchEngine</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Générez un dossier de recherche approfondi et structuré, prêt pour la création de contenu.
         </p>
       </div>
 
       {!hasContent && !generating && (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
           </div>
@@ -193,8 +241,8 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
       )}
 
       {(hasContent || generating) && (
-        <div className="flex gap-6">
-          {/* Sidebar nav */}
+        <div className="flex gap-4 lg:gap-6">
+          {/* Sidebar nav — desktop only */}
           <div className="hidden lg:block w-56 shrink-0 sticky top-4 self-start">
             <ResearchSectionNav
               activeSections={activeSections}
@@ -203,30 +251,13 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
             />
             {hasContent && !generating && (
               <div className="mt-4 space-y-2">
-                <PdfExportButton
-                  contentRef={exportRef}
-                  fileName={`recherche_${projectTitle.replace(/\s+/g, "_")}`}
-                />
+                <PdfExportButton contentRef={exportRef} fileName={`recherche_${projectTitle.replace(/\s+/g, "_")}`} />
                 {onSendToScriptCreator && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full min-h-[36px] text-xs"
-                    onClick={handleSendToScriptCreator}
-                  >
+                  <Button variant="outline" size="sm" className="w-full min-h-[36px] text-xs" onClick={handleSendToScriptCreator}>
                     <Send className="h-3.5 w-3.5" /> Envoyer dans ScriptCreator
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full min-h-[36px] text-xs"
-                  onClick={() => {
-                    setContent("");
-                    setTopic("");
-                    setCurrentSection(undefined);
-                  }}
-                >
+                <Button variant="outline" size="sm" className="w-full min-h-[36px] text-xs" onClick={() => { setContent(""); setTopic(""); setCurrentSection(undefined); }}>
                   Nouvelle recherche
                 </Button>
               </div>
@@ -244,47 +275,14 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           <div className="flex-1 min-w-0">
             {/* Mobile controls */}
             <div className="lg:hidden flex items-center gap-2 mb-4 flex-wrap">
-              {generating && (
-                <Button variant="destructive" size="sm" onClick={handleStop} className="min-h-[36px]">
-                  <Square className="h-3.5 w-3.5" /> Arrêter
-                </Button>
-              )}
-              {hasContent && !generating && (
-                <>
-                  <PdfExportButton
-                    contentRef={exportRef}
-                    fileName={`recherche_${projectTitle.replace(/\s+/g, "_")}`}
-                  />
-                  {onSendToScriptCreator && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="min-h-[36px]"
-                      onClick={handleSendToScriptCreator}
-                    >
-                      <Send className="h-3.5 w-3.5" /> ScriptCreator
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="min-h-[36px]"
-                    onClick={() => {
-                      setContent("");
-                      setTopic("");
-                      setCurrentSection(undefined);
-                    }}
-                  >
-                    Nouvelle recherche
-                  </Button>
-                </>
-              )}
+              {sectionNavDrawer}
+              {mobileActionButtons}
             </div>
 
             {generating && (
               <div className="flex items-center gap-2 mb-4 p-3 rounded border border-primary/20 bg-primary/5">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   {progress
                     ? `Section ${progress.current}/${progress.total} : ${progress.section}…`
                     : "Connexion au service de recherche…"}
@@ -292,7 +290,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
               </div>
             )}
 
-            <div className="rounded-lg border border-border bg-card p-5 sm:p-8">
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-5 lg:p-8">
               <ResearchDossierView
                 ref={exportRef}
                 content={content}
@@ -301,7 +299,6 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
               />
             </div>
 
-            {/* Word count */}
             {hasContent && (
               <p className="text-xs text-muted-foreground mt-3 text-right">
                 {content.split(/\s+/).length.toLocaleString()} mots · {content.length.toLocaleString()} caractères

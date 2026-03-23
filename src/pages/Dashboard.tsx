@@ -134,11 +134,32 @@ export default function Dashboard() {
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
                   <div className="flex items-start justify-between mb-2 sm:mb-3">
-                    <h3 className="font-display text-sm sm:text-base font-semibold text-foreground leading-snug pr-4">
-                      {project.title}
-                    </h3>
+                    {editingId === project.id ? (
+                      <form onSubmit={confirmRename} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 flex-1 pr-2">
+                        <Input
+                          ref={editInputRef}
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="h-7 text-sm font-semibold bg-background"
+                          onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setEditingId(null); } }}
+                        />
+                        <button type="submit" className="p-1 rounded text-primary hover:bg-primary/10 transition-colors"><Check className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={cancelRename} className="p-1 rounded text-muted-foreground hover:bg-secondary transition-colors"><X className="h-3.5 w-3.5" /></button>
+                      </form>
+                    ) : (
+                      <h3 className="font-display text-sm sm:text-base font-semibold text-foreground leading-snug pr-4">
+                        {project.title}
+                      </h3>
+                    )}
                     <div className="flex items-center gap-1 shrink-0">
                       <s.icon className={`h-4 w-4 mt-0.5 ${s.color}`} />
+                      <button
+                        onClick={(e) => startRename(e, project)}
+                        className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Renommer le projet"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={(e) => deleteProject(e, project.id)}
                         className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
