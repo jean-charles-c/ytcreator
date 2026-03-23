@@ -843,6 +843,26 @@ serve(async (req) => {
         console.log(`Scene ${scene.id}: diversity OK (score: ${redundancyReport.diversityScore}/100)`);
       }
 
+      // ── POST-SPLIT: scinder les shots dont source_sentence > 100 caractères ──
+      const postSplitShots: any[] = [];
+      for (const shot of sceneShots) {
+        const sourceSentence = normalizeNarrationText(shot?.source_sentence || "");
+        if (sourceSentence.length > TARGET_CHARS_PER_SHOT) {
+          const subSegments = splitLongSentenceIntoSegments(sourceSentence, TARGET_CHARS_PER_SHOT);
+          if (subSegments.length > 1) {
+            console.log(`Scene ${scene.id}: splitting shot "${sourceSentence.slice(0, 50)}…" (${sourceSentence.length} chars) into ${subSegments.length} sub-shots`);
+            for (let si = 0; si < subSegments.length; si++) {
+              postSplitShots.push(
+                buildSegmentShot(subSegments[si], scene, postSplitShots.length, si === 0 ? shot : null, si === 0)
+              );
+            }
+            continue;
+          }
+        }
+        postSplitShots.push(shot);
+      }
+      sceneShots = postSplitShots;
+
 
         const missingSegments = sceneShots
           .map((shot: any) => ({
