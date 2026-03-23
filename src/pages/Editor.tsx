@@ -1490,6 +1490,58 @@ export default function Editor() {
 
             {!segmenting && scenes.length > 0 && (
               <>
+                {/* ContexteGlobal display */}
+                {globalContext && (
+                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group" open>
+                    <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                      🧠 Contexte Global
+                      <span className="ml-1 text-xs text-muted-foreground font-normal">— Mémoire de référence du script</span>
+                      <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
+                    </summary>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="space-y-2">
+                        <div><span className="font-medium text-foreground">Sujet :</span> <span className="text-muted-foreground">{globalContext.sujet_principal}</span></div>
+                        <div><span className="font-medium text-foreground">Lieu :</span> <span className="text-muted-foreground">{globalContext.lieu_principal}</span></div>
+                        <div><span className="font-medium text-foreground">Époque :</span> <span className="text-muted-foreground">{globalContext.epoque}</span></div>
+                        <div><span className="font-medium text-foreground">Ton :</span> <span className="text-muted-foreground">{globalContext.ton}</span></div>
+                        <div><span className="font-medium text-foreground">Ambiance :</span> <span className="text-muted-foreground">{globalContext.ambiance}</span></div>
+                        <div><span className="font-medium text-foreground">Décor :</span> <span className="text-muted-foreground">{globalContext.type_decor}</span></div>
+                      </div>
+                      <div className="space-y-2">
+                        <div><span className="font-medium text-foreground">Narration :</span> <span className="text-muted-foreground">{globalContext.type_narration}</span></div>
+                        <div><span className="font-medium text-foreground">Marqueurs :</span> <span className="text-muted-foreground">{globalContext.marqueurs_culturels}</span></div>
+                        <div><span className="font-medium text-foreground">Technologie :</span> <span className="text-muted-foreground">{globalContext.niveau_technologique}</span></div>
+                        {globalContext.personnages?.length > 0 && (
+                          <div>
+                            <span className="font-medium text-foreground">Personnages ({globalContext.nombre_personnages}) :</span>
+                            <ul className="mt-1 ml-4 list-disc text-muted-foreground text-xs space-y-0.5">
+                              {globalContext.personnages.map((p: any, i: number) => (
+                                <li key={i}><span className="font-medium">{p.nom}</span> — {p.role}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      {globalContext.contexte_narratif && (
+                        <div className="sm:col-span-2 mt-1">
+                          <span className="font-medium text-foreground">Contexte narratif :</span>
+                          <p className="text-muted-foreground text-xs mt-1 leading-relaxed italic">{globalContext.contexte_narratif}</p>
+                        </div>
+                      )}
+                      {globalContext.indices_visuels?.length > 0 && (
+                        <div className="sm:col-span-2">
+                          <span className="font-medium text-foreground">Indices visuels :</span>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {globalContext.indices_visuels.map((idx: string, i: number) => (
+                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{idx}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                )}
+
                 {/* Full narration with French translation */}
                 {scriptLanguage !== "fr" && (
                   <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group">
