@@ -118,20 +118,19 @@ export function assembleTimeline(
     realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
   );
 
-  const roundedAudioDuration = Math.round(audioDuration * 100) / 100;
-  const roundedStarts = sortedShots.map((shot) => {
+  const exactStarts = sortedShots.map((shot) => {
     const start = timepointMap.get(shot.id);
     if (start === undefined) {
       throw new Error(`Sync audio bloquée — timepoint manquant pour le shot ${shot.id.slice(0, 8)}.`);
     }
-    return Math.round(start * 100) / 100;
+    return start;
   });
 
   const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
     const scene = sceneMap.get(shot.scene_id);
-    const startTime = roundedStarts[idx];
-    const nextStart = idx < sortedShots.length - 1 ? roundedStarts[idx + 1] : roundedAudioDuration;
-    const duration = Math.round((nextStart - startTime) * 100) / 100;
+    const startTime = exactStarts[idx];
+    const nextStart = idx < sortedShots.length - 1 ? exactStarts[idx + 1] : audioDuration;
+    const duration = nextStart - startTime;
 
     if (!(duration > 0)) {
       throw new Error(`Sync audio bloquée — durée invalide entre les shots ${idx + 1}${idx < sortedShots.length - 1 ? ` et ${idx + 2}` : " et la fin audio"}.`);
@@ -156,7 +155,7 @@ export function assembleTimeline(
   const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vo-audio/${audioFile.file_path}`;
 
   return {
-    videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration: roundedAudioDuration },
+    videoTrack: { type: "video", label: "Piste vidéo", segments, totalDuration: audioDuration },
     audioTrack: {
       audioId: audioFile.id,
       fileName: audioFile.file_name,
@@ -164,7 +163,7 @@ export function assembleTimeline(
       durationEstimate: audioDuration,
       audioUrl,
     },
-    totalDuration: roundedAudioDuration,
+    totalDuration: audioDuration,
     segmentCount: segments.length,
     createdAt: new Date().toLocaleString("fr-FR"),
     shotTimepoints: shotTimepoints ?? null,
@@ -175,7 +174,7 @@ export function assembleTimeline(
 export function recalcStartTimes(segments: ShotSegment[]): ShotSegment[] {
   let t = 0;
   return segments.map((seg) => {
-    const updated = { ...seg, startTime: Math.round(t * 100) / 100 };
+    const updated = { ...seg, startTime: t };
     t += seg.duration;
     return updated;
   });
