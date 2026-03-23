@@ -7,6 +7,7 @@ import {
   User,
   Layers,
   Camera,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,10 +19,9 @@ import VideoPromptCard from "./videoPrompts/VideoPromptCard";
 import VideoPromptEditor from "./videoPrompts/VideoPromptEditor";
 import BatchActionBar from "./videoPrompts/BatchActionBar";
 import type { SourceScene } from "./videoPrompts/VideoPromptSourcePanel";
-import type { VideoPrompt, VideoPromptSource, VideoPromptsState } from "./videoPrompts/types";
-import { createInitialState, updatePrompt, deletePrompt } from "./videoPrompts/store";
-import * as service from "./videoPrompts/service";
-import { getActiveProfile } from "./videoPrompts/store";
+import type { VideoPrompt, VideoPromptSource } from "./videoPrompts/types";
+import { useVideoPrompts } from "./videoPrompts/useVideoPrompts";
+import { mapFromVisualPrompts, mapFromScene, mapFromShot } from "./videoPrompts/mapper";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -37,7 +37,18 @@ export default function VideoPromptsTab({
   scenes,
   shots,
 }: VideoPromptsTabProps) {
-  const [state, setState] = useState<VideoPromptsState>(createInitialState);
+  const {
+    state,
+    loading,
+    insertManyPrompts,
+    replaceAllPrompts,
+    updatePrompt,
+    deletePrompt,
+    deleteManyPrompts,
+    insertProfile,
+    // profiles
+  } = useVideoPrompts(projectId);
+
   const [activeSource, setActiveSource] = useState<VideoPromptSource>("visual-prompts");
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
@@ -50,7 +61,7 @@ export default function VideoPromptsTab({
   );
 
   const hasVisualPrompts = manifest.totalShots > 0;
-  const activeProfile = getActiveProfile(state);
+  const activeProfile = state.profiles.find((p) => p.id === state.activeProfileId) ?? null;
   const selectedPrompt = state.prompts.find((p) => p.id === selectedPromptId) ?? null;
 
   const sourceScenes: SourceScene[] = useMemo(
@@ -78,82 +89,111 @@ export default function VideoPromptsTab({
 
   // ── Handlers ───────────────────────────────────────────────────
 
-  const handleImportAll = useCallback(() => {
-    setState((prev) => {
-      const next = service.importFromManifest(prev, manifest);
-      toast.success(`${next.prompts.length} prompts vidéo importés`);
-      return next;
-    });
+  const handleImportAll = useCallback(async () => {
+    const profile = activeProfile;
+    const newPrompts = mapFromVisualPrompts(projectId, manifest.scenes, profile);
+    await replaceAllPrompts(newPrompts);
+    toast.success(`${newPrompts.length} prompts vidéo importés`);
     setCheckedIds(new Set());
-  }, [manifest]);
+  }, [manifest, projectId, activeProfile, replaceAllPrompts]);
 
   const handleImportScene = useCallback(
-    (sceneId: string) => {
+    async (sceneId: string) => {
       const normScene = manifest.scenes.find((s) => s.sceneId === sceneId);
       if (!normScene) return;
-      setState((prev) => {
-        const next = service.importScene(prev, projectId, normScene);
-        const added = next.prompts.length - prev.prompts.length;
-        toast.success(`${added} prompt(s) importé(s)`);
-        return next;
-      });
+      const startOrder = state.prompts.length + 1;
+      const newPrompts = mapFromScene(projectId, normScene, startOrder, activeProfile);
+      await insertManyPrompts(newPrompts);
+      toast.success(`${newPrompts.length} prompt(s) importé(s)`);
     },
-    [manifest, projectId],
+    [manifest, projectId, state.prompts.length, activeProfile, insertManyPrompts],
   );
 
   const handleImportShot = useCallback(
-    (shotId: string, sceneId: string) => {
+    async (shotId: string, sceneId: string) => {
       const normScene = manifest.scenes.find((s) => s.sceneId === sceneId);
       const normShot = normScene?.shots.find((sh) => sh.shotId === shotId);
       if (!normScene || !normShot) return;
-      setState((prev) => {
-        const next = service.importShot(prev, projectId, normShot, normScene);
-        toast.success("Prompt vidéo importé");
-        return next;
-      });
+      const order = state.prompts.length + 1;
+      const prompt = mapFromShot(projectId, normShot, normScene, order, activeProfile);
+      await insertManyPrompts([prompt]);
+      toast.success("Prompt vidéo importé");
     },
-    [manifest, projectId],
+    [manifest, projectId, state.prompts.length, activeProfile, insertManyPrompts],
   );
 
-  const handleCreateManual = useCallback(() => {
-    setState((prev) => {
-      const next = service.createManual(prev, projectId);
-      const newPrompt = next.prompts[next.prompts.length - 1];
-      setSelectedPromptId(newPrompt.id);
-      toast.success("Prompt vidéo manuel créé");
-      return next;
-    });
-  }, [projectId]);
+  const handleCreateManual = useCallback(async () => {
+    const prompt: VideoPrompt = {
+      id: crypto.randomUUID(),
+      projectId,
+      source: "manual",
+      sourceShotId: null,
+      sourceSceneId: null,
+      order: state.prompts.length + 1,
+      prompt: "",
+      negativePrompt: activeProfile?.defaults.negativePrompt ?? "",
+      narrativeFragment: "",
+      sceneTitle: "",
+      durationSec: activeProfile?.defaults.durationSec ?? 5,
+      aspectRatio: activeProfile?.defaults.aspectRatio ?? "16:9",
+      style: activeProfile?.defaults.style ?? "cinematic",
+      cameraMovement: activeProfile?.defaults.cameraMovement ?? "static",
+      sceneMotion: activeProfile?.defaults.sceneMotion ?? "moderate",
+      mood: activeProfile?.defaults.mood ?? "",
+      renderConstraints: activeProfile?.defaults.renderConstraints ?? "",
+      profileId: activeProfile?.id ?? null,
+      status: "draft",
+      isManuallyEdited: false,
+      variantIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await insertManyPrompts([prompt]);
+    setSelectedPromptId(prompt.id);
+    toast.success("Prompt vidéo manuel créé");
+  }, [projectId, state.prompts.length, activeProfile, insertManyPrompts]);
 
-  const handleUpdatePrompt = useCallback((patch: Partial<VideoPrompt>) => {
-    if (!selectedPromptId) return;
-    setState((prev) => updatePrompt(prev, selectedPromptId, patch));
-  }, [selectedPromptId]);
+  const handleUpdatePrompt = useCallback(
+    async (patch: Partial<VideoPrompt>) => {
+      if (!selectedPromptId) return;
+      await updatePrompt(selectedPromptId, { ...patch, isManuallyEdited: true } as any);
+    },
+    [selectedPromptId, updatePrompt],
+  );
 
-  const handleDuplicate = useCallback((id: string) => {
-    setState((prev) => {
-      const source = prev.prompts.find((p) => p.id === id);
-      if (!source) return prev;
+  const handleDuplicate = useCallback(
+    async (id: string) => {
+      const source = state.prompts.find((p) => p.id === id);
+      if (!source) return;
       const dup: VideoPrompt = {
         ...source,
         id: crypto.randomUUID(),
-        order: prev.prompts.length + 1,
+        order: state.prompts.length + 1,
         status: "draft",
+        isManuallyEdited: false,
         variantIds: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      return { ...prev, prompts: [...prev.prompts, dup] };
-    });
-    toast.success("Prompt dupliqué");
-  }, []);
+      await insertManyPrompts([dup]);
+      toast.success("Prompt dupliqué");
+    },
+    [state.prompts, insertManyPrompts],
+  );
 
-  const handleDelete = useCallback((id: string) => {
-    setState((prev) => deletePrompt(prev, id));
-    if (selectedPromptId === id) setSelectedPromptId(null);
-    setCheckedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
-    toast.success("Prompt supprimé");
-  }, [selectedPromptId]);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await deletePrompt(id);
+      if (selectedPromptId === id) setSelectedPromptId(null);
+      setCheckedIds((prev) => {
+        const n = new Set(prev);
+        n.delete(id);
+        return n;
+      });
+      toast.success("Prompt supprimé");
+    },
+    [selectedPromptId, deletePrompt],
+  );
 
   // ── Checkbox / Batch ───────────────────────────────────────────
 
@@ -174,28 +214,22 @@ export default function VideoPromptsTab({
     setCheckedIds(new Set());
   }, []);
 
-  const handleDeleteSelected = useCallback(() => {
-    setState((prev) => {
-      let next = prev;
-      for (const id of checkedIds) {
-        next = deletePrompt(next, id);
-      }
-      return next;
-    });
+  const handleDeleteSelected = useCallback(async () => {
+    const ids = Array.from(checkedIds);
+    await deleteManyPrompts(ids);
     if (selectedPromptId && checkedIds.has(selectedPromptId)) {
       setSelectedPromptId(null);
     }
-    toast.success(`${checkedIds.size} prompt(s) supprimé(s)`);
+    toast.success(`${ids.length} prompt(s) supprimé(s)`);
     setCheckedIds(new Set());
-  }, [checkedIds, selectedPromptId]);
+  }, [checkedIds, selectedPromptId, deleteManyPrompts]);
 
-  const handleApplyProfile = useCallback((profileId: string) => {
-    setState((prev) => {
-      let next = prev;
-      const profile = prev.profiles.find((p) => p.id === profileId);
-      if (!profile) return prev;
+  const handleApplyProfile = useCallback(
+    async (profileId: string) => {
+      const profile = state.profiles.find((p) => p.id === profileId);
+      if (!profile) return;
       for (const id of checkedIds) {
-        next = updatePrompt(next, id, {
+        await updatePrompt(id, {
           durationSec: profile.defaults.durationSec,
           aspectRatio: profile.defaults.aspectRatio,
           style: profile.defaults.style,
@@ -207,10 +241,10 @@ export default function VideoPromptsTab({
           profileId: profile.id,
         });
       }
-      return next;
-    });
-    toast.success(`Profil appliqué à ${checkedIds.size} prompt(s)`);
-  }, [checkedIds]);
+      toast.success(`Profil appliqué à ${checkedIds.size} prompt(s)`);
+    },
+    [checkedIds, state.profiles, updatePrompt],
+  );
 
   const handleExportSelected = useCallback(() => {
     const selected = state.prompts.filter((p) => checkedIds.has(p.id));
@@ -228,6 +262,15 @@ export default function VideoPromptsTab({
   const isEmpty = state.prompts.length === 0;
   const sceneCount = manifest.scenes.length;
   const shotCount = manifest.totalShots;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Chargement des prompts vidéo…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="py-4 sm:py-6 px-4 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
