@@ -61,10 +61,31 @@ export default function Dashboard() {
     fetchProjects();
   }, []);
 
+  const startRename = (e: React.MouseEvent, project: ProjectWithShotCount) => {
+    e.stopPropagation();
+    setEditingId(project.id);
+    setEditTitle(project.title);
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  const confirmRename = async (e: React.MouseEvent | React.FormEvent) => {
+    e.stopPropagation();
+    if (!editingId || !editTitle.trim()) return;
+    const { error } = await supabase.from("projects").update({ title: editTitle.trim() }).eq("id", editingId);
+    if (error) { toast.error("Erreur de renommage"); return; }
+    setProjects((prev) => prev.map((p) => p.id === editingId ? { ...p, title: editTitle.trim() } : p));
+    setEditingId(null);
+    toast.success("Projet renommé");
+  };
+
+  const cancelRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(null);
+  };
+
   const deleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     if (!confirm("Supprimer ce projet et toutes ses scènes/shots ?")) return;
-    // Delete shots, scenes, then project
     await supabase.from("shots").delete().eq("project_id", projectId);
     await supabase.from("scenes").delete().eq("project_id", projectId);
     const { error } = await supabase.from("projects").delete().eq("id", projectId);
