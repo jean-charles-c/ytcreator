@@ -331,6 +331,12 @@ export default function VideoPromptsTab({
         </div>
 
         <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground">
+          {activeJobCount > 0 && (
+            <span className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {activeJobCount} rendu{activeJobCount > 1 ? "s" : ""} en cours
+            </span>
+          )}
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
             {activeProfile?.name ?? "Aucun profil"}
