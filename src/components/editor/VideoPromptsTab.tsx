@@ -434,8 +434,11 @@ export default function VideoPromptsTab({
                 onApplyProfile={handleApplyProfile}
                 onDeleteSelected={handleDeleteSelected}
                 onExportSelected={handleExportSelected}
+                onRenderSelected={handleRenderSelected}
+                renderSubmitting={renderSubmitting}
                 onSelectAll={handleSelectAll}
                 onClearSelection={handleClearSelection}
+              />
               />
             </>
           )}
