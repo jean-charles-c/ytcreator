@@ -70,13 +70,28 @@ function strictMatch(shotTextNormalized: string, scriptBlockNormalized: string):
   return false;
 }
 
-/** Fuzzy matching: includes strict + reverse inclusion + word overlap (single sentences) */
+/** Fuzzy matching: includes strict + reverse inclusion (if coverage is high enough) + word overlap */
 function fuzzyMatch(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
   if (strictMatch(shotTextNormalized, scriptSentenceNormalized)) return true;
   // Reverse inclusion: script contains shot text (shot is shortened version)
-  if (scriptSentenceNormalized.includes(shotTextNormalized) && shotTextNormalized.length > 10) return true;
+  // Only count as full match if the shot covers most of the sentence
+  if (scriptSentenceNormalized.includes(shotTextNormalized) && shotTextNormalized.length > 10) {
+    const coverageRatio = shotTextNormalized.length / scriptSentenceNormalized.length;
+    if (coverageRatio >= REVERSE_INCLUSION_MIN_COVERAGE) return true;
+  }
   if (wordOverlapRatio(shotTextNormalized, scriptSentenceNormalized) >= FUZZY_WORD_OVERLAP_THRESHOLD) return true;
   return false;
+}
+
+/**
+ * Check if a shot text is a sub-sentence fragment of a script sentence.
+ * Returns true if the shot text is contained in the sentence but covers less than REVERSE_INCLUSION_MIN_COVERAGE.
+ */
+function isSubSentenceFragment(shotTextNormalized: string, scriptSentenceNormalized: string): boolean {
+  if (shotTextNormalized.length <= 10) return false;
+  if (!scriptSentenceNormalized.includes(shotTextNormalized)) return false;
+  const coverageRatio = shotTextNormalized.length / scriptSentenceNormalized.length;
+  return coverageRatio < REVERSE_INCLUSION_MIN_COVERAGE;
 }
 
 function getCoverageLength(
