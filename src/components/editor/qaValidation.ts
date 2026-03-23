@@ -283,19 +283,32 @@ function checkLength(manifest: VisualPromptManifest): QaIssue[] {
       const len = frag.text.trim().length;
       if (len === 0) continue;
 
+      const shot = scene.shots.find(s => s.shotId === frag.shotId);
+
       if (len > MAX_CHARS_HARD) {
         issues.push({
           level: "warning",
           category: "length",
           sceneOrder: scene.sceneOrder,
+          shotOrder: shot?.globalOrder,
           message: `Fragment trop long (${len} car.) dans scène ${scene.sceneOrder} — envisagez de re-segmenter`,
         });
-      } else if (len < MIN_CHARS_SOFT && scene.fragments.length > 1) {
-        // Short fragment is acceptable if it's the only one or has a clear semantic reason
+      } else if (len > MAX_CHARS_SOFT) {
+        // Fragment exceeds the 120-char segmentation threshold — should have been split into multiple shots
+        const expectedShots = Math.ceil(len / MAX_CHARS_SOFT);
         issues.push({
           level: "warning",
           category: "length",
           sceneOrder: scene.sceneOrder,
+          shotOrder: shot?.globalOrder,
+          message: `Fragment non découpé (${len} car. > ${MAX_CHARS_SOFT}) dans scène ${scene.sceneOrder}, shot ${shot?.globalOrder ?? "?"} — devrait produire ${expectedShots} shots. Régénérez les shots de cette scène.`,
+        });
+      } else if (len < MIN_CHARS_SOFT && scene.fragments.length > 1) {
+        issues.push({
+          level: "warning",
+          category: "length",
+          sceneOrder: scene.sceneOrder,
+          shotOrder: shot?.globalOrder,
           message: `Fragment court (${len} car.) dans scène ${scene.sceneOrder} — exception possible si unité de sens complète`,
         });
       }
