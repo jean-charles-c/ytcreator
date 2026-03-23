@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { segmentSceneNarrative, getNarrativeSegments, computeNarrativeShotCount } from "../_shared/narrative-segmentation.ts";
+import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -731,7 +732,6 @@ serve(async (req) => {
       }
 
       // ── SORT SHOTS BY READING ORDER ──
-      // Sort shots so their source_sentence appears in the same order as in the scene text
       const sceneTextLower = sceneText.toLowerCase();
       sceneShots.sort((a: any, b: any) => {
         const sentA = (a.source_sentence || "").trim().toLowerCase();
@@ -740,6 +740,22 @@ serve(async (req) => {
         const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
         return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
       });
+
+      // ── ALLOCATION VALIDATION & REPAIR ──
+      const currentFragments = sceneShots.map((s: any) => s.source_sentence || "");
+      const allocationReport = validateAllocation(sceneText, currentFragments);
+
+      if (!allocationReport.valid) {
+        console.log(`Scene ${scene.id}: allocation invalid (${allocationReport.coveragePercent}% coverage, ${allocationReport.issues.length} issues). Repairing...`);
+        const repairedFragments = repairAllocation(sceneText, expectedSegments, currentFragments);
+        sceneShots = repairedFragments.map((fragment, idx) => {
+          const existingShot = sceneShots[idx];
+          return buildSegmentShot(fragment, scene, idx, existingShot, false);
+        });
+        console.log(`Scene ${scene.id}: repaired to ${sceneShots.length} shots`);
+      } else {
+        console.log(`Scene ${scene.id}: allocation valid (${allocationReport.coveragePercent}% coverage)`);
+      }
 
       if (needsTranslation) {
         const missingSegments = sceneShots
@@ -801,7 +817,37 @@ serve(async (req) => {
 
     await supabase.from("projects").update({ status: "storyboarded" }).eq("id", project_id);
 
-    return new Response(JSON.stringify({ shots_count: shotRows.length }), {
+    // ── PERSIST ALLOCATION TRACEABILITY ──
+    const allocationSummary = scenes.map((scene: any) => {
+      const scnShots = shotRows.filter((r: any) => r.scene_id === scene.id);
+      const fragments = scnShots.map((s: any) => s.source_sentence || "");
+      const report = validateAllocation(normalizeNarrationText(scene.source_text || ""), fragments);
+      return {
+        scene_id: scene.id,
+        scene_title: scene.title,
+        shot_count: scnShots.length,
+        coverage_percent: report.coveragePercent,
+        valid: report.valid,
+        issues_count: report.issues.length,
+        issues: report.issues.map((i: any) => ({ type: i.type, detail: i.detail })),
+      };
+    });
+
+    await supabase
+      .from("project_scriptcreator_state")
+      .update({
+        shot_versions: [{
+          timestamp: new Date().toISOString(),
+          total_shots: shotRows.length,
+          allocation: allocationSummary,
+        }],
+      })
+      .eq("project_id", project_id);
+
+    return new Response(JSON.stringify({
+      shots_count: shotRows.length,
+      allocation: allocationSummary,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
