@@ -905,7 +905,7 @@ function buildUserMessage(
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. HARD LIMIT for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit.`);
+  parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. HARD LIMIT for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
 
   return parts.join("\n\n");
 }
