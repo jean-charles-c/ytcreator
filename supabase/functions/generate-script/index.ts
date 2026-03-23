@@ -357,6 +357,7 @@ After the script, output these 3 editorial blocks:
 
 Rules:
 - All 13 tags must appear in order. No text before [[HOOK]] (except <plan>).
+- CRITICAL: [[ACT2B]] is MANDATORY. It must ALWAYS be present with substantial content (minimum 3 paragraphs). NEVER skip or merge it into ACT2 or ACT3. If you omit [[ACT2B]], the entire script is INVALID.
 - Between core tags (1-10): pure narration only. No titles, headers, "---", "###", "**", or meta-commentary.
 - The narration must flow seamlessly across section boundaries — the tags are invisible to the viewer.
 - No meta-commentary like "In this video…" or "Let's explore…".

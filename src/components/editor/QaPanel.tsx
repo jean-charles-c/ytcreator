@@ -150,37 +150,62 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
       )}
 
       {/* Issues grouped by category */}
-      {report.issues.length > 0 && (
-        <div className="rounded border border-border bg-secondary/30 p-2 space-y-2 max-h-64 overflow-y-auto">
-          {Object.entries(groupedIssues).map(([cat, catIssues]) => (
-            <div key={cat} className="space-y-1">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-                {categoryLabels[cat as QaCategory] ?? cat}
-              </span>
-              {catIssues.map((issue, i) => {
-                const cfg = levelConfig[issue.level];
-                return (
-                  <div
-                    key={i}
-                    className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1 sm:py-0.5 ${cfg.row}`}
-                  >
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
-                        {cfg.label}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {issue.sceneOrder != null && `S${issue.sceneOrder}`}
-                        {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
-                      </span>
-                    </div>
-                    <span className="text-foreground break-words">{issue.message}</span>
+      {report.issues.length > 0 && (() => {
+        // Separate "length" issues into their own collapsible, rest inline
+        const lengthIssues = groupedIssues["length"] || [];
+        const otherGroups = Object.entries(groupedIssues).filter(([cat]) => cat !== "length");
+
+        const renderIssueRows = (catIssues: typeof report.issues) =>
+          catIssues.map((issue, i) => {
+            const cfg = levelConfig[issue.level];
+            return (
+              <div
+                key={i}
+                className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1 sm:py-0.5 ${cfg.row}`}
+              >
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
+                    {cfg.label}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {issue.sceneOrder != null && `S${issue.sceneOrder}`}
+                    {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
+                  </span>
+                </div>
+                <span className="text-foreground break-words">{issue.message}</span>
+              </div>
+            );
+          });
+
+        return (
+          <>
+            {otherGroups.length > 0 && (
+              <div className="rounded border border-border bg-secondary/30 p-2 space-y-2 max-h-64 overflow-y-auto">
+                {otherGroups.map(([cat, catIssues]) => (
+                  <div key={cat} className="space-y-1">
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                      {categoryLabels[cat as QaCategory] ?? cat}
+                    </span>
+                    {renderIssueRows(catIssues)}
                   </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+
+            {lengthIssues.length > 0 && (
+              <details className="rounded border border-border bg-card">
+                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
+                  <ChevronDown className="h-3 w-3" />
+                  Longueur ({lengthIssues.length} avertissement{lengthIssues.length > 1 ? "s" : ""})
+                </summary>
+                <div className="p-2 space-y-1">
+                  {renderIssueRows(lengthIssues)}
+                </div>
+              </details>
+            )}
+          </>
+        );
+      })()}
 
       {/* Debug timing table */}
       {timing && timing.entries.length > 0 && (

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield } from "lucide-react";
+import { getNarrativeStyleById } from "@/config/narrativeStyles";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import { isEditorialSection } from "./canonicalScriptTypes";
 export interface ScriptVersion {
   id: number;
   content: string;
+  style?: string;
 }
 
 type BlockState = "empty" | "loading" | "error" | "success";
@@ -212,8 +214,13 @@ export default function NarrativeScriptBlock({
                         }`}
                       >
                         V{version.id}
+                        {version.style && (
+                          <span className="ml-1 text-[9px] opacity-70">
+                            {getNarrativeStyleById(version.style)?.label || version.style}
+                          </span>
+                        )}
                         {currentVersionId === version.id && (
-                          <span className="ml-1 text-[9px] opacity-70">actuelle</span>
+                          <span className="ml-1 text-[9px] opacity-70">· actuelle</span>
                         )}
                       </button>
                     ))}
