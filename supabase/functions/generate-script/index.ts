@@ -851,8 +851,11 @@ CRITICAL LENGTH ENFORCEMENT: Before outputting your final script, COUNT the tota
 23. No sequence of 3+ facts presented as a list without narrative connection.
 
 ### Volume Compliance
-24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters.
+24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters. If OVER the max, compress NOW before outputting.
 25. Each section approximately respects its VolumeAllocator budget (±30% tolerance).
+
+### Forbidden Punctuation
+26. ZERO occurrences of "—" (em dash) or "–" (en dash used as parenthetical) in the entire output.
 
 ### Editorial Blocks
 26. TRANSITIONS audit covers all 9 boundaries with ratings.
