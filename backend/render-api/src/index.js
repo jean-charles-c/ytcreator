@@ -1,20 +1,25 @@
 /**
- * RenderJobsAPI — Minimal Express backend for video render job management.
- * Designed to run on OVH (Docker). No Remotion yet (Étape 9).
+ * RenderJobsAPI — Express backend for video render job management.
+ * Includes Remotion render worker for background processing.
  */
 
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { randomUUID } from "crypto";
+import path from "path";
 import { JobStore } from "./jobStore.js";
 import { validateCreatePayload } from "./validation.js";
+import { initRenderer, shutdownRenderer } from "./renderService.js";
+import { startWorker } from "./renderWorker.js";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const API_KEY = process.env.VIDEO_PIPELINE_API_KEY;
 const WEBHOOK_SECRET = process.env.OVH_RENDER_WEBHOOK_SECRET;
 const STORAGE_PATH = process.env.RENDER_JOBS_STORAGE_PATH || "./data/jobs";
+const OUTPUT_DIR = process.env.REMOTION_OUTPUT_DIR || "./data/renders";
+const ENABLE_RENDERER = process.env.ENABLE_RENDERER !== "false";
 
 const store = new JobStore(STORAGE_PATH);
 
@@ -28,13 +33,13 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "2mb" }));
 
+// Serve rendered files
+app.use("/renders", express.static(path.resolve(OUTPUT_DIR)));
+
 // ── Auth middleware ───────────────────────────────────────────────
 
 function requireAuth(req, res, next) {
-  if (!API_KEY) {
-    // No key configured → skip auth (dev mode)
-    return next();
-  }
+  if (!API_KEY) return next();
   const header = req.headers.authorization;
   if (!header || header !== `Bearer ${API_KEY}`) {
     return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
@@ -53,29 +58,24 @@ function requireWebhookSecret(req, res, next) {
 
 // ── Routes ────────────────────────────────────────────────────────
 
-// Health check
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
     service: "render-jobs-api",
-    version: "1.0.0",
+    version: "2.0.0",
+    renderer: ENABLE_RENDERER ? "active" : "disabled",
     timestamp: new Date().toISOString(),
     jobCount: store.count(),
   });
 });
 
-// Create a render job
 app.post("/render-jobs", requireAuth, async (req, res) => {
   try {
     const validation = validateCreatePayload(req.body);
     if (!validation.valid) {
-      return res.status(400).json({
-        error: "Invalid payload",
-        details: validation.errors,
-      });
+      return res.status(400).json({ error: "Invalid payload", details: validation.errors });
     }
 
-    /** @type {import('./types.js').RenderJob} */
     const job = {
       id: randomUUID(),
       projectId: req.body.projectId,
@@ -89,7 +89,6 @@ app.post("/render-jobs", requireAuth, async (req, res) => {
     };
 
     await store.save(job);
-
     res.status(201).json(job);
   } catch (err) {
     console.error("[POST /render-jobs] Error:", err);
@@ -97,13 +96,10 @@ app.post("/render-jobs", requireAuth, async (req, res) => {
   }
 });
 
-// Get a render job by ID
 app.get("/render-jobs/:id", requireAuth, async (req, res) => {
   try {
     const job = await store.get(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: "Not found", message: `Job ${req.params.id} not found` });
-    }
+    if (!job) return res.status(404).json({ error: "Not found" });
     res.json(job);
   } catch (err) {
     console.error("[GET /render-jobs/:id] Error:", err);
@@ -111,7 +107,6 @@ app.get("/render-jobs/:id", requireAuth, async (req, res) => {
   }
 });
 
-// List jobs for a project
 app.get("/render-jobs", requireAuth, async (req, res) => {
   try {
     const projectId = req.query.projectId;
@@ -123,7 +118,6 @@ app.get("/render-jobs", requireAuth, async (req, res) => {
   }
 });
 
-// Update job status (webhook from render pipeline or internal)
 app.patch("/render-jobs/:id/status", requireWebhookSecret, async (req, res) => {
   try {
     const { status, errorMessage, resultUrl } = req.body;
@@ -134,11 +128,8 @@ app.patch("/render-jobs/:id/status", requireWebhookSecret, async (req, res) => {
         message: `Status must be one of: ${validStatuses.join(", ")}`,
       });
     }
-
     const job = await store.get(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: "Not found" });
-    }
+    if (!job) return res.status(404).json({ error: "Not found" });
 
     job.status = status;
     job.updatedAt = new Date().toISOString();
@@ -153,10 +144,52 @@ app.patch("/render-jobs/:id/status", requireWebhookSecret, async (req, res) => {
   }
 });
 
+// Download endpoint for rendered videos
+app.get("/render-jobs/:id/download", requireAuth, async (req, res) => {
+  try {
+    const job = await store.get(req.params.id);
+    if (!job) return res.status(404).json({ error: "Not found" });
+    if (job.status !== "completed") {
+      return res.status(409).json({ error: "Job not completed", status: job.status });
+    }
+    const filePath = path.resolve(OUTPUT_DIR, `${job.id}.mp4`);
+    res.download(filePath, `render-${job.id}.mp4`);
+  } catch (err) {
+    console.error("[GET /render-jobs/:id/download] Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🎬 RenderJobsAPI running on port ${PORT}`);
-  console.log(`   Storage: ${STORAGE_PATH}`);
-  console.log(`   Auth: ${API_KEY ? "enabled" : "disabled (dev mode)"}`);
+async function start() {
+  if (ENABLE_RENDERER) {
+    try {
+      console.log("[Startup] Initializing Remotion renderer...");
+      await initRenderer();
+      startWorker(store);
+      console.log("[Startup] Render worker started");
+    } catch (err) {
+      console.error("[Startup] Renderer init failed:", err.message);
+      console.log("[Startup] API will run without automatic rendering");
+    }
+  } else {
+    console.log("[Startup] Renderer disabled (ENABLE_RENDERER=false)");
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🎬 RenderJobsAPI v2 running on port ${PORT}`);
+    console.log(`   Storage: ${STORAGE_PATH}`);
+    console.log(`   Renders: ${OUTPUT_DIR}`);
+    console.log(`   Auth: ${API_KEY ? "enabled" : "disabled (dev mode)"}`);
+  });
+}
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("[Shutdown] Closing renderer...");
+  await shutdownRenderer();
+  process.exit(0);
 });
+
+start();

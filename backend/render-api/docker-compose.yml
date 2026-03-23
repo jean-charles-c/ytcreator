@@ -11,12 +11,21 @@ services:
       - .env
     volumes:
       - render-jobs-data:/app/data/jobs
+      - render-output:/app/data/renders
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/health"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
 volumes:
   render-jobs-data:
+    driver: local
+  render-output:
     driver: local
