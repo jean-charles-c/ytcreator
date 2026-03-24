@@ -177,6 +177,7 @@ export default function Editor() {
   const [selectedMusicTracks, setSelectedMusicTracks] = useState<{ url: string; name: string }[]>([]);
   const [qaExportAllowed, setQaExportAllowed] = useState(true);
   const [qaCounts, setQaCounts] = useState<{ errors: number; warnings: number }>({ errors: 0, warnings: 0 });
+  const [qaIssues, setQaIssues] = useState<{ level: string; sceneOrder?: number; shotOrder?: number }[]>([]);
   const storyAbortRef = useRef<AbortController | null>(null);
 
   const storyboardManifest = useMemo(
@@ -184,8 +185,9 @@ export default function Editor() {
     [projectId, scenes, shots],
   );
 
-  const handleQaReportChange = useCallback((counts: { errors: number; warnings: number }) => {
-    setQaCounts((prev) => (prev.errors === counts.errors && prev.warnings === counts.warnings ? prev : counts));
+  const handleQaReportChange = useCallback((report: { errors: number; warnings: number; issues: { level: string; sceneOrder?: number; shotOrder?: number }[] }) => {
+    setQaCounts((prev) => (prev.errors === report.errors && prev.warnings === report.warnings ? prev : { errors: report.errors, warnings: report.warnings }));
+    setQaIssues(report.issues);
   }, []);
 
   // Derive loading states from background tasks
