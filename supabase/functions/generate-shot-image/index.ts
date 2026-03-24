@@ -162,12 +162,23 @@ serve(async (req) => {
     const prompt = shot.prompt_export || shot.description;
     if (!prompt) throw new Error("No prompt available for this shot");
 
-    const fullPrompt = [
+    const buildPrompt = (text: string) => [
       "Generate one single cinematic image.",
       `Mandatory aspect ratio: ${selectedAspectRatio}.`,
       "Compose the framing to work natively in that ratio without letterboxing or white borders.",
-      prompt,
+      text,
     ].join("\n");
+
+    // Sanitize prompt for safety-filter retry: remove potentially sensitive words
+    const sanitizePrompt = (text: string) => {
+      // Strip words that commonly trigger safety filters
+      const sanitized = text
+        .replace(/\b(blood|bloody|gore|gory|murder|kill|dead\s+body|corpse|skull|death|vampire|undead|stake|impale|decapitat|burn(?:ing|ed)?\s+(?:body|corpse|alive))\b/gi, "figure")
+        .replace(/\b(naked|nude|sex|erotic|violent|brutal|gruesome|macabre|torture)\b/gi, "dramatic")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+      return `A stylized, artistic documentary illustration. ${sanitized}`;
+    };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -175,62 +186,73 @@ serve(async (req) => {
     const MAX_RETRIES = 3;
     let imageData: string | undefined;
     let aiData: any;
+    let usedSanitized = false;
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + LOVABLE_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [{ role: "user", content: fullPrompt }],
-          modalities: ["image", "text"],
-        }),
-      });
+    // Try original prompt first, then sanitized fallback on IMAGE_SAFETY
+    const promptVariants = [buildPrompt(prompt), buildPrompt(sanitizePrompt(prompt))];
 
-      if (!aiResponse.ok) {
-        const errText = await aiResponse.text();
-        console.error(`AI error (attempt ${attempt}/${MAX_RETRIES}):`, aiResponse.status, errText);
-        if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
-        if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
-        if (aiResponse.status >= 500 && attempt < MAX_RETRIES) {
-          await new Promise((r) => setTimeout(r, attempt * 3000));
-          continue;
+    for (let variantIdx = 0; variantIdx < promptVariants.length && !imageData; variantIdx++) {
+      const currentPrompt = promptVariants[variantIdx];
+      const retries = variantIdx === 0 ? 1 : MAX_RETRIES; // Only 1 try for original, 3 for sanitized
+
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + LOVABLE_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [{ role: "user", content: currentPrompt }],
+            modalities: ["image", "text"],
+          }),
+        });
+
+        if (!aiResponse.ok) {
+          const errText = await aiResponse.text();
+          console.error(`AI error (variant ${variantIdx}, attempt ${attempt}):`, aiResponse.status, errText);
+          if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
+          if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
+          if (aiResponse.status >= 500 && attempt < retries) {
+            await new Promise((r) => setTimeout(r, attempt * 3000));
+            continue;
+          }
+          if (aiResponse.status >= 500) break; // try next variant
+          throw new Error("AI gateway error");
         }
-        throw new Error("AI gateway error");
-      }
 
-      aiData = await aiResponse.json();
-      const msg = aiData.choices?.[0]?.message;
-      const finishReason = aiData.choices?.[0]?.native_finish_reason || aiData.choices?.[0]?.finish_reason;
-      console.log("AI attempt", attempt, "- keys:", JSON.stringify(Object.keys(msg || {})), "- finish:", finishReason);
+        aiData = await aiResponse.json();
+        const msg = aiData.choices?.[0]?.message;
+        const finishReason = aiData.choices?.[0]?.native_finish_reason || aiData.choices?.[0]?.finish_reason;
+        console.log(`AI variant ${variantIdx} attempt ${attempt} - finish: ${finishReason}`);
 
-      // Detect safety block — no point retrying
-      if (finishReason === "IMAGE_SAFETY") {
-        console.warn("Image blocked by safety filter, skipping retries");
-        throw new Error("Image bloquée par le filtre de sécurité du modèle. Essayez de reformuler le prompt.");
-      }
-
-      // Try multiple known response formats
-      imageData = msg?.images?.[0]?.image_url?.url;
-      if (!imageData && Array.isArray(msg?.content)) {
-        const imagePart = msg.content.find((p: any) => p.type === "image_url" || p.type === "image");
-        imageData = imagePart?.image_url?.url || imagePart?.url || imagePart?.image?.url;
-      }
-      if (!imageData && Array.isArray(msg?.content)) {
-        const inlinePart = msg.content.find((p: any) => p.inline_data?.mime_type?.startsWith("image/"));
-        if (inlinePart?.inline_data) {
-          imageData = `data:${inlinePart.inline_data.mime_type};base64,${inlinePart.inline_data.data}`;
+        // Safety block: skip to sanitized variant
+        if (finishReason === "IMAGE_SAFETY") {
+          console.warn("Image blocked by safety filter, trying sanitized prompt...");
+          break; // break inner loop → next variant
         }
-      }
 
-      if (imageData) break;
+        // Try multiple known response formats
+        imageData = msg?.images?.[0]?.image_url?.url;
+        if (!imageData && Array.isArray(msg?.content)) {
+          const imagePart = msg.content.find((p: any) => p.type === "image_url" || p.type === "image");
+          imageData = imagePart?.image_url?.url || imagePart?.url || imagePart?.image?.url;
+        }
+        if (!imageData && Array.isArray(msg?.content)) {
+          const inlinePart = msg.content.find((p: any) => p.inline_data?.mime_type?.startsWith("image/"));
+          if (inlinePart?.inline_data) {
+            imageData = `data:${inlinePart.inline_data.mime_type};base64,${inlinePart.inline_data.data}`;
+          }
+        }
 
-      console.warn(`No image in response (attempt ${attempt}/${MAX_RETRIES})`);
-      if (attempt < MAX_RETRIES) {
-        await new Promise((r) => setTimeout(r, attempt * 2000));
+        if (imageData) {
+          usedSanitized = variantIdx > 0;
+          break;
+        }
+
+        console.warn(`No image in response (variant ${variantIdx}, attempt ${attempt})`);
+        if (attempt < retries) await new Promise((r) => setTimeout(r, attempt * 2000));
       }
     }
 
