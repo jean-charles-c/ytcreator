@@ -257,8 +257,21 @@ serve(async (req) => {
     }
 
     if (!imageData) {
+      // Both original and sanitized prompts failed — mark shot as safety-blocked
+      await supabase
+        .from("shots")
+        .update({ guardrails: "safety_blocked" })
+        .eq("id", shot_id);
+
       console.error("Full AI response:", JSON.stringify(aiData).substring(0, 1000));
-      throw new Error("No image generated after retries");
+      return new Response(
+        JSON.stringify({
+          error: "Image bloquée par le filtre de sécurité",
+          safety_blocked: true,
+          shot_id,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const rawImage = await decodeGeneratedImage(imageData);
@@ -284,9 +297,15 @@ serve(async (req) => {
     const previousCost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
     const newTotalCost = Number((previousCost + exactOrFallbackCost).toFixed(4));
 
+    const updatePayload: Record<string, any> = {
+      image_url: imageUrl,
+      generation_cost: newTotalCost,
+      guardrails: usedSanitized ? "safety_filtered" : null,
+    };
+
     const { error: updateErr } = await supabase
       .from("shots")
-      .update({ image_url: imageUrl, generation_cost: newTotalCost })
+      .update(updatePayload)
       .eq("id", shot_id);
 
     if (updateErr) throw new Error("Failed to update shot");
@@ -298,6 +317,7 @@ serve(async (req) => {
         last_generation_cost: Number(exactOrFallbackCost.toFixed(4)),
         requested_aspect_ratio: selectedAspectRatio,
         actual_dimensions: `${normalizedImage.width}x${normalizedImage.height}`,
+        safety_filtered: usedSanitized,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

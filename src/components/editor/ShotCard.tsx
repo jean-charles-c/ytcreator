@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload, Merge } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload, Merge, ShieldAlert, ShieldOff } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -208,6 +208,16 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             <span className="inline-flex w-fit items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
               Coût IA : {formatUsd(cost)}
             </span>
+            {shot.guardrails === "safety_filtered" && (
+              <span className="inline-flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600" title="Le prompt original a déclenché le filtre de sécurité du modèle. L'image a été générée avec un prompt adapté. Vous pouvez copier le prompt original pour l'utiliser avec une IA plus permissive.">
+                <ShieldAlert className="h-3 w-3" /> Prompt adapté (safety)
+              </span>
+            )}
+            {shot.guardrails === "safety_blocked" && (
+              <span className="inline-flex w-fit items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive" title="Le prompt a été bloqué par le filtre de sécurité, même après adaptation. Copiez le prompt original pour l'utiliser avec une IA externe plus permissive.">
+                <ShieldOff className="h-3 w-3" /> Bloqué par safety — copier prompt ↓
+              </span>
+            )}
           </div>
           <div className="flex gap-0.5 sm:gap-1 shrink-0 flex-wrap">
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
