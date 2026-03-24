@@ -257,8 +257,21 @@ serve(async (req) => {
     }
 
     if (!imageData) {
+      // Both original and sanitized prompts failed — mark shot as safety-blocked
+      await supabase
+        .from("shots")
+        .update({ guardrails: "safety_blocked" })
+        .eq("id", shot_id);
+
       console.error("Full AI response:", JSON.stringify(aiData).substring(0, 1000));
-      throw new Error("No image generated after retries");
+      return new Response(
+        JSON.stringify({
+          error: "Image bloquée par le filtre de sécurité",
+          safety_blocked: true,
+          shot_id,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const rawImage = await decodeGeneratedImage(imageData);
