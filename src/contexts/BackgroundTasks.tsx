@@ -797,6 +797,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               if (ac.signal.aborted) break;
 
               try {
+                // Refresh token before each call to avoid expired JWT
+                const { data: freshSession } = await supabase.auth.getSession();
+                const accessToken = freshSession?.session?.access_token;
+                if (!accessToken) throw new Error("Session expired, please log in again");
+
                 const shotAc = new AbortController();
                 const onParentAbort = () => shotAc.abort();
                 ac.signal.addEventListener("abort", onParentAbort, { once: true });
@@ -808,7 +813,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
-                      Authorization: `Bearer ${session?.access_token}`,
+                      Authorization: `Bearer ${accessToken}`,
                       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                     },
                     body: JSON.stringify({
