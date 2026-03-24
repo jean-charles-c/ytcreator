@@ -179,6 +179,15 @@ export default function Editor() {
   const [qaCounts, setQaCounts] = useState<{ errors: number; warnings: number }>({ errors: 0, warnings: 0 });
   const storyAbortRef = useRef<AbortController | null>(null);
 
+  const storyboardManifest = useMemo(
+    () => projectId ? buildManifest(projectId, scenes, shots) : null,
+    [projectId, scenes, shots],
+  );
+
+  const handleQaReportChange = useCallback((counts: { errors: number; warnings: number }) => {
+    setQaCounts((prev) => (prev.errors === counts.errors && prev.warnings === counts.warnings ? prev : counts));
+  }, []);
+
   // Derive loading states from background tasks
   const segmenting = projectId ? getTask(projectId, "segmentation")?.status === "running" : false;
   const generatingStoryboard = projectId ? getTask(projectId, "storyboard")?.status === "running" : false;
