@@ -163,6 +163,33 @@ export type Database = {
         }
         Relationships: []
       }
+      project_groups: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_scriptcreator_state: {
         Row: {
           analysis: Json | null
@@ -228,6 +255,7 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          group_id: string | null
           id: string
           narration: string | null
           scene_count: number
@@ -240,6 +268,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          group_id?: string | null
           id?: string
           narration?: string | null
           scene_count?: number
@@ -252,6 +281,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          group_id?: string | null
           id?: string
           narration?: string | null
           scene_count?: number
@@ -262,7 +292,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "project_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       research_dossiers: {
         Row: {
