@@ -3,6 +3,93 @@ import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/b
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateExactShotSentences, validateExactShotTimepoints } from "../_shared/exact-shot-sync.ts";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+interface TTSRequest {
+  text: string;
+  languageCode?: string;
+  voiceGender?: "MALE" | "FEMALE" | "NEUTRAL";
+  voiceName?: string;
+  voiceType?: string;
+  style?: string;
+  narrationProfile?: "standard" | "storytelling" | "educational";
+  speakingRate?: number;
+  pitch?: number;
+  volumeGainDb?: number;
+  effectsProfileId?: string;
+  pauseBetweenParagraphs?: number;
+  pauseAfterSentences?: number;
+  pauseAfterComma?: number;
+  dynamicPauseEnabled?: boolean;
+  dynamicPauseVariation?: number;
+  sentenceStartBoost?: number;
+  sentenceEndSlow?: number;
+  mode?: "preview" | "full";
+  projectId?: string;
+  customFileName?: string;
+  shotSentences?: { id: string; text: string; isNewScene?: boolean }[];
+  syncMode?: "standard" | "shot_marked";
+}
+
+const NARRATION_MODULATION: Record<string, {
+  pauseAfterSentencesAdd: number;
+  pauseBetweenParagraphsAdd: number;
+  pauseAfterCommaAdd: number;
+  dynamicPauseForce: boolean;
+  dynamicPauseVariationMin: number;
+  emphasisBoost: number;
+  sentenceStartBoostAdd: number;
+  sentenceEndSlowAdd: number;
+  rateOffset: number;
+}> = {
+  standard: {
+    pauseAfterSentencesAdd: 0,
+    pauseBetweenParagraphsAdd: 0,
+    pauseAfterCommaAdd: 0,
+    dynamicPauseForce: false,
+    dynamicPauseVariationMin: 0,
+    emphasisBoost: 0,
+    sentenceStartBoostAdd: 0,
+    sentenceEndSlowAdd: 0,
+    rateOffset: 0,
+  },
+  storytelling: {
+    pauseAfterSentencesAdd: 100,
+    pauseBetweenParagraphsAdd: 200,
+    pauseAfterCommaAdd: 50,
+    dynamicPauseForce: true,
+    dynamicPauseVariationMin: 300,
+    emphasisBoost: 1,
+    sentenceStartBoostAdd: 10,
+    sentenceEndSlowAdd: 15,
+    rateOffset: -0.03,
+  },
+  educational: {
+    pauseAfterSentencesAdd: 150,
+    pauseBetweenParagraphsAdd: 300,
+    pauseAfterCommaAdd: 75,
+    dynamicPauseForce: false,
+    dynamicPauseVariationMin: 0,
+    emphasisBoost: 0,
+    sentenceStartBoostAdd: 0,
+    sentenceEndSlowAdd: 5,
+    rateOffset: -0.05,
+  },
+};
+
+interface Timepoint {
+  markName: string;
+  timeSeconds: number;
+}
+
+interface TTSResponse {
+  audioContent: string;
+  timepoints?: Timepoint[];
+}
+
 async function callGoogleTTS(
   text: string,
   apiKey: string,
@@ -17,7 +104,6 @@ async function callGoogleTTS(
     body.enableTimePointing = ["SSML_MARK"];
   }
 
-  // Use v1beta1 for enableTimePointing support (not available in v1)
   const apiVersion = enableTimePointing ? "v1beta1" : "v1";
   const response = await fetch(
     `https://texttospeech.googleapis.com/${apiVersion}/text:synthesize?key=${apiKey}`,
