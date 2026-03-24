@@ -310,143 +310,27 @@ const CONTINUITY_PAUSE_RATIO = 0.4; // reduce pause to 40% of normal
 const SHOT_BOUNDARY_BREAK_MS = 1;
 
 /**
- * Wrap SSML content in <prosody volume="medium"> to force consistent absolute
- * volume level across separate TTS API calls, preventing per-chunk drift.
+ * Wrap SSML content in <prosody volume="+0dB"> to force a fixed absolute
+ * volume across separate TTS API calls. Using an explicit dB value (rather
+ * than the keyword "medium") prevents Google TTS from applying independent
+ * per-chunk loudness normalization.
  */
-function applyVolumeEqualization(ssml: string): string {
+function applyVolumeEqualization(ssml: string, gainOffsetDb = 0): string {
+  const sign = gainOffsetDb >= 0 ? "+" : "";
+  const volAttr = `${sign}${gainOffsetDb.toFixed(1)}dB`;
   return ssml.replace(
     /^<speak>([\s\S]*)<\/speak>$/,
-    '<speak><prosody volume="medium">$1</prosody></speak>'
+    `<speak><prosody volume="${volAttr}">$1</prosody></speak>`
   );
 }
 
-// ── MP3 gain normalization (mp3gain-style) ──
-
-interface Mp3FrameInfo {
-  offset: number;
-  frameLength: number;
-  sideInfoOffset: number;
-  isMpeg1: boolean;
-  isStereo: boolean;
-  granuleCount: number;
-  channelCount: number;
-}
 
 /**
- * Parse an MP3 frame header at a given offset.
- * Returns frame info or null if not a valid frame.
+ * Estimate relative loudness of an MP3 chunk by computing mean absolute
+ * value of frame payload bytes (rough energy proxy for compressed audio).
+ * Also computes peak value for better outlier detection.
  */
-function parseMp3FrameAt(data: Uint8Array, pos: number): Mp3FrameInfo | null {
-  if (pos + 4 > data.length) return null;
-  if (data[pos] !== 0xFF || (data[pos + 1] & 0xE0) !== 0xE0) return null;
-
-  const versionBits = (data[pos + 1] >> 3) & 0x03;
-  const layerBits = (data[pos + 1] >> 1) & 0x03;
-  const bitrateIndex = (data[pos + 2] >> 4) & 0x0F;
-  const sampleRateIndex = (data[pos + 2] >> 2) & 0x03;
-  const paddingBit = (data[pos + 2] >> 1) & 0x01;
-  const channelMode = (data[pos + 3] >> 6) & 0x03;
-
-  if (bitrateIndex === 0 || bitrateIndex === 15 || sampleRateIndex === 3) return null;
-  if (layerBits !== 0x01) return null; // Layer 3 only
-
-  const isMpeg1 = versionBits === 0x03;
-  const isStereo = channelMode !== 3; // 3 = mono
-
-  const MPEG1_L3_BITRATES = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
-  const MPEG2_L3_BITRATES = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0];
-  const MPEG1_SAMPLE_RATES = [44100, 48000, 32000];
-  const MPEG2_SAMPLE_RATES = [22050, 24000, 16000];
-  const MPEG25_SAMPLE_RATES = [11025, 12000, 8000];
-
-  let bitrateKbps: number;
-  let sampleRate: number;
-
-  if (isMpeg1) {
-    bitrateKbps = MPEG1_L3_BITRATES[bitrateIndex];
-    sampleRate = MPEG1_SAMPLE_RATES[sampleRateIndex];
-  } else if (versionBits === 0x02) {
-    bitrateKbps = MPEG2_L3_BITRATES[bitrateIndex];
-    sampleRate = MPEG2_SAMPLE_RATES[sampleRateIndex];
-  } else if (versionBits === 0x00) {
-    bitrateKbps = MPEG2_L3_BITRATES[bitrateIndex];
-    sampleRate = MPEG25_SAMPLE_RATES[sampleRateIndex];
-  } else {
-    return null;
-  }
-
-  if (bitrateKbps <= 0 || sampleRate <= 0) return null;
-
-  const samplesPerFrame = isMpeg1 ? 1152 : 576;
-  const frameLength = Math.floor((samplesPerFrame * bitrateKbps * 1000) / (8 * sampleRate)) + paddingBit;
-
-  if (pos + frameLength > data.length) return null;
-
-  const hasCrc = !((data[pos + 1] >> 0) & 0x01);
-  const sideInfoOffset = pos + 4 + (hasCrc ? 2 : 0);
-
-  return {
-    offset: pos,
-    frameLength,
-    sideInfoOffset,
-    isMpeg1,
-    isStereo,
-    granuleCount: isMpeg1 ? 2 : 1,
-    channelCount: isStereo ? 2 : 1,
-  };
-}
-
-/**
- * Read global_gain values from all granules/channels in an MP3 chunk.
- * Returns array of {offset, value} for each global_gain byte found.
- */
-function readGlobalGains(data: Uint8Array): { offset: number; value: number }[] {
-  const gains: { offset: number; value: number }[] = [];
-  let pos = 0;
-
-  // Skip ID3v2 tag if present
-  if (data.length > 10 && data[0] === 0x49 && data[1] === 0x44 && data[2] === 0x33) {
-    const size = ((data[6] & 0x7F) << 21) | ((data[7] & 0x7F) << 14) |
-                 ((data[8] & 0x7F) << 7) | (data[9] & 0x7F);
-    pos = 10 + size;
-  }
-
-  const scanLimit = data.length - 4;
-  while (pos < scanLimit) {
-    const frame = parseMp3FrameAt(data, pos);
-    if (!frame) {
-      pos++;
-      continue;
-    }
-
-    // Read global_gain for each granule and channel
-    // Side info layout for MPEG1:
-    //   mono:   9 bits main_data_begin, 5 bits private, then per-granule: 59 bits before global_gain
-    //   stereo: 9 bits main_data_begin, 3 bits private, 4 bits scfsi, then per-granule per-channel
-    // For simplicity, use known offsets:
-    // MPEG1 stereo: side_info = 32 bytes, granule data starts at byte 2 (after main_data_begin + private + scfsi)
-    //   gr0_ch0_global_gain at side_info + 2 + floor(12/8) = side_info + 3, bit offset 4
-    //   Actually, the layout is complex with bit-level offsets. Let me use a simpler approach.
-
-    // Simplified: for MPEG1 Layer3, global_gain positions in side_info:
-    // The side information structure has bit-level fields. For consistent normalization,
-    // we'll use the average of raw frame byte values as a volume proxy instead of
-    // trying to parse bit-level fields. This is simpler and sufficient for relative
-    // comparison between chunks.
-
-    pos += frame.frameLength;
-  }
-
-  return gains;
-}
-
-/**
- * Estimate relative volume level of an MP3 chunk by computing the
- * average absolute deviation of audio frame bytes from center (128).
- * This correlates with perceived loudness for comparison between
- * chunks generated by the same encoder with the same settings.
- */
-function estimateChunkRms(data: Uint8Array): number {
+function estimateChunkEnergy(data: Uint8Array): { rms: number; peak: number; mean: number } {
   let pos = 0;
 
   // Skip ID3v2 tag
@@ -462,49 +346,71 @@ function estimateChunkRms(data: Uint8Array): number {
     pos++;
   }
 
-  // Compute mean absolute deviation of audio data bytes
-  const start = Math.min(pos + 4, data.length); // skip first frame header
-  if (data.length - start < 100) return 0;
+  const start = Math.min(pos + 4, data.length);
+  if (data.length - start < 100) return { rms: 0, peak: 0, mean: 0 };
 
   let sum = 0;
+  let sumSq = 0;
+  let peak = 0;
   const len = data.length - start;
   for (let i = start; i < data.length; i++) {
-    const v = data[i] - 128;
-    sum += v * v;
+    const v = Math.abs(data[i] - 128);
+    sum += v;
+    sumSq += v * v;
+    if (v > peak) peak = v;
   }
-  return Math.sqrt(sum / len);
+  return {
+    rms: Math.sqrt(sumSq / len),
+    peak,
+    mean: sum / len,
+  };
 }
 
 /**
- * Normalize volume across multiple MP3 chunks by detecting level differences
- * and requesting re-generation of outlier chunks with adjusted volumeGainDb.
- * Returns diagnostics about chunk volume levels.
+ * Analyze chunk volumes and compute per-chunk dB gain adjustments needed
+ * to bring all chunks to the same perceived level.
+ * Returns adjustment values: positive = boost needed, negative = reduce.
  */
-function analyzeChunkVolumes(chunks: Uint8Array[]): {
-  rmsValues: number[];
-  meanRms: number;
-  maxDeviation: number;
-  quietChunkIndices: number[];
+function computeChunkGainAdjustments(chunks: Uint8Array[], tolerancePct = 0.12): {
+  energies: { rms: number; peak: number; mean: number }[];
+  meanEnergy: number;
+  adjustmentsDb: number[];
+  outlierIndices: number[];
 } {
   if (chunks.length <= 1) {
-    return { rmsValues: [], meanRms: 0, maxDeviation: 0, quietChunkIndices: [] };
+    return { energies: [], meanEnergy: 0, adjustmentsDb: [], outlierIndices: [] };
   }
 
-  const rmsValues = chunks.map(c => estimateChunkRms(c));
-  const validRms = rmsValues.filter(r => r > 0);
-  if (validRms.length === 0) {
-    return { rmsValues, meanRms: 0, maxDeviation: 0, quietChunkIndices: [] };
+  const energies = chunks.map(c => estimateChunkEnergy(c));
+  const validMeans = energies.filter(e => e.mean > 0).map(e => e.mean);
+  if (validMeans.length === 0) {
+    return { energies, meanEnergy: 0, adjustmentsDb: new Array(chunks.length).fill(0), outlierIndices: [] };
   }
 
-  const meanRms = validRms.reduce((a, b) => a + b, 0) / validRms.length;
-  const maxDeviation = Math.max(...validRms.map(r => Math.abs(r - meanRms) / meanRms));
+  const meanEnergy = validMeans.reduce((a, b) => a + b, 0) / validMeans.length;
+  const adjustmentsDb: number[] = [];
+  const outlierIndices: number[] = [];
 
-  // Flag chunks that are >20% quieter than average
-  const quietChunkIndices = rmsValues
-    .map((r, i) => (r > 0 && r < meanRms * 0.8) ? i : -1)
-    .filter(i => i >= 0);
+  for (let i = 0; i < energies.length; i++) {
+    const e = energies[i];
+    if (e.mean <= 0) {
+      adjustmentsDb.push(0);
+      continue;
+    }
+    const ratio = e.mean / meanEnergy;
+    if (Math.abs(ratio - 1) > tolerancePct) {
+      // Convert ratio to dB adjustment: 20*log10(target/current) = 20*log10(1/ratio)
+      const dbAdj = Math.round(20 * Math.log10(1 / ratio) * 10) / 10;
+      // Clamp to reasonable range
+      const clampedDb = Math.max(-6, Math.min(6, dbAdj));
+      adjustmentsDb.push(clampedDb);
+      outlierIndices.push(i);
+    } else {
+      adjustmentsDb.push(0);
+    }
+  }
 
-  return { rmsValues, meanRms, maxDeviation, quietChunkIndices };
+  return { energies, meanEnergy, adjustmentsDb, outlierIndices };
 }
 
 function endsWithSentenceTerminal(text: string): boolean {
@@ -1191,54 +1097,87 @@ serve(async (req) => {
       const shotIdToIndex = new Map<string, number>();
       shotSentences!.forEach((s, i) => shotIdToIndex.set(s.id, i));
 
-      for (let ci = 0; ci < chunks.length; ci++) {
-        const chunk = chunks[ci];
-        let chunkSsml = chunk.ssml;
-        // Apply volume equalization to force consistent level across chunks
-        if (!isRestrictedVoice) chunkSsml = applyVolumeEqualization(chunkSsml);
-        if (isRestrictedVoice) chunkSsml = stripEmphasisTags(chunkSsml);
-        console.log(`Chunk ${ci + 1}: shotIds=[${chunk.shotIds.map(id => id.slice(0, 8)).join(",")}], ${chunkSsml.length} chars`);
+      // Helper to generate a single chunk and extract timepoints
+      async function generateChunk(
+        chunkSsml: string,
+        chunkShotIds: string[],
+        chunkIndex: number,
+        volumeGainOffset = 0
+      ): Promise<{ raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }> {
+        let ssml = chunkSsml;
+        if (!isRestrictedVoice) ssml = applyVolumeEqualization(ssml, volumeGainOffset);
+        if (isRestrictedVoice) ssml = stripEmphasisTags(ssml);
+        const suffix = volumeGainOffset !== 0 ? ` (gainOffset=${volumeGainOffset.toFixed(1)}dB)` : "";
+        console.log(`Chunk ${chunkIndex + 1}${suffix}: shotIds=[${chunkShotIds.map(id => id.slice(0, 8)).join(",")}], ${ssml.length} chars`);
 
-        const result = await callGoogleTTS(
-          chunkSsml,
-          GOOGLE_TTS_API_KEY,
-          voice,
-          audioConfig,
-          true, // isSsml
-          true  // enableTimePointing
-        );
-
-        // Decode audio
+        const result = await callGoogleTTS(ssml, GOOGLE_TTS_API_KEY, voice, audioConfig, true, true);
         const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-        audioBuffers.push(raw);
 
-        // Process timepoints — mark names ARE the shot IDs
         const chunkTimepoints: { name: string; time: number }[] = [];
         if (result.timepoints) {
           for (const tp of result.timepoints) {
             chunkTimepoints.push({ name: tp.markName, time: tp.timeSeconds });
-            if (tp.markName === "__chunk_end" || tp.markName === "__end") {
-              continue;
-            }
-            // Mark name is directly the shot ID — no index parsing needed
-            const shotIndex = shotIdToIndex.get(tp.markName) ?? -1;
-            if (shotIndex >= 0) {
-              allTimepoints.push({
-                shotIndex,
-                timeSeconds: tp.timeSeconds + cumulativeOffset,
-                shotId: tp.markName,
-              });
-            }
           }
         }
 
-        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(chunkTimepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
+        const duration = parseMp3Duration(raw);
+        return { raw, timepoints: chunkTimepoints, duration };
+      }
 
-        // Use actual MP3 duration (parsed from frames) instead of marker time
-        // This prevents cumulative drift when concatenating multiple chunks
-        const chunkDuration = parseMp3Duration(raw);
-        cumulativeOffset += chunkDuration;
-        console.log(`Chunk ${ci + 1} MP3 duration: ${chunkDuration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
+      // Cache per-chunk results for potential re-use after volume normalization
+      interface ChunkGenResult { raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }
+      const chunkGenResults: ChunkGenResult[] = [];
+
+      for (let ci = 0; ci < chunks.length; ci++) {
+        const chunk = chunks[ci];
+        const gen = await generateChunk(chunk.ssml, chunk.shotIds, ci);
+        chunkGenResults.push(gen);
+        audioBuffers.push(gen.raw);
+
+        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(gen.timepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
+        console.log(`Chunk ${ci + 1} MP3 duration: ${gen.duration.toFixed(3)}s`);
+      }
+
+      // ── Volume normalization pass: re-generate outlier chunks ──
+      if (audioBuffers.length > 1) {
+        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
+        const energyStrs = analysis.energies.map(e => e.mean.toFixed(2));
+        console.log(`Volume analysis: energies=[${energyStrs.join(",")}], mean=${analysis.meanEnergy.toFixed(2)}, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
+
+        if (analysis.outlierIndices.length > 0) {
+          console.log(`Re-generating ${analysis.outlierIndices.length} outlier chunk(s) with gain adjustment…`);
+
+          for (const idx of analysis.outlierIndices) {
+            const chunk = chunks[idx];
+            const gainDb = analysis.adjustmentsDb[idx];
+            const gen = await generateChunk(chunk.ssml, chunk.shotIds, idx, gainDb);
+            // Replace in both caches
+            chunkGenResults[idx] = gen;
+            audioBuffers[idx] = gen.raw;
+          }
+
+          // Log post-normalization levels
+          const post = computeChunkGainAdjustments(audioBuffers, 0.10);
+          console.log(`Volume after normalization: energies=[${post.energies.map(e => e.mean.toFixed(2)).join(",")}], remaining outliers=[${post.outlierIndices.join(",")}]`);
+        }
+      }
+
+      // ── Rebuild timepoints from cached chunk results with correct cumulative offsets ──
+      cumulativeOffset = 0;
+      for (let ci = 0; ci < chunkGenResults.length; ci++) {
+        const gen = chunkGenResults[ci];
+        // Recompute duration from actual buffer (may have been replaced)
+        const duration = parseMp3Duration(audioBuffers[ci]);
+
+        for (const tp of gen.timepoints) {
+          if (tp.name === "__chunk_end" || tp.name === "__end") continue;
+          const shotIndex = shotIdToIndex.get(tp.name) ?? -1;
+          if (shotIndex >= 0) {
+            allTimepoints.push({ shotIndex, timeSeconds: tp.time + cumulativeOffset, shotId: tp.name });
+          }
+        }
+
+        cumulativeOffset += duration;
       }
 
       console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
@@ -1283,7 +1222,6 @@ serve(async (req) => {
 
       for (let ci = 0; ci < chunks.length; ci++) {
         let chunk = chunks[ci];
-        // Apply volume equalization for consistent level across chunks
         if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
           chunk = applyVolumeEqualization(chunk);
         }
@@ -1308,14 +1246,31 @@ serve(async (req) => {
           throw error;
         }
       }
-    }
 
-    // ── Volume analysis across chunks ──
-    if (audioBuffers.length > 1) {
-      const volumeAnalysis = analyzeChunkVolumes(audioBuffers);
-      console.log(`Volume analysis: chunks=${audioBuffers.length}, RMS values=[${volumeAnalysis.rmsValues.map(v => v.toFixed(2)).join(",")}], mean=${volumeAnalysis.meanRms.toFixed(2)}, maxDeviation=${(volumeAnalysis.maxDeviation * 100).toFixed(1)}%`);
-      if (volumeAnalysis.quietChunkIndices.length > 0) {
-        console.warn(`⚠ Quiet chunks detected: [${volumeAnalysis.quietChunkIndices.join(",")}] — volume >20% below average`);
+      // Volume normalization for legacy mode too
+      if (audioBuffers.length > 1) {
+        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
+        console.log(`Legacy volume analysis: energies=[${analysis.energies.map(e => e.mean.toFixed(2)).join(",")}], outliers=[${analysis.outlierIndices.join(",")}]`);
+        if (analysis.outlierIndices.length > 0) {
+          console.log(`Re-generating ${analysis.outlierIndices.length} legacy outlier chunk(s)…`);
+          const rawChunks = ssmlText.length <= MAX_CHARS
+            ? [ssmlText]
+            : chunkTextForLegacySsml(text, {
+                paraPauseMs: pauseBetweenParagraphs, sentPauseMs: pauseAfterSentences,
+                startBoostPct: sentenceStartBoost, endSlowPct: sentenceEndSlow,
+                commaPauseMs: pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation,
+                emphasisBoost: mod.emphasisBoost, maxSsmlBytes: 4500,
+              });
+          for (const idx of analysis.outlierIndices) {
+            let chunk = rawChunks[idx] ?? "";
+            if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
+              chunk = applyVolumeEqualization(chunk, analysis.adjustmentsDb[idx]);
+            }
+            if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
+            const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunk.startsWith("<speak>"));
+            audioBuffers[idx] = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+          }
+        }
       }
     }
 
