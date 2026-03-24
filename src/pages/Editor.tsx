@@ -2051,12 +2051,23 @@ export default function Editor() {
                 <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Contrôle qualité
+                  {qaCounts.errors > 0 && (
+                    <span className="ml-1.5 text-[10px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
+                      {qaCounts.errors} erreur{qaCounts.errors > 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {qaCounts.warnings > 0 && (
+                    <span className="ml-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                      {qaCounts.warnings} avert.
+                    </span>
+                  )}
                 </summary>
                 <div className="mt-3">
                   <QaPanel
                     projectId={projectId!}
                     manifest={buildManifest(projectId!, scenes, shots)}
                     onExportAllowedChange={setQaExportAllowed}
+                    onReportChange={setQaCounts}
                   />
                 </div>
               </details>
