@@ -310,13 +310,17 @@ const CONTINUITY_PAUSE_RATIO = 0.4; // reduce pause to 40% of normal
 const SHOT_BOUNDARY_BREAK_MS = 1;
 
 /**
- * Wrap SSML content in <prosody volume="medium"> to force consistent absolute
- * volume level across separate TTS API calls, preventing per-chunk drift.
+ * Wrap SSML content in <prosody volume="+0dB"> to force a fixed absolute
+ * volume across separate TTS API calls. Using an explicit dB value (rather
+ * than the keyword "medium") prevents Google TTS from applying independent
+ * per-chunk loudness normalization.
  */
-function applyVolumeEqualization(ssml: string): string {
+function applyVolumeEqualization(ssml: string, gainOffsetDb = 0): string {
+  const sign = gainOffsetDb >= 0 ? "+" : "";
+  const volAttr = `${sign}${gainOffsetDb.toFixed(1)}dB`;
   return ssml.replace(
     /^<speak>([\s\S]*)<\/speak>$/,
-    '<speak><prosody volume="medium">$1</prosody></speak>'
+    `<speak><prosody volume="${volAttr}">$1</prosody></speak>`
   );
 }
 
