@@ -78,7 +78,7 @@ function detectTransitions(text: string): TransitionSignal[] {
 
 // ── Clause-level splitting for long sentences ──────────────────────
 
-const CLAUSE_BOUNDARIES = /(?:,\s+|\s*;\s+|\s*:\s+|\s*—\s*|\s*–\s+)/g;
+const CLAUSE_BOUNDARIES = /(?:,["\u201D\u2019'»]?\s+|\s*;\s+|\s*:\s+|\s*—\s*|\s*–\s+)/g;
 
 function collectBoundaryPositions(text: string, regex: RegExp): number[] {
   regex.lastIndex = 0;
