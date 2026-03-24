@@ -335,9 +335,11 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error("generate-shot-image error:", e);
+    const message = e instanceof Error ? e.message : "Unknown error";
+    const isAuthError = message === "Unauthorized" || message === "JWT has expired" || message.toLowerCase().includes("jwt");
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: message }),
+      { status: isAuthError ? 401 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

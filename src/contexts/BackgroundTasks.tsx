@@ -865,6 +865,10 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                 }
               } catch (shotErr: any) {
                 if (ac.signal.aborted) break;
+                const message = shotErr?.message || "";
+                if (message.includes("Session expired")) {
+                  throw shotErr;
+                }
                 console.error(`Shot ${remainingShotIds[i]} attempt ${attempt}/${MAX_RETRIES}:`, shotErr);
                 if (attempt < MAX_RETRIES) await new Promise((r) => setTimeout(r, attempt * 5000));
               }
