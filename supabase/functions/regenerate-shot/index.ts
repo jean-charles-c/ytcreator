@@ -88,7 +88,7 @@ serve(async (req) => {
     // Build neighbor avoidance prompt
     const neighborPrompt = buildNeighborAvoidancePrompt(neighborsBefore, neighborsAfter);
 
-    // Build scene context block for the AI
+    // Build rich scene context block (aligned with generate-storyboard's buildContextualPrompt)
     const contextBlock = sceneContext ? [
       `SCENE CONTEXT:`,
       `  Lieu: ${sceneContext.lieu || "Non déterminé"}`,
@@ -98,9 +98,35 @@ serve(async (req) => {
       sceneContext.ton ? `  Ton: ${sceneContext.ton}` : null,
     ].filter(Boolean).join("\n") : "";
 
+    // Visual intention & continuity from scene (same as generate-storyboard)
+    const visualIntention = scene.visual_intention;
+    const visualIntentionNote = visualIntention ? `\nVisual intention for this scene: ${visualIntention}` : "";
+    const continuity = scene.continuity;
+    const continuityNote = continuity ? `\nScene continuity note: ${continuity}` : "";
+
+    // Camera framing mapping (FR → EN, same grid as generate-storyboard)
+    const cameraMap: Record<string, string> = {
+      "Plan d'ensemble": "Wide establishing shot",
+      "Plan d'activité": "Medium shot capturing action",
+      "Plan d'interaction": "Two-shot or group composition",
+      "Plan environnemental": "Atmospheric environmental shot",
+      "Plan de détail d'artefact": "Close-up detail shot",
+      "Plan de détail scientifique": "Macro examination shot",
+      "Plan portrait": "Portrait shot",
+      "Plan subjectif": "Point-of-view shot",
+    };
+
     const avoidCamerasNote = opValidation.avoidCameraTypes.length > 0
       ? `\nCAMERA TYPES TO AVOID (used by neighbors): ${opValidation.avoidCameraTypes.join(", ")}`
       : "";
+
+    // Build camera avoidance as English descriptions too
+    const avoidCameraDescriptions = opValidation.avoidCameraTypes
+      .map(ct => {
+        const match = Object.entries(cameraMap).find(([k]) => k.toLowerCase().replace(/['']/g, "'") === ct);
+        return match ? match[1] : ct;
+      })
+      .filter(Boolean);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -135,21 +161,40 @@ Every prompt_export MUST begin by explicitly stating the historical period/era a
 This anchoring is MANDATORY. Never produce a prompt without it.
 All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be accurate to that specific era, culture, and place.
 
+CONTEXTUAL PROMPT CONSTRUCTION — CRITICAL (same rules as initial generation):
+Each prompt_export must be built from the SPECIFIC fragment it illustrates, NOT from the full scene text.
+Context injection rules:
+1. ALWAYS start with the historical period + geographic location from the scene's CONTEXTE block
+2. Include characters ONLY when the fragment mentions or implies people — do not inject character descriptions into landscape or object shots
+3. Include ambiance/mood ONLY when it adds visual value to THIS specific fragment
+4. Include visual_intention ONLY when it enriches the framing or cinematic direction
+5. Include continuity notes ONLY when the fragment represents a transition or narrative shift
+6. NEVER dump all context fields mechanically — select only what is visually relevant to the fragment
+
 FRAGMENT-SPECIFIC RULE:
 The prompt must illustrate ONLY what the given text fragment describes.
 Do not illustrate the entire scene — focus on the specific fragment's visual content.
-Enrich with scene context (lieu, époque, personnages) but keep the fragment as the visual subject.
+The prompt must describe what the FRAGMENT says, not what the scene says in general.
 
 PROMPT STRUCTURE (prompt_export, in ENGLISH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
-2. Camera framing (MUST differ from neighbors)
-3. Fragment-specific visual content with objects, materials, textures, colors
-4. Characters if present IN THE FRAGMENT: pose, gesture, clothing — culturally accurate
-5. Environment grounded in the scene's lieu and époque
-6. Foreground depth elements relevant to the fragment
-7. Lighting: source, direction, quality, shadows
-8. Atmosphere and mood from the fragment's narrative tone
+2. Camera framing (MUST differ from neighbors) — use descriptive English framing: "Wide establishing shot of...", "Close-up on...", "Medium shot capturing..."
+3. Fragment-specific visual content with hyper-specific materials, textures, colors
+4. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color — culturally accurate to the era and place
+5. Environment grounded in the scene's lieu and époque: period-accurate background elements
+6. Foreground depth elements relevant to the fragment adding visual depth
+7. Lighting: source, direction, quality, shadows — physically motivated (candlelight, firelight, sunrise, etc.)
+8. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
 9. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
+
+PHOTOREALISM ENFORCEMENT:
+All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
+Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
+Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
+
+MATERIAL DENSITY RULE:
+Include physically rich environments. Avoid empty compositions.
+Add environmental elements: objects, scrolls, pottery, fabrics, tools, architectural textures, vegetation, atmospheric particles.
 
 Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
             },
@@ -158,8 +203,8 @@ Images must be photorealistic historical documentary style. Never illustration o
               content: `Regenerate a new visual shot for this specific text fragment from a documentary narration.
 
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
-Scene: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
-${contextBlock}
+Scene: "${scene.title}"
+${contextBlock}${visualIntentionNote}${continuityNote}
 
 MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with: "${opValidation.contextAnchor}".
 ${opValidation.relevantCharacters ? `Characters relevant to this fragment: ${opValidation.relevantCharacters}` : ""}
@@ -168,9 +213,9 @@ Fragment to illustrate: "${sourceText}"
 ${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST provide "source_sentence_fr": a faithful French translation. NON-NEGOTIABLE.` : ""}
 
 PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
-- Previous shot type: ${shot.shot_type}
+- Previous shot type: ${shot.shot_type} (${cameraMap[shot.shot_type] || "Unknown framing"})
 - Previous prompt: "${(shot.prompt_export || shot.description || "").slice(0, 200)}"
-${avoidCamerasNote}${neighborPrompt}
+${avoidCamerasNote}${avoidCameraDescriptions.length > 0 ? `\nCamera framings to avoid (English): ${avoidCameraDescriptions.join(", ")}` : ""}${neighborPrompt}
 
 CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version AND the neighbor shots. The new prompt must produce a visually distinct image.`,
             },
