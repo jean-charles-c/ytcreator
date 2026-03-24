@@ -1372,120 +1372,121 @@ serve(async (req) => {
     let cumulativeOffset = 0;
 
     if (useMarkedMode) {
-      // ── Exact mode: one LINEAR16 render per shot, then sample-accurate concatenation ──
-      console.log(`Generating exact per-shot TTS with ${shotSentences!.length} shots`);
+      // ── Marked mode: batched SSML with <mark> tags in LINEAR16 for sample-accurate sync ──
+      // This uses ~5-6 API calls instead of 162 individual per-shot calls.
+      console.log(`Generating marked LINEAR16 TTS with ${shotSentences!.length} shots`);
 
       const sceneBreakIndices = shotSentences!
         .map((s, i) => s.isNewScene ? i : -1)
         .filter(i => i >= 0);
       console.log(`Scene/paragraph breaks at indices: [${sceneBreakIndices.join(",")}] (para pause=${pauseBetweenParagraphs}ms, sent pause=${pauseAfterSentences}ms)`);
 
-      const exactShotPlans = shotSentences!.map((shot, shotIndex) => {
-        const built = buildExactShotSsml(
-          shot,
-          shotSentences![shotIndex + 1],
-          pauseAfterSentences,
-          pauseBetweenParagraphs,
-          sentenceStartBoost,
-          sentenceEndSlow,
-          pauseAfterComma,
-          dynamicPauseEnabled,
-          dynamicPauseVariation,
-          mod.emphasisBoost
-        );
+      // Build full marked SSML
+      let fullMarkedSsml = buildMarkedSsml(
+        shotSentences!,
+        pauseAfterSentences,
+        pauseBetweenParagraphs,
+        sentenceStartBoost,
+        sentenceEndSlow,
+        pauseAfterComma,
+        dynamicPauseEnabled,
+        dynamicPauseVariation,
+        mod.emphasisBoost
+      );
+      if (isRestrictedVoice) fullMarkedSsml = stripEmphasisTags(fullMarkedSsml);
 
-        return {
-          shotId: shot.id,
-          shotIndex,
-          pauseMs: built.pauseMs,
-          ssml: isRestrictedVoice ? stripEmphasisTags(built.ssml) : built.ssml,
-        };
-      });
+      // Apply volume equalization wrapper
+      if (!isRestrictedVoice) {
+        fullMarkedSsml = applyVolumeEqualization(fullMarkedSsml, 0);
+      }
+
+      // Chunk the marked SSML to stay under Google API limits
+      const markedChunks = chunkMarkedSsml(fullMarkedSsml, MAX_CHARS);
+      console.log(`Split into ${markedChunks.length} marked chunks for LINEAR16 render`);
 
       const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
-      const EXACT_BATCH_SIZE = 6;
-      const exactShotResults: {
-        shotId: string;
-        shotIndex: number;
-        pauseMs: number;
-        wav: Uint8Array;
-        duration: number;
-        measuredDbfs: number;
-      }[] = [];
+      const chunkWavs: Uint8Array[] = [];
+      const rawChunkTimepoints: { chunkIndex: number; shotId: string; timeSeconds: number }[] = [];
 
-      for (let start = 0; start < exactShotPlans.length; start += EXACT_BATCH_SIZE) {
-        const batch = exactShotPlans.slice(start, start + EXACT_BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (plan) => {
-            const result = await callGoogleTTS(plan.ssml, GOOGLE_TTS_API_KEY, voice, linear16Config, true, false);
-            const wav = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-            const duration = getLinear16WavDuration(wav);
-            const measurement = computeLinear16WavRms(wav, plan.pauseMs / 1000);
-
-            return {
-              shotId: plan.shotId,
-              shotIndex: plan.shotIndex,
-              pauseMs: plan.pauseMs,
-              wav,
-              duration,
-              measuredDbfs: measurement.dbfs,
-            };
-          })
+      // Generate all chunks (LINEAR16 with timepointing)
+      for (let ci = 0; ci < markedChunks.length; ci++) {
+        const chunk = markedChunks[ci];
+        const result = await callGoogleTTS(
+          chunk.ssml,
+          GOOGLE_TTS_API_KEY,
+          voice,
+          linear16Config,
+          true,
+          true // enableTimePointing
         );
 
-        exactShotResults.push(...batchResults);
-        console.log(`Rendered exact-shot batch ${Math.floor(start / EXACT_BATCH_SIZE) + 1}/${Math.ceil(exactShotPlans.length / EXACT_BATCH_SIZE)}`);
+        const wavData = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+        chunkWavs.push(wavData);
+
+        // Collect timepoints from this chunk
+        if (result.timepoints) {
+          for (const tp of result.timepoints) {
+            const markName = tp.markName;
+            if (markName === "__end" || markName === "__chunk_end") continue;
+            rawChunkTimepoints.push({
+              chunkIndex: ci,
+              shotId: markName,
+              timeSeconds: tp.timeSeconds,
+            });
+          }
+        }
+
+        console.log(`Rendered marked chunk ${ci + 1}/${markedChunks.length} (${chunk.shotIds.length} shots, timepoints=${result.timepoints?.length ?? 0})`);
       }
 
-      exactShotResults.sort((a, b) => a.shotIndex - b.shotIndex);
+      // Measure per-chunk volume for cross-chunk normalization
+      const chunkDbfs = chunkWavs.map((wav) => computeLinear16WavRms(wav, 0.1).dbfs);
+      const volumeAnalysis = computeExactShotGainAdjustments(chunkDbfs, 0.8);
+      console.log(`Chunk volume analysis: dBFS=[${chunkDbfs.map(d => d.toFixed(1)).join(",")}], target=${volumeAnalysis.targetDbfs.toFixed(1)}dB, adjustments=[${volumeAnalysis.adjustmentsDb.map(v => v.toFixed(1)).join(",")}]`);
 
-      if (exactShotResults.some((result) => !(result.duration > 0))) {
-        return new Response(
-          JSON.stringify({
-            error: "Synchronisation bloquée — au moins un shot a produit une durée audio invalide. L'audio n'a pas été sauvegardé.",
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Apply gain normalization per chunk
+      const normalizedChunkWavs = chunkWavs.map((wav, index) =>
+        applyGainToLinear16Wav(wav, volumeAnalysis.adjustmentsDb[index])
+      );
+
+      // Compute chunk durations for offset calculation
+      const chunkDurations = normalizedChunkWavs.map((wav) => getLinear16WavDuration(wav));
+      const chunkStartOffsets: number[] = [];
+      let runningOffset = 0;
+      for (const dur of chunkDurations) {
+        chunkStartOffsets.push(runningOffset);
+        runningOffset += dur;
       }
 
-      const volumeAnalysis = computeExactShotGainAdjustments(
-        exactShotResults.map((result) => result.measuredDbfs),
-        0.8
-      );
-      console.log(`Exact shot volume analysis: dBFS=[${exactShotResults.map((result) => result.measuredDbfs.toFixed(1)).join(",")}], target=${volumeAnalysis.targetDbfs.toFixed(1)}dB, outliers=[${volumeAnalysis.outlierIndices.join(",")}], adjustments=[${volumeAnalysis.adjustmentsDb.map((value) => value.toFixed(1)).join(",")}]`);
-
-      const normalizedShotBuffers = exactShotResults.map((result, index) =>
-        applyGainToLinear16Wav(result.wav, volumeAnalysis.adjustmentsDb[index])
-      );
-      const exactCombinedAudio = concatLinear16Wavs(normalizedShotBuffers);
-      audioBuffers = [exactCombinedAudio.wav];
-
-      cumulativeOffset = 0;
-      for (const result of exactShotResults) {
+      // Build final timepoints with absolute offsets
+      for (const rtp of rawChunkTimepoints) {
+        const absoluteTime = chunkStartOffsets[rtp.chunkIndex] + rtp.timeSeconds;
+        const shotIdx = shotSentences!.findIndex((s) => s.id === rtp.shotId);
         allTimepoints.push({
-          shotIndex: result.shotIndex,
-          timeSeconds: cumulativeOffset,
-          shotId: result.shotId,
+          shotIndex: shotIdx >= 0 ? shotIdx : -1,
+          timeSeconds: absoluteTime,
+          shotId: rtp.shotId,
         });
-        cumulativeOffset += result.duration;
       }
 
-      if (Math.abs(cumulativeOffset - exactCombinedAudio.durationSeconds) > 0.02) {
-        return new Response(
-          JSON.stringify({
-            error: "Synchronisation bloquée — la durée totale concaténée ne correspond pas aux durées exactes des shots. L'audio n'a pas été sauvegardé.",
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      // Sort timepoints by time to ensure order
+      allTimepoints.sort((a, b) => a.timeSeconds - b.timeSeconds);
 
-      console.log(`Exact shot sync locked: ${allTimepoints.length} timepoints, totalDuration=${cumulativeOffset.toFixed(3)}s`);
-      console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
+      // Concatenate all WAV chunks sample-accurately
+      const exactCombinedAudio = concatLinear16Wavs(normalizedChunkWavs);
+      audioBuffers = [exactCombinedAudio.wav];
+      cumulativeOffset = exactCombinedAudio.durationSeconds;
 
-      // ── Post-generation strict validation: all shots must have a timepoint ──
+      console.log(`Marked sync locked: ${allTimepoints.length} timepoints, totalDuration=${cumulativeOffset.toFixed(3)}s`);
+
+      // ── Post-generation strict validation ──
       const postValidation = validateExactShotTimepoints(expectedShotIds, allTimepoints);
       if (!postValidation.ok) {
         console.error("Post-generation timepoint validation FAILED:", postValidation.errors);
+        // Log which shots are missing for debugging
+        if (postValidation.missingIds.length > 0) {
+          console.error(`Missing shot IDs: ${postValidation.missingIds.map(id => id.slice(0, 8)).join(", ")}`);
+        }
         return new Response(
           JSON.stringify({
             error: `Génération audio terminée mais synchronisation incomplète — ${postValidation.errors[0]}. L'audio n'a pas été sauvegardé. Réessayez.`,
