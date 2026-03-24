@@ -1216,14 +1216,40 @@ serve(async (req) => {
 
       console.log(`Split into ${chunks.length} legacy chunks`);
 
+      // ── Legacy volume normalization: LINEAR16 pre-pass ──
+      let legacyGainDb: number[] = new Array(chunks.length).fill(0);
+      if (chunks.length > 1) {
+        console.log(`Legacy volume pre-pass: generating ${chunks.length} chunks as LINEAR16…`);
+        const pcmChunks: Uint8Array[] = [];
+        for (let ci = 0; ci < chunks.length; ci++) {
+          let chunk = chunks[ci];
+          if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
+            chunk = applyVolumeEqualization(chunk, 0);
+          }
+          if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
+          const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
+          try {
+            const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, linear16Config, chunk.startsWith("<speak>"));
+            pcmChunks.push(Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0)));
+          } catch {
+            pcmChunks.push(new Uint8Array(0));
+          }
+        }
+        const analysis = computePcmGainAdjustments(pcmChunks, 1.5);
+        console.log(`Legacy PCM analysis: dBFS=[${analysis.dbfsValues.map(d => d.toFixed(1)).join(",")}], mean=${analysis.meanDbfs.toFixed(1)}dB, outliers=[${analysis.outlierIndices.join(",")}]`);
+        legacyGainDb = analysis.adjustmentsDb;
+      }
+
+      // ── Generate final MP3 chunks with corrections ──
       for (let ci = 0; ci < chunks.length; ci++) {
         let chunk = chunks[ci];
         if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
-          chunk = applyVolumeEqualization(chunk);
+          chunk = applyVolumeEqualization(chunk, legacyGainDb[ci]);
         }
         if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
         const chunkIsSsml = chunk.startsWith("<speak>");
-        console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
+        const suffix = legacyGainDb[ci] !== 0 ? ` (gainOffset=${legacyGainDb[ci].toFixed(1)}dB)` : "";
+        console.log(`Legacy chunk ${ci + 1}${suffix}: ssml=${chunkIsSsml}, len=${chunk.length}`);
 
         try {
           const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
@@ -1242,32 +1268,7 @@ serve(async (req) => {
           throw error;
         }
       }
-
-      // Volume normalization for legacy mode too
-      if (audioBuffers.length > 1) {
-        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
-        console.log(`Legacy volume analysis: energies=[${analysis.energies.map(e => e.mean.toFixed(2)).join(",")}], outliers=[${analysis.outlierIndices.join(",")}]`);
-        if (analysis.outlierIndices.length > 0) {
-          console.log(`Re-generating ${analysis.outlierIndices.length} legacy outlier chunk(s)…`);
-          const rawChunks = ssmlText.length <= MAX_CHARS
-            ? [ssmlText]
-            : chunkTextForLegacySsml(text, {
-                paraPauseMs: pauseBetweenParagraphs, sentPauseMs: pauseAfterSentences,
-                startBoostPct: sentenceStartBoost, endSlowPct: sentenceEndSlow,
-                commaPauseMs: pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation,
-                emphasisBoost: mod.emphasisBoost, maxSsmlBytes: 4500,
-              });
-          for (const idx of analysis.outlierIndices) {
-            let chunk = rawChunks[idx] ?? "";
-            if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
-              chunk = applyVolumeEqualization(chunk, analysis.adjustmentsDb[idx]);
-            }
-            if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
-            const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunk.startsWith("<speak>"));
-            audioBuffers[idx] = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-          }
-        }
-      }
+    }
     }
 
     // Concatenate all MP3 buffers
