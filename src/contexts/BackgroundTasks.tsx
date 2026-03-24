@@ -769,7 +769,6 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
       let globalSuccess = 0;
 
       try {
-        const session = (await supabase.auth.getSession()).data.session;
 
         while (round < MAX_ROUNDS && remainingShotIds.length > 0) {
           if (ac.signal.aborted) break;
