@@ -218,7 +218,7 @@ const splitLongSentenceIntoSegments = (
   if (requiredSegments === 1) return [text];
 
   const preferredBoundaryPositions = Array.from(new Set([
-    ...collectBoundaryPositions(text, /,\s+/g),
+    ...collectBoundaryPositions(text, /,["\u201D\u2019'»]?\s+/g),
     ...collectBoundaryPositions(text, /;\s+/g),
     ...collectBoundaryPositions(text, /:\s+/g),
     ...collectBoundaryPositions(text, /—\s*/g),
