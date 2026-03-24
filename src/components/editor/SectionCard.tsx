@@ -134,10 +134,14 @@ const SECTION_TAG_MAP: Record<string, string> = {
   promise: "[[PROMISE]]",
   act1: "[[ACT1]]",
   act2: "[[ACT2]]",
+  act2b: "[[ACT2B]]",
   act3: "[[ACT3]]",
   climax: "[[CLIMAX]]",
   insight: "[[INSIGHT]]",
   conclusion: "[[CONCLUSION]]",
+  transitions: "[[TRANSITIONS]]",
+  style_check: "[[STYLE CHECK]]",
+  risk_check: "[[RISK CHECK]]",
 };
 
 /** Reassemble sections back into a single script string, preserving tags for round-trip parsing */

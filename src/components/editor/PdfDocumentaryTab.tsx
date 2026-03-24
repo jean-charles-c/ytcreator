@@ -339,10 +339,14 @@ export default function PdfDocumentaryTab({
           promise: { label: "Promise", icon: "🎯" },
           act1: { label: "Act 1 — Setup", icon: "🏗️" },
           act2: { label: "Act 2 — Escalade", icon: "⚡" },
+          act2b: { label: "Act 2B — Contre-point", icon: "🔀" },
           act3: { label: "Act 3 — Impact", icon: "🔥" },
           climax: { label: "Climax", icon: "💡" },
           insight: { label: "Insight", icon: "🧠" },
           conclusion: { label: "Conclusion", icon: "🎬" },
+          transitions: { label: "Transitions", icon: "🔗" },
+          style_check: { label: "Style Check", icon: "🎨" },
+          risk_check: { label: "Risk Check", icon: "⚠️" },
         };
 
         const newSections: NarrativeSection[] = data.sections.map((s: { key: string; content: string }) => ({
@@ -366,7 +370,7 @@ export default function PdfDocumentaryTab({
 
         setScriptOpen(true);
         setOpenSections(new Set(["hook"]));
-        toast.success("Analyse narrative terminée — 7 sections identifiées");
+        toast.success(`Analyse narrative terminée — ${sanitized.filter(s => s.content.trim()).length} sections identifiées`);
       }
     } catch (e: any) {
       console.error("Script analysis error:", e);
