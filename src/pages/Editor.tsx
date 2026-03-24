@@ -1939,18 +1939,38 @@ export default function Editor() {
                                   </span>
                                 )}
                                 {(() => {
-                                  const filteredCount = sceneShots.filter((s) => s.guardrails === "safety_filtered").length;
-                                  const blockedCount = sceneShots.filter((s) => s.guardrails === "safety_blocked").length;
+                                  const blocked = sceneShots.filter((s) => s.guardrails === "safety_blocked");
+                                  const filtered = sceneShots.filter((s) => s.guardrails === "safety_filtered");
+                                  const makeShotClickHandler = (shotId: string) => (e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    setOpenSceneIds((prev) => prev.includes(scene.id) ? prev : [...prev, scene.id]);
+                                    setTimeout(() => {
+                                      const el = document.getElementById(`shot-${shotId}`);
+                                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                    }, 150);
+                                  };
+                                  const shotLabel = (s: Shot) => {
+                                    const idx = shots.findIndex((sh) => sh.id === s.id);
+                                    return String(idx + 1).padStart(4, "0");
+                                  };
                                   return (
                                     <>
-                                      {blockedCount > 0 && (
-                                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium" title={`${blockedCount} shot(s) bloqué(s) par le filtre de sécurité`}>
-                                          🛡 {blockedCount}
+                                      {blocked.length > 0 && (
+                                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium" title={`Shot(s) bloqué(s) par le filtre de sécurité: ${blocked.map(shotLabel).join(", ")}`}>
+                                          🛡 {blocked.map((s) => (
+                                            <button key={s.id} type="button" onClick={makeShotClickHandler(s.id)} className="underline underline-offset-2 hover:opacity-70 cursor-pointer ml-0.5">
+                                              {shotLabel(s)}
+                                            </button>
+                                          ))}
                                         </span>
                                       )}
-                                      {filteredCount > 0 && (
-                                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-500/10 border border-amber-500/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-amber-600 font-medium" title={`${filteredCount} shot(s) généré(s) avec un prompt adapté (safety)`}>
-                                          🛡 {filteredCount}
+                                      {filtered.length > 0 && (
+                                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-500/10 border border-amber-500/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-amber-600 font-medium" title={`Shot(s) généré(s) avec prompt adapté: ${filtered.map(shotLabel).join(", ")}`}>
+                                          🛡 {filtered.map((s) => (
+                                            <button key={s.id} type="button" onClick={makeShotClickHandler(s.id)} className="underline underline-offset-2 hover:opacity-70 cursor-pointer ml-0.5">
+                                              {shotLabel(s)}
+                                            </button>
+                                          ))}
                                         </span>
                                       )}
                                     </>
