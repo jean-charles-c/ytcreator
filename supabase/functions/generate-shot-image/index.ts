@@ -263,14 +263,14 @@ serve(async (req) => {
         .update({ guardrails: "safety_blocked" })
         .eq("id", shot_id);
 
-      console.error("Full AI response:", JSON.stringify(aiData).substring(0, 1000));
+      console.warn("Full AI response (safety blocked):", JSON.stringify(aiData).substring(0, 1000));
       return new Response(
         JSON.stringify({
-          error: "Image bloquée par le filtre de sécurité",
+          message: "Image bloquée par le filtre de sécurité",
           safety_blocked: true,
           shot_id,
         }),
-        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
