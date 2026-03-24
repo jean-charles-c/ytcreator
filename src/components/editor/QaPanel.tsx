@@ -37,7 +37,7 @@ const levelConfig = {
   },
 };
 
-export default function QaPanel({ projectId, manifest, onExportAllowedChange }: QaPanelProps) {
+export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange }: QaPanelProps) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
