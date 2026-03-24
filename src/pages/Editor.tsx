@@ -1950,8 +1950,8 @@ export default function Editor() {
                                     }, 150);
                                   };
                                   const shotLabel = (s: Shot) => {
-                                    const idx = shots.findIndex((sh) => sh.id === s.id);
-                                    return String(idx + 1).padStart(4, "0");
+                                    const localIdx = sceneShots.findIndex((sh) => sh.id === s.id);
+                                    return String(startIndex + localIdx + 1).padStart(4, "0");
                                   };
                                   return (
                                     <>
