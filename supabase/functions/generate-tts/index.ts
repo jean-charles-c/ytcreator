@@ -403,6 +403,253 @@ function computePcmGainAdjustments(pcmChunks: Uint8Array[], toleranceDb = 1.5): 
   return { rmsValues, dbfsValues, meanDbfs, adjustmentsDb, outlierIndices };
 }
 
+interface Linear16WavFormat {
+  sampleRate: number;
+  channels: number;
+  bitsPerSample: number;
+  dataOffset: number;
+  dataLength: number;
+}
+
+function readUint16Le(data: Uint8Array, offset: number): number {
+  return data[offset] | (data[offset + 1] << 8);
+}
+
+function readUint32Le(data: Uint8Array, offset: number): number {
+  return (
+    data[offset] |
+    (data[offset + 1] << 8) |
+    (data[offset + 2] << 16) |
+    (data[offset + 3] << 24)
+  ) >>> 0;
+}
+
+function writeAscii(target: Uint8Array, offset: number, value: string): void {
+  for (let i = 0; i < value.length; i++) target[offset + i] = value.charCodeAt(i);
+}
+
+function writeUint16Le(target: Uint8Array, offset: number, value: number): void {
+  target[offset] = value & 0xff;
+  target[offset + 1] = (value >> 8) & 0xff;
+}
+
+function writeUint32Le(target: Uint8Array, offset: number, value: number): void {
+  target[offset] = value & 0xff;
+  target[offset + 1] = (value >> 8) & 0xff;
+  target[offset + 2] = (value >> 16) & 0xff;
+  target[offset + 3] = (value >> 24) & 0xff;
+}
+
+function parseLinear16WavFormat(data: Uint8Array): Linear16WavFormat {
+  if (data.length < 44) {
+    throw new Error("Audio LINEAR16 invalide — en-tête WAV incomplet.");
+  }
+
+  const riff = String.fromCharCode(data[0], data[1], data[2], data[3]);
+  const wave = String.fromCharCode(data[8], data[9], data[10], data[11]);
+  if (riff !== "RIFF" || wave !== "WAVE") {
+    throw new Error("Audio LINEAR16 invalide — conteneur WAV attendu.");
+  }
+
+  let pos = 12;
+  let channels = 1;
+  let sampleRate = 24000;
+  let bitsPerSample = 16;
+  let dataOffset = -1;
+  let dataLength = 0;
+
+  while (pos + 8 <= data.length) {
+    const chunkId = String.fromCharCode(data[pos], data[pos + 1], data[pos + 2], data[pos + 3]);
+    const chunkSize = readUint32Le(data, pos + 4);
+    const chunkStart = pos + 8;
+
+    if (chunkId === "fmt ") {
+      const audioFormat = readUint16Le(data, chunkStart);
+      channels = readUint16Le(data, chunkStart + 2);
+      sampleRate = readUint32Le(data, chunkStart + 4);
+      bitsPerSample = readUint16Le(data, chunkStart + 14);
+      if (audioFormat !== 1) {
+        throw new Error("Audio LINEAR16 invalide — PCM requis.");
+      }
+    }
+
+    if (chunkId === "data") {
+      dataOffset = chunkStart;
+      dataLength = Math.min(chunkSize, data.length - chunkStart);
+      break;
+    }
+
+    pos = chunkStart + chunkSize + (chunkSize % 2);
+  }
+
+  if (dataOffset < 0 || dataLength <= 0) {
+    throw new Error("Audio LINEAR16 invalide — bloc data introuvable.");
+  }
+
+  if (bitsPerSample !== 16) {
+    throw new Error(`Audio LINEAR16 invalide — 16 bits attendus, reçu ${bitsPerSample}.`);
+  }
+
+  return { sampleRate, channels, bitsPerSample, dataOffset, dataLength };
+}
+
+function getLinear16WavDuration(data: Uint8Array): number {
+  const format = parseLinear16WavFormat(data);
+  const bytesPerSecond = format.sampleRate * format.channels * (format.bitsPerSample / 8);
+  return format.dataLength / bytesPerSecond;
+}
+
+function computeLinear16WavRms(wavData: Uint8Array, trimEndSeconds = 0): { rms: number; dbfs: number } {
+  const format = parseLinear16WavFormat(wavData);
+  const bytesPerSample = format.bitsPerSample / 8;
+  const trimBytes = Math.max(0, Math.round(trimEndSeconds * format.sampleRate * format.channels * bytesPerSample));
+  const endOffset = Math.max(format.dataOffset, format.dataOffset + format.dataLength - trimBytes);
+  const usableLength = endOffset - format.dataOffset;
+
+  if (usableLength < 4) return { rms: 0, dbfs: -96 };
+
+  let sumSq = 0;
+  let sampleCount = 0;
+
+  for (let i = format.dataOffset; i + 1 < endOffset; i += 2) {
+    let sample = wavData[i] | (wavData[i + 1] << 8);
+    if (sample >= 0x8000) sample -= 0x10000;
+    sumSq += sample * sample;
+    sampleCount++;
+  }
+
+  if (sampleCount < 10) return { rms: 0, dbfs: -96 };
+
+  const rms = Math.sqrt(sumSq / sampleCount);
+  const dbfs = rms > 0 ? 20 * Math.log10(rms / 32768) : -96;
+  return { rms, dbfs };
+}
+
+function computeExactShotGainAdjustments(dbfsValues: number[], toleranceDb = 0.8): {
+  targetDbfs: number;
+  adjustmentsDb: number[];
+  outlierIndices: number[];
+} {
+  const valid = dbfsValues.filter((value) => Number.isFinite(value) && value > -90).sort((a, b) => a - b);
+  if (valid.length <= 1) {
+    return {
+      targetDbfs: valid[0] ?? -96,
+      adjustmentsDb: new Array(dbfsValues.length).fill(0),
+      outlierIndices: [],
+    };
+  }
+
+  const middle = Math.floor(valid.length / 2);
+  const targetDbfs = valid.length % 2 === 0
+    ? (valid[middle - 1] + valid[middle]) / 2
+    : valid[middle];
+
+  const adjustmentsDb: number[] = [];
+  const outlierIndices: number[] = [];
+
+  for (let i = 0; i < dbfsValues.length; i++) {
+    const dbfs = dbfsValues[i];
+    if (!Number.isFinite(dbfs) || dbfs <= -90) {
+      adjustmentsDb.push(0);
+      continue;
+    }
+
+    const diff = targetDbfs - dbfs;
+    if (Math.abs(diff) <= toleranceDb) {
+      adjustmentsDb.push(0);
+      continue;
+    }
+
+    const clamped = Math.max(-4, Math.min(4, Math.round(diff * 10) / 10));
+    adjustmentsDb.push(clamped);
+    outlierIndices.push(i);
+  }
+
+  return { targetDbfs, adjustmentsDb, outlierIndices };
+}
+
+function applyGainToLinear16Wav(wavData: Uint8Array, gainDb: number): Uint8Array {
+  if (Math.abs(gainDb) < 0.05) return wavData;
+
+  const format = parseLinear16WavFormat(wavData);
+  const output = wavData.slice();
+  const gain = Math.pow(10, gainDb / 20);
+  const dataEnd = format.dataOffset + format.dataLength;
+
+  for (let i = format.dataOffset; i + 1 < dataEnd; i += 2) {
+    let sample = output[i] | (output[i + 1] << 8);
+    if (sample >= 0x8000) sample -= 0x10000;
+
+    const boosted = Math.max(-32768, Math.min(32767, Math.round(sample * gain)));
+    output[i] = boosted & 0xff;
+    output[i + 1] = (boosted >> 8) & 0xff;
+  }
+
+  return output;
+}
+
+function buildLinear16Wav(payload: Uint8Array, sampleRate: number, channels: number, bitsPerSample: number): Uint8Array {
+  const header = new Uint8Array(44);
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+
+  writeAscii(header, 0, "RIFF");
+  writeUint32Le(header, 4, 36 + payload.length);
+  writeAscii(header, 8, "WAVE");
+  writeAscii(header, 12, "fmt ");
+  writeUint32Le(header, 16, 16);
+  writeUint16Le(header, 20, 1);
+  writeUint16Le(header, 22, channels);
+  writeUint32Le(header, 24, sampleRate);
+  writeUint32Le(header, 28, byteRate);
+  writeUint16Le(header, 32, blockAlign);
+  writeUint16Le(header, 34, bitsPerSample);
+  writeAscii(header, 36, "data");
+  writeUint32Le(header, 40, payload.length);
+
+  const output = new Uint8Array(header.length + payload.length);
+  output.set(header, 0);
+  output.set(payload, header.length);
+  return output;
+}
+
+function concatLinear16Wavs(wavChunks: Uint8Array[]): { wav: Uint8Array; durationSeconds: number } {
+  if (wavChunks.length === 0) {
+    return { wav: buildLinear16Wav(new Uint8Array(0), 24000, 1, 16), durationSeconds: 0 };
+  }
+
+  const firstFormat = parseLinear16WavFormat(wavChunks[0]);
+  const payloads = wavChunks.map((chunk, index) => {
+    const format = parseLinear16WavFormat(chunk);
+    if (
+      format.sampleRate !== firstFormat.sampleRate ||
+      format.channels !== firstFormat.channels ||
+      format.bitsPerSample !== firstFormat.bitsPerSample
+    ) {
+      throw new Error(`Audio exact invalide — format WAV incohérent au segment ${index + 1}.`);
+    }
+    return chunk.slice(format.dataOffset, format.dataOffset + format.dataLength);
+  });
+
+  const totalPayloadLength = payloads.reduce((sum, payload) => sum + payload.length, 0);
+  const combinedPayload = new Uint8Array(totalPayloadLength);
+  let offset = 0;
+  for (const payload of payloads) {
+    combinedPayload.set(payload, offset);
+    offset += payload.length;
+  }
+
+  const wav = buildLinear16Wav(
+    combinedPayload,
+    firstFormat.sampleRate,
+    firstFormat.channels,
+    firstFormat.bitsPerSample
+  );
+  const bytesPerSecond = firstFormat.sampleRate * firstFormat.channels * (firstFormat.bitsPerSample / 8);
+
+  return { wav, durationSeconds: combinedPayload.length / bytesPerSecond };
+}
+
 function endsWithSentenceTerminal(text: string): boolean {
   return /[.!?]["')\]]*\s*$/.test(text.trim());
 }
@@ -467,6 +714,70 @@ function buildMarkedSsml(
 
   const endMark = `<mark name="__end"/>`;
   return `<speak>${joined}${endMark}</speak>`;
+}
+
+function computeShotBoundaryPauseMs(
+  currentText: string,
+  nextShot: { text: string; isNewScene?: boolean } | undefined,
+  pauseAfterSentences: number,
+  pauseBetweenParagraphs: number,
+  dynamicPauseEnabled: boolean,
+  dynamicPauseVariation: number
+): number {
+  if (!nextShot) return 0;
+
+  const isSceneBreak = nextShot.isNewScene === true;
+  const endsSentence = endsWithSentenceTerminal(currentText);
+  const basePause = isSceneBreak ? pauseBetweenParagraphs : pauseAfterSentences;
+
+  if (!isSceneBreak && !endsSentence) {
+    return SHOT_BOUNDARY_BREAK_MS;
+  }
+
+  if (basePause <= 0) return 0;
+
+  let pause = jitterPause(basePause, dynamicPauseVariation, dynamicPauseEnabled);
+  if (!isSceneBreak && shouldReducePause(currentText, nextShot.text)) {
+    pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
+  }
+
+  return pause;
+}
+
+function buildExactShotSsml(
+  shot: { text: string; isNewScene?: boolean },
+  nextShot: { text: string; isNewScene?: boolean } | undefined,
+  pauseAfterSentences: number,
+  pauseBetweenParagraphs: number,
+  sentenceStartBoost: number,
+  sentenceEndSlow: number,
+  commaPauseMs = 0,
+  dynamicPauseEnabled = false,
+  dynamicPauseVariation = 0,
+  emphasisBoost = 0
+): { ssml: string; pauseMs: number } {
+  let processed = escapeXml(shot.text.trim());
+
+  if (sentenceStartBoost > 0 || sentenceEndSlow > 0) {
+    processed = processSentenceProsody(processed, sentenceStartBoost, sentenceEndSlow);
+  }
+
+  processed = applyEmphasis(processed, emphasisBoost);
+  if (commaPauseMs > 0) {
+    processed = injectCommaPauses(processed, commaPauseMs);
+  }
+
+  const pauseMs = computeShotBoundaryPauseMs(
+    shot.text,
+    nextShot,
+    pauseAfterSentences,
+    pauseBetweenParagraphs,
+    dynamicPauseEnabled,
+    dynamicPauseVariation
+  );
+
+  const breakTag = pauseMs > 0 ? `<break time="${pauseMs}ms"/>` : "";
+  return { ssml: `<speak>${processed}${breakTag}</speak>`, pauseMs };
 }
 
 function processSentenceProsody(sentence: string, startBoostPct: number, endSlowPct: number): string {
@@ -1061,122 +1372,114 @@ serve(async (req) => {
     let cumulativeOffset = 0;
 
     if (useMarkedMode) {
-      // ── Marked mode: SSML with <mark> tags for precise shot timing ──
-      console.log(`Generating TTS with ${shotSentences!.length} shot marks`);
-      // Log scene breaks for debugging paragraph pauses
+      // ── Exact mode: one LINEAR16 render per shot, then sample-accurate concatenation ──
+      console.log(`Generating exact per-shot TTS with ${shotSentences!.length} shots`);
+
       const sceneBreakIndices = shotSentences!
         .map((s, i) => s.isNewScene ? i : -1)
         .filter(i => i >= 0);
       console.log(`Scene/paragraph breaks at indices: [${sceneBreakIndices.join(",")}] (para pause=${pauseBetweenParagraphs}ms, sent pause=${pauseAfterSentences}ms)`);
-      const markedSsml = buildMarkedSsml(
-        shotSentences!,
-        pauseAfterSentences,
-        pauseBetweenParagraphs,
-        sentenceStartBoost,
-        sentenceEndSlow,
-        pauseAfterComma,
-        dynamicPauseEnabled,
-        dynamicPauseVariation,
-        mod.emphasisBoost
+
+      const exactShotPlans = shotSentences!.map((shot, shotIndex) => {
+        const built = buildExactShotSsml(
+          shot,
+          shotSentences![shotIndex + 1],
+          pauseAfterSentences,
+          pauseBetweenParagraphs,
+          sentenceStartBoost,
+          sentenceEndSlow,
+          pauseAfterComma,
+          dynamicPauseEnabled,
+          dynamicPauseVariation,
+          mod.emphasisBoost
+        );
+
+        return {
+          shotId: shot.id,
+          shotIndex,
+          pauseMs: built.pauseMs,
+          ssml: isRestrictedVoice ? stripEmphasisTags(built.ssml) : built.ssml,
+        };
+      });
+
+      const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
+      const EXACT_BATCH_SIZE = 6;
+      const exactShotResults: {
+        shotId: string;
+        shotIndex: number;
+        pauseMs: number;
+        wav: Uint8Array;
+        duration: number;
+        measuredDbfs: number;
+      }[] = [];
+
+      for (let start = 0; start < exactShotPlans.length; start += EXACT_BATCH_SIZE) {
+        const batch = exactShotPlans.slice(start, start + EXACT_BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (plan) => {
+            const result = await callGoogleTTS(plan.ssml, GOOGLE_TTS_API_KEY, voice, linear16Config, true, false);
+            const wav = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+            const duration = getLinear16WavDuration(wav);
+            const measurement = computeLinear16WavRms(wav, plan.pauseMs / 1000);
+
+            return {
+              shotId: plan.shotId,
+              shotIndex: plan.shotIndex,
+              pauseMs: plan.pauseMs,
+              wav,
+              duration,
+              measuredDbfs: measurement.dbfs,
+            };
+          })
+        );
+
+        exactShotResults.push(...batchResults);
+        console.log(`Rendered exact-shot batch ${Math.floor(start / EXACT_BATCH_SIZE) + 1}/${Math.ceil(exactShotPlans.length / EXACT_BATCH_SIZE)}`);
+      }
+
+      exactShotResults.sort((a, b) => a.shotIndex - b.shotIndex);
+
+      if (exactShotResults.some((result) => !(result.duration > 0))) {
+        return new Response(
+          JSON.stringify({
+            error: "Synchronisation bloquée — au moins un shot a produit une durée audio invalide. L'audio n'a pas été sauvegardé.",
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const volumeAnalysis = computeExactShotGainAdjustments(
+        exactShotResults.map((result) => result.measuredDbfs),
+        0.8
       );
+      console.log(`Exact shot volume analysis: dBFS=[${exactShotResults.map((result) => result.measuredDbfs.toFixed(1)).join(",")}], target=${volumeAnalysis.targetDbfs.toFixed(1)}dB, outliers=[${volumeAnalysis.outlierIndices.join(",")}], adjustments=[${volumeAnalysis.adjustmentsDb.map((value) => value.toFixed(1)).join(",")}]`);
 
-      const chunks = chunkMarkedSsml(markedSsml, MAX_CHARS);
-      console.log(`Split into ${chunks.length} chunks, total shots: ${shotSentences!.length}`);
+      const normalizedShotBuffers = exactShotResults.map((result, index) =>
+        applyGainToLinear16Wav(result.wav, volumeAnalysis.adjustmentsDb[index])
+      );
+      const exactCombinedAudio = concatLinear16Wavs(normalizedShotBuffers);
+      audioBuffers = [exactCombinedAudio.wav];
 
-      // Build index map: shotId -> sequential index in shotSentences
-      const shotIdToIndex = new Map<string, number>();
-      shotSentences!.forEach((s, i) => shotIdToIndex.set(s.id, i));
-
-      // Helper to generate a single chunk (MP3) and extract timepoints
-      async function generateChunkMp3(
-        chunkSsml: string,
-        chunkShotIds: string[],
-        chunkIndex: number,
-        volumeGainOffset = 0
-      ): Promise<{ raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }> {
-        let ssml = chunkSsml;
-        if (!isRestrictedVoice) ssml = applyVolumeEqualization(ssml, volumeGainOffset);
-        if (isRestrictedVoice) ssml = stripEmphasisTags(ssml);
-        const suffix = volumeGainOffset !== 0 ? ` (gainOffset=${volumeGainOffset.toFixed(1)}dB)` : "";
-        console.log(`Chunk ${chunkIndex + 1}${suffix}: shotIds=[${chunkShotIds.map(id => id.slice(0, 8)).join(",")}], ${ssml.length} chars`);
-
-        const result = await callGoogleTTS(ssml, GOOGLE_TTS_API_KEY, voice, audioConfig, true, true);
-        const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-
-        const chunkTimepoints: { name: string; time: number }[] = [];
-        if (result.timepoints) {
-          for (const tp of result.timepoints) {
-            chunkTimepoints.push({ name: tp.markName, time: tp.timeSeconds });
-          }
-        }
-
-        const duration = parseMp3Duration(raw);
-        return { raw, timepoints: chunkTimepoints, duration };
-      }
-
-      // Helper to generate a chunk as LINEAR16 (for volume analysis only)
-      async function generateChunkLinear16(
-        chunkSsml: string,
-        chunkIndex: number
-      ): Promise<Uint8Array> {
-        let ssml = chunkSsml;
-        if (!isRestrictedVoice) ssml = applyVolumeEqualization(ssml, 0);
-        if (isRestrictedVoice) ssml = stripEmphasisTags(ssml);
-        const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
-        const result = await callGoogleTTS(ssml, GOOGLE_TTS_API_KEY, voice, linear16Config, true, false);
-        return Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-      }
-
-      // Cache per-chunk results
-      interface ChunkGenResult { raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }
-      const chunkGenResults: ChunkGenResult[] = [];
-
-      // ── Volume normalization: LINEAR16 pre-pass for accurate RMS measurement ──
-      let perChunkGainDb: number[] = new Array(chunks.length).fill(0);
-
-      if (chunks.length > 1) {
-        console.log(`Volume pre-pass: generating ${chunks.length} chunks as LINEAR16 for RMS analysis…`);
-        const pcmChunks: Uint8Array[] = [];
-        for (let ci = 0; ci < chunks.length; ci++) {
-          const pcm = await generateChunkLinear16(chunks[ci].ssml, ci);
-          pcmChunks.push(pcm);
-        }
-
-        const analysis = computePcmGainAdjustments(pcmChunks, 1.5);
-        console.log(`PCM volume analysis: dBFS=[${analysis.dbfsValues.map(d => d.toFixed(1)).join(",")}], mean=${analysis.meanDbfs.toFixed(1)}dB, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
-        perChunkGainDb = analysis.adjustmentsDb;
-      }
-
-      // ── Generate final MP3 chunks with per-chunk gain corrections ──
-      for (let ci = 0; ci < chunks.length; ci++) {
-        const chunk = chunks[ci];
-        const gen = await generateChunkMp3(chunk.ssml, chunk.shotIds, ci, perChunkGainDb[ci]);
-        chunkGenResults.push(gen);
-        audioBuffers.push(gen.raw);
-
-        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(gen.timepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
-        console.log(`Chunk ${ci + 1} MP3 duration: ${gen.duration.toFixed(3)}s`);
-      }
-
-      // ── Rebuild timepoints from cached chunk results with correct cumulative offsets ──
       cumulativeOffset = 0;
-      for (let ci = 0; ci < chunkGenResults.length; ci++) {
-        const gen = chunkGenResults[ci];
-        // Recompute duration from actual buffer (may have been replaced)
-        const duration = parseMp3Duration(audioBuffers[ci]);
-
-        for (const tp of gen.timepoints) {
-          if (tp.name === "__chunk_end" || tp.name === "__end") continue;
-          const shotIndex = shotIdToIndex.get(tp.name) ?? -1;
-          if (shotIndex >= 0) {
-            allTimepoints.push({ shotIndex, timeSeconds: tp.time + cumulativeOffset, shotId: tp.name });
-          }
-        }
-
-        cumulativeOffset += duration;
+      for (const result of exactShotResults) {
+        allTimepoints.push({
+          shotIndex: result.shotIndex,
+          timeSeconds: cumulativeOffset,
+          shotId: result.shotId,
+        });
+        cumulativeOffset += result.duration;
       }
 
-      console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
+      if (Math.abs(cumulativeOffset - exactCombinedAudio.durationSeconds) > 0.02) {
+        return new Response(
+          JSON.stringify({
+            error: "Synchronisation bloquée — la durée totale concaténée ne correspond pas aux durées exactes des shots. L'audio n'a pas été sauvegardé.",
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Exact shot sync locked: ${allTimepoints.length} timepoints, totalDuration=${cumulativeOffset.toFixed(3)}s`);
       console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
 
       // ── Post-generation strict validation: all shots must have a timepoint ──
@@ -1282,17 +1585,18 @@ serve(async (req) => {
 
     // Generate file name
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const exactAudioFormat = allTimepoints.length > 0 ? "wav" : "mp3";
     const sanitized = body.customFileName
       ? body.customFileName.replace(/[^a-zA-Z0-9_\-\s]/g, "").replace(/\s+/g, "_").slice(0, 80)
       : null;
-    const fileName = sanitized ? `${sanitized}.mp3` : `vo_${timestamp}.mp3`;
+    const fileName = sanitized ? `${sanitized}.${exactAudioFormat}` : `vo_${timestamp}.${exactAudioFormat}`;
     const filePath = `${user.id}/${projectId}/${fileName}`;
 
     // Upload to storage
     const { error: uploadError } = await supabaseAdmin.storage
       .from("vo-audio")
       .upload(filePath, combined, {
-        contentType: "audio/mpeg",
+        contentType: exactAudioFormat === "wav" ? "audio/wav" : "audio/mpeg",
         upsert: false,
       });
 
