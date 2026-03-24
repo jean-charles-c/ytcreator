@@ -394,8 +394,6 @@ export async function exportTimelineToXmlZip(
     exportSegments = segments;
   }
 
-  // Build segment index map (original index in segments array → export index)
-  const segmentOriginalIndices = exportSegments.map((seg) => segments.indexOf(seg));
 
   const imageFileNames = new Map<number, string>();
 
