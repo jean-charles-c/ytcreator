@@ -203,8 +203,8 @@ Images must be photorealistic historical documentary style. Never illustration o
               content: `Regenerate a new visual shot for this specific text fragment from a documentary narration.
 
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
-Scene: "${scene.title}" — Visual intention: ${scene.visual_intention || "N/A"}
-${contextBlock}
+Scene: "${scene.title}"
+${contextBlock}${visualIntentionNote}${continuityNote}
 
 MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with: "${opValidation.contextAnchor}".
 ${opValidation.relevantCharacters ? `Characters relevant to this fragment: ${opValidation.relevantCharacters}` : ""}
@@ -213,9 +213,9 @@ Fragment to illustrate: "${sourceText}"
 ${needsTranslation ? `\nThe narration is in "${scriptLang}" (NOT French). You MUST provide "source_sentence_fr": a faithful French translation. NON-NEGOTIABLE.` : ""}
 
 PREVIOUS VERSION TO AVOID (do NOT produce something visually similar):
-- Previous shot type: ${shot.shot_type}
+- Previous shot type: ${shot.shot_type} (${cameraMap[shot.shot_type] || "Unknown framing"})
 - Previous prompt: "${(shot.prompt_export || shot.description || "").slice(0, 200)}"
-${avoidCamerasNote}${neighborPrompt}
+${avoidCamerasNote}${avoidCameraDescriptions.length > 0 ? `\nCamera framings to avoid (English): ${avoidCameraDescriptions.join(", ")}` : ""}${neighborPrompt}
 
 CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting, and composition than the previous version AND the neighbor shots. The new prompt must produce a visually distinct image.`,
             },
