@@ -258,6 +258,7 @@ export default function ChapterCollapse({
     const variantsMap = new Map<string, ChapterTitleVariant[]>();
     const selectedToneMap = new Map<string, string>();
     let errorCount = 0;
+    const skippedLabels: string[] = [];
 
     for (let i = 0; i < chaptersToProcess.length; i++) {
       const ch = chaptersToProcess[i];
@@ -265,6 +266,7 @@ export default function ChapterCollapse({
 
       if (!ch.sourceText?.trim()) {
         console.warn(`Skipping chapter ${ch.id}: no sourceText`);
+        skippedLabels.push(ch.title);
         errorCount++;
         continue;
       }
@@ -335,7 +337,8 @@ export default function ChapterCollapse({
     setGeneratingId(null);
     setBatchGenerating(false);
     if (errorCount === 0) toast.success(`${chaptersToProcess.length} chapitres générés !`);
-    else if (errorCount < chaptersToProcess.length) toast.warning(`${errorCount} erreur(s) sur ${chaptersToProcess.length}`);
+    else if (skippedLabels.length > 0 && errorCount === skippedLabels.length) toast.warning(`Chapitres ignorés (texte vide) : ${skippedLabels.join(", ")}`);
+    else if (errorCount < chaptersToProcess.length) toast.warning(`${errorCount} erreur(s) sur ${chaptersToProcess.length}${skippedLabels.length > 0 ? ` — ignorés : ${skippedLabels.join(", ")}` : ""}`);
     else toast.error("Aucun titre généré — vérifiez que le script contient du texte.");
   }, [chapters, batchTone, scriptLanguage, onChapterStateChange, chapterState?.method]);
 
