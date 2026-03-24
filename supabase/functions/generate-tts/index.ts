@@ -1283,6 +1283,10 @@ serve(async (req) => {
 
       for (let ci = 0; ci < chunks.length; ci++) {
         let chunk = chunks[ci];
+        // Apply volume equalization for consistent level across chunks
+        if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
+          chunk = applyVolumeEqualization(chunk);
+        }
         if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
         const chunkIsSsml = chunk.startsWith("<speak>");
         console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
@@ -1303,6 +1307,15 @@ serve(async (req) => {
           }
           throw error;
         }
+      }
+    }
+
+    // ── Volume analysis across chunks ──
+    if (audioBuffers.length > 1) {
+      const volumeAnalysis = analyzeChunkVolumes(audioBuffers);
+      console.log(`Volume analysis: chunks=${audioBuffers.length}, RMS values=[${volumeAnalysis.rmsValues.map(v => v.toFixed(2)).join(",")}], mean=${volumeAnalysis.meanRms.toFixed(2)}, maxDeviation=${(volumeAnalysis.maxDeviation * 100).toFixed(1)}%`);
+      if (volumeAnalysis.quietChunkIndices.length > 0) {
+        console.warn(`⚠ Quiet chunks detected: [${volumeAnalysis.quietChunkIndices.join(",")}] — volume >20% below average`);
       }
     }
 
