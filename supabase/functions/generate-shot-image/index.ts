@@ -110,7 +110,12 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing auth header");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -123,12 +128,17 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseUser.auth.getUser();
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
 
-    if (userError || !user) throw new Error("Unauthorized");
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const user = { id: claimsData.claims.sub };
 
     const { shot_id, model, aspect_ratio } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
