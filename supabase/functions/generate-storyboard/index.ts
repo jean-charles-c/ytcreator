@@ -395,6 +395,18 @@ const extractMessageText = (content: unknown): string => {
     .trim();
 };
 
+/**
+ * Detects corrupted French accents where é/è/ê/ë were replaced by apostrophes.
+ * Pattern: word-internal apostrophe not preceded by common French contractions (l', d', n', s', j', qu', c').
+ */
+const hasCorruptedAccents = (text: string): boolean => {
+  // Match word'letter patterns that are NOT valid French contractions
+  const suspiciousPattern = /(?<![ldnsjcLDNSJC])\b\w+'[a-zA-Z]/g;
+  const matches = text.match(suspiciousPattern) || [];
+  // If more than 2 suspicious patterns, likely corrupted
+  return matches.length > 2;
+};
+
 const parseTranslationToolOutput = (
   payload: any,
 ): Array<{ source_sentence: string; source_sentence_fr: string }> => {
@@ -532,9 +544,14 @@ const translateSegmentsToFrench = async (
 
       for (const item of parsedTranslations) {
         const source = normalizeNarrationText(item?.source_sentence || "");
-        const translation = typeof item?.source_sentence_fr === "string"
+        let translation = typeof item?.source_sentence_fr === "string"
           ? item.source_sentence_fr.trim()
           : "";
+        // Detect corrupted accents: if French text has words like "communaut's" where accent was replaced by apostrophe
+        if (translation && hasCorruptedAccents(translation)) {
+          console.warn("Corrupted accents detected in translation, skipping:", translation.slice(0, 80));
+          translation = "";
+        }
         if (source && translation) {
           translations.set(normalizeTranslationKey(source), translation);
         }
