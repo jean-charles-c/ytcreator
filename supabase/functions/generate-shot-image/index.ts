@@ -204,7 +204,14 @@ serve(async (req) => {
 
       aiData = await aiResponse.json();
       const msg = aiData.choices?.[0]?.message;
-      console.log("AI attempt", attempt, "- keys:", JSON.stringify(Object.keys(msg || {})));
+      const finishReason = aiData.choices?.[0]?.native_finish_reason || aiData.choices?.[0]?.finish_reason;
+      console.log("AI attempt", attempt, "- keys:", JSON.stringify(Object.keys(msg || {})), "- finish:", finishReason);
+
+      // Detect safety block — no point retrying
+      if (finishReason === "IMAGE_SAFETY") {
+        console.warn("Image blocked by safety filter, skipping retries");
+        throw new Error("Image bloquée par le filtre de sécurité du modèle. Essayez de reformuler le prompt.");
+      }
 
       // Try multiple known response formats
       imageData = msg?.images?.[0]?.image_url?.url;
