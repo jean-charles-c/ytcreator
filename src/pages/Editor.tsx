@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
@@ -178,6 +178,15 @@ export default function Editor() {
   const [qaExportAllowed, setQaExportAllowed] = useState(true);
   const [qaCounts, setQaCounts] = useState<{ errors: number; warnings: number }>({ errors: 0, warnings: 0 });
   const storyAbortRef = useRef<AbortController | null>(null);
+
+  const storyboardManifest = useMemo(
+    () => projectId ? buildManifest(projectId, scenes, shots) : null,
+    [projectId, scenes, shots],
+  );
+
+  const handleQaReportChange = useCallback((counts: { errors: number; warnings: number }) => {
+    setQaCounts((prev) => (prev.errors === counts.errors && prev.warnings === counts.warnings ? prev : counts));
+  }, []);
 
   // Derive loading states from background tasks
   const segmenting = projectId ? getTask(projectId, "segmentation")?.status === "running" : false;
@@ -1811,7 +1820,7 @@ export default function Editor() {
                 })()}
                 <div className="space-y-2">
                   {(() => {
-                    const manifest = buildManifest(projectId!, scenes, shots);
+                    const manifest = storyboardManifest ?? buildManifest(projectId!, scenes, shots);
                     const issues = validateManifest(manifest);
                     const errorIssues = issues.filter((i) => i.level === "error");
                     const warningIssues = issues.filter((i) => i.level === "warning");
@@ -2118,9 +2127,9 @@ export default function Editor() {
                 <div className="mt-3">
                   <QaPanel
                     projectId={projectId!}
-                    manifest={buildManifest(projectId!, scenes, shots)}
+                    manifest={storyboardManifest!}
                     onExportAllowedChange={setQaExportAllowed}
-                    onReportChange={setQaCounts}
+                    onReportChange={handleQaReportChange}
                   />
                 </div>
               </details>
@@ -2131,7 +2140,7 @@ export default function Editor() {
                   Manifest Timing (synchronisation audio/image)
                 </summary>
                 <div className="mt-3">
-                  <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
+                  <ManifestTimingPanel projectId={projectId!} manifest={storyboardManifest!} />
                 </div>
               </details>
 
