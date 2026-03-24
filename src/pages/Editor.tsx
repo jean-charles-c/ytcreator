@@ -1938,6 +1938,24 @@ export default function Editor() {
                                     ⚠
                                   </span>
                                 )}
+                                {(() => {
+                                  const filteredCount = sceneShots.filter((s) => s.guardrails === "safety_filtered").length;
+                                  const blockedCount = sceneShots.filter((s) => s.guardrails === "safety_blocked").length;
+                                  return (
+                                    <>
+                                      {blockedCount > 0 && (
+                                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium" title={`${blockedCount} shot(s) bloqué(s) par le filtre de sécurité`}>
+                                          🛡 {blockedCount}
+                                        </span>
+                                      )}
+                                      {filteredCount > 0 && (
+                                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-500/10 border border-amber-500/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-amber-600 font-medium" title={`${filteredCount} shot(s) généré(s) avec un prompt adapté (safety)`}>
+                                          🛡 {filteredCount}
+                                        </span>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                                 <span className="ml-auto shrink-0 text-[10px] sm:text-xs bg-secondary px-1.5 sm:px-2 py-0.5 rounded-full hidden sm:inline-flex">
                                   {sceneShots.length > 0
                                     ? <>
