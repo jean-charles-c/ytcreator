@@ -1837,24 +1837,30 @@ export default function Editor() {
                         }
                       }
                     }
-                    // From QA report (has sceneOrder + shotOrder → map to shot ID)
+                    // From QA report (shotOrder = global shot index across all scenes)
                     if (qaIssues.length > 0) {
-                      // Build sceneOrder→scene map, then find shot by order
-                      const sceneByOrder = new Map(scenes.map((s) => [s.scene_order, s]));
+                      // Build global index → shot ID map
+                      const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+                      const globalShotMap = new Map<number, string>();
+                      let gIdx = 1;
+                      for (const sc of sortedScenes) {
+                        const scShots = shots
+                          .filter((sh) => sh.scene_id === sc.id)
+                          .sort((a, b) => a.shot_order - b.shot_order);
+                        for (const sh of scShots) {
+                          globalShotMap.set(gIdx, sh.id);
+                          gIdx++;
+                        }
+                      }
                       for (const qi of qaIssues) {
-                        if (qi.sceneOrder != null && qi.shotOrder != null) {
-                          const scene = sceneByOrder.get(qi.sceneOrder);
-                          if (!scene) continue;
-                          const sceneShots = shots
-                            .filter((sh) => sh.scene_id === scene.id)
-                            .sort((a, b) => a.shot_order - b.shot_order);
-                          const shot = sceneShots.find((sh) => sh.shot_order === qi.shotOrder);
-                          if (!shot) continue;
+                        if (qi.shotOrder != null) {
+                          const shotId = globalShotMap.get(qi.shotOrder);
+                          if (!shotId) continue;
                           const level = qi.level === "critical" ? "error" : qi.level === "warning" ? "warning" : undefined;
                           if (!level) continue;
-                          const existing = shotIssueMap.get(shot.id);
+                          const existing = shotIssueMap.get(shotId);
                           if (!existing || (level === "error" && existing === "warning")) {
-                            shotIssueMap.set(shot.id, level);
+                            shotIssueMap.set(shotId, level);
                           }
                         }
                       }
