@@ -1815,6 +1815,16 @@ export default function Editor() {
                     const issues = validateManifest(manifest);
                     const errorIssues = issues.filter((i) => i.level === "error");
                     const warningIssues = issues.filter((i) => i.level === "warning");
+                    // Build shot → issue level map for warning highlights
+                    const shotIssueMap = new Map<string, "error" | "warning">();
+                    for (const issue of issues) {
+                      if (issue.shotId) {
+                        const existing = shotIssueMap.get(issue.shotId);
+                        if (!existing || (issue.level === "error" && existing === "warning")) {
+                          shotIssueMap.set(issue.shotId, issue.level);
+                        }
+                      }
+                    }
 
                     let globalShotIndex = 1;
                     return (
