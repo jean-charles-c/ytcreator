@@ -186,16 +186,22 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
         return (
           <>
             {otherGroups.length > 0 && (
-              <div className="rounded border border-border bg-secondary/30 p-2 space-y-2 max-h-64 overflow-y-auto">
-                {otherGroups.map(([cat, catIssues]) => (
-                  <div key={cat} className="space-y-1">
-                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-                      {categoryLabels[cat as QaCategory] ?? cat}
-                    </span>
-                    {renderIssueRows(catIssues)}
-                  </div>
-                ))}
-              </div>
+              <details className="rounded border border-border bg-card">
+                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
+                  <ChevronDown className="h-3 w-3" />
+                  Structure ({otherGroups.reduce((sum, [, issues]) => sum + issues.length, 0)} alerte{otherGroups.reduce((sum, [, issues]) => sum + issues.length, 0) > 1 ? "s" : ""})
+                </summary>
+                <div className="p-2 space-y-2 max-h-64 overflow-y-auto">
+                  {otherGroups.map(([cat, catIssues]) => (
+                    <div key={cat} className="space-y-1">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        {categoryLabels[cat as QaCategory] ?? cat}
+                      </span>
+                      {renderIssueRows(catIssues)}
+                    </div>
+                  ))}
+                </div>
+              </details>
             )}
 
             {timingIssues.length > 0 && (
