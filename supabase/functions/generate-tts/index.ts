@@ -567,6 +567,105 @@ function computeExactShotGainAdjustments(dbfsValues: number[], toleranceDb = 0.8
   return { targetDbfs, adjustmentsDb, outlierIndices };
 }
 
+/**
+ * Per-shot PCM normalization: measure RMS of each shot segment in the
+ * combined WAV using timepoints, then apply per-shot gain to bring all
+ * shots to the same perceived loudness. This fixes intra-chunk volume
+ * variations that chunk-level normalization cannot address.
+ */
+function normalizePerShotVolume(
+  wavData: Uint8Array,
+  timepoints: { shotId: string; timeSeconds: number }[],
+  totalDuration: number,
+  toleranceDb = 1.2
+): { wav: Uint8Array; correctedCount: number; maxDeltaDb: number } {
+  if (timepoints.length < 2) return { wav: wavData, correctedCount: 0, maxDeltaDb: 0 };
+
+  const format = parseLinear16WavFormat(wavData);
+  const bytesPerSample = format.bitsPerSample / 8;
+  const bytesPerSecond = format.sampleRate * format.channels * bytesPerSample;
+
+  // Build shot segments: start/end byte offsets in data section
+  const segments: { startByte: number; endByte: number; dbfs: number }[] = [];
+  for (let i = 0; i < timepoints.length; i++) {
+    const startSec = timepoints[i].timeSeconds;
+    const endSec = i + 1 < timepoints.length ? timepoints[i + 1].timeSeconds : totalDuration;
+    const segDuration = endSec - startSec;
+    if (segDuration < 0.05) { // skip very short segments
+      segments.push({ startByte: 0, endByte: 0, dbfs: -96 });
+      continue;
+    }
+
+    const startByte = format.dataOffset + Math.round(startSec * bytesPerSecond);
+    const endByte = Math.min(
+      format.dataOffset + format.dataLength,
+      format.dataOffset + Math.round(endSec * bytesPerSecond)
+    );
+    // Align to 2-byte boundary
+    const alignedStart = startByte - (startByte % 2);
+    const alignedEnd = endByte - (endByte % 2);
+
+    // Measure RMS of this segment (skip trailing 50ms silence/pause)
+    const trimBytes = Math.min(
+      Math.round(0.05 * bytesPerSecond),
+      Math.max(0, (alignedEnd - alignedStart) / 4)
+    );
+    const measureEnd = alignedEnd - trimBytes;
+    const sampleCount = Math.floor((measureEnd - alignedStart) / 2);
+
+    if (sampleCount < 20) {
+      segments.push({ startByte: alignedStart, endByte: alignedEnd, dbfs: -96 });
+      continue;
+    }
+
+    let sumSq = 0;
+    for (let j = alignedStart; j + 1 < measureEnd; j += 2) {
+      let sample = wavData[j] | (wavData[j + 1] << 8);
+      if (sample >= 0x8000) sample -= 0x10000;
+      sumSq += sample * sample;
+    }
+    const rms = Math.sqrt(sumSq / sampleCount);
+    const dbfs = rms > 0 ? 20 * Math.log10(rms / 32768) : -96;
+    segments.push({ startByte: alignedStart, endByte: alignedEnd, dbfs });
+  }
+
+  // Compute median of valid dBFS values
+  const validDbfs = segments.map(s => s.dbfs).filter(d => d > -90).sort((a, b) => a - b);
+  if (validDbfs.length < 3) return { wav: wavData, correctedCount: 0, maxDeltaDb: 0 };
+
+  const mid = Math.floor(validDbfs.length / 2);
+  const targetDbfs = validDbfs.length % 2 === 0
+    ? (validDbfs[mid - 1] + validDbfs[mid]) / 2
+    : validDbfs[mid];
+
+  // Apply per-shot gain correction
+  const output = wavData.slice();
+  let correctedCount = 0;
+  let maxDeltaDb = 0;
+
+  for (const seg of segments) {
+    if (seg.dbfs <= -90 || seg.endByte <= seg.startByte) continue;
+    const diff = targetDbfs - seg.dbfs;
+    if (Math.abs(diff) > Math.abs(maxDeltaDb)) maxDeltaDb = diff;
+    if (Math.abs(diff) <= toleranceDb) continue;
+
+    // Clamp gain to avoid distortion
+    const gainDb = Math.max(-6, Math.min(6, diff));
+    const gain = Math.pow(10, gainDb / 20);
+    correctedCount++;
+
+    for (let j = seg.startByte; j + 1 < seg.endByte; j += 2) {
+      let sample = output[j] | (output[j + 1] << 8);
+      if (sample >= 0x8000) sample -= 0x10000;
+      const boosted = Math.max(-32768, Math.min(32767, Math.round(sample * gain)));
+      output[j] = boosted & 0xff;
+      output[j + 1] = (boosted >> 8) & 0xff;
+    }
+  }
+
+  return { wav: output, correctedCount, maxDeltaDb };
+}
+
 function applyGainToLinear16Wav(wavData: Uint8Array, gainDb: number): Uint8Array {
   if (Math.abs(gainDb) < 0.05) return wavData;
 
@@ -1488,8 +1587,20 @@ serve(async (req) => {
 
       // Concatenate all WAV chunks sample-accurately
       const exactCombinedAudio = concatLinear16Wavs(normalizedChunkWavs);
-      audioBuffers = [exactCombinedAudio.wav];
       cumulativeOffset = exactCombinedAudio.durationSeconds;
+
+      // ── Per-shot volume normalization (fixes intra-chunk variations) ──
+      const shotTimepointsForNorm = allTimepoints
+        .filter(tp => tp.shotIndex >= 0)
+        .map(tp => ({ shotId: tp.shotId, timeSeconds: tp.timeSeconds }));
+      const perShotNorm = normalizePerShotVolume(
+        exactCombinedAudio.wav,
+        shotTimepointsForNorm,
+        cumulativeOffset,
+        1.2
+      );
+      audioBuffers = [perShotNorm.wav];
+      console.log(`Per-shot volume normalization: ${perShotNorm.correctedCount}/${shotTimepointsForNorm.length} shots corrected, maxDelta=${perShotNorm.maxDeltaDb.toFixed(1)}dB`);
 
       console.log(`Marked sync locked: ${allTimepoints.length} timepoints, totalDuration=${cumulativeOffset.toFixed(3)}s`);
 
