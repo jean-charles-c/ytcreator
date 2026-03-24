@@ -2044,18 +2044,20 @@ export default function Editor() {
                                       dbShots={sceneShots}
                                       startGlobalIndex={startIndex}
                                       renderShot={(shot, globalIdx, isLast) => (
-                                        <ShotCard
-                                          key={shot.id}
-                                          shot={shot}
-                                          globalIndex={globalIdx}
-                                          sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
-                                          isLastInScene={isLast}
-                                          onUpdate={handleShotUpdate}
-                                          onDelete={handleShotDelete}
-                                          onRegenerate={handleShotRegenerate}
-                                          onGenerateImage={handleGenerateShotImage}
-                                          onMergeWithNext={handleShotMergeWithNext}
-                                        />
+                                        <div id={`shot-${shot.id}`}>
+                                          <ShotCard
+                                            key={shot.id}
+                                            shot={shot}
+                                            globalIndex={globalIdx}
+                                            sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
+                                            isLastInScene={isLast}
+                                            onUpdate={handleShotUpdate}
+                                            onDelete={handleShotDelete}
+                                            onRegenerate={handleShotRegenerate}
+                                            onGenerateImage={handleGenerateShotImage}
+                                            onMergeWithNext={handleShotMergeWithNext}
+                                          />
+                                        </div>
                                       )}
                                     />
                                   )}
