@@ -1905,10 +1905,40 @@ export default function Editor() {
                                         {sceneShots.map((sh, i) => {
                                           const shotNum = String(startIndex + i).padStart(4, "0");
                                           const hasImage = !!sh.image_url;
+                                          const issueLevel = showWarnings ? shotIssueMap.get(sh.id) : undefined;
+                                          const issueColor = issueLevel === "error"
+                                            ? "text-destructive font-bold"
+                                            : issueLevel === "warning"
+                                            ? "text-amber-600 font-bold"
+                                            : hasImage
+                                            ? "text-green-500 font-semibold"
+                                            : "text-muted-foreground";
+                                          const isClickable = showWarnings && !!issueLevel;
                                           return (
                                             <span key={sh.id}>
                                               {i > 0 && <span className="text-muted-foreground"> / </span>}
-                                              <span className={hasImage ? "text-green-500 font-semibold" : "text-muted-foreground"}>{shotNum}</span>
+                                              {isClickable ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // Open scene accordion
+                                                    setOpenSceneIds((prev) =>
+                                                      prev.includes(scene.id) ? prev : [...prev, scene.id]
+                                                    );
+                                                    // Scroll to shot after accordion opens
+                                                    setTimeout(() => {
+                                                      const el = document.getElementById(`shot-${sh.id}`);
+                                                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    }, 150);
+                                                  }}
+                                                  className={`${issueColor} underline underline-offset-2 hover:opacity-70 cursor-pointer`}
+                                                >
+                                                  {shotNum}
+                                                </button>
+                                              ) : (
+                                                <span className={issueColor}>{shotNum}</span>
+                                              )}
                                             </span>
                                           );
                                         })}
