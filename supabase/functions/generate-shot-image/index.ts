@@ -129,16 +129,29 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
 
-    if (claimsError || !claimsData?.claims?.sub) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    let user: { id: string };
+    try {
+      const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+
+      if (claimsError || !claimsData?.claims?.sub) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized", auth_expired: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      user = { id: claimsData.claims.sub };
+    } catch (claimsException) {
+      const message = claimsException instanceof Error ? claimsException.message : "Unauthorized";
+      if (message === "JWT has expired" || message.toLowerCase().includes("jwt") || message === "Unauthorized") {
+        return new Response(
+          JSON.stringify({ error: message, auth_expired: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      throw claimsException;
     }
-
-    const user = { id: claimsData.claims.sub };
 
     const { shot_id, model, aspect_ratio } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
@@ -338,8 +351,8 @@ serve(async (req) => {
     const message = e instanceof Error ? e.message : "Unknown error";
     const isAuthError = message === "Unauthorized" || message === "JWT has expired" || message.toLowerCase().includes("jwt");
     return new Response(
-      JSON.stringify({ error: message }),
-      { status: isAuthError ? 401 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify(isAuthError ? { error: message, auth_expired: true } : { error: message }),
+      { status: isAuthError ? 200 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
