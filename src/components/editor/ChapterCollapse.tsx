@@ -258,6 +258,7 @@ export default function ChapterCollapse({
     const variantsMap = new Map<string, ChapterTitleVariant[]>();
     const selectedToneMap = new Map<string, string>();
     let errorCount = 0;
+    const skippedLabels: string[] = [];
 
     for (let i = 0; i < chaptersToProcess.length; i++) {
       const ch = chaptersToProcess[i];
@@ -265,6 +266,7 @@ export default function ChapterCollapse({
 
       if (!ch.sourceText?.trim()) {
         console.warn(`Skipping chapter ${ch.id}: no sourceText`);
+        skippedLabels.push(ch.title);
         errorCount++;
         continue;
       }
