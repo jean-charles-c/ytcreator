@@ -826,6 +826,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                 if (response.ok && data.image_url) {
                   globalSuccess++;
                   succeeded = true;
+                } else if (response.status === 422 && data.safety_blocked) {
+                  // Safety-blocked: no retry, count as processed
+                  console.warn(`Shot ${remainingShotIds[i]}: bloqué par filtre de sécurité`);
+                  succeeded = true; // Don't retry, it's a definitive block
+                  // Don't count as success since no image was generated
                 } else if (response.status === 429 || response.status === 402) {
                   console.warn(`Shot ${remainingShotIds[i]}: ${response.status}, waiting before retry (${attempt}/${MAX_RETRIES})`);
                   await new Promise((r) => setTimeout(r, attempt * 15_000));
