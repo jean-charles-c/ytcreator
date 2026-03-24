@@ -317,6 +317,7 @@ serve(async (req) => {
         last_generation_cost: Number(exactOrFallbackCost.toFixed(4)),
         requested_aspect_ratio: selectedAspectRatio,
         actual_dimensions: `${normalizedImage.width}x${normalizedImage.height}`,
+        safety_filtered: usedSanitized,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
