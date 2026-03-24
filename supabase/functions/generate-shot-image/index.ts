@@ -297,9 +297,15 @@ serve(async (req) => {
     const previousCost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
     const newTotalCost = Number((previousCost + exactOrFallbackCost).toFixed(4));
 
+    const updatePayload: Record<string, any> = {
+      image_url: imageUrl,
+      generation_cost: newTotalCost,
+      guardrails: usedSanitized ? "safety_filtered" : null,
+    };
+
     const { error: updateErr } = await supabase
       .from("shots")
-      .update({ image_url: imageUrl, generation_cost: newTotalCost })
+      .update(updatePayload)
       .eq("id", shot_id);
 
     if (updateErr) throw new Error("Failed to update shot");
