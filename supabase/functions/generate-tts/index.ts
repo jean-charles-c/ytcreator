@@ -324,85 +324,75 @@ function applyVolumeEqualization(ssml: string, gainOffsetDb = 0): string {
   );
 }
 
-
 /**
- * Estimate relative loudness of an MP3 chunk by computing mean absolute
- * value of frame payload bytes (rough energy proxy for compressed audio).
- * Also computes peak value for better outlier detection.
+ * Compute RMS loudness from LINEAR16 PCM data (16-bit signed LE, mono or stereo).
+ * LINEAR16 from Google TTS is mono 24kHz/48kHz, 16-bit signed little-endian.
+ * Returns RMS in the 0–32768 range and dBFS value.
  */
-function estimateChunkEnergy(data: Uint8Array): { rms: number; peak: number; mean: number } {
-  let pos = 0;
-
-  // Skip ID3v2 tag
-  if (data.length > 10 && data[0] === 0x49 && data[1] === 0x44 && data[2] === 0x33) {
-    const size = ((data[6] & 0x7F) << 21) | ((data[7] & 0x7F) << 14) |
-                 ((data[8] & 0x7F) << 7) | (data[9] & 0x7F);
-    pos = 10 + size;
+function computePcmRms(pcmData: Uint8Array): { rms: number; dbfs: number } {
+  // Skip WAV header if present (44 bytes for standard WAV)
+  let offset = 0;
+  if (pcmData.length > 44 &&
+      pcmData[0] === 0x52 && pcmData[1] === 0x49 &&
+      pcmData[2] === 0x46 && pcmData[3] === 0x46) {
+    // RIFF header — find 'data' chunk
+    let pos = 12;
+    while (pos < pcmData.length - 8) {
+      const chunkId = String.fromCharCode(pcmData[pos], pcmData[pos+1], pcmData[pos+2], pcmData[pos+3]);
+      const chunkSize = pcmData[pos+4] | (pcmData[pos+5]<<8) | (pcmData[pos+6]<<16) | (pcmData[pos+7]<<24);
+      if (chunkId === "data") { offset = pos + 8; break; }
+      pos += 8 + chunkSize;
+    }
   }
 
-  // Skip to first frame
-  while (pos < data.length - 1) {
-    if (data[pos] === 0xFF && (data[pos + 1] & 0xE0) === 0xE0) break;
-    pos++;
-  }
+  const sampleCount = Math.floor((pcmData.length - offset) / 2);
+  if (sampleCount < 10) return { rms: 0, dbfs: -96 };
 
-  const start = Math.min(pos + 4, data.length);
-  if (data.length - start < 100) return { rms: 0, peak: 0, mean: 0 };
-
-  let sum = 0;
   let sumSq = 0;
-  let peak = 0;
-  const len = data.length - start;
-  for (let i = start; i < data.length; i++) {
-    const v = Math.abs(data[i] - 128);
-    sum += v;
-    sumSq += v * v;
-    if (v > peak) peak = v;
+  for (let i = 0; i < sampleCount; i++) {
+    const idx = offset + i * 2;
+    let sample = pcmData[idx] | (pcmData[idx + 1] << 8);
+    if (sample >= 0x8000) sample -= 0x10000; // signed
+    sumSq += sample * sample;
   }
-  return {
-    rms: Math.sqrt(sumSq / len),
-    peak,
-    mean: sum / len,
-  };
+
+  const rms = Math.sqrt(sumSq / sampleCount);
+  const dbfs = rms > 0 ? 20 * Math.log10(rms / 32768) : -96;
+  return { rms, dbfs };
 }
 
 /**
- * Analyze chunk volumes and compute per-chunk dB gain adjustments needed
+ * Analyze per-chunk PCM loudness and compute dB gain adjustments
  * to bring all chunks to the same perceived level.
- * Returns adjustment values: positive = boost needed, negative = reduce.
  */
-function computeChunkGainAdjustments(chunks: Uint8Array[], tolerancePct = 0.12): {
-  energies: { rms: number; peak: number; mean: number }[];
-  meanEnergy: number;
+function computePcmGainAdjustments(pcmChunks: Uint8Array[], toleranceDb = 1.5): {
+  rmsValues: number[];
+  dbfsValues: number[];
+  meanDbfs: number;
   adjustmentsDb: number[];
   outlierIndices: number[];
 } {
-  if (chunks.length <= 1) {
-    return { energies: [], meanEnergy: 0, adjustmentsDb: [], outlierIndices: [] };
+  if (pcmChunks.length <= 1) {
+    return { rmsValues: [], dbfsValues: [], meanDbfs: 0, adjustmentsDb: [], outlierIndices: [] };
   }
 
-  const energies = chunks.map(c => estimateChunkEnergy(c));
-  const validMeans = energies.filter(e => e.mean > 0).map(e => e.mean);
-  if (validMeans.length === 0) {
-    return { energies, meanEnergy: 0, adjustmentsDb: new Array(chunks.length).fill(0), outlierIndices: [] };
+  const measurements = pcmChunks.map(c => computePcmRms(c));
+  const rmsValues = measurements.map(m => m.rms);
+  const dbfsValues = measurements.map(m => m.dbfs);
+  const validDbfs = dbfsValues.filter(d => d > -90);
+  if (validDbfs.length === 0) {
+    return { rmsValues, dbfsValues, meanDbfs: -96, adjustmentsDb: new Array(pcmChunks.length).fill(0), outlierIndices: [] };
   }
 
-  const meanEnergy = validMeans.reduce((a, b) => a + b, 0) / validMeans.length;
+  const meanDbfs = validDbfs.reduce((a, b) => a + b, 0) / validDbfs.length;
   const adjustmentsDb: number[] = [];
   const outlierIndices: number[] = [];
 
-  for (let i = 0; i < energies.length; i++) {
-    const e = energies[i];
-    if (e.mean <= 0) {
-      adjustmentsDb.push(0);
-      continue;
-    }
-    const ratio = e.mean / meanEnergy;
-    if (Math.abs(ratio - 1) > tolerancePct) {
-      // Convert ratio to dB adjustment: 20*log10(target/current) = 20*log10(1/ratio)
-      const dbAdj = Math.round(20 * Math.log10(1 / ratio) * 10) / 10;
+  for (let i = 0; i < dbfsValues.length; i++) {
+    const diff = meanDbfs - dbfsValues[i]; // positive = needs boost
+    if (Math.abs(diff) > toleranceDb && dbfsValues[i] > -90) {
       // Clamp to reasonable range
-      const clampedDb = Math.max(-6, Math.min(6, dbAdj));
+      const clampedDb = Math.max(-6, Math.min(6, Math.round(diff * 10) / 10));
       adjustmentsDb.push(clampedDb);
       outlierIndices.push(i);
     } else {
@@ -410,7 +400,7 @@ function computeChunkGainAdjustments(chunks: Uint8Array[], tolerancePct = 0.12):
     }
   }
 
-  return { energies, meanEnergy, adjustmentsDb, outlierIndices };
+  return { rmsValues, dbfsValues, meanDbfs, adjustmentsDb, outlierIndices };
 }
 
 function endsWithSentenceTerminal(text: string): boolean {
