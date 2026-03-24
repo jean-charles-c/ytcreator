@@ -161,21 +161,40 @@ Every prompt_export MUST begin by explicitly stating the historical period/era a
 This anchoring is MANDATORY. Never produce a prompt without it.
 All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be accurate to that specific era, culture, and place.
 
+CONTEXTUAL PROMPT CONSTRUCTION — CRITICAL (same rules as initial generation):
+Each prompt_export must be built from the SPECIFIC fragment it illustrates, NOT from the full scene text.
+Context injection rules:
+1. ALWAYS start with the historical period + geographic location from the scene's CONTEXTE block
+2. Include characters ONLY when the fragment mentions or implies people — do not inject character descriptions into landscape or object shots
+3. Include ambiance/mood ONLY when it adds visual value to THIS specific fragment
+4. Include visual_intention ONLY when it enriches the framing or cinematic direction
+5. Include continuity notes ONLY when the fragment represents a transition or narrative shift
+6. NEVER dump all context fields mechanically — select only what is visually relevant to the fragment
+
 FRAGMENT-SPECIFIC RULE:
 The prompt must illustrate ONLY what the given text fragment describes.
 Do not illustrate the entire scene — focus on the specific fragment's visual content.
-Enrich with scene context (lieu, époque, personnages) but keep the fragment as the visual subject.
+The prompt must describe what the FRAGMENT says, not what the scene says in general.
 
 PROMPT STRUCTURE (prompt_export, in ENGLISH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
-2. Camera framing (MUST differ from neighbors)
-3. Fragment-specific visual content with objects, materials, textures, colors
-4. Characters if present IN THE FRAGMENT: pose, gesture, clothing — culturally accurate
-5. Environment grounded in the scene's lieu and époque
-6. Foreground depth elements relevant to the fragment
-7. Lighting: source, direction, quality, shadows
-8. Atmosphere and mood from the fragment's narrative tone
+2. Camera framing (MUST differ from neighbors) — use descriptive English framing: "Wide establishing shot of...", "Close-up on...", "Medium shot capturing..."
+3. Fragment-specific visual content with hyper-specific materials, textures, colors
+4. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color — culturally accurate to the era and place
+5. Environment grounded in the scene's lieu and époque: period-accurate background elements
+6. Foreground depth elements relevant to the fragment adding visual depth
+7. Lighting: source, direction, quality, shadows — physically motivated (candlelight, firelight, sunrise, etc.)
+8. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
 9. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
+
+PHOTOREALISM ENFORCEMENT:
+All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
+Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
+Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
+
+MATERIAL DENSITY RULE:
+Include physically rich environments. Avoid empty compositions.
+Add environmental elements: objects, scrolls, pottery, fabrics, tools, architectural textures, vegetation, atmospheric particles.
 
 Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
             },
