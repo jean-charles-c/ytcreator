@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateExactShotSentences, validateExactShotTimepoints } from "../_shared/exact-shot-sync.ts";
 
@@ -34,17 +34,13 @@ interface TTSRequest {
   syncMode?: "standard" | "shot_marked";
 }
 
-/**
- * Narration profile modulation: applies additive offsets to user settings.
- * These are combined with (not replacing) the user's manual controls.
- */
 const NARRATION_MODULATION: Record<string, {
   pauseAfterSentencesAdd: number;
   pauseBetweenParagraphsAdd: number;
   pauseAfterCommaAdd: number;
   dynamicPauseForce: boolean;
   dynamicPauseVariationMin: number;
-  emphasisBoost: number; // 0 = normal, 1 = allow more emphasis per sentence
+  emphasisBoost: number;
   sentenceStartBoostAdd: number;
   sentenceEndSlowAdd: number;
   rateOffset: number;
@@ -108,7 +104,6 @@ async function callGoogleTTS(
     body.enableTimePointing = ["SSML_MARK"];
   }
 
-  // Use v1beta1 for enableTimePointing support (not available in v1)
   const apiVersion = enableTimePointing ? "v1beta1" : "v1";
   const response = await fetch(
     `https://texttospeech.googleapis.com/${apiVersion}/text:synthesize?key=${apiKey}`,
@@ -130,6 +125,10 @@ async function callGoogleTTS(
     audioContent: data.audioContent,
     timepoints: data.timepoints ?? [],
   };
+}
+
+function decodeBase64Audio(audioContent: string): Uint8Array {
+  return base64Decode(audioContent);
 }
 
 interface GoogleVoice {
@@ -1407,36 +1406,46 @@ serve(async (req) => {
       const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
       const chunkWavs: Uint8Array[] = [];
       const rawChunkTimepoints: { chunkIndex: number; shotId: string; timeSeconds: number }[] = [];
+      const MARKED_BATCH_SIZE = 3;
 
-      // Generate all chunks (LINEAR16 with timepointing)
-      for (let ci = 0; ci < markedChunks.length; ci++) {
-        const chunk = markedChunks[ci];
-        const result = await callGoogleTTS(
-          chunk.ssml,
-          GOOGLE_TTS_API_KEY,
-          voice,
-          linear16Config,
-          true,
-          true // enableTimePointing
+      // Generate chunks in small parallel batches to reduce wall time without overloading the runtime
+      for (let start = 0; start < markedChunks.length; start += MARKED_BATCH_SIZE) {
+        const batch = markedChunks.slice(start, start + MARKED_BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (chunk, batchIndex) => {
+            const result = await callGoogleTTS(
+              chunk.ssml,
+              GOOGLE_TTS_API_KEY,
+              voice,
+              linear16Config,
+              true,
+              true
+            );
+
+            const wavData = decodeBase64Audio(result.audioContent);
+            return {
+              chunkIndex: start + batchIndex,
+              wavData,
+              timepoints: result.timepoints ?? [],
+              shotCount: chunk.shotIds.length,
+            };
+          })
         );
 
-        const wavData = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-        chunkWavs.push(wavData);
-
-        // Collect timepoints from this chunk
-        if (result.timepoints) {
-          for (const tp of result.timepoints) {
+        batchResults.sort((a, b) => a.chunkIndex - b.chunkIndex);
+        for (const batchResult of batchResults) {
+          chunkWavs.push(batchResult.wavData);
+          for (const tp of batchResult.timepoints) {
             const markName = tp.markName;
             if (markName === "__end" || markName === "__chunk_end") continue;
             rawChunkTimepoints.push({
-              chunkIndex: ci,
+              chunkIndex: batchResult.chunkIndex,
               shotId: markName,
               timeSeconds: tp.timeSeconds,
             });
           }
+          console.log(`Rendered marked chunk ${batchResult.chunkIndex + 1}/${markedChunks.length} (${batchResult.shotCount} shots, timepoints=${batchResult.timepoints.length})`);
         }
-
-        console.log(`Rendered marked chunk ${ci + 1}/${markedChunks.length} (${chunk.shotIds.length} shots, timepoints=${result.timepoints?.length ?? 0})`);
       }
 
       // Measure per-chunk volume for cross-chunk normalization
@@ -1534,7 +1543,7 @@ serve(async (req) => {
           const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
           try {
             const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, linear16Config, chunk.startsWith("<speak>"));
-            pcmChunks.push(Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0)));
+            pcmChunks.push(decodeBase64Audio(result.audioContent));
           } catch {
             pcmChunks.push(new Uint8Array(0));
           }
@@ -1557,7 +1566,7 @@ serve(async (req) => {
 
         try {
           const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
-          const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+          const raw = decodeBase64Audio(result.audioContent);
           audioBuffers.push(raw);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -1565,7 +1574,7 @@ serve(async (req) => {
             console.warn(`Legacy chunk ${ci + 1} invalid SSML, retrying as plain text fallback`);
             const fallbackText = ssmlToPlainText(chunk);
             const fallbackResult = await callGoogleTTS(fallbackText, GOOGLE_TTS_API_KEY, voice, audioConfig, false);
-            const raw = Uint8Array.from(atob(fallbackResult.audioContent), (c) => c.charCodeAt(0));
+            const raw = decodeBase64Audio(fallbackResult.audioContent);
             audioBuffers.push(raw);
             continue;
           }
