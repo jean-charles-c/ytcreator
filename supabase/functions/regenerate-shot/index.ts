@@ -88,7 +88,7 @@ serve(async (req) => {
     // Build neighbor avoidance prompt
     const neighborPrompt = buildNeighborAvoidancePrompt(neighborsBefore, neighborsAfter);
 
-    // Build scene context block for the AI
+    // Build rich scene context block (aligned with generate-storyboard's buildContextualPrompt)
     const contextBlock = sceneContext ? [
       `SCENE CONTEXT:`,
       `  Lieu: ${sceneContext.lieu || "Non déterminé"}`,
@@ -98,9 +98,35 @@ serve(async (req) => {
       sceneContext.ton ? `  Ton: ${sceneContext.ton}` : null,
     ].filter(Boolean).join("\n") : "";
 
+    // Visual intention & continuity from scene (same as generate-storyboard)
+    const visualIntention = scene.visual_intention;
+    const visualIntentionNote = visualIntention ? `\nVisual intention for this scene: ${visualIntention}` : "";
+    const continuity = scene.continuity;
+    const continuityNote = continuity ? `\nScene continuity note: ${continuity}` : "";
+
+    // Camera framing mapping (FR → EN, same grid as generate-storyboard)
+    const cameraMap: Record<string, string> = {
+      "Plan d'ensemble": "Wide establishing shot",
+      "Plan d'activité": "Medium shot capturing action",
+      "Plan d'interaction": "Two-shot or group composition",
+      "Plan environnemental": "Atmospheric environmental shot",
+      "Plan de détail d'artefact": "Close-up detail shot",
+      "Plan de détail scientifique": "Macro examination shot",
+      "Plan portrait": "Portrait shot",
+      "Plan subjectif": "Point-of-view shot",
+    };
+
     const avoidCamerasNote = opValidation.avoidCameraTypes.length > 0
       ? `\nCAMERA TYPES TO AVOID (used by neighbors): ${opValidation.avoidCameraTypes.join(", ")}`
       : "";
+
+    // Build camera avoidance as English descriptions too
+    const avoidCameraDescriptions = opValidation.avoidCameraTypes
+      .map(ct => {
+        const match = Object.entries(cameraMap).find(([k]) => k.toLowerCase().replace(/['']/g, "'") === ct);
+        return match ? match[1] : ct;
+      })
+      .filter(Boolean);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
