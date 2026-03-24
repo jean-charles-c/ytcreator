@@ -841,8 +841,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             }
 
             if (!succeeded) failedThisRound.push(remainingShotIds[i]);
+            // processed = how many shots we've attempted in this round so far
+            const processedThisRound = i + 1;
+            const stillPending = remainingShotIds.length - processedThisRound;
             updateTask(key, {
-              completedShots: total - (remainingShotIds.length - i - 1) - failedThisRound.length + globalSuccess,
+              completedShots: processedThisRound + (total - remainingShotIds.length),
               successShots: globalSuccess,
             });
           }
