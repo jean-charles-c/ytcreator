@@ -1243,12 +1243,51 @@ serve(async (req) => {
         return { raw, timepoints: chunkTimepoints, duration };
       }
 
+      // Cache per-chunk results for potential re-use after volume normalization
+      interface ChunkGenResult { raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }
+      const chunkGenResults: ChunkGenResult[] = [];
+
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
         const gen = await generateChunk(chunk.ssml, chunk.shotIds, ci);
+        chunkGenResults.push(gen);
         audioBuffers.push(gen.raw);
 
-        // Extract shot timepoints
+        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(gen.timepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
+        console.log(`Chunk ${ci + 1} MP3 duration: ${gen.duration.toFixed(3)}s`);
+      }
+
+      // ── Volume normalization pass: re-generate outlier chunks ──
+      if (audioBuffers.length > 1) {
+        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
+        const energyStrs = analysis.energies.map(e => e.mean.toFixed(2));
+        console.log(`Volume analysis: energies=[${energyStrs.join(",")}], mean=${analysis.meanEnergy.toFixed(2)}, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
+
+        if (analysis.outlierIndices.length > 0) {
+          console.log(`Re-generating ${analysis.outlierIndices.length} outlier chunk(s) with gain adjustment…`);
+
+          for (const idx of analysis.outlierIndices) {
+            const chunk = chunks[idx];
+            const gainDb = analysis.adjustmentsDb[idx];
+            const gen = await generateChunk(chunk.ssml, chunk.shotIds, idx, gainDb);
+            // Replace in both caches
+            chunkGenResults[idx] = gen;
+            audioBuffers[idx] = gen.raw;
+          }
+
+          // Log post-normalization levels
+          const post = computeChunkGainAdjustments(audioBuffers, 0.10);
+          console.log(`Volume after normalization: energies=[${post.energies.map(e => e.mean.toFixed(2)).join(",")}], remaining outliers=[${post.outlierIndices.join(",")}]`);
+        }
+      }
+
+      // ── Rebuild timepoints from cached chunk results with correct cumulative offsets ──
+      cumulativeOffset = 0;
+      for (let ci = 0; ci < chunkGenResults.length; ci++) {
+        const gen = chunkGenResults[ci];
+        // Recompute duration from actual buffer (may have been replaced)
+        const duration = parseMp3Duration(audioBuffers[ci]);
+
         for (const tp of gen.timepoints) {
           if (tp.name === "__chunk_end" || tp.name === "__end") continue;
           const shotIndex = shotIdToIndex.get(tp.name) ?? -1;
@@ -1257,82 +1296,8 @@ serve(async (req) => {
           }
         }
 
-        console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(gen.timepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
-        cumulativeOffset += gen.duration;
-        console.log(`Chunk ${ci + 1} MP3 duration: ${gen.duration.toFixed(3)}s, cumulative: ${cumulativeOffset.toFixed(3)}s`);
+        cumulativeOffset += duration;
       }
-
-      // ── Volume normalization pass: re-generate outlier chunks ──
-      if (audioBuffers.length > 1) {
-        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
-        const energyStrs = analysis.energies.map(e => e.mean.toFixed(2));
-        console.log(`Volume analysis (pass 1): energies=[${energyStrs.join(",")}], mean=${analysis.meanEnergy.toFixed(2)}, outliers=[${analysis.outlierIndices.join(",")}]`);
-
-        if (analysis.outlierIndices.length > 0) {
-          console.log(`Re-generating ${analysis.outlierIndices.length} outlier chunk(s) with gain adjustment…`);
-
-          // Rebuild timepoints — we'll recalculate from scratch after replacing chunks
-          for (const idx of analysis.outlierIndices) {
-            const chunk = chunks[idx];
-            const gainDb = analysis.adjustmentsDb[idx];
-            const gen = await generateChunk(chunk.ssml, chunk.shotIds, idx, gainDb);
-            audioBuffers[idx] = gen.raw;
-          }
-
-          // Recalculate all timepoints from scratch with correct cumulative offsets
-          allTimepoints = [];
-          cumulativeOffset = 0;
-          for (let ci = 0; ci < chunks.length; ci++) {
-            const raw = audioBuffers[ci];
-            const chunk = chunks[ci];
-            // Re-parse timepoints for this chunk (either original or re-generated)
-            if (analysis.outlierIndices.includes(ci)) {
-              // Re-generated chunk: we need to call TTS again for timepoints...
-              // Actually we already have the buffer — re-extract timepoints by re-calling TTS
-              // To avoid double calls, we re-generate and keep timepoints inline above
-            }
-            const duration = parseMp3Duration(raw);
-            // For non-outlier chunks, re-extract timepoints from the original generation
-            // We stored them in the first pass — but we cleared allTimepoints.
-            // Simpler approach: re-generate ALL timepoints by re-calling only outlier chunks
-            cumulativeOffset += duration;
-          }
-
-          // Since we cleared timepoints, rebuild them. For outlier chunks we have new
-          // buffers but lost timepoints. Best approach: re-generate outliers keeping timepoints.
-          // Let me fix this properly:
-          allTimepoints = [];
-          cumulativeOffset = 0;
-
-          // We need to re-run the timepoint extraction. Store chunk results.
-          const chunkResults: { timepoints: { name: string; time: number }[]; duration: number }[] = [];
-
-          // First pass results (non-outliers)
-          for (let ci = 0; ci < chunks.length; ci++) {
-            if (analysis.outlierIndices.includes(ci)) {
-              // Re-generate with gain offset AND extract timepoints
-              const chunk = chunks[ci];
-              const gainDb = analysis.adjustmentsDb[ci];
-              const gen = await generateChunk(chunk.ssml, chunk.shotIds, ci, gainDb);
-              audioBuffers[ci] = gen.raw;
-              chunkResults.push({ timepoints: gen.timepoints, duration: gen.duration });
-            } else {
-              // Use existing buffer, re-parse duration
-              const duration = parseMp3Duration(audioBuffers[ci]);
-              // We need the original timepoints — but we lost them. 
-              // Re-parse by calling TTS again (expensive). Instead, let's cache them.
-              // Actually let me restructure to cache timepoints in the first loop.
-              chunkResults.push({ timepoints: [], duration });
-            }
-          }
-
-          // This approach has a flaw — we lose original timepoints for non-outlier chunks.
-          // Let me fix by caching them upfront.
-        }
-      }
-
-      // If we had outliers, the timepoint rebuild above may have gaps.
-      // Validate and fall through to the post-validation check below.
 
       console.log(`Total timepoints generated: ${allTimepoints.length}, expected: ${shotSentences!.length}`);
       console.log(`Timepoints: ${JSON.stringify(allTimepoints.map(tp => ({ idx: tp.shotIndex, t: tp.timeSeconds, id: tp.shotId.slice(0, 8) })))}`);
