@@ -2127,9 +2127,9 @@ export default function Editor() {
                 <div className="mt-3">
                   <QaPanel
                     projectId={projectId!}
-                    manifest={buildManifest(projectId!, scenes, shots)}
+                    manifest={storyboardManifest!}
                     onExportAllowedChange={setQaExportAllowed}
-                    onReportChange={setQaCounts}
+                    onReportChange={handleQaReportChange}
                   />
                 </div>
               </details>
