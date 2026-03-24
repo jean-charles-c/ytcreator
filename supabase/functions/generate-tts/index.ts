@@ -1394,13 +1394,18 @@ serve(async (req) => {
       );
       if (isRestrictedVoice) fullMarkedSsml = stripEmphasisTags(fullMarkedSsml);
 
-      // Apply volume equalization wrapper
+      // Chunk the marked SSML FIRST, then apply volume equalization per-chunk
+      // (applying before chunking breaks SSML because <prosody> wraps the whole
+      //  document but chunkMarkedSsml splits it, leaving unclosed tags)
+      const markedChunks = chunkMarkedSsml(fullMarkedSsml, MAX_CHARS);
+
+      // Apply volume equalization to each chunk individually
       if (!isRestrictedVoice) {
-        fullMarkedSsml = applyVolumeEqualization(fullMarkedSsml, 0);
+        for (const chunk of markedChunks) {
+          chunk.ssml = applyVolumeEqualization(chunk.ssml, 0);
+        }
       }
 
-      // Chunk the marked SSML to stay under Google API limits
-      const markedChunks = chunkMarkedSsml(fullMarkedSsml, MAX_CHARS);
       console.log(`Split into ${markedChunks.length} marked chunks for LINEAR16 render`);
 
       const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
@@ -1408,7 +1413,7 @@ serve(async (req) => {
       const rawChunkTimepoints: { chunkIndex: number; shotId: string; timeSeconds: number }[] = [];
       const MARKED_BATCH_SIZE = 3;
 
-      // Generate chunks in small parallel batches to reduce wall time without overloading the runtime
+      // Generate chunks in small parallel batches
       for (let start = 0; start < markedChunks.length; start += MARKED_BATCH_SIZE) {
         const batch = markedChunks.slice(start, start + MARKED_BATCH_SIZE);
         const batchResults = await Promise.all(
