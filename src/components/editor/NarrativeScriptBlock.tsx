@@ -166,9 +166,6 @@ export default function NarrativeScriptBlock({
                   <Button variant="outline" size="sm" onClick={onCopyScript} className="h-8 text-xs">
                     <Copy className="h-3 w-3" /> Copier
                   </Button>
-                  <Button variant="hero" size="sm" onClick={onSendToNarration} className="h-8 text-xs">
-                    <ArrowRight className="h-3 w-3" /> ScriptInput
-                  </Button>
 
                   {/* Extra controls injected by parent */}
                   {toolbarSlot}
@@ -182,18 +179,6 @@ export default function NarrativeScriptBlock({
                   >
                     <RotateCcw className="h-3 w-3" /> Régénérer
                   </Button>
-                  {onAnalyzeScript && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onAnalyzeScript}
-                      disabled={analyzingScript || generatingScript}
-                      className="h-8 text-xs"
-                    >
-                      {analyzingScript ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                      {analyzingScript ? "Analyse…" : "Analyser la structure"}
-                    </Button>
-                  )}
                 </div>
               )}
 
@@ -342,6 +327,15 @@ export default function NarrativeScriptBlock({
                   </Collapsible>
                 );
               })()}
+
+              {/* ScriptInput button at bottom */}
+              {!generatingScript && script && (
+                <div className="mt-4 pt-3 border-t border-border">
+                  <Button variant="hero" size="sm" onClick={onSendToNarration} className="h-8 text-xs">
+                    <ArrowRight className="h-3 w-3" /> ScriptInput
+                  </Button>
+                </div>
+              )}
               <div ref={scriptEndRef} />
             </>
           )}
