@@ -1820,7 +1820,7 @@ export default function Editor() {
                 })()}
                 <div className="space-y-2">
                   {(() => {
-                    const manifest = buildManifest(projectId!, scenes, shots);
+                    const manifest = storyboardManifest ?? buildManifest(projectId!, scenes, shots);
                     const issues = validateManifest(manifest);
                     const errorIssues = issues.filter((i) => i.level === "error");
                     const warningIssues = issues.filter((i) => i.level === "warning");
