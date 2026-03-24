@@ -1193,10 +1193,14 @@ serve(async (req) => {
 
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
-        console.log(`Chunk ${ci + 1}: shotIds=[${chunk.shotIds.map(id => id.slice(0, 8)).join(",")}], ${chunk.ssml.length} chars`);
+        let chunkSsml = chunk.ssml;
+        // Apply volume equalization to force consistent level across chunks
+        if (!isRestrictedVoice) chunkSsml = applyVolumeEqualization(chunkSsml);
+        if (isRestrictedVoice) chunkSsml = stripEmphasisTags(chunkSsml);
+        console.log(`Chunk ${ci + 1}: shotIds=[${chunk.shotIds.map(id => id.slice(0, 8)).join(",")}], ${chunkSsml.length} chars`);
 
         const result = await callGoogleTTS(
-          chunk.ssml,
+          chunkSsml,
           GOOGLE_TTS_API_KEY,
           voice,
           audioConfig,
