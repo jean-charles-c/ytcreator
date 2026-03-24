@@ -11,6 +11,7 @@ interface QaPanelProps {
   projectId: string;
   manifest: VisualPromptManifest;
   onExportAllowedChange?: (allowed: boolean) => void;
+  onReportChange?: (counts: { errors: number; warnings: number }) => void;
 }
 
 const categoryLabels: Record<QaCategory, string> = {
@@ -36,7 +37,7 @@ const levelConfig = {
   },
 };
 
-export default function QaPanel({ projectId, manifest, onExportAllowedChange }: QaPanelProps) {
+export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange }: QaPanelProps) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
@@ -63,6 +64,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange }: 
     const qa = runQaValidation(manifest, builtTiming);
     setReport(qa);
     onExportAllowedChange?.(qa.exportAllowed);
+    onReportChange?.({ errors: qa.criticalCount, warnings: qa.warningCount });
     setLoading(false);
   };
 
