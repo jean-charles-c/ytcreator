@@ -74,7 +74,7 @@ function detectTransitions(text: string): TransitionSignal[] {
 
 // ── Clause-level splitting ─────────────────────────────────────────
 
-const CLAUSE_BOUNDARIES_PATTERN = /(?:,\s+|\s*;\s+|\s*:\s+|\s*—\s*|\s*–\s+)/g;
+const CLAUSE_BOUNDARIES_PATTERN = /(?:,["\u201D\u2019'»]?\s+|\s*;\s+|\s*:\s+|\s*—\s*|\s*–\s+)/g;
 
 function collectBoundaryPositions(text: string, regex: RegExp): number[] {
   regex.lastIndex = 0;
