@@ -1587,8 +1587,20 @@ serve(async (req) => {
 
       // Concatenate all WAV chunks sample-accurately
       const exactCombinedAudio = concatLinear16Wavs(normalizedChunkWavs);
-      audioBuffers = [exactCombinedAudio.wav];
       cumulativeOffset = exactCombinedAudio.durationSeconds;
+
+      // ── Per-shot volume normalization (fixes intra-chunk variations) ──
+      const shotTimepointsForNorm = allTimepoints
+        .filter(tp => tp.shotIndex >= 0)
+        .map(tp => ({ shotId: tp.shotId, timeSeconds: tp.timeSeconds }));
+      const perShotNorm = normalizePerShotVolume(
+        exactCombinedAudio.wav,
+        shotTimepointsForNorm,
+        cumulativeOffset,
+        1.2
+      );
+      audioBuffers = [perShotNorm.wav];
+      console.log(`Per-shot volume normalization: ${perShotNorm.correctedCount}/${shotTimepointsForNorm.length} shots corrected, maxDelta=${perShotNorm.maxDeltaDb.toFixed(1)}dB`);
 
       console.log(`Marked sync locked: ${allTimepoints.length} timepoints, totalDuration=${cumulativeOffset.toFixed(3)}s`);
 
