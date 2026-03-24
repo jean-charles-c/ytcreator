@@ -370,7 +370,7 @@ export default function PdfDocumentaryTab({
 
         setScriptOpen(true);
         setOpenSections(new Set(["hook"]));
-        toast.success("Analyse narrative terminée — 7 sections identifiées");
+        toast.success(`Analyse narrative terminée — ${sanitized.filter(s => s.content.trim()).length} sections identifiées`);
       }
     } catch (e: any) {
       console.error("Script analysis error:", e);
