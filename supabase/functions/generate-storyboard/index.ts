@@ -532,9 +532,14 @@ const translateSegmentsToFrench = async (
 
       for (const item of parsedTranslations) {
         const source = normalizeNarrationText(item?.source_sentence || "");
-        const translation = typeof item?.source_sentence_fr === "string"
+        let translation = typeof item?.source_sentence_fr === "string"
           ? item.source_sentence_fr.trim()
           : "";
+        // Detect corrupted accents: if French text has words like "communaut's" where accent was replaced by apostrophe
+        if (translation && hasCorruptedAccents(translation)) {
+          console.warn("Corrupted accents detected in translation, skipping:", translation.slice(0, 80));
+          translation = "";
+        }
         if (source && translation) {
           translations.set(normalizeTranslationKey(source), translation);
         }
