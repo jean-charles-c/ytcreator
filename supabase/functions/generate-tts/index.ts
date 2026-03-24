@@ -1572,7 +1572,6 @@ serve(async (req) => {
         }
       }
     }
-    }
 
     // Concatenate all MP3 buffers
     const totalLength = audioBuffers.reduce((sum, b) => sum + b.length, 0);
