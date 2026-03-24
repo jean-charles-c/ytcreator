@@ -1951,7 +1951,7 @@ export default function Editor() {
                                   };
                                   const shotLabel = (s: Shot) => {
                                     const localIdx = sceneShots.findIndex((sh) => sh.id === s.id);
-                                    return String(startIndex + localIdx + 1).padStart(4, "0");
+                                    return String(startIndex + localIdx).padStart(4, "0");
                                   };
                                   return (
                                     <>
