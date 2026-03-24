@@ -920,7 +920,8 @@ export default function Editor() {
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+   const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+   const [showWarnings, setShowWarnings] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
   const IMAGE_MODELS = [
