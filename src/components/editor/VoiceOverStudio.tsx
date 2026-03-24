@@ -444,7 +444,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   value={voScript}
                   onChange={(e) => { setVoScript(e.target.value); setUserEditedScript(true); }}
                   placeholder="Collez ou saisissez votre texte narratif ici..."
-                  className="min-h-[200px] sm:min-h-[250px] lg:min-h-[220px] text-sm leading-relaxed resize-y font-body"
+                  className="min-h-[100px] sm:min-h-[120px] lg:min-h-[110px] text-sm leading-relaxed resize-y font-body"
                   aria-label="Script narratif pour la voix off"
                 />
                 <div className="flex items-center gap-2">
@@ -500,7 +500,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   )}
 
                   {/* History */}
-                  <Accordion type="multiple" defaultValue={[]}>
+                  <Accordion type="multiple" defaultValue={["history"]}>
                     <AccordionItem value="history" className="border-0 border-t border-border pt-2">
                       <AccordionTrigger className="py-1.5 hover:no-underline gap-2">
                         <span className="flex items-center gap-2 text-xs font-semibold font-display">
