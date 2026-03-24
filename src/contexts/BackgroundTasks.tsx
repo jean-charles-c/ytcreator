@@ -796,20 +796,29 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               if (ac.signal.aborted) break;
 
               try {
-                let { data: freshSession, error: sessionError } = await supabase.auth.getSession();
-                let session = freshSession?.session ?? null;
-                let accessToken = session?.access_token;
-                const nowInSeconds = Math.floor(Date.now() / 1000);
-                const tokenIsExpired = !session?.expires_at || session.expires_at <= nowInSeconds + 30;
-
-                if (!accessToken || sessionError || tokenIsExpired) {
+                const getFreshAccessToken = async () => {
                   const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-                  if (refreshError || !refreshed.session?.access_token) {
-                    throw new Error("Session expired, please log in again");
+                  if (refreshed.session?.access_token) {
+                    return refreshed.session.access_token;
                   }
-                  session = refreshed.session;
-                  accessToken = refreshed.session.access_token;
-                }
+
+                  const { data: currentSessionData } = await supabase.auth.getSession();
+                  const currentSession = currentSessionData.session;
+                  const nowInSeconds = Math.floor(Date.now() / 1000);
+                  const currentTokenIsValid = Boolean(
+                    currentSession?.access_token &&
+                    currentSession?.expires_at &&
+                    currentSession.expires_at > nowInSeconds + 30,
+                  );
+
+                  if (!refreshError && currentTokenIsValid) {
+                    return currentSession!.access_token;
+                  }
+
+                  throw new Error("Session expired, please log in again");
+                };
+
+                const accessToken = await getFreshAccessToken();
 
                 const callGenerateShotImage = async (token: string) => {
                   const shotAc = new AbortController();
@@ -844,15 +853,13 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                 let response = await callGenerateShotImage(accessToken);
 
                 if (response.status === 401 && attempt < MAX_RETRIES) {
-                  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-                  if (refreshError || !refreshed.session?.access_token) {
-                    throw new Error("Session expired, please log in again");
-                  }
-                  response = await callGenerateShotImage(refreshed.session.access_token);
+                  response = await callGenerateShotImage(await getFreshAccessToken());
                 }
 
                 const data = await response.json();
-                if (data?.safety_blocked) {
+                if (data?.auth_expired) {
+                  throw new Error("Session expired, please log in again");
+                } else if (data?.safety_blocked) {
                   console.warn(`Shot ${remainingShotIds[i]}: bloqué par filtre de sécurité`);
                   succeeded = true;
                 } else if (response.ok && data.image_url) {
