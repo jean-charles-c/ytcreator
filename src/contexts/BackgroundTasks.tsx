@@ -796,45 +796,66 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               if (ac.signal.aborted) break;
 
               try {
-                // Refresh token before each call to avoid expired JWT
-                const { data: freshSession } = await supabase.auth.getSession();
-                const accessToken = freshSession?.session?.access_token;
-                if (!accessToken) throw new Error("Session expired, please log in again");
+                let { data: freshSession, error: sessionError } = await supabase.auth.getSession();
+                let accessToken = freshSession?.session?.access_token;
 
-                const shotAc = new AbortController();
-                const onParentAbort = () => shotAc.abort();
-                ac.signal.addEventListener("abort", onParentAbort, { once: true });
-                const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
-
-                const response = await fetch(
-                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${accessToken}`,
-                      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                    },
-                    body: JSON.stringify({
-                      shot_id: remainingShotIds[i],
-                      model: params.model,
-                      aspect_ratio: params.aspectRatio,
-                    }),
-                    signal: shotAc.signal,
+                if (!accessToken || sessionError) {
+                  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                  if (refreshError || !refreshed.session?.access_token) {
+                    throw new Error("Session expired, please log in again");
                   }
-                );
-                clearTimeout(timer);
-                ac.signal.removeEventListener("abort", onParentAbort);
+                  accessToken = refreshed.session.access_token;
+                }
+
+                const callGenerateShotImage = async (token: string) => {
+                  const shotAc = new AbortController();
+                  const onParentAbort = () => shotAc.abort();
+                  ac.signal.addEventListener("abort", onParentAbort, { once: true });
+                  const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
+
+                  try {
+                    return await fetch(
+                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                        },
+                        body: JSON.stringify({
+                          shot_id: remainingShotIds[i],
+                          model: params.model,
+                          aspect_ratio: params.aspectRatio,
+                        }),
+                        signal: shotAc.signal,
+                      }
+                    );
+                  } finally {
+                    clearTimeout(timer);
+                    ac.signal.removeEventListener("abort", onParentAbort);
+                  }
+                };
+
+                let response = await callGenerateShotImage(accessToken);
+
+                if (response.status === 401 && attempt < MAX_RETRIES) {
+                  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                  if (refreshError || !refreshed.session?.access_token) {
+                    throw new Error("Session expired, please log in again");
+                  }
+                  response = await callGenerateShotImage(refreshed.session.access_token);
+                }
 
                 const data = await response.json();
                 if (data?.safety_blocked) {
-                  // Safety-blocked: no retry, count as processed
                   console.warn(`Shot ${remainingShotIds[i]}: bloqué par filtre de sécurité`);
                   succeeded = true;
-                  // Don't count as success since no image was generated
                 } else if (response.ok && data.image_url) {
                   globalSuccess++;
                   succeeded = true;
+                } else if (response.status === 401) {
+                  throw new Error("Session expired, please log in again");
                 } else if (response.status === 429 || response.status === 402) {
                   console.warn(`Shot ${remainingShotIds[i]}: ${response.status}, waiting before retry (${attempt}/${MAX_RETRIES})`);
                   await new Promise((r) => setTimeout(r, attempt * 15_000));
