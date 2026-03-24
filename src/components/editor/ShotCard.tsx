@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload, Merge } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload, Merge, ShieldAlert, ShieldOff } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
