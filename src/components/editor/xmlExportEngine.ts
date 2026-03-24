@@ -381,14 +381,19 @@ export async function exportTimelineToXmlZip(
 
   // Determine which segments to export:
   // If manifestEntries provided, only export shots that appear in the manifest (active only)
+  // CRITICAL: exportSegments MUST follow the same order as manifestEntries so that
+  // clipFrames[i] (built from manifest) pairs correctly with xmlSegments[i].
   const useManifest = manifestEntries && manifestEntries.length > 0;
-  const manifestShotIds = useManifest ? new Set(manifestEntries.map((e) => e.shotId)) : null;
-  const exportSegments = manifestShotIds
-    ? segments.filter((seg) => manifestShotIds.has(seg.id))
-    : segments;
+  let exportSegments: typeof segments;
+  if (useManifest) {
+    const segmentMap = new Map(segments.map((seg) => [seg.id, seg]));
+    exportSegments = manifestEntries
+      .map((entry) => segmentMap.get(entry.shotId))
+      .filter((seg): seg is (typeof segments)[number] => seg !== undefined);
+  } else {
+    exportSegments = segments;
+  }
 
-  // Build segment index map (original index in segments array → export index)
-  const segmentOriginalIndices = exportSegments.map((seg) => segments.indexOf(seg));
 
   const imageFileNames = new Map<number, string>();
 

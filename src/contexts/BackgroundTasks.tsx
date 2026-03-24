@@ -614,6 +614,28 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             }
             manifestEntries = timing.entries;
 
+            // ── Pre-export order consistency guard ──
+            // Verify that manifest order matches timeline segment order.
+            // If they diverge, clipFrames[i] would pair with the wrong segment.
+            const timelineSegmentIds = params.timeline.videoTrack.segments.map((s) => s.id);
+            const manifestShotIds = manifestEntries.map((e) => e.shotId);
+            const timelineFiltered = timelineSegmentIds.filter((id) => new Set(manifestShotIds).has(id));
+            if (timelineFiltered.length === manifestShotIds.length) {
+              const orderMismatches: number[] = [];
+              for (let i = 0; i < manifestShotIds.length; i++) {
+                if (manifestShotIds[i] !== timelineFiltered[i]) {
+                  orderMismatches.push(i + 1);
+                  if (orderMismatches.length >= 5) break;
+                }
+              }
+              if (orderMismatches.length > 0) {
+                console.warn(
+                  `[Export Guard] Manifest/timeline order divergence detected at positions: ${orderMismatches.join(", ")}. ` +
+                  `Export will use manifest order (text-position based) for correct audio sync.`
+                );
+              }
+            }
+
             // Refresh image URLs from DB to pick up regenerated shots
             const shotImageMap = new Map<string, string | null>();
             const shotDescMap = new Map<string, string>();
