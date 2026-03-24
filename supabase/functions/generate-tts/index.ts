@@ -324,85 +324,75 @@ function applyVolumeEqualization(ssml: string, gainOffsetDb = 0): string {
   );
 }
 
-
 /**
- * Estimate relative loudness of an MP3 chunk by computing mean absolute
- * value of frame payload bytes (rough energy proxy for compressed audio).
- * Also computes peak value for better outlier detection.
+ * Compute RMS loudness from LINEAR16 PCM data (16-bit signed LE, mono or stereo).
+ * LINEAR16 from Google TTS is mono 24kHz/48kHz, 16-bit signed little-endian.
+ * Returns RMS in the 0–32768 range and dBFS value.
  */
-function estimateChunkEnergy(data: Uint8Array): { rms: number; peak: number; mean: number } {
-  let pos = 0;
-
-  // Skip ID3v2 tag
-  if (data.length > 10 && data[0] === 0x49 && data[1] === 0x44 && data[2] === 0x33) {
-    const size = ((data[6] & 0x7F) << 21) | ((data[7] & 0x7F) << 14) |
-                 ((data[8] & 0x7F) << 7) | (data[9] & 0x7F);
-    pos = 10 + size;
+function computePcmRms(pcmData: Uint8Array): { rms: number; dbfs: number } {
+  // Skip WAV header if present (44 bytes for standard WAV)
+  let offset = 0;
+  if (pcmData.length > 44 &&
+      pcmData[0] === 0x52 && pcmData[1] === 0x49 &&
+      pcmData[2] === 0x46 && pcmData[3] === 0x46) {
+    // RIFF header — find 'data' chunk
+    let pos = 12;
+    while (pos < pcmData.length - 8) {
+      const chunkId = String.fromCharCode(pcmData[pos], pcmData[pos+1], pcmData[pos+2], pcmData[pos+3]);
+      const chunkSize = pcmData[pos+4] | (pcmData[pos+5]<<8) | (pcmData[pos+6]<<16) | (pcmData[pos+7]<<24);
+      if (chunkId === "data") { offset = pos + 8; break; }
+      pos += 8 + chunkSize;
+    }
   }
 
-  // Skip to first frame
-  while (pos < data.length - 1) {
-    if (data[pos] === 0xFF && (data[pos + 1] & 0xE0) === 0xE0) break;
-    pos++;
-  }
+  const sampleCount = Math.floor((pcmData.length - offset) / 2);
+  if (sampleCount < 10) return { rms: 0, dbfs: -96 };
 
-  const start = Math.min(pos + 4, data.length);
-  if (data.length - start < 100) return { rms: 0, peak: 0, mean: 0 };
-
-  let sum = 0;
   let sumSq = 0;
-  let peak = 0;
-  const len = data.length - start;
-  for (let i = start; i < data.length; i++) {
-    const v = Math.abs(data[i] - 128);
-    sum += v;
-    sumSq += v * v;
-    if (v > peak) peak = v;
+  for (let i = 0; i < sampleCount; i++) {
+    const idx = offset + i * 2;
+    let sample = pcmData[idx] | (pcmData[idx + 1] << 8);
+    if (sample >= 0x8000) sample -= 0x10000; // signed
+    sumSq += sample * sample;
   }
-  return {
-    rms: Math.sqrt(sumSq / len),
-    peak,
-    mean: sum / len,
-  };
+
+  const rms = Math.sqrt(sumSq / sampleCount);
+  const dbfs = rms > 0 ? 20 * Math.log10(rms / 32768) : -96;
+  return { rms, dbfs };
 }
 
 /**
- * Analyze chunk volumes and compute per-chunk dB gain adjustments needed
+ * Analyze per-chunk PCM loudness and compute dB gain adjustments
  * to bring all chunks to the same perceived level.
- * Returns adjustment values: positive = boost needed, negative = reduce.
  */
-function computeChunkGainAdjustments(chunks: Uint8Array[], tolerancePct = 0.12): {
-  energies: { rms: number; peak: number; mean: number }[];
-  meanEnergy: number;
+function computePcmGainAdjustments(pcmChunks: Uint8Array[], toleranceDb = 1.5): {
+  rmsValues: number[];
+  dbfsValues: number[];
+  meanDbfs: number;
   adjustmentsDb: number[];
   outlierIndices: number[];
 } {
-  if (chunks.length <= 1) {
-    return { energies: [], meanEnergy: 0, adjustmentsDb: [], outlierIndices: [] };
+  if (pcmChunks.length <= 1) {
+    return { rmsValues: [], dbfsValues: [], meanDbfs: 0, adjustmentsDb: [], outlierIndices: [] };
   }
 
-  const energies = chunks.map(c => estimateChunkEnergy(c));
-  const validMeans = energies.filter(e => e.mean > 0).map(e => e.mean);
-  if (validMeans.length === 0) {
-    return { energies, meanEnergy: 0, adjustmentsDb: new Array(chunks.length).fill(0), outlierIndices: [] };
+  const measurements = pcmChunks.map(c => computePcmRms(c));
+  const rmsValues = measurements.map(m => m.rms);
+  const dbfsValues = measurements.map(m => m.dbfs);
+  const validDbfs = dbfsValues.filter(d => d > -90);
+  if (validDbfs.length === 0) {
+    return { rmsValues, dbfsValues, meanDbfs: -96, adjustmentsDb: new Array(pcmChunks.length).fill(0), outlierIndices: [] };
   }
 
-  const meanEnergy = validMeans.reduce((a, b) => a + b, 0) / validMeans.length;
+  const meanDbfs = validDbfs.reduce((a, b) => a + b, 0) / validDbfs.length;
   const adjustmentsDb: number[] = [];
   const outlierIndices: number[] = [];
 
-  for (let i = 0; i < energies.length; i++) {
-    const e = energies[i];
-    if (e.mean <= 0) {
-      adjustmentsDb.push(0);
-      continue;
-    }
-    const ratio = e.mean / meanEnergy;
-    if (Math.abs(ratio - 1) > tolerancePct) {
-      // Convert ratio to dB adjustment: 20*log10(target/current) = 20*log10(1/ratio)
-      const dbAdj = Math.round(20 * Math.log10(1 / ratio) * 10) / 10;
+  for (let i = 0; i < dbfsValues.length; i++) {
+    const diff = meanDbfs - dbfsValues[i]; // positive = needs boost
+    if (Math.abs(diff) > toleranceDb && dbfsValues[i] > -90) {
       // Clamp to reasonable range
-      const clampedDb = Math.max(-6, Math.min(6, dbAdj));
+      const clampedDb = Math.max(-6, Math.min(6, Math.round(diff * 10) / 10));
       adjustmentsDb.push(clampedDb);
       outlierIndices.push(i);
     } else {
@@ -410,7 +400,7 @@ function computeChunkGainAdjustments(chunks: Uint8Array[], tolerancePct = 0.12):
     }
   }
 
-  return { energies, meanEnergy, adjustmentsDb, outlierIndices };
+  return { rmsValues, dbfsValues, meanDbfs, adjustmentsDb, outlierIndices };
 }
 
 function endsWithSentenceTerminal(text: string): boolean {
@@ -1097,8 +1087,8 @@ serve(async (req) => {
       const shotIdToIndex = new Map<string, number>();
       shotSentences!.forEach((s, i) => shotIdToIndex.set(s.id, i));
 
-      // Helper to generate a single chunk and extract timepoints
-      async function generateChunk(
+      // Helper to generate a single chunk (MP3) and extract timepoints
+      async function generateChunkMp3(
         chunkSsml: string,
         chunkShotIds: string[],
         chunkIndex: number,
@@ -1124,42 +1114,48 @@ serve(async (req) => {
         return { raw, timepoints: chunkTimepoints, duration };
       }
 
-      // Cache per-chunk results for potential re-use after volume normalization
+      // Helper to generate a chunk as LINEAR16 (for volume analysis only)
+      async function generateChunkLinear16(
+        chunkSsml: string,
+        chunkIndex: number
+      ): Promise<Uint8Array> {
+        let ssml = chunkSsml;
+        if (!isRestrictedVoice) ssml = applyVolumeEqualization(ssml, 0);
+        if (isRestrictedVoice) ssml = stripEmphasisTags(ssml);
+        const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
+        const result = await callGoogleTTS(ssml, GOOGLE_TTS_API_KEY, voice, linear16Config, true, false);
+        return Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+      }
+
+      // Cache per-chunk results
       interface ChunkGenResult { raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }
       const chunkGenResults: ChunkGenResult[] = [];
 
+      // ── Volume normalization: LINEAR16 pre-pass for accurate RMS measurement ──
+      let perChunkGainDb: number[] = new Array(chunks.length).fill(0);
+
+      if (chunks.length > 1) {
+        console.log(`Volume pre-pass: generating ${chunks.length} chunks as LINEAR16 for RMS analysis…`);
+        const pcmChunks: Uint8Array[] = [];
+        for (let ci = 0; ci < chunks.length; ci++) {
+          const pcm = await generateChunkLinear16(chunks[ci].ssml, ci);
+          pcmChunks.push(pcm);
+        }
+
+        const analysis = computePcmGainAdjustments(pcmChunks, 1.5);
+        console.log(`PCM volume analysis: dBFS=[${analysis.dbfsValues.map(d => d.toFixed(1)).join(",")}], mean=${analysis.meanDbfs.toFixed(1)}dB, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
+        perChunkGainDb = analysis.adjustmentsDb;
+      }
+
+      // ── Generate final MP3 chunks with per-chunk gain corrections ──
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
-        const gen = await generateChunk(chunk.ssml, chunk.shotIds, ci);
+        const gen = await generateChunkMp3(chunk.ssml, chunk.shotIds, ci, perChunkGainDb[ci]);
         chunkGenResults.push(gen);
         audioBuffers.push(gen.raw);
 
         console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(gen.timepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
         console.log(`Chunk ${ci + 1} MP3 duration: ${gen.duration.toFixed(3)}s`);
-      }
-
-      // ── Volume normalization pass: re-generate outlier chunks ──
-      if (audioBuffers.length > 1) {
-        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
-        const energyStrs = analysis.energies.map(e => e.mean.toFixed(2));
-        console.log(`Volume analysis: energies=[${energyStrs.join(",")}], mean=${analysis.meanEnergy.toFixed(2)}, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
-
-        if (analysis.outlierIndices.length > 0) {
-          console.log(`Re-generating ${analysis.outlierIndices.length} outlier chunk(s) with gain adjustment…`);
-
-          for (const idx of analysis.outlierIndices) {
-            const chunk = chunks[idx];
-            const gainDb = analysis.adjustmentsDb[idx];
-            const gen = await generateChunk(chunk.ssml, chunk.shotIds, idx, gainDb);
-            // Replace in both caches
-            chunkGenResults[idx] = gen;
-            audioBuffers[idx] = gen.raw;
-          }
-
-          // Log post-normalization levels
-          const post = computeChunkGainAdjustments(audioBuffers, 0.10);
-          console.log(`Volume after normalization: energies=[${post.energies.map(e => e.mean.toFixed(2)).join(",")}], remaining outliers=[${post.outlierIndices.join(",")}]`);
-        }
       }
 
       // ── Rebuild timepoints from cached chunk results with correct cumulative offsets ──
@@ -1220,14 +1216,40 @@ serve(async (req) => {
 
       console.log(`Split into ${chunks.length} legacy chunks`);
 
+      // ── Legacy volume normalization: LINEAR16 pre-pass ──
+      let legacyGainDb: number[] = new Array(chunks.length).fill(0);
+      if (chunks.length > 1) {
+        console.log(`Legacy volume pre-pass: generating ${chunks.length} chunks as LINEAR16…`);
+        const pcmChunks: Uint8Array[] = [];
+        for (let ci = 0; ci < chunks.length; ci++) {
+          let chunk = chunks[ci];
+          if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
+            chunk = applyVolumeEqualization(chunk, 0);
+          }
+          if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
+          const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
+          try {
+            const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, linear16Config, chunk.startsWith("<speak>"));
+            pcmChunks.push(Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0)));
+          } catch {
+            pcmChunks.push(new Uint8Array(0));
+          }
+        }
+        const analysis = computePcmGainAdjustments(pcmChunks, 1.5);
+        console.log(`Legacy PCM analysis: dBFS=[${analysis.dbfsValues.map(d => d.toFixed(1)).join(",")}], mean=${analysis.meanDbfs.toFixed(1)}dB, outliers=[${analysis.outlierIndices.join(",")}]`);
+        legacyGainDb = analysis.adjustmentsDb;
+      }
+
+      // ── Generate final MP3 chunks with corrections ──
       for (let ci = 0; ci < chunks.length; ci++) {
         let chunk = chunks[ci];
         if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
-          chunk = applyVolumeEqualization(chunk);
+          chunk = applyVolumeEqualization(chunk, legacyGainDb[ci]);
         }
         if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
         const chunkIsSsml = chunk.startsWith("<speak>");
-        console.log(`Legacy chunk ${ci + 1}: ssml=${chunkIsSsml}, len=${chunk.length}, start=${chunk.slice(0, 120)}...`);
+        const suffix = legacyGainDb[ci] !== 0 ? ` (gainOffset=${legacyGainDb[ci].toFixed(1)}dB)` : "";
+        console.log(`Legacy chunk ${ci + 1}${suffix}: ssml=${chunkIsSsml}, len=${chunk.length}`);
 
         try {
           const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
@@ -1246,32 +1268,7 @@ serve(async (req) => {
           throw error;
         }
       }
-
-      // Volume normalization for legacy mode too
-      if (audioBuffers.length > 1) {
-        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
-        console.log(`Legacy volume analysis: energies=[${analysis.energies.map(e => e.mean.toFixed(2)).join(",")}], outliers=[${analysis.outlierIndices.join(",")}]`);
-        if (analysis.outlierIndices.length > 0) {
-          console.log(`Re-generating ${analysis.outlierIndices.length} legacy outlier chunk(s)…`);
-          const rawChunks = ssmlText.length <= MAX_CHARS
-            ? [ssmlText]
-            : chunkTextForLegacySsml(text, {
-                paraPauseMs: pauseBetweenParagraphs, sentPauseMs: pauseAfterSentences,
-                startBoostPct: sentenceStartBoost, endSlowPct: sentenceEndSlow,
-                commaPauseMs: pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation,
-                emphasisBoost: mod.emphasisBoost, maxSsmlBytes: 4500,
-              });
-          for (const idx of analysis.outlierIndices) {
-            let chunk = rawChunks[idx] ?? "";
-            if (!isRestrictedVoice && chunk.startsWith("<speak>")) {
-              chunk = applyVolumeEqualization(chunk, analysis.adjustmentsDb[idx]);
-            }
-            if (isRestrictedVoice) chunk = stripEmphasisTags(chunk);
-            const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunk.startsWith("<speak>"));
-            audioBuffers[idx] = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-          }
-        }
-      }
+    }
     }
 
     // Concatenate all MP3 buffers
