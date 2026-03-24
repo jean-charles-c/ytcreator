@@ -2140,7 +2140,7 @@ export default function Editor() {
                   Manifest Timing (synchronisation audio/image)
                 </summary>
                 <div className="mt-3">
-                  <ManifestTimingPanel projectId={projectId!} manifest={buildManifest(projectId!, scenes, shots)} />
+                  <ManifestTimingPanel projectId={projectId!} manifest={storyboardManifest!} />
                 </div>
               </details>
 
