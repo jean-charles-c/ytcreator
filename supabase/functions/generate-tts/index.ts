@@ -1087,8 +1087,8 @@ serve(async (req) => {
       const shotIdToIndex = new Map<string, number>();
       shotSentences!.forEach((s, i) => shotIdToIndex.set(s.id, i));
 
-      // Helper to generate a single chunk and extract timepoints
-      async function generateChunk(
+      // Helper to generate a single chunk (MP3) and extract timepoints
+      async function generateChunkMp3(
         chunkSsml: string,
         chunkShotIds: string[],
         chunkIndex: number,
@@ -1114,42 +1114,48 @@ serve(async (req) => {
         return { raw, timepoints: chunkTimepoints, duration };
       }
 
-      // Cache per-chunk results for potential re-use after volume normalization
+      // Helper to generate a chunk as LINEAR16 (for volume analysis only)
+      async function generateChunkLinear16(
+        chunkSsml: string,
+        chunkIndex: number
+      ): Promise<Uint8Array> {
+        let ssml = chunkSsml;
+        if (!isRestrictedVoice) ssml = applyVolumeEqualization(ssml, 0);
+        if (isRestrictedVoice) ssml = stripEmphasisTags(ssml);
+        const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
+        const result = await callGoogleTTS(ssml, GOOGLE_TTS_API_KEY, voice, linear16Config, true, false);
+        return Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+      }
+
+      // Cache per-chunk results
       interface ChunkGenResult { raw: Uint8Array; timepoints: { name: string; time: number }[]; duration: number }
       const chunkGenResults: ChunkGenResult[] = [];
 
+      // ── Volume normalization: LINEAR16 pre-pass for accurate RMS measurement ──
+      let perChunkGainDb: number[] = new Array(chunks.length).fill(0);
+
+      if (chunks.length > 1) {
+        console.log(`Volume pre-pass: generating ${chunks.length} chunks as LINEAR16 for RMS analysis…`);
+        const pcmChunks: Uint8Array[] = [];
+        for (let ci = 0; ci < chunks.length; ci++) {
+          const pcm = await generateChunkLinear16(chunks[ci].ssml, ci);
+          pcmChunks.push(pcm);
+        }
+
+        const analysis = computePcmGainAdjustments(pcmChunks, 1.5);
+        console.log(`PCM volume analysis: dBFS=[${analysis.dbfsValues.map(d => d.toFixed(1)).join(",")}], mean=${analysis.meanDbfs.toFixed(1)}dB, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
+        perChunkGainDb = analysis.adjustmentsDb;
+      }
+
+      // ── Generate final MP3 chunks with per-chunk gain corrections ──
       for (let ci = 0; ci < chunks.length; ci++) {
         const chunk = chunks[ci];
-        const gen = await generateChunk(chunk.ssml, chunk.shotIds, ci);
+        const gen = await generateChunkMp3(chunk.ssml, chunk.shotIds, ci, perChunkGainDb[ci]);
         chunkGenResults.push(gen);
         audioBuffers.push(gen.raw);
 
         console.log(`Chunk ${ci + 1} timepoints: ${JSON.stringify(gen.timepoints.map(t => ({ name: t.name.slice(0, 8), time: t.time })))}`);
         console.log(`Chunk ${ci + 1} MP3 duration: ${gen.duration.toFixed(3)}s`);
-      }
-
-      // ── Volume normalization pass: re-generate outlier chunks ──
-      if (audioBuffers.length > 1) {
-        const analysis = computeChunkGainAdjustments(audioBuffers, 0.10);
-        const energyStrs = analysis.energies.map(e => e.mean.toFixed(2));
-        console.log(`Volume analysis: energies=[${energyStrs.join(",")}], mean=${analysis.meanEnergy.toFixed(2)}, outliers=[${analysis.outlierIndices.join(",")}], adjustments=[${analysis.adjustmentsDb.map(d => d.toFixed(1)).join(",")}]`);
-
-        if (analysis.outlierIndices.length > 0) {
-          console.log(`Re-generating ${analysis.outlierIndices.length} outlier chunk(s) with gain adjustment…`);
-
-          for (const idx of analysis.outlierIndices) {
-            const chunk = chunks[idx];
-            const gainDb = analysis.adjustmentsDb[idx];
-            const gen = await generateChunk(chunk.ssml, chunk.shotIds, idx, gainDb);
-            // Replace in both caches
-            chunkGenResults[idx] = gen;
-            audioBuffers[idx] = gen.raw;
-          }
-
-          // Log post-normalization levels
-          const post = computeChunkGainAdjustments(audioBuffers, 0.10);
-          console.log(`Volume after normalization: energies=[${post.energies.map(e => e.mean.toFixed(2)).join(",")}], remaining outliers=[${post.outlierIndices.join(",")}]`);
-        }
       }
 
       // ── Rebuild timepoints from cached chunk results with correct cumulative offsets ──
