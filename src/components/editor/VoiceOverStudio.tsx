@@ -500,7 +500,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   )}
 
                   {/* History */}
-                  <Accordion type="multiple" defaultValue={[]}>
+                  <Accordion type="multiple" defaultValue={["history"]}>
                     <AccordionItem value="history" className="border-0 border-t border-border pt-2">
                       <AccordionTrigger className="py-1.5 hover:no-underline gap-2">
                         <span className="flex items-center gap-2 text-xs font-semibold font-display">
