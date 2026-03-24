@@ -1457,7 +1457,7 @@ serve(async (req) => {
           const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
           try {
             const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, linear16Config, chunk.startsWith("<speak>"));
-            pcmChunks.push(Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0)));
+            pcmChunks.push(decodeBase64Audio(result.audioContent));
           } catch {
             pcmChunks.push(new Uint8Array(0));
           }
@@ -1480,7 +1480,7 @@ serve(async (req) => {
 
         try {
           const result = await callGoogleTTS(chunk, GOOGLE_TTS_API_KEY, voice, audioConfig, chunkIsSsml);
-          const raw = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
+          const raw = decodeBase64Audio(result.audioContent);
           audioBuffers.push(raw);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -1488,7 +1488,7 @@ serve(async (req) => {
             console.warn(`Legacy chunk ${ci + 1} invalid SSML, retrying as plain text fallback`);
             const fallbackText = ssmlToPlainText(chunk);
             const fallbackResult = await callGoogleTTS(fallbackText, GOOGLE_TTS_API_KEY, voice, audioConfig, false);
-            const raw = Uint8Array.from(atob(fallbackResult.audioContent), (c) => c.charCodeAt(0));
+            const raw = decodeBase64Audio(fallbackResult.audioContent);
             audioBuffers.push(raw);
             continue;
           }
