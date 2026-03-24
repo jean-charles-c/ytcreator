@@ -797,13 +797,17 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
               try {
                 let { data: freshSession, error: sessionError } = await supabase.auth.getSession();
-                let accessToken = freshSession?.session?.access_token;
+                let session = freshSession?.session ?? null;
+                let accessToken = session?.access_token;
+                const nowInSeconds = Math.floor(Date.now() / 1000);
+                const tokenIsExpired = !session?.expires_at || session.expires_at <= nowInSeconds + 30;
 
-                if (!accessToken || sessionError) {
+                if (!accessToken || sessionError || tokenIsExpired) {
                   const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
                   if (refreshError || !refreshed.session?.access_token) {
                     throw new Error("Session expired, please log in again");
                   }
+                  session = refreshed.session;
                   accessToken = refreshed.session.access_token;
                 }
 
