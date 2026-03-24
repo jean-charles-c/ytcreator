@@ -1320,36 +1320,46 @@ serve(async (req) => {
       const linear16Config = { ...audioConfig, audioEncoding: "LINEAR16" };
       const chunkWavs: Uint8Array[] = [];
       const rawChunkTimepoints: { chunkIndex: number; shotId: string; timeSeconds: number }[] = [];
+      const MARKED_BATCH_SIZE = 3;
 
-      // Generate all chunks (LINEAR16 with timepointing)
-      for (let ci = 0; ci < markedChunks.length; ci++) {
-        const chunk = markedChunks[ci];
-        const result = await callGoogleTTS(
-          chunk.ssml,
-          GOOGLE_TTS_API_KEY,
-          voice,
-          linear16Config,
-          true,
-          true // enableTimePointing
+      // Generate chunks in small parallel batches to reduce wall time without overloading the runtime
+      for (let start = 0; start < markedChunks.length; start += MARKED_BATCH_SIZE) {
+        const batch = markedChunks.slice(start, start + MARKED_BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (chunk, batchIndex) => {
+            const result = await callGoogleTTS(
+              chunk.ssml,
+              GOOGLE_TTS_API_KEY,
+              voice,
+              linear16Config,
+              true,
+              true
+            );
+
+            const wavData = decodeBase64Audio(result.audioContent);
+            return {
+              chunkIndex: start + batchIndex,
+              wavData,
+              timepoints: result.timepoints ?? [],
+              shotCount: chunk.shotIds.length,
+            };
+          })
         );
 
-        const wavData = Uint8Array.from(atob(result.audioContent), (c) => c.charCodeAt(0));
-        chunkWavs.push(wavData);
-
-        // Collect timepoints from this chunk
-        if (result.timepoints) {
-          for (const tp of result.timepoints) {
+        batchResults.sort((a, b) => a.chunkIndex - b.chunkIndex);
+        for (const batchResult of batchResults) {
+          chunkWavs.push(batchResult.wavData);
+          for (const tp of batchResult.timepoints) {
             const markName = tp.markName;
             if (markName === "__end" || markName === "__chunk_end") continue;
             rawChunkTimepoints.push({
-              chunkIndex: ci,
+              chunkIndex: batchResult.chunkIndex,
               shotId: markName,
               timeSeconds: tp.timeSeconds,
             });
           }
+          console.log(`Rendered marked chunk ${batchResult.chunkIndex + 1}/${markedChunks.length} (${batchResult.shotCount} shots, timepoints=${batchResult.timepoints.length})`);
         }
-
-        console.log(`Rendered marked chunk ${ci + 1}/${markedChunks.length} (${chunk.shotIds.length} shots, timepoints=${result.timepoints?.length ?? 0})`);
       }
 
       // Measure per-chunk volume for cross-chunk normalization
