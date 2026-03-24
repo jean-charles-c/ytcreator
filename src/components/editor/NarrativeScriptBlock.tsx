@@ -327,6 +327,15 @@ export default function NarrativeScriptBlock({
                   </Collapsible>
                 );
               })()}
+
+              {/* ScriptInput button at bottom */}
+              {!generatingScript && script && (
+                <div className="mt-4 pt-3 border-t border-border">
+                  <Button variant="hero" size="sm" onClick={onSendToNarration} className="h-8 text-xs">
+                    <ArrowRight className="h-3 w-3" /> ScriptInput
+                  </Button>
+                </div>
+              )}
               <div ref={scriptEndRef} />
             </>
           )}
