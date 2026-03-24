@@ -1788,7 +1788,16 @@ export default function Editor() {
                   const sceneIds = scenes.map((s) => s.id);
                   const allOpen = openSceneIds.length === sceneIds.length && sceneIds.every((id) => openSceneIds.includes(id));
                   return (
-                    <div className="mb-4 flex justify-end">
+                    <div className="mb-4 flex items-center justify-end gap-2">
+                      <Button
+                        variant={showWarnings ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowWarnings((v) => !v)}
+                        className={`h-7 text-xs ${showWarnings ? "" : "text-amber-600 border-amber-500/30 hover:bg-amber-500/10"}`}
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        Avertissements
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
