@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ShieldCheck,
   ArrowUpDown,
+  AlertTriangle,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -920,7 +921,8 @@ export default function Editor() {
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+   const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+   const [showWarnings, setShowWarnings] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
   const IMAGE_MODELS = [
@@ -1787,7 +1789,16 @@ export default function Editor() {
                   const sceneIds = scenes.map((s) => s.id);
                   const allOpen = openSceneIds.length === sceneIds.length && sceneIds.every((id) => openSceneIds.includes(id));
                   return (
-                    <div className="mb-4 flex justify-end">
+                    <div className="mb-4 flex items-center justify-end gap-2">
+                      <Button
+                        variant={showWarnings ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowWarnings((v) => !v)}
+                        className={`h-7 text-xs ${showWarnings ? "" : "text-amber-600 border-amber-500/30 hover:bg-amber-500/10"}`}
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        Avertissements
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1804,6 +1815,16 @@ export default function Editor() {
                     const issues = validateManifest(manifest);
                     const errorIssues = issues.filter((i) => i.level === "error");
                     const warningIssues = issues.filter((i) => i.level === "warning");
+                    // Build shot → issue level map for warning highlights
+                    const shotIssueMap = new Map<string, "error" | "warning">();
+                    for (const issue of issues) {
+                      if (issue.shotId) {
+                        const existing = shotIssueMap.get(issue.shotId);
+                        if (!existing || (issue.level === "error" && existing === "warning")) {
+                          shotIssueMap.set(issue.shotId, issue.level);
+                        }
+                      }
+                    }
 
                     let globalShotIndex = 1;
                     return (
@@ -1884,10 +1905,40 @@ export default function Editor() {
                                         {sceneShots.map((sh, i) => {
                                           const shotNum = String(startIndex + i).padStart(4, "0");
                                           const hasImage = !!sh.image_url;
+                                          const issueLevel = showWarnings ? shotIssueMap.get(sh.id) : undefined;
+                                          const issueColor = issueLevel === "error"
+                                            ? "text-destructive font-bold"
+                                            : issueLevel === "warning"
+                                            ? "text-amber-600 font-bold"
+                                            : hasImage
+                                            ? "text-green-500 font-semibold"
+                                            : "text-muted-foreground";
+                                          const isClickable = showWarnings && !!issueLevel;
                                           return (
                                             <span key={sh.id}>
                                               {i > 0 && <span className="text-muted-foreground"> / </span>}
-                                              <span className={hasImage ? "text-green-500 font-semibold" : "text-muted-foreground"}>{shotNum}</span>
+                                              {isClickable ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // Open scene accordion
+                                                    setOpenSceneIds((prev) =>
+                                                      prev.includes(scene.id) ? prev : [...prev, scene.id]
+                                                    );
+                                                    // Scroll to shot after accordion opens
+                                                    setTimeout(() => {
+                                                      const el = document.getElementById(`shot-${sh.id}`);
+                                                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    }, 150);
+                                                  }}
+                                                  className={`${issueColor} underline underline-offset-2 hover:opacity-70 cursor-pointer`}
+                                                >
+                                                  {shotNum}
+                                                </button>
+                                              ) : (
+                                                <span className={issueColor}>{shotNum}</span>
+                                              )}
                                             </span>
                                           );
                                         })}
@@ -1993,18 +2044,20 @@ export default function Editor() {
                                       dbShots={sceneShots}
                                       startGlobalIndex={startIndex}
                                       renderShot={(shot, globalIdx, isLast) => (
-                                        <ShotCard
-                                          key={shot.id}
-                                          shot={shot}
-                                          globalIndex={globalIdx}
-                                          sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
-                                          isLastInScene={isLast}
-                                          onUpdate={handleShotUpdate}
-                                          onDelete={handleShotDelete}
-                                          onRegenerate={handleShotRegenerate}
-                                          onGenerateImage={handleGenerateShotImage}
-                                          onMergeWithNext={handleShotMergeWithNext}
-                                        />
+                                        <div id={`shot-${shot.id}`}>
+                                          <ShotCard
+                                            key={shot.id}
+                                            shot={shot}
+                                            globalIndex={globalIdx}
+                                            sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
+                                            isLastInScene={isLast}
+                                            onUpdate={handleShotUpdate}
+                                            onDelete={handleShotDelete}
+                                            onRegenerate={handleShotRegenerate}
+                                            onGenerateImage={handleGenerateShotImage}
+                                            onMergeWithNext={handleShotMergeWithNext}
+                                          />
+                                        </div>
                                       )}
                                     />
                                   )}
