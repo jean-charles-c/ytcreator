@@ -177,6 +177,7 @@ export default function Editor() {
   const [selectedMusicTracks, setSelectedMusicTracks] = useState<{ url: string; name: string }[]>([]);
   const [qaExportAllowed, setQaExportAllowed] = useState(true);
   const [qaCounts, setQaCounts] = useState<{ errors: number; warnings: number }>({ errors: 0, warnings: 0 });
+  const [qaIssues, setQaIssues] = useState<{ level: string; sceneOrder?: number; shotOrder?: number }[]>([]);
   const storyAbortRef = useRef<AbortController | null>(null);
 
   const storyboardManifest = useMemo(
@@ -184,8 +185,9 @@ export default function Editor() {
     [projectId, scenes, shots],
   );
 
-  const handleQaReportChange = useCallback((counts: { errors: number; warnings: number }) => {
-    setQaCounts((prev) => (prev.errors === counts.errors && prev.warnings === counts.warnings ? prev : counts));
+  const handleQaReportChange = useCallback((report: { errors: number; warnings: number; issues: { level: string; sceneOrder?: number; shotOrder?: number }[] }) => {
+    setQaCounts((prev) => (prev.errors === report.errors && prev.warnings === report.warnings ? prev : { errors: report.errors, warnings: report.warnings }));
+    setQaIssues(report.issues);
   }, []);
 
   // Derive loading states from background tasks
@@ -1826,11 +1828,34 @@ export default function Editor() {
                     const warningIssues = issues.filter((i) => i.level === "warning");
                     // Build shot → issue level map for warning highlights
                     const shotIssueMap = new Map<string, "error" | "warning">();
+                    // From manifest validation (has shotId directly)
                     for (const issue of issues) {
                       if (issue.shotId) {
                         const existing = shotIssueMap.get(issue.shotId);
                         if (!existing || (issue.level === "error" && existing === "warning")) {
                           shotIssueMap.set(issue.shotId, issue.level);
+                        }
+                      }
+                    }
+                    // From QA report (has sceneOrder + shotOrder → map to shot ID)
+                    if (qaIssues.length > 0) {
+                      // Build sceneOrder→scene map, then find shot by order
+                      const sceneByOrder = new Map(scenes.map((s) => [s.scene_order, s]));
+                      for (const qi of qaIssues) {
+                        if (qi.sceneOrder != null && qi.shotOrder != null) {
+                          const scene = sceneByOrder.get(qi.sceneOrder);
+                          if (!scene) continue;
+                          const sceneShots = shots
+                            .filter((sh) => sh.scene_id === scene.id)
+                            .sort((a, b) => a.shot_order - b.shot_order);
+                          const shot = sceneShots.find((sh) => sh.shot_order === qi.shotOrder);
+                          if (!shot) continue;
+                          const level = qi.level === "critical" ? "error" : qi.level === "warning" ? "warning" : undefined;
+                          if (!level) continue;
+                          const existing = shotIssueMap.get(shot.id);
+                          if (!existing || (level === "error" && existing === "warning")) {
+                            shotIssueMap.set(shot.id, level);
+                          }
                         }
                       }
                     }
