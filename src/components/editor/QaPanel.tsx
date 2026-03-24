@@ -64,7 +64,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
     const qa = runQaValidation(manifest, builtTiming);
     setReport(qa);
     onExportAllowedChange?.(qa.exportAllowed);
-    onReportChange?.({ errors: qa.errorCount, warnings: qa.warningCount });
+    onReportChange?.({ errors: qa.criticalCount, warnings: qa.warningCount });
     setLoading(false);
   };
 
