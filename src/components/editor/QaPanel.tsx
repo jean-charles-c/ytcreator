@@ -11,7 +11,7 @@ interface QaPanelProps {
   projectId: string;
   manifest: VisualPromptManifest;
   onExportAllowedChange?: (allowed: boolean) => void;
-  onReportChange?: (counts: { errors: number; warnings: number }) => void;
+  onReportChange?: (counts: { errors: number; warnings: number; issues: QaIssue[] }) => void;
 }
 
 const categoryLabels: Record<QaCategory, string> = {
