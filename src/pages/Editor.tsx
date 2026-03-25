@@ -37,7 +37,7 @@ import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import VisualGallery from "@/components/editor/VisualGallery";
 import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
-import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
+import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, computeSplit, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
 import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
@@ -908,6 +908,75 @@ export default function Editor() {
     } catch (e) {
       console.error("Merge exception:", e);
       toast.error("Erreur lors de la fusion");
+    }
+  };
+
+  const handleShotSplit = async (shotId: string, splitIndex: number) => {
+    try {
+      const shot = shots.find((s) => s.id === shotId);
+      if (!shot) return;
+
+      const scene = scenes.find((sc) => sc.id === shot.scene_id);
+      if (!scene) return;
+
+      const sceneShots = shots.filter((s) => s.scene_id === shot.scene_id);
+      const splitResult = computeSplit(sceneShots, shotId, splitIndex, scene);
+      if (!splitResult) {
+        toast.warning("Impossible de scinder ce shot.");
+        return;
+      }
+
+      const { originalUpdate, newShot, orderUpdates, action } = splitResult;
+
+      // Update original shot text
+      const { error: updateError } = await supabase
+        .from("shots")
+        .update({ source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr })
+        .eq("id", originalUpdate.id);
+      if (updateError) { toast.error("Erreur lors de la scission"); return; }
+
+      // Shift orders of subsequent shots
+      for (const ou of orderUpdates) {
+        await supabase.from("shots").update({ shot_order: ou.shot_order }).eq("id", ou.id);
+      }
+
+      // Insert new shot
+      const { data: insertedShot, error: insertError } = await supabase
+        .from("shots")
+        .insert({
+          scene_id: shot.scene_id,
+          project_id: shot.project_id,
+          shot_order: newShot.shot_order,
+          shot_type: newShot.shot_type,
+          description: newShot.description,
+          source_sentence: newShot.source_sentence,
+          source_sentence_fr: newShot.source_sentence_fr,
+        })
+        .select()
+        .single();
+      if (insertError || !insertedShot) { toast.error("Erreur lors de la création du nouveau shot"); return; }
+
+      // Update local state
+      setShots((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id === originalUpdate.id) {
+            return { ...s, source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr };
+          }
+          const ou = orderUpdates.find((o) => o.id === s.id);
+          if (ou) return { ...s, shot_order: ou.shot_order };
+          return s;
+        });
+        return [...updated, insertedShot].sort((a, b) => {
+          if (a.scene_id !== b.scene_id) return 0;
+          return a.shot_order - b.shot_order;
+        });
+      });
+
+      setManifestHistory((prev) => [...prev, action]);
+      toast.success("Shot scindé en deux !");
+    } catch (e) {
+      console.error("Split exception:", e);
+      toast.error("Erreur lors de la scission");
     }
   };
 
@@ -2258,6 +2327,7 @@ export default function Editor() {
                                             onRegenerate={handleShotRegenerate}
                                             onGenerateImage={handleGenerateShotImage}
                                             onMergeWithNext={handleShotMergeWithNext}
+                                            onSplit={handleShotSplit}
                                           />
                                         </div>
                                       )}

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, ShieldAlert, ShieldOff } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -38,6 +38,7 @@ interface ShotCardProps {
   onRegenerate?: (shotId: string) => Promise<void>;
   onGenerateImage?: (shotId: string) => Promise<void>;
   onMergeWithNext?: (shotId: string) => Promise<void>;
+  onSplit?: (shotId: string, splitIndex: number) => Promise<void>;
 }
 
 const formatUsd = (value: number | string | null | undefined) => {
@@ -45,7 +46,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -58,6 +59,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+  const [splitIndex, setSplitIndex] = useState<number | null>(null);
+  const [splitting, setSplitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
@@ -120,6 +124,38 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     } finally {
       setMerging(false);
     }
+  };
+
+  const handleSplit = async () => {
+    if (!onSplit || splitIndex === null) return;
+    setSplitting(true);
+    try {
+      await onSplit(shot.id, splitIndex);
+      setSplitDialogOpen(false);
+    } finally {
+      setSplitting(false);
+    }
+  };
+
+  const openSplitDialog = () => {
+    const text = shot.source_sentence || "";
+    if (text.length < 10) {
+      toast.warning("Le texte est trop court pour être scindé.");
+      return;
+    }
+    // Find a good default split point (nearest sentence boundary to middle)
+    const mid = Math.floor(text.length / 2);
+    let best = mid;
+    for (let delta = 0; delta < Math.floor(text.length / 2); delta++) {
+      const after = mid + delta;
+      const before = mid - delta;
+      if (after < text.length && /[.!?;]/.test(text[after])) { best = after + 1; break; }
+      if (before > 0 && /[.!?;]/.test(text[before])) { best = before + 1; break; }
+      if (after < text.length && text[after] === ",") { best = after + 1; break; }
+      if (before > 0 && text[before] === ",") { best = before + 1; break; }
+    }
+    setSplitIndex(best);
+    setSplitDialogOpen(true);
   };
 
   const copyPrompt = () => {
@@ -226,6 +262,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 {merging ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
               </button>
             )}
+            {onSplit && shot.source_sentence && shot.source_sentence.length >= 10 && (
+              <button onClick={openSplitDialog} disabled={splitting} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Scinder ce shot en deux">
+                {splitting ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
+              </button>
+            )}
             <button onClick={() => setDeleteDialogOpen(true)} className="p-2 sm:p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Supprimer ce shot">
               <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
@@ -303,6 +344,67 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             <AlertDialogCancel disabled={deleting} className="min-h-[44px]">Annuler</AlertDialogCancel>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="min-h-[44px]">
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Split dialog */}
+      <AlertDialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Scissors className="h-4 w-4" /> Scinder ce shot en deux
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cliquez dans le texte pour choisir le point de coupure. Le shot sera divisé en deux fragments distincts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {shot.source_sentence && splitIndex !== null && (
+            <div className="space-y-3">
+              <div className="rounded border border-border bg-secondary/30 p-3">
+                <p className="text-xs leading-relaxed">
+                  <span className="bg-primary/20 text-foreground px-0.5 rounded">
+                    {shot.source_sentence.slice(0, splitIndex)}
+                  </span>
+                  <span className="inline-block w-0.5 h-4 bg-primary mx-0.5 align-middle animate-pulse" />
+                  <span className="bg-accent/30 text-foreground px-0.5 rounded">
+                    {shot.source_sentence.slice(splitIndex)}
+                  </span>
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Position de coupure</label>
+                <input
+                  type="range"
+                  min={5}
+                  max={shot.source_sentence.length - 5}
+                  value={splitIndex}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    // Snap to nearest word boundary
+                    const text = shot.source_sentence!;
+                    let snapped = val;
+                    for (let d = 0; d < 10; d++) {
+                      if (val + d < text.length && text[val + d] === " ") { snapped = val + d + 1; break; }
+                      if (val - d > 0 && text[val - d] === " ") { snapped = val - d + 1; break; }
+                    }
+                    setSplitIndex(snapped);
+                  }}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-[9px] text-muted-foreground">
+                  <span>Shot A : {splitIndex} car.</span>
+                  <span>Shot B : {shot.source_sentence.length - splitIndex} car.</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={splitting} className="min-h-[44px]">Annuler</AlertDialogCancel>
+            <Button onClick={handleSplit} disabled={splitting} className="min-h-[44px]">
+              {splitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Scissors className="h-4 w-4 mr-1" />}
+              Scinder
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
