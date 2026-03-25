@@ -784,12 +784,10 @@ function buildMarkedSsml(
     return { mark: `<mark name="${shot.id}"/>`, body: processed, text: shot.text.trim() };
   });
 
-  // Build SSML with marks firing BEFORE inter-shot pauses.
-  // Old structure: mark13 text13 <break/> mark14 text14
-  //   → mark14 fires AFTER the pause → image appears late
-  // New structure: mark13 text13 mark14 <break/> text14
-  //   → mark14 fires when text13 ends → image changes immediately,
-  //     pause plays with the correct image already displayed
+  // Build SSML with marks firing AFTER inter-shot pauses.
+  // Structure: textA <break/> <mark name="shotB"/> textB
+  //   → mark_B fires exactly when textB starts being spoken
+  //   → image changes at the precise moment its corresponding audio begins
   const pieces: string[] = [];
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i];
@@ -798,8 +796,8 @@ function buildMarkedSsml(
       // First shot: mark + body, no preceding break
       pieces.push(`${p.mark}${p.body}`);
     } else {
-      // Subsequent shots: emit mark first (triggers image change), then the
-      // inter-shot pause computed from the PREVIOUS shot's context, then body.
+      // Subsequent shots: emit the inter-shot pause first (from PREVIOUS shot
+      // context), then the mark (triggers image change), then body.
       const isSceneBreak = shotSentences[i].isNewScene === true;
       const prevEndsSentence = endsWithSentenceTerminal(parts[i - 1].text);
       const basePause = isSceneBreak ? pauseBetweenParagraphs : pauseAfterSentences;
@@ -815,7 +813,7 @@ function buildMarkedSsml(
         breakTag = `<break time="${pause}ms"/>`;
       }
 
-      pieces.push(` ${p.mark}${breakTag}${p.body}`);
+      pieces.push(` ${breakTag}${p.mark}${p.body}`);
     }
   }
 
