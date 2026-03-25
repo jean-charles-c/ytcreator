@@ -2081,6 +2081,19 @@ export default function Editor() {
                               </button>
                               {isOpen && (
                                 <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
+                                  {/* Scene-level sensitive mode */}
+                                  <div className="rounded border border-border/50 bg-secondary/20 p-2.5">
+                                    <ScopeOverrideControl
+                                      value={{
+                                        localLevel: sceneSensitiveLevels.get(scene.id) ?? null,
+                                        inheritedLevel: getSceneEffectiveInherited(scene.id),
+                                      }}
+                                      onChangeLocal={(lvl) => setSceneSensitiveLevel(scene.id, lvl)}
+                                      scopeLabel={`Scène ${scene.scene_order}`}
+                                      parentLabel="Global"
+                                      compact
+                                    />
+                                  </div>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     {/* Realign shots button — only show if shots are out of text order */}
                                     {(() => {
