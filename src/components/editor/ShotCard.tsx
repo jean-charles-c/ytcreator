@@ -216,6 +216,14 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
           {!SHOT_TYPES.includes(editType) && <option value={editType}>{editType}</option>}
         </select>
         <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className={`${inputClass} min-h-[60px] resize-y`} placeholder="Description" />
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée (EN) — utilisée par la VO</label>
+          <textarea value={editSourceSentence} onChange={(e) => setEditSourceSentence(e.target.value)} className={`${inputClass} min-h-[50px] resize-y`} placeholder="Source sentence (EN)" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée (FR)</label>
+          <textarea value={editSourceSentenceFr} onChange={(e) => setEditSourceSentenceFr(e.target.value)} className={`${inputClass} min-h-[50px] resize-y`} placeholder="Source sentence (FR)" />
+        </div>
         <textarea value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} className={`${inputClass} min-h-[80px] resize-y font-mono`} placeholder="Prompt export" />
         <div className="flex gap-2">
           <Button size="sm" onClick={saveEdit} disabled={saving} className="min-h-[44px] sm:min-h-0">
