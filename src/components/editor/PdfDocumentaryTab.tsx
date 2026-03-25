@@ -319,6 +319,24 @@ export default function PdfDocumentaryTab({
     const textToAnalyze = scriptText || script;
     if (!textToAnalyze || textToAnalyze.trim().length < 100) return;
 
+    // If the script already has [[TAG]] markers, use the deterministic parser — skip AI analysis
+    // This prevents the AI analyzer (which only knows 9 sections) from destroying ACT2B and editorial blocks
+    const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]/i.test(textToAnalyze);
+    if (hasV3Tags) {
+      const parsed = parseScriptIntoSections(textToAnalyze);
+      const { sections: sanitized, warnings } = sanitizeNarrativeSections(parsed);
+      setSections(sanitized);
+      sectionsInitRef.current = textToAnalyze;
+      for (const w of warnings) {
+        toast.info(w, { duration: 3000 });
+      }
+      setScriptOpen(true);
+      setOpenSections(new Set(["hook"]));
+      toast.success(`Script analysé — ${sanitized.filter(s => s.content.trim()).length} sections identifiées`);
+      return;
+    }
+
+    // Fallback: AI-powered analysis for untagged scripts
     setAnalyzingScript(true);
     try {
       const response = await fetch(
