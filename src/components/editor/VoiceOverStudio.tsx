@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -333,10 +333,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
   // ── Desync detection: compare current shots with latest audio timepoints ──
   const [desyncWarning, setDesyncWarning] = useState<string | null>(null);
+  const [syncChecked, setSyncChecked] = useState(false);
 
   useEffect(() => {
     if (!projectId || !shots || shots.length === 0) {
       setDesyncWarning(null);
+      setSyncChecked(false);
       return;
     }
     let cancelled = false;
@@ -365,6 +367,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
       const validation = validateExactShotTimepoints(expectedShotIds, timepoints);
 
+      setSyncChecked(true);
       if (!validation.ok) {
         setDesyncWarning(validation.errors[0] ?? "L'audio VO est désynchronisé avec les shots actuels.");
       } else {
@@ -393,6 +396,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group">
           <Mic className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold font-display text-foreground flex-1 text-left">VoiceOver</span>
+          {desyncWarning ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 text-destructive px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+              <XCircle className="h-3 w-3" />
+              Désync
+            </span>
+          ) : syncChecked ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-500 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+              <CheckCircle2 className="h-3 w-3" />
+              Sync OK
+            </span>
+          ) : null}
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${voOpen ? "rotate-180" : ""}`} />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-4">
