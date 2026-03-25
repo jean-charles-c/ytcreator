@@ -216,7 +216,13 @@ export default function SceneBlock({
                     <div className="break-words"><span className="font-medium text-foreground/80">Contexte :</span> <span className="text-muted-foreground">{ctx.contexte_scene}</span></div>
                     <div className="break-words"><span className="font-medium text-foreground/80">Sujet :</span> <span className="text-muted-foreground">{ctx.sujet}</span></div>
                     <div className="break-words"><span className="font-medium text-foreground/80">Lieu :</span> <span className="text-muted-foreground">{ctx.lieu}</span></div>
+                    {ctx.lieux_ordonnes && ctx.lieux_ordonnes.length > 1 && (
+                      <div className="break-words"><span className="font-medium text-foreground/80">Lieux (ordre) :</span> <span className="text-muted-foreground">{ctx.lieux_ordonnes.map((l, i) => `${i + 1}. ${l}`).join(" → ")}</span></div>
+                    )}
                     <div className="break-words"><span className="font-medium text-foreground/80">Époque :</span> <span className="text-muted-foreground">{ctx.epoque}</span></div>
+                    {ctx.epoques_ordonnees && ctx.epoques_ordonnees.length > 1 && (
+                      <div className="break-words"><span className="font-medium text-foreground/80">Époques (ordre) :</span> <span className="text-muted-foreground">{ctx.epoques_ordonnees.map((e, i) => `${i + 1}. ${e}`).join(" → ")}</span></div>
+                    )}
                     <div className="break-words"><span className="font-medium text-foreground/80">Personnages :</span> <span className="text-muted-foreground">{ctx.personnages}</span></div>
                     <div className="break-words sm:col-span-2"><span className="font-medium text-foreground/80">Cohérence :</span> <span className="text-muted-foreground">{ctx.coherence_globale}</span></div>
                   </div>

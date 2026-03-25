@@ -85,6 +85,8 @@ export function extractAnchorsFromScene(
     personnages: ctx.personnages || undefined,
     visual_intention: sceneColumns.visual_intention || undefined,
     location: sceneColumns.location || undefined,
+    lieux_ordonnes: Array.isArray(ctx.lieux_ordonnes) ? ctx.lieux_ordonnes : undefined,
+    epoques_ordonnees: Array.isArray(ctx.epoques_ordonnees) ? ctx.epoques_ordonnees : undefined,
   };
 }
 
