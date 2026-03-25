@@ -385,6 +385,25 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     fetchAudio();
   }, [projectId]);
 
+  // ── Audio/shot sync check ──
+  const selectedAudio = audioFiles.find((a) => a.id === selectedAudioId);
+  const audioDesync = (() => {
+    if (!selectedAudio || shots.length === 0) return null;
+    const timepoints = (selectedAudio as any).shot_timepoints as { shotId: string }[] | null;
+    if (!timepoints || timepoints.length === 0) return null;
+
+    const currentShotIds = new Set(shots.map((s) => s.id));
+    const timepointShotIds = new Set(timepoints.filter((tp) => !tp.shotId.startsWith("_missing_")).map((tp) => tp.shotId));
+
+    const missingInAudio = shots.filter((s) => !timepointShotIds.has(s.id)).length;
+    const obsoleteInAudio = [...timepointShotIds].filter((id) => !currentShotIds.has(id)).length;
+
+    if (missingInAudio > 0 || obsoleteInAudio > 0) {
+      return `${missingInAudio} shot(s) sans marqueur audio, ${obsoleteInAudio} marqueur(s) obsolète(s)`;
+    }
+    return null;
+  })();
+
   // Compute asset checks
   const shotsWithImage = shots.filter((s) => s.image_url);
   const shotsWithSentence = shots.filter((s) => s.source_sentence || s.source_sentence_fr);
@@ -423,8 +442,16 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     {
       label: "Audio narration",
       icon: Volume2,
-      status: loadingAudio ? "loading" : selectedAudioId ? "valid" : audioFiles.length > 0 ? "warning" : "missing",
-      detail: loadingAudio ? "Vérification…" : selectedAudioId ? `Audio sélectionné : ${audioFiles.find((a) => a.id === selectedAudioId)?.file_name ?? "—"}` : audioFiles.length > 0 ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné` : "Aucun audio généré",
+      status: loadingAudio ? "loading" : selectedAudioId ? (audioDesync ? "warning" : "valid") : audioFiles.length > 0 ? "warning" : "missing",
+      detail: loadingAudio
+        ? "Vérification…"
+        : selectedAudioId
+          ? audioDesync
+            ? `⚠ Désynchronisé — ${audioDesync}`
+            : `Audio sélectionné : ${selectedAudio?.file_name ?? "—"}`
+          : audioFiles.length > 0
+            ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné`
+            : "Aucun audio généré",
       count: audioFiles.length,
     },
   ];
@@ -432,6 +459,7 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const allValid = checks.every((c) => c.status === "valid");
   const hasBlocking = checks.some((c) => c.status === "missing");
   const validCount = checks.filter((c) => c.status === "valid").length;
+  const isExportBlocked = exportBlocked || !!audioDesync;
 
   return (
     <div className="container max-w-4xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
@@ -529,6 +557,19 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
         {/* ── Assemble button + Timeline ── */}
         {selectedAudioId && shots.length > 0 && (
           <div className="space-y-3 pt-3">
+            {/* Desync warning banner */}
+            {audioDesync && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-amber-300">Audio VO désynchronisé avec les shots actuels</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {audioDesync}. L'export est bloqué tant que l'audio n'est pas regénéré.
+                    Allez dans l'onglet Voice Over → « Coller le script généré » → Regénérer l'audio.
+                  </p>
+                </div>
+              </div>
+            )}
             {!timeline && (
               <div className="flex justify-center">
                 <Button variant="hero" onClick={handleAssembleTimeline} className="min-h-[48px] gap-2">
@@ -556,7 +597,7 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
 
                 {/* Collapsible: Export Manager */}
                 <CollapsibleSection title="Export Manager" icon={Film}>
-                  <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={exportBlocked} musicTracks={musicTracks} />
+                  <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={isExportBlocked} musicTracks={musicTracks} />
                 </CollapsibleSection>
               </>
             )}

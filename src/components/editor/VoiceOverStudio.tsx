@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -351,6 +351,57 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [voOpen, setVoOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
 
+  // ── Desync detection: compare current shots with latest audio timepoints ──
+  const [desyncWarning, setDesyncWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!projectId || !shots || shots.length === 0) {
+      setDesyncWarning(null);
+      return;
+    }
+    let cancelled = false;
+
+    const checkSync = async () => {
+      const { data: audioFiles } = await supabase
+        .from("vo_audio_history")
+        .select("shot_timepoints")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (cancelled) return;
+
+      if (!audioFiles || audioFiles.length === 0) {
+        setDesyncWarning(null);
+        return;
+      }
+
+      const timepoints = audioFiles[0].shot_timepoints as unknown as { shotId: string }[] | null;
+      if (!timepoints || timepoints.length === 0) {
+        setDesyncWarning(null);
+        return;
+      }
+
+      const sorted = getSortedShots();
+      const currentShotIds = new Set(sorted.map((s) => s.id));
+      const timepointShotIds = new Set(timepoints.filter((tp) => !tp.shotId.startsWith("_missing_")).map((tp) => tp.shotId));
+
+      const missingInAudio = sorted.filter((s) => !timepointShotIds.has(s.id));
+      const obsoleteInAudio = [...timepointShotIds].filter((id) => !currentShotIds.has(id));
+
+      if (missingInAudio.length > 0 || obsoleteInAudio.length > 0) {
+        setDesyncWarning(
+          `L'audio VO est désynchronisé avec les shots actuels (${missingInAudio.length} shot(s) sans marqueur, ${obsoleteInAudio.length} marqueur(s) obsolète(s)). Recollez le script puis regénérez l'audio.`
+        );
+      } else {
+        setDesyncWarning(null);
+      }
+    };
+
+    checkSync();
+    return () => { cancelled = true; };
+  }, [projectId, shots, scenesForSort]);
+
   return (
     <div className="container max-w-6xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
       <div className="flex items-center gap-3 mb-1">
@@ -416,6 +467,18 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                     {generating ? "Génération..." : "Générer la voix off"}
                   </Button>
                 </div>
+                {/* Desync warning banner */}
+                {desyncWarning && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
+                    <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-amber-300">{desyncWarning}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        ➜ Cliquez sur « Coller le script généré » puis régénérez la voix off.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
                     Script narratif
