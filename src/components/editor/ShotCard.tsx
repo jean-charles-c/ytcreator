@@ -215,9 +215,6 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Uploader une image">
               {uploading ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
             </button>
-            <button onClick={handleGenerateImage} disabled={generatingImage} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
-              {generatingImage ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <ImageIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
-            </button>
             <button onClick={copyPrompt} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Copier le prompt">
               <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>

@@ -2182,16 +2182,28 @@ export default function Editor() {
                                                   Appliquer à ce shot
                                                 </span>
                                               </div>
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-6 text-[10px] px-2 gap-1"
-                                                disabled={regeneratingShots[shot.id]}
-                                                onClick={() => handleShotRegenerate(shot.id)}
-                                              >
-                                                {regeneratingShots[shot.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                                Régénérer le prompt
-                                              </Button>
+                                              <div className="flex items-center gap-1.5">
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-6 text-[10px] px-2 gap-1"
+                                                  disabled={regeneratingShots[shot.id]}
+                                                  onClick={() => handleShotRegenerate(shot.id)}
+                                                >
+                                                  {regeneratingShots[shot.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                                  Régénérer le prompt
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-6 text-[10px] px-2 gap-1"
+                                                  disabled={generatingAllImages}
+                                                  onClick={() => handleGenerateShotImage(shot.id)}
+                                                >
+                                                  {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                                  Régénérer le visuel
+                                                </Button>
+                                              </div>
                                             </div>
                                             <ScopeOverrideControl
                                               value={sensitiveMode.getShotValue(scene.id, shot.id)}
