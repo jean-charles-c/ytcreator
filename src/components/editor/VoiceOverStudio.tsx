@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
-import { validateExactAlignedShotSentences } from "./exactShotSync";
+import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
 
@@ -382,17 +382,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
-      const sorted = getSortedShots();
-      const currentShotIds = new Set(sorted.map((s) => s.id));
-      const timepointShotIds = new Set(timepoints.filter((tp) => !tp.shotId.startsWith("_missing_")).map((tp) => tp.shotId));
+      const expectedShotIds = getSortedShots().map((shot) => shot.id);
+      const validation = validateExactShotTimepoints(expectedShotIds, timepoints);
 
-      const missingInAudio = sorted.filter((s) => !timepointShotIds.has(s.id));
-      const obsoleteInAudio = [...timepointShotIds].filter((id) => !currentShotIds.has(id));
-
-      if (missingInAudio.length > 0 || obsoleteInAudio.length > 0) {
-        setDesyncWarning(
-          `L'audio VO est désynchronisé avec les shots actuels (${missingInAudio.length} shot(s) sans marqueur, ${obsoleteInAudio.length} marqueur(s) obsolète(s)). Recollez le script puis regénérez l'audio.`
-        );
+      if (!validation.ok) {
+        setDesyncWarning(validation.errors[0] ?? "L'audio VO est désynchronisé avec les shots actuels.");
       } else {
         setDesyncWarning(null);
       }
