@@ -262,6 +262,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 {merging ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
               </button>
             )}
+            {onSplit && shot.source_sentence && shot.source_sentence.length >= 10 && (
+              <button onClick={openSplitDialog} disabled={splitting} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Scinder ce shot en deux">
+                {splitting ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
+              </button>
+            )}
             <button onClick={() => setDeleteDialogOpen(true)} className="p-2 sm:p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Supprimer ce shot">
               <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
