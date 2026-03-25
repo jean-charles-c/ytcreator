@@ -2055,11 +2055,8 @@ export default function Editor() {
                                   {/* Scene-level sensitive mode */}
                                   <div className="rounded border border-border/50 bg-secondary/20 p-2.5">
                                     <ScopeOverrideControl
-                                      value={{
-                                        localLevel: sceneSensitiveLevels.get(scene.id) ?? null,
-                                        inheritedLevel: getSceneEffectiveInherited(scene.id),
-                                      }}
-                                      onChangeLocal={(lvl) => setSceneSensitiveLevel(scene.id, lvl)}
+                                      value={sensitiveMode.getSceneValue(scene.id)}
+                                      onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
                                       scopeLabel={`Scène ${scene.scene_order}`}
                                       parentLabel="Global"
                                       compact
