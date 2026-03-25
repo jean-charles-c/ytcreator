@@ -46,7 +46,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -59,6 +59,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+  const [splitIndex, setSplitIndex] = useState<number | null>(null);
+  const [splitting, setSplitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
