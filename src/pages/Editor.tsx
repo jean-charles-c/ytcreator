@@ -23,6 +23,7 @@ import {
   ImageIcon,
   ChevronDown,
   ShieldCheck,
+  RefreshCw,
   ArrowUpDown,
   AlertTriangle,
 } from "lucide-react";
