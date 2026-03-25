@@ -1049,6 +1049,7 @@ export default function Editor() {
       shotIds: sceneShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
     });
   };
 
