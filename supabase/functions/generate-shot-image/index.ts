@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Image } from "jsr:@matmen/imagescript";
-import { transformPromptForSensitiveMode } from "../_shared/sensitive-mode.ts";
+import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -183,11 +183,29 @@ serve(async (req) => {
 
     if (!project) throw new Error("Unauthorized");
 
+    // Fetch parent scene context for sensitive mode anchoring
+    let sceneContextAnchors = null;
+    if (sensitive_level && sensitive_level >= 1) {
+      const { data: scene } = await supabase
+        .from("scenes")
+        .select("scene_context, location, visual_intention")
+        .eq("id", shot.scene_id)
+        .single();
+
+      if (scene) {
+        sceneContextAnchors = extractAnchorsFromScene(
+          scene.scene_context as Record<string, any> | null,
+          { location: scene.location ?? undefined, visual_intention: scene.visual_intention ?? undefined },
+        );
+        console.log("Scene context anchors:", JSON.stringify(sceneContextAnchors));
+      }
+    }
+
     const rawPrompt = shot.prompt_export || shot.description;
     if (!rawPrompt) throw new Error("No prompt available for this shot");
 
-    // Apply sensitive mode transformation to the prompt
-    const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level);
+    // Apply sensitive mode transformation with structured scene context
+    const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
     const buildPrompt = (text: string) => [
       "Generate one single cinematic image.",
