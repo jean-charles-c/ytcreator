@@ -570,7 +570,6 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
                 </div>
               </div>
             )}
-          <div className="space-y-3 pt-3">
             {!timeline && (
               <div className="flex justify-center">
                 <Button variant="hero" onClick={handleAssembleTimeline} className="min-h-[48px] gap-2">
