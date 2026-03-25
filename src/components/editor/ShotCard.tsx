@@ -51,7 +51,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editDesc, setEditDesc] = useState(shot.description);
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
   const [saving, setSaving] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
