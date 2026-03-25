@@ -38,6 +38,7 @@ interface ShotCardProps {
   onRegenerate?: (shotId: string) => Promise<void>;
   onGenerateImage?: (shotId: string) => Promise<void>;
   onMergeWithNext?: (shotId: string) => Promise<void>;
+  onSplit?: (shotId: string, splitIndex: number) => Promise<void>;
 }
 
 const formatUsd = (value: number | string | null | undefined) => {
