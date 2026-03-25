@@ -989,6 +989,18 @@ export default function Editor() {
   const imageGenTask = getTask(projectId ?? "", "image-gen");
   const generatingAllImages = imageGenTask?.status === "running";
 
+  /** Build a map of shotId → effective sensitive level for a list of shots */
+  const buildSensitiveLevelsMap = (shotList: typeof shots) => {
+    const map: Record<string, number> = {};
+    for (const s of shotList) {
+      const resolved = sensitiveMode.resolveShot(s.scene_id, s.id);
+      if (resolved.effectiveLevel != null) {
+        map[s.id] = resolved.effectiveLevel;
+      }
+    }
+    return Object.keys(map).length > 0 ? map : undefined;
+  };
+
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
     const missingShots = shots
@@ -1004,6 +1016,7 @@ export default function Editor() {
       shotIds: missingShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      sensitiveLevels: buildSensitiveLevelsMap(missingShots),
     });
   };
 
