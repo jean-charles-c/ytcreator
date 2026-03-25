@@ -30,8 +30,10 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { shot_id } = await req.json();
+    const { shot_id, sensitive_level } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
+
+    const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
 
     const { data: shot, error: shotErr } = await supabase
       .from("shots")
