@@ -205,37 +205,8 @@ export default function Editor() {
   const [currentShotVersionId, setCurrentShotVersionId] = useState<number | null>(null);
   const [previewShotVersionId, setPreviewShotVersionId] = useState<number | null>(null);
 
-  // ── Sensitive mode state ──────────────────────────────────────
-  const [globalSensitiveLevel, setGlobalSensitiveLevel] = useState<SensitiveLevel | null>(null);
-  const [sceneSensitiveLevels, setSceneSensitiveLevels] = useState<Map<string, SensitiveLevel | null>>(new Map());
-  const [shotSensitiveLevels, setShotSensitiveLevels] = useState<Map<string, SensitiveLevel | null>>(new Map());
-
-  const setSceneSensitiveLevel = useCallback((sceneId: string, level: SensitiveLevel | null) => {
-    setSceneSensitiveLevels((prev) => {
-      const next = new Map(prev);
-      if (level == null) next.delete(sceneId);
-      else next.set(sceneId, level);
-      return next;
-    });
-  }, []);
-
-  const setShotSensitiveLevel = useCallback((shotId: string, level: SensitiveLevel | null) => {
-    setShotSensitiveLevels((prev) => {
-      const next = new Map(prev);
-      if (level == null) next.delete(shotId);
-      else next.set(shotId, level);
-      return next;
-    });
-  }, []);
-
-  const getSceneEffectiveInherited = useCallback((_sceneId: string): SensitiveLevel | null => {
-    return globalSensitiveLevel;
-  }, [globalSensitiveLevel]);
-
-  const getShotEffectiveInherited = useCallback((sceneId: string): SensitiveLevel | null => {
-    const sceneLocal = sceneSensitiveLevels.get(sceneId) ?? null;
-    return sceneLocal ?? globalSensitiveLevel;
-  }, [sceneSensitiveLevels, globalSensitiveLevel]);
+  // ── Sensitive mode (hierarchy: global → scene → shot) ──────
+  const sensitiveMode = useSensitiveMode();
 
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
     try {
