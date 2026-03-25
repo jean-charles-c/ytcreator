@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateShotOperation, buildNeighborAvoidancePrompt } from "../_shared/shot-operation.ts";
+import { getSensitiveModeInstruction } from "../_shared/sensitive-mode.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,8 +30,10 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { shot_id } = await req.json();
+    const { shot_id, sensitive_level } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
+
+    const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
 
     const { data: shot, error: shotErr } = await supabase
       .from("shots")
@@ -149,7 +152,7 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.
+              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.${sensitiveModeBlock}
 
 LANGUAGE RULES:
 - shot_type MUST be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")

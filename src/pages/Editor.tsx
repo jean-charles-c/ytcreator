@@ -617,7 +617,11 @@ export default function Editor() {
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
               "x-supabase-client-platform": "web",
             },
-            body: JSON.stringify({ project_id: projectId, scene_id: sceneId }),
+            body: JSON.stringify({
+              project_id: projectId,
+              scene_id: sceneId,
+              sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
+            }),
           }
         );
         const data = await response.json();
@@ -911,6 +915,12 @@ export default function Editor() {
     setRegeneratingShots((prev) => ({ ...prev, [shotId]: true }));
     try {
       const session = (await supabase.auth.getSession()).data.session;
+      // Resolve effective sensitive level for this shot
+      const parentScene = shots.find((s) => s.id === shotId);
+      const sceneId = parentScene?.scene_id;
+      const effectiveLevel = sceneId
+        ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
+        : null;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/regenerate-shot`,
         {
@@ -920,7 +930,10 @@ export default function Editor() {
             Authorization: `Bearer ${session?.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ shot_id: shotId }),
+          body: JSON.stringify({
+            shot_id: shotId,
+            ...(effectiveLevel != null ? { sensitive_level: effectiveLevel } : {}),
+          }),
         }
       );
       const data = await response.json();
@@ -962,16 +975,35 @@ export default function Editor() {
 
   const handleGenerateShotImage = async (shotId: string) => {
     if (!projectId || generatingAllImages) return;
+    // Resolve effective sensitive level for this shot
+    const parentScene = shots.find((s) => s.id === shotId);
+    const sceneId = parentScene?.scene_id;
+    const effectiveLevel = sceneId
+      ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
+      : null;
     bgStartImageGen({
       projectId,
       shotIds: [shotId],
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
     });
   };
 
   const imageGenTask = getTask(projectId ?? "", "image-gen");
   const generatingAllImages = imageGenTask?.status === "running";
+
+  /** Build a map of shotId → effective sensitive level for a list of shots */
+  const buildSensitiveLevelsMap = (shotList: typeof shots) => {
+    const map: Record<string, number> = {};
+    for (const s of shotList) {
+      const resolved = sensitiveMode.resolveShot(s.scene_id, s.id);
+      if (resolved.effectiveLevel != null) {
+        map[s.id] = resolved.effectiveLevel;
+      }
+    }
+    return Object.keys(map).length > 0 ? map : undefined;
+  };
 
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
@@ -988,6 +1020,7 @@ export default function Editor() {
       shotIds: missingShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      sensitiveLevels: buildSensitiveLevelsMap(missingShots),
     });
   };
 
@@ -1020,6 +1053,7 @@ export default function Editor() {
       shotIds: sceneShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
     });
   };
 

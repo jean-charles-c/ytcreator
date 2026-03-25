@@ -56,6 +56,8 @@ export interface ImageGenParams {
   shotIds: string[];
   model: string;
   aspectRatio: string;
+  /** Maps shotId → effective sensitive level (1-4). Omitted shots have no constraint. */
+  sensitiveLevels?: Record<string, number>;
 }
 
 interface BackgroundTasksContextValue {
@@ -840,6 +842,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           shot_id: remainingShotIds[i],
                           model: params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
+                            ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
+                            : {}),
                         }),
                         signal: shotAc.signal,
                       }
