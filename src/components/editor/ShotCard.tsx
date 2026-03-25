@@ -126,6 +126,38 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     }
   };
 
+  const handleSplit = async () => {
+    if (!onSplit || splitIndex === null) return;
+    setSplitting(true);
+    try {
+      await onSplit(shot.id, splitIndex);
+      setSplitDialogOpen(false);
+    } finally {
+      setSplitting(false);
+    }
+  };
+
+  const openSplitDialog = () => {
+    const text = shot.source_sentence || "";
+    if (text.length < 10) {
+      toast.warning("Le texte est trop court pour être scindé.");
+      return;
+    }
+    // Find a good default split point (nearest sentence boundary to middle)
+    const mid = Math.floor(text.length / 2);
+    let best = mid;
+    for (let delta = 0; delta < Math.floor(text.length / 2); delta++) {
+      const after = mid + delta;
+      const before = mid - delta;
+      if (after < text.length && /[.!?;]/.test(text[after])) { best = after + 1; break; }
+      if (before > 0 && /[.!?;]/.test(text[before])) { best = before + 1; break; }
+      if (after < text.length && text[after] === ",") { best = after + 1; break; }
+      if (before > 0 && text[before] === ",") { best = before + 1; break; }
+    }
+    setSplitIndex(best);
+    setSplitDialogOpen(true);
+  };
+
   const copyPrompt = () => {
     const text = shot.prompt_export || shot.description;
     navigator.clipboard.writeText(text).then(() => toast.success("Prompt copié"));
