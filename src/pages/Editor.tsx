@@ -47,6 +47,7 @@ import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 import VideoEditTab from "@/components/editor/VideoEditTab";
 import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
+import { ScopeOverrideControl, type SensitiveLevel } from "@/components/editor/sensitiveMode";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
