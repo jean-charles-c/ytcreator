@@ -1732,8 +1732,8 @@ export default function Editor() {
             {scenes.length > 0 && !generatingStoryboard && (
               <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
                 <ScopeOverrideControl
-                  value={{ localLevel: globalSensitiveLevel, inheritedLevel: null }}
-                  onChangeLocal={setGlobalSensitiveLevel}
+                  value={sensitiveMode.getGlobalValue()}
+                  onChangeLocal={sensitiveMode.setGlobalLevel}
                   scopeLabel="Toutes les scènes"
                   parentLabel={undefined}
                 />
