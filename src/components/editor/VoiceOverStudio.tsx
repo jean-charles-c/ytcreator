@@ -338,6 +338,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   useEffect(() => {
     if (!projectId || !shots || shots.length === 0) {
       setDesyncWarning(null);
+      setSyncChecked(false);
       return;
     }
     let cancelled = false;
