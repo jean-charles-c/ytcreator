@@ -908,6 +908,7 @@ export default function Editor() {
   };
 
   const handleShotRegenerate = async (shotId: string) => {
+    setRegeneratingShots((prev) => ({ ...prev, [shotId]: true }));
     try {
       const session = (await supabase.auth.getSession()).data.session;
       const response = await fetch(
@@ -926,11 +927,13 @@ export default function Editor() {
       if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
       if (data.shot) {
         setShots((prev) => prev.map((s) => (s.id === data.shot.id ? data.shot : s)));
-        toast.success("Shot regénéré");
+        toast.success("Prompt regénéré");
       }
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Erreur de regénération");
+    } finally {
+      setRegeneratingShots((prev) => ({ ...prev, [shotId]: false }));
     }
   };
 
