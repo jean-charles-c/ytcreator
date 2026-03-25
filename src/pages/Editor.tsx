@@ -2057,13 +2057,24 @@ export default function Editor() {
                               {isOpen && (
                                 <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
                                   {/* Scene-level sensitive mode */}
-                                  <div className="rounded border border-border/50 bg-secondary/20 p-2.5">
+                                  <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                                      <span className="text-xs font-display font-semibold text-foreground">
+                                        Mode sensible — Scène {scene.scene_order}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        ({sceneShots.length} shot{sceneShots.length > 1 ? "s" : ""})
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
+                                      Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
+                                    </p>
                                     <ScopeOverrideControl
                                       value={sensitiveMode.getSceneValue(scene.id)}
                                       onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
                                       scopeLabel={`Scène ${scene.scene_order}`}
                                       parentLabel="Toutes les scènes"
-                                      compact
                                     />
                                   </div>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
