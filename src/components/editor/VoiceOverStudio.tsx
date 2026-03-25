@@ -467,6 +467,18 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                     {generating ? "Génération..." : "Générer la voix off"}
                   </Button>
                 </div>
+                {/* Desync warning banner */}
+                {desyncWarning && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
+                    <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-amber-300">{desyncWarning}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        ➜ Cliquez sur « Coller le script généré » puis régénérez la voix off.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-muted-foreground" htmlFor="vo-script">
                     Script narratif
