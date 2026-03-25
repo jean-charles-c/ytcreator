@@ -285,7 +285,7 @@ export default function Dashboard() {
 
             {/* Grouped projects */}
             {groupedProjects.map((group) => {
-              const isCollapsed = collapsedGroups.has(group.id);
+              const isCollapsed = collapsedGroups?.has(group.id) ?? true;
               const isEditing = editingGroupId === group.id;
               const isDragOver = dragOverGroupId === group.id;
               return (
