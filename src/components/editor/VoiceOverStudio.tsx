@@ -333,6 +333,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
   // ── Desync detection: compare current shots with latest audio timepoints ──
   const [desyncWarning, setDesyncWarning] = useState<string | null>(null);
+  const [syncChecked, setSyncChecked] = useState(false);
 
   useEffect(() => {
     if (!projectId || !shots || shots.length === 0) {
