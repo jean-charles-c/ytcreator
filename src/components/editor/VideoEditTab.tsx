@@ -385,6 +385,25 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     fetchAudio();
   }, [projectId]);
 
+  // ── Audio/shot sync check ──
+  const selectedAudio = audioFiles.find((a) => a.id === selectedAudioId);
+  const audioDesync = (() => {
+    if (!selectedAudio || shots.length === 0) return null;
+    const timepoints = (selectedAudio as any).shot_timepoints as { shotId: string }[] | null;
+    if (!timepoints || timepoints.length === 0) return null;
+
+    const currentShotIds = new Set(shots.map((s) => s.id));
+    const timepointShotIds = new Set(timepoints.filter((tp) => !tp.shotId.startsWith("_missing_")).map((tp) => tp.shotId));
+
+    const missingInAudio = shots.filter((s) => !timepointShotIds.has(s.id)).length;
+    const obsoleteInAudio = [...timepointShotIds].filter((id) => !currentShotIds.has(id)).length;
+
+    if (missingInAudio > 0 || obsoleteInAudio > 0) {
+      return `${missingInAudio} shot(s) sans marqueur audio, ${obsoleteInAudio} marqueur(s) obsolète(s)`;
+    }
+    return null;
+  })();
+
   // Compute asset checks
   const shotsWithImage = shots.filter((s) => s.image_url);
   const shotsWithSentence = shots.filter((s) => s.source_sentence || s.source_sentence_fr);
@@ -423,8 +442,16 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     {
       label: "Audio narration",
       icon: Volume2,
-      status: loadingAudio ? "loading" : selectedAudioId ? "valid" : audioFiles.length > 0 ? "warning" : "missing",
-      detail: loadingAudio ? "Vérification…" : selectedAudioId ? `Audio sélectionné : ${audioFiles.find((a) => a.id === selectedAudioId)?.file_name ?? "—"}` : audioFiles.length > 0 ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné` : "Aucun audio généré",
+      status: loadingAudio ? "loading" : selectedAudioId ? (audioDesync ? "warning" : "valid") : audioFiles.length > 0 ? "warning" : "missing",
+      detail: loadingAudio
+        ? "Vérification…"
+        : selectedAudioId
+          ? audioDesync
+            ? `⚠ Désynchronisé — ${audioDesync}`
+            : `Audio sélectionné : ${selectedAudio?.file_name ?? "—"}`
+          : audioFiles.length > 0
+            ? `${audioFiles.length} audio(s) disponible(s) — aucun sélectionné`
+            : "Aucun audio généré",
       count: audioFiles.length,
     },
   ];
@@ -432,6 +459,7 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const allValid = checks.every((c) => c.status === "valid");
   const hasBlocking = checks.some((c) => c.status === "missing");
   const validCount = checks.filter((c) => c.status === "valid").length;
+  const isExportBlocked = exportBlocked || !!audioDesync;
 
   return (
     <div className="container max-w-4xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
