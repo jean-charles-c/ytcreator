@@ -56,6 +56,8 @@ export interface ImageGenParams {
   shotIds: string[];
   model: string;
   aspectRatio: string;
+  /** Maps shotId → effective sensitive level (1-4). Omitted shots have no constraint. */
+  sensitiveLevels?: Record<string, number>;
 }
 
 interface BackgroundTasksContextValue {
