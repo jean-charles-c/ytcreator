@@ -297,7 +297,18 @@ export default function PdfDocumentaryTab({
         // Auto-parse if tagged script detected (V3 tags like [[HOOK]], [[ACT1]], etc.)
         const hasV3Tags = /\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]/i.test(scriptStr);
         if (hasV3Tags) {
-          setSections(parseScriptIntoSections(scriptStr));
+          const parsed = parseScriptIntoSections(scriptStr);
+          setSections(parsed);
+
+          // Detect ACT2/ACT2B fusion and warn user
+          const act2 = parsed.find((s) => s.key === "act2");
+          const act2b = parsed.find((s) => s.key === "act2b");
+          if (act2 && act2b && act2.content.trim().length > 200 && (!act2b.content.trim() || act2b.content.startsWith("⚠️"))) {
+            toast.warning("ACT2B manquant", {
+              description: "L'IA a fusionné ACT2 et ACT2B. Régénérez le script ou séparez manuellement le contenu du bloc ACT2B.",
+              duration: 8000,
+            });
+          }
         }
       }
     }
