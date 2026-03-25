@@ -617,7 +617,11 @@ export default function Editor() {
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
               "x-supabase-client-platform": "web",
             },
-            body: JSON.stringify({ project_id: projectId, scene_id: sceneId }),
+            body: JSON.stringify({
+              project_id: projectId,
+              scene_id: sceneId,
+              sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
+            }),
           }
         );
         const data = await response.json();
