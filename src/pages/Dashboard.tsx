@@ -66,7 +66,9 @@ export default function Dashboard() {
       const shotCounts: Record<string, number> = {};
       (shots ?? []).forEach((s) => { shotCounts[s.project_id] = (shotCounts[s.project_id] || 0) + 1; });
       setProjects(projectsData.map((p) => ({ ...p, shot_count: shotCounts[p.id] || 0 })));
-      setGroups(groupsData ?? []);
+      const loadedGroups = groupsData ?? [];
+      setGroups(loadedGroups);
+      setCollapsedGroups(new Set(loadedGroups.map((g) => g.id)));
       setLoading(false);
     };
     fetchData();
