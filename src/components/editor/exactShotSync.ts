@@ -130,6 +130,14 @@ export function validateExactShotTimepoints(
     errors.push(`${unexpectedIds.length} timepoint(s) référencent des shots supprimés ou obsolètes.`);
   }
 
+  const orderedActualIds = realIds;
+  if (
+    orderedActualIds.length === expectedShotIds.length &&
+    orderedActualIds.some((id, index) => id !== expectedShotIds[index])
+  ) {
+    errors.push("L’ordre des shotIds envoyés au moteur audio ne correspond plus à l’ordre courant des shots.");
+  }
+
   const timepointMap = new Map(realEntries.map((entry) => [entry.shotId, entry.timeSeconds]));
   let previousTime = -Infinity;
   for (const shotId of expectedShotIds) {

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import VoiceSettingsPanel, { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
-import { validateExactAlignedShotSentences } from "./exactShotSync";
+import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
 
@@ -120,30 +120,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return [];
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
 
-    // Build a map of scene source_text for text-position tiebreaking
-    const sceneTextMap = new Map<string, string>();
-    if (scenes) {
-      for (const s of scenes) {
-        sceneTextMap.set(s.id, s.source_text.toLowerCase().replace(/\s+/g, " "));
-      }
-    }
-
     return [...shots].sort((a, b) => {
       const oa = sceneOrderMap.get(a.scene_id) ?? 0;
       const ob = sceneOrderMap.get(b.scene_id) ?? 0;
       if (oa !== ob) return oa - ob;
-
-      // Within same scene: use text position in source_text as primary sort
-      const sceneText = sceneTextMap.get(a.scene_id);
-      if (sceneText) {
-        const textA = (a.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
-        const textB = (b.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
-        if (textA && textB) {
-          const posA = sceneText.indexOf(textA);
-          const posB = sceneText.indexOf(textB);
-          if (posA >= 0 && posB >= 0 && posA !== posB) return posA - posB;
-        }
-      }
 
       return a.shot_order - b.shot_order;
     });
@@ -376,23 +356,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
-      const timepoints = audioFiles[0].shot_timepoints as unknown as { shotId: string }[] | null;
+      const timepoints = audioFiles[0].shot_timepoints as unknown as { shotId: string; shotIndex: number; timeSeconds: number }[] | null;
       if (!timepoints || timepoints.length === 0) {
         setDesyncWarning(null);
         return;
       }
 
-      const sorted = getSortedShots();
-      const currentShotIds = new Set(sorted.map((s) => s.id));
-      const timepointShotIds = new Set(timepoints.filter((tp) => !tp.shotId.startsWith("_missing_")).map((tp) => tp.shotId));
+      const expectedShotIds = getSortedShots().map((shot) => shot.id);
+      const validation = validateExactShotTimepoints(expectedShotIds, timepoints);
 
-      const missingInAudio = sorted.filter((s) => !timepointShotIds.has(s.id));
-      const obsoleteInAudio = [...timepointShotIds].filter((id) => !currentShotIds.has(id));
-
-      if (missingInAudio.length > 0 || obsoleteInAudio.length > 0) {
-        setDesyncWarning(
-          `L'audio VO est désynchronisé avec les shots actuels (${missingInAudio.length} shot(s) sans marqueur, ${obsoleteInAudio.length} marqueur(s) obsolète(s)). Recollez le script puis regénérez l'audio.`
-        );
+      if (!validation.ok) {
+        setDesyncWarning(validation.errors[0] ?? "L'audio VO est désynchronisé avec les shots actuels.");
       } else {
         setDesyncWarning(null);
       }
