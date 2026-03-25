@@ -557,6 +557,20 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
         {/* ── Assemble button + Timeline ── */}
         {selectedAudioId && shots.length > 0 && (
           <div className="space-y-3 pt-3">
+            {/* Desync warning banner */}
+            {audioDesync && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-amber-300">Audio VO désynchronisé avec les shots actuels</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {audioDesync}. L'export est bloqué tant que l'audio n'est pas regénéré.
+                    Allez dans l'onglet Voice Over → « Coller le script généré » → Regénérer l'audio.
+                  </p>
+                </div>
+              </div>
+            )}
+          <div className="space-y-3 pt-3">
             {!timeline && (
               <div className="flex justify-center">
                 <Button variant="hero" onClick={handleAssembleTimeline} className="min-h-[48px] gap-2">
