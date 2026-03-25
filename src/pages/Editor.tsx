@@ -37,7 +37,7 @@ import SceneBlock from "@/components/editor/SceneBlock";
 import ShotCard from "@/components/editor/ShotCard";
 import VisualGallery from "@/components/editor/VisualGallery";
 import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
-import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, type ManifestAction } from "@/components/editor/visualPromptTypes";
+import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, computeSplit, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
 import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
