@@ -23,6 +23,7 @@ import {
   ImageIcon,
   ChevronDown,
   ShieldCheck,
+  RefreshCw,
   ArrowUpDown,
   AlertTriangle,
 } from "lucide-react";
@@ -180,6 +181,7 @@ export default function Editor() {
   const [qaCounts, setQaCounts] = useState<{ errors: number; warnings: number }>({ errors: 0, warnings: 0 });
   const [qaIssues, setQaIssues] = useState<{ level: string; sceneOrder?: number; shotOrder?: number }[]>([]);
   const storyAbortRef = useRef<AbortController | null>(null);
+  const [regeneratingShots, setRegeneratingShots] = useState<Record<string, boolean>>({});
 
   const storyboardManifest = useMemo(
     () => projectId ? buildManifest(projectId, scenes, shots) : null,
@@ -906,6 +908,7 @@ export default function Editor() {
   };
 
   const handleShotRegenerate = async (shotId: string) => {
+    setRegeneratingShots((prev) => ({ ...prev, [shotId]: true }));
     try {
       const session = (await supabase.auth.getSession()).data.session;
       const response = await fetch(
@@ -924,11 +927,13 @@ export default function Editor() {
       if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
       if (data.shot) {
         setShots((prev) => prev.map((s) => (s.id === data.shot.id ? data.shot : s)));
-        toast.success("Shot regénéré");
+        toast.success("Prompt regénéré");
       }
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Erreur de regénération");
+    } finally {
+      setRegeneratingShots((prev) => ({ ...prev, [shotId]: false }));
     }
   };
 
@@ -2165,13 +2170,25 @@ export default function Editor() {
                                       startGlobalIndex={startIndex}
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
-                                          {/* Shot-level sensitive mode */}
+                                          {/* Shot-level sensitive mode + regenerate */}
                                           <div className="mb-2 rounded border border-border/50 bg-secondary/20 p-2">
-                                            <div className="flex items-center gap-1.5 mb-1">
-                                              <ShieldCheck className="h-3 w-3 text-primary/70" />
-                                              <span className="text-[10px] font-semibold text-foreground">
-                                                Appliquer à ce shot
-                                              </span>
+                                            <div className="flex items-center justify-between mb-1">
+                                              <div className="flex items-center gap-1.5">
+                                                <ShieldCheck className="h-3 w-3 text-primary/70" />
+                                                <span className="text-[10px] font-semibold text-foreground">
+                                                  Appliquer à ce shot
+                                                </span>
+                                              </div>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-6 text-[10px] px-2 gap-1"
+                                                disabled={regeneratingShots[shot.id]}
+                                                onClick={() => handleShotRegenerate(shot.id)}
+                                              >
+                                                {regeneratingShots[shot.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                                Régénérer le prompt
+                                              </Button>
                                             </div>
                                             <ScopeOverrideControl
                                               value={sensitiveMode.getShotValue(scene.id, shot.id)}

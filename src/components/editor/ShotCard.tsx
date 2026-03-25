@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, RefreshCw, Trash2, ImageIcon, Upload, Merge, ShieldAlert, ShieldOff } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, ShieldAlert, ShieldOff } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -51,7 +51,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editDesc, setEditDesc] = useState(shot.description);
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
   const [saving, setSaving] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -90,15 +90,6 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     toast.success("Shot mis à jour !");
   };
 
-  const handleRegenerate = async () => {
-    if (!onRegenerate) return;
-    setRegenerating(true);
-    try {
-      await onRegenerate(shot.id);
-    } finally {
-      setRegenerating(false);
-    }
-  };
 
   const handleGenerateImage = async () => {
     if (!onGenerateImage) return;
@@ -226,9 +217,6 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             </button>
             <button onClick={handleGenerateImage} disabled={generatingImage} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title={imageUrl ? "Regénérer le visuel" : "Générer le visuel"}>
               {generatingImage ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <ImageIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
-            </button>
-            <button onClick={handleRegenerate} disabled={regenerating} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Regénérer ce shot">
-              {regenerating ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <RefreshCw className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
             </button>
             <button onClick={copyPrompt} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Copier le prompt">
               <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
