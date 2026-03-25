@@ -47,7 +47,7 @@ export default function Dashboard() {
   const [editTitle, setEditTitle] = useState("");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editGroupName, setEditGroupName] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string> | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const groupInputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +66,9 @@ export default function Dashboard() {
       const shotCounts: Record<string, number> = {};
       (shots ?? []).forEach((s) => { shotCounts[s.project_id] = (shotCounts[s.project_id] || 0) + 1; });
       setProjects(projectsData.map((p) => ({ ...p, shot_count: shotCounts[p.id] || 0 })));
-      setGroups(groupsData ?? []);
+      const loadedGroups = groupsData ?? [];
+      setGroups(loadedGroups);
+      setCollapsedGroups(new Set(loadedGroups.map((g) => g.id)));
       setLoading(false);
     };
     fetchData();
@@ -283,7 +285,7 @@ export default function Dashboard() {
 
             {/* Grouped projects */}
             {groupedProjects.map((group) => {
-              const isCollapsed = collapsedGroups.has(group.id);
+              const isCollapsed = collapsedGroups?.has(group.id) ?? true;
               const isEditing = editingGroupId === group.id;
               const isDragOver = dragOverGroupId === group.id;
               return (
