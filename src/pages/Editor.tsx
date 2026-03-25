@@ -2198,7 +2198,7 @@ export default function Editor() {
                                                   variant="outline"
                                                   className="h-6 text-[10px] px-2 gap-1"
                                                   disabled={generatingAllImages}
-                                                  onClick={() => handleGenerateSingleImage(shot.id)}
+                                                  onClick={() => handleGenerateShotImage(shot.id)}
                                                 >
                                                   {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
                                                   Régénérer le visuel
