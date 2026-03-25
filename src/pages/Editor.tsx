@@ -1757,6 +1757,18 @@ export default function Editor() {
               )}
             </div>
 
+            {/* ── Global Sensitive Mode ────────────────────────────── */}
+            {scenes.length > 0 && !generatingStoryboard && (
+              <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
+                <ScopeOverrideControl
+                  value={{ localLevel: globalSensitiveLevel, inheritedLevel: null }}
+                  onChangeLocal={setGlobalSensitiveLevel}
+                  scopeLabel="Toutes les scènes"
+                  parentLabel={undefined}
+                />
+              </div>
+            )}
+
             {/* Shot version buttons */}
             {shotVersions.length > 1 && !generatingStoryboard && (
               <div className="mb-4 flex items-center gap-1.5 flex-wrap">
