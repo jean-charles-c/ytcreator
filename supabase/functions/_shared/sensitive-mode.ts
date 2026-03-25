@@ -72,7 +72,7 @@ export function transformPromptForSensitiveMode(prompt: string, level: number | 
     case 1:
       return `Softened, indirect documentary shot. Show from a distance or partial view. ${prompt}. Avoid any graphic or explicit depiction. Use wide framing and atmospheric lighting.`;
     case 2:
-      return `Suggestive documentary shot — do NOT show the main event directly. Instead show reactions, environmental details, or the moment just before/after. ${prompt}. Frame off-screen or use tight detail shots to imply the scene without depicting it.`;
+      return `Suggestive off-screen documentary shot — never depict the sensitive event directly. Convey it only through witness reactions, disturbed environmental details, and tight close-ups of hands, objects, or contextual traces. Frame the scene just before or just after the implied moment, using partial obstruction, shallow depth of field, reflections, shadows, or blurred background elements to make the situation immediately understandable without showing any explicit action. No blood, no nudity, no visible injuries, no visible weapons, no graphic detail. ${prompt}`;
     case 3:
       return `Symbolic, metaphorical documentary image. Replace all literal content with visual metaphors: natural elements, abstract compositions, poetic imagery. Inspired by: ${prompt}. NO literal depiction of people or events. Pure visual poetry and symbolism.`;
     case 4:
