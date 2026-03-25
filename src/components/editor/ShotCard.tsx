@@ -86,6 +86,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
         shot_type: editType,
         description: editDesc.trim(),
         prompt_export: editPrompt.trim() || null,
+        source_sentence: editSourceSentence.trim() || null,
+        source_sentence_fr: editSourceSentenceFr.trim() || null,
       })
       .eq("id", shot.id);
     setSaving(false);
@@ -93,7 +95,14 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       toast.error("Erreur lors de la mise à jour.");
       return;
     }
-    onUpdate({ ...shot, shot_type: editType, description: editDesc.trim(), prompt_export: editPrompt.trim() || null });
+    onUpdate({
+      ...shot,
+      shot_type: editType,
+      description: editDesc.trim(),
+      prompt_export: editPrompt.trim() || null,
+      source_sentence: editSourceSentence.trim() || null,
+      source_sentence_fr: editSourceSentenceFr.trim() || null,
+    });
     setEditing(false);
     toast.success("Shot mis à jour !");
   };
