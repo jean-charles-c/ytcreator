@@ -1667,8 +1667,24 @@ export default function Editor() {
                   <Square className="h-4 w-4" /> Stopper
                 </Button>
               )}
-              {!generatingStoryboard && scenes.length > 0 && (
-                <div className="flex flex-col gap-2 shrink-0">
+            </div>
+
+            {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
+            {scenes.length > 0 && !generatingStoryboard && (
+              <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-display font-semibold text-foreground">🛡 Toutes les scènes d'un coup</span>
+                  <span className="text-[10px] text-muted-foreground">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
+                </div>
+                <ScopeOverrideControl
+                  value={sensitiveMode.getGlobalValue()}
+                  onChangeLocal={sensitiveMode.setGlobalLevel}
+                  scopeLabel="Toutes les scènes d'un coup"
+                  parentLabel={undefined}
+                />
+
+                {/* Actions globales shots */}
+                <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
                   <div className="flex gap-2 flex-wrap items-center">
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
@@ -1725,22 +1741,6 @@ export default function Editor() {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
-            {scenes.length > 0 && !generatingStoryboard && (
-              <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-display font-semibold text-foreground">🛡 Toutes les scènes d'un coup</span>
-                  <span className="text-[10px] text-muted-foreground">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
-                </div>
-                <ScopeOverrideControl
-                  value={sensitiveMode.getGlobalValue()}
-                  onChangeLocal={sensitiveMode.setGlobalLevel}
-                  scopeLabel="Toutes les scènes d'un coup"
-                  parentLabel={undefined}
-                />
               </div>
             )}
 
@@ -2271,11 +2271,6 @@ export default function Editor() {
                 </div>
               </details>
 
-              <div className="mt-6 sm:mt-8 flex gap-3">
-                <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
-                  <Play className="h-4 w-4" /> Re-générer tous les shots
-                </Button>
-              </div>
             </>
             )}
           </div>
