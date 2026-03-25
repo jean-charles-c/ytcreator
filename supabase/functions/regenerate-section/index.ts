@@ -102,6 +102,14 @@ STYLE RULES:
 - Active voice, concrete nouns, strong verbs
 - No literary flourishes, no abstractions, no poetry
 
+HUMANIZE (MANDATORY):
+- Write as a PASSIONATE HUMAN EXPERT, not an AI. Take intellectual positions. Use personal authority ("What's often missed is...", "The real question isn't X, it's Y").
+- Allow controlled asymmetry: vary paragraph lengths, break patterns deliberately, use sentence fragments for rhythm.
+- Include micro-reactions a real narrator would have: brief asides, moments of emphasis, rhetorical pivots that feel unscripted.
+- NEVER produce text that reads like a filled-in template. If a sentence could appear in ANY documentary about ANY subject, rewrite it with details specific to THIS story.
+- Let wonder, indignation, irony, or fascination emerge NATURALLY from the facts. Don't manufacture emotion; present facts so the emotion emerges in the LISTENER.
+- Vary connectors unpredictably. Don't cycle through "However... Moreover... Furthermore..." mechanically.
+
 OUTPUT RULES:
 - Return ONLY the raw narration text for this section
 - NO headers, titles, markers, separators, or meta-commentary
