@@ -283,6 +283,18 @@ export default function Dashboard() {
               <span className="text-sm text-muted-foreground">Créer un projet</span>
             </button>
 
+            {/* Ungrouped projects */}
+            <div
+              className={`transition-colors rounded-lg ${dragOverGroupId === "__ungrouped" ? "border border-primary bg-primary/5 p-4" : ""}`}
+              onDrop={(e) => handleDrop(e, null)}
+              onDragOver={(e) => handleDragOver(e, "__ungrouped")}
+              onDragLeave={() => setDragOverGroupId(null)}
+            >
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {ungroupedProjects.map((p, i) => renderProjectCard(p, i))}
+              </div>
+            </div>
+
             {/* Grouped projects */}
             {groupedProjects.map((group) => {
               const isCollapsed = collapsedGroups?.has(group.id) ?? true;
@@ -340,21 +352,6 @@ export default function Dashboard() {
                 </div>
               );
             })}
-
-            {/* Ungrouped projects */}
-            <div
-              className={`transition-colors rounded-lg ${dragOverGroupId === "__ungrouped" ? "border border-primary bg-primary/5 p-4" : ""}`}
-              onDrop={(e) => handleDrop(e, null)}
-              onDragOver={(e) => handleDragOver(e, "__ungrouped")}
-              onDragLeave={() => setDragOverGroupId(null)}
-            >
-              {groups.length > 0 && ungroupedProjects.length > 0 && (
-                <p className="text-xs text-muted-foreground mb-3 font-medium">Sans groupe</p>
-              )}
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {ungroupedProjects.map((p, i) => renderProjectCard(p, i))}
-              </div>
-            </div>
           </div>
         )}
       </main>
