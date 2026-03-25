@@ -344,6 +344,96 @@ export function computeMerge(
 }
 
 /**
+ * Compute the split of a shot into two shots at a given text position.
+ * Returns the DB updates to apply + a ManifestAction for history.
+ */
+export function computeSplit(
+  sceneShots: DBShot[],
+  shotId: string,
+  splitIndex: number,
+  scene: DBScene
+): {
+  originalUpdate: { id: string; source_sentence: string; source_sentence_fr: string | null };
+  newShot: {
+    source_sentence: string;
+    source_sentence_fr: string | null;
+    shot_order: number;
+    shot_type: string;
+    description: string;
+  };
+  /** shot_order updates for shots that need to shift */
+  orderUpdates: { id: string; shot_order: number }[];
+  action: ManifestAction;
+} | null {
+  const sorted = [...sceneShots].sort((a, b) => a.shot_order - b.shot_order);
+  const shot = sorted.find((s) => s.id === shotId);
+  if (!shot) return null;
+
+  const text = shot.source_sentence || "";
+  if (!text.trim() || splitIndex <= 0 || splitIndex >= text.length) return null;
+
+  const textBefore = text.slice(0, splitIndex).trim();
+  const textAfter = text.slice(splitIndex).trim();
+  if (!textBefore || !textAfter) return null;
+
+  // Split French text proportionally if available
+  let frBefore: string | null = null;
+  let frAfter: string | null = null;
+  if (shot.source_sentence_fr) {
+    const frText = shot.source_sentence_fr;
+    const ratio = splitIndex / text.length;
+    const frSplitIdx = Math.round(ratio * frText.length);
+    // Find nearest sentence boundary in FR text
+    const candidates = [frSplitIdx];
+    for (let delta = 1; delta < 40; delta++) {
+      if (frSplitIdx + delta < frText.length) candidates.push(frSplitIdx + delta);
+      if (frSplitIdx - delta > 0) candidates.push(frSplitIdx - delta);
+    }
+    let bestIdx = frSplitIdx;
+    for (const ci of candidates) {
+      if (ci > 0 && ci < frText.length && /[.!?;,]/.test(frText[ci - 1])) {
+        bestIdx = ci;
+        break;
+      }
+    }
+    frBefore = frText.slice(0, bestIdx).trim() || null;
+    frAfter = frText.slice(bestIdx).trim() || null;
+  }
+
+  const shotIdx = sorted.indexOf(shot);
+  const newShotOrder = shot.shot_order + 1;
+
+  // Shift orders for shots after the split point
+  const orderUpdates: { id: string; shot_order: number }[] = [];
+  for (let i = shotIdx + 1; i < sorted.length; i++) {
+    orderUpdates.push({ id: sorted[i].id, shot_order: sorted[i].shot_order + 1 });
+  }
+
+  return {
+    originalUpdate: {
+      id: shot.id,
+      source_sentence: textBefore,
+      source_sentence_fr: frBefore,
+    },
+    newShot: {
+      source_sentence: textAfter,
+      source_sentence_fr: frAfter,
+      shot_order: newShotOrder,
+      shot_type: shot.shot_type,
+      description: shot.description,
+    },
+    orderUpdates,
+    action: {
+      type: "reassign" as ManifestActionType,
+      timestamp: new Date().toISOString(),
+      sceneId: scene.id,
+      shotIds: [shot.id],
+      description: `Shot scindé en deux dans scène "${scene.title}" à la position ${splitIndex}`,
+    },
+  };
+}
+
+/**
  * Compute text redistribution when deleting a shot from a scene.
  * Returns the DB updates to apply + a ManifestAction for history.
  */
