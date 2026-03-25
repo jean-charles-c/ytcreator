@@ -1728,13 +1728,17 @@ export default function Editor() {
               )}
             </div>
 
-            {/* ── Global Sensitive Mode ────────────────────────────── */}
+            {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
             {scenes.length > 0 && !generatingStoryboard && (
               <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-display font-semibold text-foreground">🛡 Toutes les scènes d'un coup</span>
+                  <span className="text-[10px] text-muted-foreground">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
+                </div>
                 <ScopeOverrideControl
                   value={sensitiveMode.getGlobalValue()}
                   onChangeLocal={sensitiveMode.setGlobalLevel}
-                  scopeLabel="Toutes les scènes"
+                  scopeLabel="Toutes les scènes d'un coup"
                   parentLabel={undefined}
                 />
               </div>
@@ -2058,7 +2062,7 @@ export default function Editor() {
                                       value={sensitiveMode.getSceneValue(scene.id)}
                                       onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
                                       scopeLabel={`Scène ${scene.scene_order}`}
-                                      parentLabel="Global"
+                                      parentLabel="Toutes les scènes"
                                       compact
                                     />
                                   </div>
