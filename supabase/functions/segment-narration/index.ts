@@ -560,6 +560,17 @@ const processChunk = async (
   return scenes;
 };
 
+/** Deduplicate array while preserving first-occurrence order (case-insensitive) */
+const deduplicateOrdered = (arr: string[]): string[] => {
+  const seen = new Set<string>();
+  return arr.filter(v => {
+    const k = v.toLowerCase().trim();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+};
+
 /**
  * Merge pass: fuse scenes at chunk boundaries when they describe the same action.
  * Two adjacent scenes are merged if:
