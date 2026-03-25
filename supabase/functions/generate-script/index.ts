@@ -802,6 +802,38 @@ REPLACEMENT STRATEGY: Instead of flagging and leaving gaps, REWRITE using concre
 
 ---
 
+## HUMANIZE — MANDATORY REWRITING PASS
+
+This is the FINAL creative pass before output. It applies to ALL styles, ALL languages.
+
+Your script must sound like it was written by a PASSIONATE HUMAN EXPERT, not by an AI. Apply these humanization rules systematically:
+
+### 1. IMPERFECT AUTHENTICITY
+- Humans don't write in perfectly balanced structures. Occasionally break your own patterns: an unexpectedly short paragraph after a long one, a sentence that starts mid-thought, a deliberately incomplete list that implies "and more."
+- Allow controlled asymmetry in your section lengths. If ACT2 runs long because the material demands it, let it. Don't artificially compress to match a template.
+
+### 2. PERSONAL AUTHORITY
+- Write as someone who has DEEPLY studied this subject and has opinions. Not "it could be argued that..." but "the evidence points clearly to..." or "this is where most accounts get it wrong."
+- Use the narrator's implicit expertise: "What's often missed is...", "The real question isn't X, it's Y."
+- Take intellectual positions. A human expert doesn't hedge everything equally.
+
+### 3. SPONTANEOUS TEXTURE
+- Include micro-reactions a real narrator would have: brief asides, moments of emphasis through repetition, rhetorical pivots that feel unscripted.
+- Vary your connectors unpredictably. Don't cycle through "However... Moreover... Furthermore..." mechanically. Sometimes a simple "And" or "But" is more human than a formal transition.
+- Occasionally use sentence fragments for rhythm. Not grammatically perfect, but orally powerful.
+
+### 4. ANTI-TEMPLATE WRITING
+- NEVER produce text that reads like a filled-in template. Each script must feel UNIQUE in its rhythm, its angles, its surprises.
+- If a sentence could appear in ANY documentary about ANY subject, it's too generic. Rewrite it with details specific to THIS story.
+- Avoid systematic patterns: if every section starts with a scene-setting sentence, break that pattern at least twice.
+
+### 5. EMOTIONAL HONESTY
+- A human writer is genuinely affected by their material. Let moments of wonder, indignation, irony, or fascination emerge NATURALLY from the facts.
+- Don't manufacture emotion ("This is truly heartbreaking"). Instead, present the facts in a way that the emotion emerges in the LISTENER, not in the prose.
+- The best human writing makes the reader feel something the writer never explicitly named.
+
+---
+
 ## LENGTH — HARD CONSTRAINT
 
 Your CORE SCRIPT (blocks 1-10) MUST be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (~${wordMin.toLocaleString()}–${wordMax.toLocaleString()} words).
