@@ -389,6 +389,12 @@ LOCATION TRACKING RULES:
 - If no specific location is mentioned in THIS scene's text, write "Non spécifié" — the system will inherit from global context.
 - Do NOT repeat the global location if the scene text doesn't explicitly mention it.
 
+CHRONOLOGICAL ORDER TRACKING — CRITICAL:
+- "locations_ordered": List ALL distinct locations mentioned in the scene text, IN THE EXACT ORDER they appear in the narration. Example: if the text mentions Mesopotamia, then Greece, then medieval Europe, return ["Mésopotamie", "Grèce", "Europe médiévale"]. If no location is explicitly mentioned, return an empty array [].
+- "epochs_ordered": List ALL distinct time periods/epochs mentioned in the scene text, IN THE EXACT ORDER they appear in the narration. Example: ["Antiquité", "Moyen Âge", "Renaissance"]. If no epoch is explicitly mentioned, return an empty array [].
+- These arrays capture the CHRONOLOGICAL WRITING ORDER, not a general summary. Only include items EXPLICITLY stated in the scene's source_text.
+- Values must be in FRENCH.
+
 ${needsFrenchTranslation ? `TRANSLATION RULE: **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "The narration is already in French. Do NOT include source_text_fr."}
 
 Return data via the segment_narration tool call only.`
