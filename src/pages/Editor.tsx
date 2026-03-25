@@ -2166,7 +2166,13 @@ export default function Editor() {
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
                                           {/* Shot-level sensitive mode */}
-                                          <div className="mb-1.5 pl-1">
+                                          <div className="mb-2 rounded border border-border/50 bg-secondary/20 p-2">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                              <ShieldCheck className="h-3 w-3 text-primary/70" />
+                                              <span className="text-[10px] font-semibold text-foreground">
+                                                Appliquer à ce shot
+                                              </span>
+                                            </div>
                                             <ScopeOverrideControl
                                               value={sensitiveMode.getShotValue(scene.id, shot.id)}
                                               onChangeLocal={(lvl) => sensitiveMode.setShotLevel(shot.id, lvl)}
