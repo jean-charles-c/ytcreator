@@ -2073,28 +2073,16 @@ export default function Editor() {
                                           ({sceneShots.length} shot{sceneShots.length > 1 ? "s" : ""})
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 text-[10px] px-2 gap-1"
-                                          disabled={isRegenerating}
-                                          onClick={() => runStoryboard(scene.id)}
-                                        >
-                                          {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                          Régénérer tous les prompts de la scène
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 text-[10px] px-2 gap-1"
-                                          disabled={generatingAllImages}
-                                          onClick={() => handleGenerateSceneImages(scene.id)}
-                                        >
-                                          {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
-                                          Générer tous les visuels de la scène
-                                        </Button>
-                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-[10px] px-2 gap-1"
+                                        disabled={isRegenerating}
+                                        onClick={() => runStoryboard(scene.id)}
+                                      >
+                                        {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                        Régénérer tous les prompts de la scène
+                                      </Button>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
                                       Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
@@ -2152,6 +2140,15 @@ export default function Editor() {
                                         </button>
                                       );
                                     })()}
+                                    <button
+                                      onClick={() => handleGenerateSceneImages(scene.id)}
+                                      disabled={generatingAllImages}
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
+                                      title="Générer tous les visuels de la scène"
+                                    >
+                                      {generatingAllImages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                                      <span>Générer tous les visuels de la scène</span>
+                                    </button>
                                   </div>
 
                                   {/* Scene source text */}
