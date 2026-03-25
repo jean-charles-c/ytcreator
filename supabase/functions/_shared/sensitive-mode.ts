@@ -7,92 +7,73 @@
  *   3 = Implicite / Symbolique — symbols, visual metaphors
  *   4 = Hors-champ total — no direct representation at all
  *
- * Context anchoring: all levels extract and preserve the original context
- * (era, location, atmosphere, setting) so the visual stays faithful to the
- * documentary universe even when the sensitive action is removed.
+ * Context anchoring: all levels use the structured scene_context from
+ * the segmentation step (era, location, subject, atmosphere, characters)
+ * to ensure the visual stays faithful to the documentary universe.
  */
 
 export type SensitiveLevel = 1 | 2 | 3 | 4;
 
 const SENSITIVE_TERMS_PATTERN = /\b(blood|bloody|gore|gory|murder|kill|dead\s+body|corpse|cadav(?:er|re)|grave|exhum(?:ed|ation)?|death|violent|violence|wound|wounded|skull|suffering|body|torso|face|mouth)\b/gi;
 
-// ─── Context Anchor Extraction ────────────────────────────────────────────────
-// Scans the FULL prompt for contextual information (era, location, atmosphere,
-// architecture, lighting, weather, decor) and returns a mandatory context block.
+// ─── Structured Scene Context ─────────────────────────────────────────────────
+// Built from the scene_context jsonb + scene columns stored during segmentation.
 
-const CONTEXT_PATTERNS: { label: string; pattern: RegExp }[] = [
-  // Time periods / eras
-  { label: "era", pattern: /\b(\d{1,2}(?:st|nd|rd|th)\s+century|(?:ancient|medieval|victorian|renaissance|baroque|modern|contemporary|colonial|ottoman|roman|byzantine|neolithic|iron\s+age|bronze\s+age|pre-columbian|post-war|interwar|belle\s+époque)\b[\w\s]{0,30})/gi },
-  { label: "era", pattern: /\b(\d{3,4}s?(?:\s*[-–]\s*\d{3,4}s?)?)\b/g },
-  // Specific date markers (e.g. "XVe siècle", "XIXe")
-  { label: "era", pattern: /\b([IVXLCDM]+e?\s+si[eè]cle)\b/gi },
-
-  // Locations / geography
-  { label: "location", pattern: /\b(in\s+(?:the\s+)?[A-Z][\w'-]+(?:\s+[A-Z][\w'-]+){0,3})/g },
-  { label: "location", pattern: /\b((?:castle|château|church|cathedral|mosque|temple|palace|fortress|village|city|town|port|harbor|mountain|valley|river|desert|forest|jungle|steppe|tundra|coast|island|cemetery|market|square|courtyard|dungeon|crypt|cellar|attic|tower|bridge|ruins?)\s*(?:of\s+)?[\w\s'-]{0,40})/gi },
-
-  // Atmosphere / lighting / weather
-  { label: "atmosphere", pattern: /\b((?:dim|warm|cold|golden|harsh|soft|dramatic|moonlit|candlelit|torch-?lit|flickering|hazy|misty|foggy|stormy|overcast|dawn|dusk|twilight|midnight|sunrise|sunset|rainy|snowy|dusty|smoky|humid|arid|gloomy|somber|eerie|serene|oppressive)\s*(?:light(?:ing)?|atmosphere|ambiance|sky|air|weather|glow|shadows?)?)/gi },
-
-  // Architecture / decor / materials
-  { label: "setting", pattern: /\b((?:stone|wooden|marble|brick|clay|iron|bronze|gold|silver|ornate|carved|crumbling|ruined|weathered|ancient|moss-covered|ivy-covered|tapestried|vaulted|arched|columned|domed|thatched|cobblestone|narrow|winding)\s+(?:walls?|floors?|ceiling|columns?|arches?|doors?|gates?|windows?|stairs?|corridors?|halls?|rooms?|chambers?|streets?|alleys?|paths?|roads?))/gi },
-
-  // Textiles / objects / props (decor cues)
-  { label: "setting", pattern: /\b((?:tapestry|tapestries|candles?|torch(?:es)?|lanterns?|chandeliers?|furniture|drapes?|curtains?|carpets?|rugs?|pottery|ceramics?|manuscripts?|scrolls?|weapons?\s+rack|armor|shields?|banners?|flags?|icons?|relics?|altars?|crosses|crucifixes))/gi },
-];
+export interface SceneContextAnchors {
+  epoque?: string;
+  lieu?: string;
+  sujet?: string;
+  contexte_scene?: string;
+  personnages?: string;
+  visual_intention?: string;
+  location?: string;
+}
 
 /**
- * Extracts context anchors (era, location, atmosphere, setting) from the full prompt.
- * Returns a deduplicated, categorised mandatory context string.
+ * Builds a mandatory context block from structured scene data.
+ * This replaces the old regex-based extraction — the data comes directly
+ * from the segmentation pipeline's scene_context jsonb.
  */
-function extractContextAnchors(prompt: string): string {
-  const found: Record<string, Set<string>> = {
-    era: new Set(),
-    location: new Set(),
-    atmosphere: new Set(),
-    setting: new Set(),
-  };
-
-  for (const { label, pattern } of CONTEXT_PATTERNS) {
-    // Reset lastIndex for global patterns
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(prompt)) !== null) {
-      const value = match[1]?.trim();
-      if (value && value.length > 2) {
-        // Clean sensitive terms from the extracted context
-        const cleaned = value
-          .replace(SENSITIVE_TERMS_PATTERN, "")
-          .replace(/\s{2,}/g, " ")
-          .trim();
-        if (cleaned.length > 2) {
-          found[label].add(cleaned);
-        }
-      }
-    }
-  }
+export function buildContextBlock(anchors: SceneContextAnchors | null | undefined): string {
+  if (!anchors) return "";
 
   const parts: string[] = [];
-  if (found.era.size) parts.push(`Era/Period: ${[...found.era].join(", ")}`);
-  if (found.location.size) parts.push(`Location: ${[...found.location].join(", ")}`);
-  if (found.atmosphere.size) parts.push(`Atmosphere: ${[...found.atmosphere].join(", ")}`);
-  if (found.setting.size) parts.push(`Setting/Decor: ${[...found.setting].join(", ")}`);
+
+  if (anchors.epoque) parts.push(`Era/Period: ${anchors.epoque}`);
+  if (anchors.lieu || anchors.location) parts.push(`Location: ${anchors.lieu || anchors.location}`);
+  if (anchors.sujet) parts.push(`Subject: ${anchors.sujet}`);
+  if (anchors.contexte_scene) parts.push(`Scene context: ${anchors.contexte_scene}`);
+  if (anchors.visual_intention) parts.push(`Visual intention: ${anchors.visual_intention}`);
+  // Include key characters but truncate if very long
+  if (anchors.personnages) {
+    const chars = anchors.personnages.length > 200
+      ? anchors.personnages.substring(0, 200) + "…"
+      : anchors.personnages;
+    parts.push(`Key figures: ${chars}`);
+  }
 
   return parts.length > 0
-    ? `MANDATORY CONTEXT — you MUST preserve this exact universe:\n${parts.join("\n")}`
+    ? `MANDATORY CONTEXT — you MUST set the image in this exact universe:\n${parts.join("\n")}`
     : "";
 }
 
-// ─── Legacy helper (kept for backward compat) ────────────────────────────────
-
-function extractSafeSettingContext(prompt: string): string {
-  const firstSentence = prompt.split(/[.!?]/)[0] ?? "";
-  return firstSentence
-    .replace(SENSITIVE_TERMS_PATTERN, " ")
-    .replace(/\b(close-up|medium close-up|tight(?:ly)? framed|portrait|subjective view|focuses? on|show(?:ing)?|depict(?:ing|ion)?)\b/gi, " ")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+,/g, ",")
-    .trim();
+/**
+ * Extracts SceneContextAnchors from a scene_context jsonb object + scene columns.
+ */
+export function extractAnchorsFromScene(
+  sceneContext: Record<string, any> | null,
+  sceneColumns: { location?: string; visual_intention?: string } = {},
+): SceneContextAnchors {
+  const ctx = sceneContext ?? {};
+  return {
+    epoque: ctx.epoque || undefined,
+    lieu: ctx.lieu || sceneColumns.location || undefined,
+    sujet: ctx.sujet || undefined,
+    contexte_scene: ctx.contexte_scene || undefined,
+    personnages: ctx.personnages || undefined,
+    visual_intention: sceneColumns.visual_intention || undefined,
+    location: sceneColumns.location || undefined,
+  };
 }
 
 // ─── Level Instructions (for system-message injection) ────────────────────────
@@ -149,15 +130,19 @@ function stripSensitiveAction(prompt: string): string {
 
 /**
  * Wraps/modifies a prompt_export text to enforce sensitive mode constraints for image generation.
- * Returns the modified prompt or the original if no level is set.
- *
- * All levels now extract and inject mandatory context anchors (era, location,
- * atmosphere, setting) so the image stays in the correct documentary universe.
+ * 
+ * @param prompt - The raw prompt_export or description text
+ * @param level - Sensitive level 1-4 or null
+ * @param contextAnchors - Structured scene context from the segmentation step
  */
-export function transformPromptForSensitiveMode(prompt: string, level: number | null | undefined): string {
+export function transformPromptForSensitiveMode(
+  prompt: string,
+  level: number | null | undefined,
+  contextAnchors?: SceneContextAnchors | null,
+): string {
   if (level == null || level < 1 || level > 4) return prompt;
 
-  const contextBlock = extractContextAnchors(prompt);
+  const contextBlock = buildContextBlock(contextAnchors);
   const contextPrefix = contextBlock ? `${contextBlock}\n\n` : "";
 
   switch (level as SensitiveLevel) {
@@ -168,17 +153,13 @@ export function transformPromptForSensitiveMode(prompt: string, level: number | 
       return `${contextPrefix}Suggestive off-screen documentary shot — never depict the sensitive event directly. Convey it only through witness reactions, disturbed environmental details, and tight close-ups of hands, objects, or contextual traces. Frame the scene just before or just after the implied moment, using partial obstruction, shallow depth of field, reflections, shadows, or blurred background elements to make the situation immediately understandable without showing any explicit action. No blood, no nudity, no visible injuries, no visible weapons, no graphic detail. ${prompt}`;
 
     case 3: {
-      // For level 3: keep context anchors + cleaned prompt for inspiration, but enforce symbolism
       const cleanedPrompt = stripSensitiveAction(prompt);
       return `${contextPrefix}Symbolic, metaphorical documentary image set in the EXACT context described above. Replace all literal content with visual metaphors: natural elements, abstract compositions, poetic imagery that evoke the emotional tone. Inspired by: ${cleanedPrompt}. NO literal depiction of people or events. Pure visual poetry and symbolism rooted in the specified era, location, and atmosphere.`;
     }
 
     case 4: {
-      // For level 4: context anchors + fully sanitized environmental prompt
       const cleanedPrompt = stripSensitiveAction(prompt);
-      // Also extract a broader safe context from the full prompt (not just first sentence)
-      const safeFallback = extractSafeSettingContext(prompt);
-      return `${contextPrefix}Empty environmental shot — contemplative pause set in the EXACT historical and geographic context described above. Show ONLY landscape, architecture, sky, water, vegetation, weather, empty interiors, or abstract textures from this specific setting. NO people. NO bodies. NO faces. NO graves. NO blood. NO objects suggesting death, violence, or a specific event.${cleanedPrompt ? ` Visual atmosphere drawn from: ${cleanedPrompt}.` : ""}${!contextBlock && safeFallback ? ` Context: ${safeFallback}.` : ""} A peaceful, distant breathing space faithful to the documentary's universe.`;
+      return `${contextPrefix}Empty environmental shot — contemplative pause set in the EXACT historical and geographic context described above. Show ONLY landscape, architecture, sky, water, vegetation, weather, empty interiors, or abstract textures from this specific setting. NO people. NO bodies. NO faces. NO graves. NO blood. NO objects suggesting death, violence, or a specific event.${cleanedPrompt ? ` Visual atmosphere drawn from: ${cleanedPrompt}.` : ""} A peaceful, distant breathing space faithful to the documentary's universe.`;
     }
   }
 }
