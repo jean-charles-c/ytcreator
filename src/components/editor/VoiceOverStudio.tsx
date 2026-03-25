@@ -367,6 +367,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
       const validation = validateExactShotTimepoints(expectedShotIds, timepoints);
 
+      setSyncChecked(true);
       if (!validation.ok) {
         setDesyncWarning(validation.errors[0] ?? "L'audio VO est désynchronisé avec les shots actuels.");
       } else {
