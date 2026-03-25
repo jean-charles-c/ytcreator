@@ -401,7 +401,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               <XCircle className="h-3 w-3" />
               Désync
             </span>
-          ) : desyncWarning === null && shots && shots.length > 0 ? (
+          ) : syncChecked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-500 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
               <CheckCircle2 className="h-3 w-3" />
               Sync OK
