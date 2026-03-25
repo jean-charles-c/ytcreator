@@ -971,11 +971,18 @@ export default function Editor() {
 
   const handleGenerateShotImage = async (shotId: string) => {
     if (!projectId || generatingAllImages) return;
+    // Resolve effective sensitive level for this shot
+    const parentScene = shots.find((s) => s.id === shotId);
+    const sceneId = parentScene?.scene_id;
+    const effectiveLevel = sceneId
+      ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
+      : null;
     bgStartImageGen({
       projectId,
       shotIds: [shotId],
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
     });
   };
 
