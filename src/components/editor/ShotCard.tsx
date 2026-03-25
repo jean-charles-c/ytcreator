@@ -90,15 +90,6 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     toast.success("Shot mis à jour !");
   };
 
-  const handleRegenerate = async () => {
-    if (!onRegenerate) return;
-    setRegenerating(true);
-    try {
-      await onRegenerate(shot.id);
-    } finally {
-      setRegenerating(false);
-    }
-  };
 
   const handleGenerateImage = async () => {
     if (!onGenerateImage) return;
