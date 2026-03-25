@@ -44,23 +44,10 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   const parsed = parseTaggedScript(script);
 
   if (parsed.tagged) {
-    let sections = ALL_SECTIONS.map((s) => ({
+    return ALL_SECTIONS.map((s) => ({
       ...s,
       content: parsed.sections.find((seg) => seg.key === s.key)?.content || "",
     }));
-
-    // Post-parse validation: detect ACT2/ACT2B fusion
-    const act2 = sections.find((s) => s.key === "act2");
-    const act2b = sections.find((s) => s.key === "act2b");
-    if (act2 && act2b && act2.content.trim() && !act2b.content.trim()) {
-      // ACT2B is empty but ACT2 exists — likely fusion. Flag it.
-      console.warn("[parseScriptIntoSections] ACT2B is empty — possible fusion with ACT2. ACT2 length:", act2.content.length);
-      sections = sections.map((s) =>
-        s.key === "act2b" ? { ...s, content: "⚠️ [ACT2B manquant — l'IA a probablement fusionné ACT2 et ACT2B. Régénérez le script ou séparez manuellement le contenu.]" } : s
-      );
-    }
-
-    return sections;
   }
 
   // Legacy fallback: header-based parsing
