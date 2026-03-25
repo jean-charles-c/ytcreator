@@ -604,6 +604,9 @@ const mergeChunkBoundaryScenes = (
         location: prev.location === curr.location ? prev.location : prev.location,
         scene_type: prev.scene_type,
         continuity: prev.continuity,
+        // Merge ordered arrays: concatenate and deduplicate while preserving order
+        locations_ordered: deduplicateOrdered([...prev.locations_ordered, ...curr.locations_ordered]),
+        epochs_ordered: deduplicateOrdered([...prev.epochs_ordered, ...curr.epochs_ordered]),
       };
       result.splice(idx - 1, 2, merged);
     }
