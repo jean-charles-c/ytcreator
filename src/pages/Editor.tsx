@@ -2271,11 +2271,6 @@ export default function Editor() {
                 </div>
               </details>
 
-              <div className="mt-6 sm:mt-8 flex gap-3">
-                <Button variant="outline" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px] sm:min-h-0">
-                  <Play className="h-4 w-4" /> Re-générer tous les shots
-                </Button>
-              </div>
             </>
             )}
           </div>
