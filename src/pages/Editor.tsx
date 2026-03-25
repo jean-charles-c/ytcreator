@@ -911,6 +911,12 @@ export default function Editor() {
     setRegeneratingShots((prev) => ({ ...prev, [shotId]: true }));
     try {
       const session = (await supabase.auth.getSession()).data.session;
+      // Resolve effective sensitive level for this shot
+      const parentScene = shots.find((s) => s.id === shotId);
+      const sceneId = parentScene?.scene_id;
+      const effectiveLevel = sceneId
+        ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
+        : null;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/regenerate-shot`,
         {
@@ -920,7 +926,10 @@ export default function Editor() {
             Authorization: `Bearer ${session?.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ shot_id: shotId }),
+          body: JSON.stringify({
+            shot_id: shotId,
+            ...(effectiveLevel != null ? { sensitive_level: effectiveLevel } : {}),
+          }),
         }
       );
       const data = await response.json();
