@@ -152,7 +152,7 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.
+              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.${sensitiveModeBlock}
 
 LANGUAGE RULES:
 - shot_type MUST be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
