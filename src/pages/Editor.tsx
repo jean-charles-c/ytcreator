@@ -2062,7 +2062,7 @@ export default function Editor() {
                                       value={sensitiveMode.getSceneValue(scene.id)}
                                       onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
                                       scopeLabel={`Scène ${scene.scene_order}`}
-                                      parentLabel="Global"
+                                      parentLabel="Toutes les scènes"
                                       compact
                                     />
                                   </div>
