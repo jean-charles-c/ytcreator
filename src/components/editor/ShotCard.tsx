@@ -73,6 +73,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     setEditType(shot.shot_type);
     setEditDesc(shot.description);
     setEditPrompt(shot.prompt_export ?? "");
+    setEditSourceSentence(shot.source_sentence ?? "");
+    setEditSourceSentenceFr(shot.source_sentence_fr ?? "");
     setEditing(true);
   };
 
