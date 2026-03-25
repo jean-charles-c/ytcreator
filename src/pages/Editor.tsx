@@ -1667,7 +1667,6 @@ export default function Editor() {
                   <Square className="h-4 w-4" /> Stopper
                 </Button>
               )}
-              </div>
             </div>
 
             {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
