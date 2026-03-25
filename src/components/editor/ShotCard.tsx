@@ -348,6 +348,67 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Split dialog */}
+      <AlertDialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Scissors className="h-4 w-4" /> Scinder ce shot en deux
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cliquez dans le texte pour choisir le point de coupure. Le shot sera divisé en deux fragments distincts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {shot.source_sentence && splitIndex !== null && (
+            <div className="space-y-3">
+              <div className="rounded border border-border bg-secondary/30 p-3">
+                <p className="text-xs leading-relaxed">
+                  <span className="bg-primary/20 text-foreground px-0.5 rounded">
+                    {shot.source_sentence.slice(0, splitIndex)}
+                  </span>
+                  <span className="inline-block w-0.5 h-4 bg-primary mx-0.5 align-middle animate-pulse" />
+                  <span className="bg-accent/30 text-foreground px-0.5 rounded">
+                    {shot.source_sentence.slice(splitIndex)}
+                  </span>
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Position de coupure</label>
+                <input
+                  type="range"
+                  min={5}
+                  max={shot.source_sentence.length - 5}
+                  value={splitIndex}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    // Snap to nearest word boundary
+                    const text = shot.source_sentence!;
+                    let snapped = val;
+                    for (let d = 0; d < 10; d++) {
+                      if (val + d < text.length && text[val + d] === " ") { snapped = val + d + 1; break; }
+                      if (val - d > 0 && text[val - d] === " ") { snapped = val - d + 1; break; }
+                    }
+                    setSplitIndex(snapped);
+                  }}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-[9px] text-muted-foreground">
+                  <span>Shot A : {splitIndex} car.</span>
+                  <span>Shot B : {shot.source_sentence.length - splitIndex} car.</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={splitting} className="min-h-[44px]">Annuler</AlertDialogCancel>
+            <Button onClick={handleSplit} disabled={splitting} className="min-h-[44px]">
+              {splitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Scissors className="h-4 w-4 mr-1" />}
+              Scinder
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
