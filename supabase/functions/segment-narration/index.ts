@@ -797,20 +797,34 @@ serve(async (req) => {
         && scene.characters !== "Aucun personnage actif"
         ? scene.characters : null;
 
+      // ─── Ordered locations: use scene's list, or inherit last from previous scene ─
+      const prevLocationsOrdered: string[] = prevContext?.lieux_ordonnes || [];
+      const sceneLocationsOrdered = scene.locations_ordered.length > 0
+        ? scene.locations_ordered
+        : prevLocationsOrdered.length > 0
+          ? [prevLocationsOrdered[prevLocationsOrdered.length - 1]]  // inherit last
+          : (gc.lieu_principal && gc.lieu_principal !== "Non déterminé" ? [gc.lieu_principal] : []);
+
+      // ─── Ordered epochs: use scene's list, or inherit last from previous scene ─
+      const prevEpochsOrdered: string[] = prevContext?.epoques_ordonnees || [];
+      const sceneEpochsOrdered = scene.epochs_ordered.length > 0
+        ? scene.epochs_ordered
+        : prevEpochsOrdered.length > 0
+          ? [prevEpochsOrdered[prevEpochsOrdered.length - 1]]  // inherit last
+          : (gc.epoque && gc.epoque !== "Non déterminé" ? [gc.epoque] : []);
+
       // Temporal variation detection from scene text
       const temporalShift = detectTemporalVariation(scene.source_text, gc.epoque || "");
 
-      // Determine epoch: temporal shift > previous scene epoch (stability) > global
-      const prevEpoque = prevContext?.epoque || null;
-      const resolvedEpoque = temporalShift
-        || (prevEpoque && prevEpoque !== "Non déterminé" && !temporalShift ? prevEpoque : null)
-        || gc.epoque || "Non déterminé";
+      // Determine epoch: use last from ordered list > temporal shift > previous > global
+      const resolvedEpoque = sceneEpochsOrdered.length > 0
+        ? sceneEpochsOrdered[sceneEpochsOrdered.length - 1]
+        : temporalShift || gc.epoque || "Non déterminé";
 
-      // Determine location: local > previous scene (stability unless scene changes it) > global
-      const prevLieu = prevContext?.lieu || null;
-      const resolvedLieu = localLieu
-        || (prevLieu && prevLieu !== "Non déterminé" && scene.continuity !== "new" ? prevLieu : null)
-        || gc.lieu_principal || "Non déterminé";
+      // Determine location: use last from ordered list > local > previous > global
+      const resolvedLieu = sceneLocationsOrdered.length > 0
+        ? sceneLocationsOrdered[sceneLocationsOrdered.length - 1]
+        : localLieu || gc.lieu_principal || "Non déterminé";
 
       // Determine characters: local if present, else inherit from previous scene if continuity
       const globalChars = gc.personnages?.length > 0
@@ -827,6 +841,8 @@ serve(async (req) => {
         lieu: resolvedLieu,
         epoque: resolvedEpoque,
         personnages: resolvedPersonnages,
+        lieux_ordonnes: sceneLocationsOrdered,
+        epoques_ordonnees: sceneEpochsOrdered,
         coherence_globale: buildCoherenceNote(scene, gc, temporalShift, prevContext),
       };
     };
