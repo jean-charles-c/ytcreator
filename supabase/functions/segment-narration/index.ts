@@ -63,12 +63,25 @@ function validateSceneBlock(raw: Record<string, unknown>, index: number): {
   location: string;
   scene_type: string;
   continuity: string;
+  locations_ordered: string[];
+  epochs_ordered: string[];
 } {
   const str = (v: unknown, fallback: string) =>
     typeof v === "string" && v.trim() ? v.trim() : fallback;
 
   const scene_type_raw = str(raw.scene_type, "description").toLowerCase();
   const continuity_raw = str(raw.continuity, index === 0 ? "new" : "continues").toLowerCase();
+
+  // Parse ordered arrays — accept string[] from AI or fallback to single location/epoch
+  const parseOrderedArray = (v: unknown, fallbackSingle: string): string[] => {
+    if (Array.isArray(v) && v.length > 0) return v.map(x => String(x).trim()).filter(Boolean);
+    if (fallbackSingle && fallbackSingle !== "unspecified" && fallbackSingle !== "Non spécifié") return [fallbackSingle];
+    return [];
+  };
+
+  const location = str(raw.location, "unspecified");
+  const locationsOrdered = parseOrderedArray(raw.locations_ordered, location);
+  const epochsOrdered = parseOrderedArray(raw.epochs_ordered, "");
 
   return {
     title: str(raw.title, `Scene ${index + 1}`),
@@ -77,9 +90,11 @@ function validateSceneBlock(raw: Record<string, unknown>, index: number): {
     visual_intention: str(raw.visual_intention, "Non spécifié"),
     narrative_action: str(raw.narrative_action, "Non spécifié"),
     characters: str(raw.characters, "none"),
-    location: str(raw.location, "unspecified"),
+    location,
     scene_type: VALID_SCENE_TYPES.includes(scene_type_raw) ? scene_type_raw : "description",
     continuity: VALID_CONTINUITY.includes(continuity_raw) ? continuity_raw : (index === 0 ? "new" : "continues"),
+    locations_ordered: locationsOrdered,
+    epochs_ordered: epochsOrdered,
   };
 }
 
