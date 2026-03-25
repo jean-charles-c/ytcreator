@@ -32,6 +32,20 @@ describe("exactShotSync", () => {
     expect(validation.missingIds).toEqual(["shot-2"]);
   });
 
+  it("rejects shot_timepoints when the same ids are present but in the wrong order", () => {
+    const validation = validateExactShotTimepoints(
+      ["shot-1", "shot-2", "shot-3"],
+      [
+        { shotId: "shot-1", shotIndex: 0, timeSeconds: 0 },
+        { shotId: "shot-3", shotIndex: 1, timeSeconds: 2 },
+        { shotId: "shot-2", shotIndex: 2, timeSeconds: 4 },
+      ]
+    );
+
+    expect(validation.ok).toBe(false);
+    expect(validation.errors).toContain("L’ordre des shotIds envoyés au moteur audio ne correspond plus à l’ordre courant des shots.");
+  });
+
   it("preserves two exact consecutive shot fragments for the Zimbabwe plateau case", () => {
     const shotSentences = buildExactShotSentences([
       {

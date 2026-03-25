@@ -25,6 +25,7 @@ import { assembleTimeline, type Timeline } from "./timelineAssembly";
 import TimelineView from "./TimelineView";
 import ExportManager from "./ExportManager";
 import { resolveSelectedAudioId } from "./audioSelection";
+import { validateExactShotTimepoints } from "./exactShotSync";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -389,19 +390,21 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const selectedAudio = audioFiles.find((a) => a.id === selectedAudioId);
   const audioDesync = (() => {
     if (!selectedAudio || shots.length === 0) return null;
-    const timepoints = (selectedAudio as any).shot_timepoints as { shotId: string }[] | null;
+    const timepoints = (selectedAudio as any).shot_timepoints as { shotId: string; shotIndex: number; timeSeconds: number }[] | null;
     if (!timepoints || timepoints.length === 0) return null;
 
-    const currentShotIds = new Set(shots.map((s) => s.id));
-    const timepointShotIds = new Set(timepoints.filter((tp) => !tp.shotId.startsWith("_missing_")).map((tp) => tp.shotId));
+    const sceneOrderMap = new Map(scenes.map((scene) => [scene.id, scene.scene_order]));
+    const expectedShotIds = [...shots]
+      .sort((a, b) => {
+        const sceneOrderA = sceneOrderMap.get(a.scene_id) ?? 0;
+        const sceneOrderB = sceneOrderMap.get(b.scene_id) ?? 0;
+        if (sceneOrderA !== sceneOrderB) return sceneOrderA - sceneOrderB;
+        return a.shot_order - b.shot_order;
+      })
+      .map((shot) => shot.id);
 
-    const missingInAudio = shots.filter((s) => !timepointShotIds.has(s.id)).length;
-    const obsoleteInAudio = [...timepointShotIds].filter((id) => !currentShotIds.has(id)).length;
-
-    if (missingInAudio > 0 || obsoleteInAudio > 0) {
-      return `${missingInAudio} shot(s) sans marqueur audio, ${obsoleteInAudio} marqueur(s) obsolète(s)`;
-    }
-    return null;
+    const validation = validateExactShotTimepoints(expectedShotIds, timepoints);
+    return validation.ok ? null : validation.errors[0] ?? "Audio désynchronisé avec les shots actuels";
   })();
 
   // Compute asset checks
