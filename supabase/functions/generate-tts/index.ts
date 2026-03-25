@@ -767,8 +767,7 @@ function buildMarkedSsml(
   dynamicPauseVariation = 0,
   emphasisBoost = 0
 ): string {
-  const parts = shotSentences.map((shot, idx) => {
-    const mark = `<mark name="${shot.id}"/>`;
+  const parts = shotSentences.map((shot) => {
     let processed = escapeXml(shot.text.trim());
 
     // Prosody MUST run first on clean escaped text (splits by whitespace)
@@ -782,36 +781,46 @@ function buildMarkedSsml(
       processed = injectCommaPauses(processed, commaPauseMs);
     }
 
-    return { ssml: `${mark}${processed}`, text: shot.text.trim() };
+    return { mark: `<mark name="${shot.id}"/>`, body: processed, text: shot.text.trim() };
   });
 
-  // Join with sentence pauses (with continuity and scene/paragraph awareness)
-  const joined = parts.map((p, i) => {
-    if (i < parts.length - 1) {
-      // Use paragraph pause at scene boundaries, sentence pause otherwise
-      const nextShot = shotSentences[i + 1];
-      const isSceneBreak = nextShot?.isNewScene === true;
-      const endsSentence = endsWithSentenceTerminal(p.text);
+  // Build SSML with marks firing BEFORE inter-shot pauses.
+  // Old structure: mark13 text13 <break/> mark14 text14
+  //   → mark14 fires AFTER the pause → image appears late
+  // New structure: mark13 text13 mark14 <break/> text14
+  //   → mark14 fires when text13 ends → image changes immediately,
+  //     pause plays with the correct image already displayed
+  const pieces: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+
+    if (i === 0) {
+      // First shot: mark + body, no preceding break
+      pieces.push(`${p.mark}${p.body}`);
+    } else {
+      // Subsequent shots: emit mark first (triggers image change), then the
+      // inter-shot pause computed from the PREVIOUS shot's context, then body.
+      const isSceneBreak = shotSentences[i].isNewScene === true;
+      const prevEndsSentence = endsWithSentenceTerminal(parts[i - 1].text);
       const basePause = isSceneBreak ? pauseBetweenParagraphs : pauseAfterSentences;
 
-      if (!isSceneBreak && !endsSentence) {
-        return `${p.ssml}<break time="${SHOT_BOUNDARY_BREAK_MS}ms"/>`;
-      }
-
-      if (basePause > 0) {
+      let breakTag = "";
+      if (!isSceneBreak && !prevEndsSentence) {
+        breakTag = `<break time="${SHOT_BOUNDARY_BREAK_MS}ms"/>`;
+      } else if (basePause > 0) {
         let pause = jitterPause(basePause, dynamicPauseVariation, dynamicPauseEnabled);
-        // Reduce pause for prosodic continuity (only for non-scene-breaks)
-        if (!isSceneBreak && shouldReducePause(p.text, parts[i + 1].text)) {
+        if (!isSceneBreak && shouldReducePause(parts[i - 1].text, p.text)) {
           pause = Math.max(50, Math.round(pause * CONTINUITY_PAUSE_RATIO));
         }
-        return `${p.ssml}<break time="${pause}ms"/>`;
+        breakTag = `<break time="${pause}ms"/>`;
       }
+
+      pieces.push(` ${p.mark}${breakTag}${p.body}`);
     }
-    return p.ssml;
-  }).join(" ");
+  }
 
   const endMark = `<mark name="__end"/>`;
-  return `<speak>${joined}${endMark}</speak>`;
+  return `<speak>${pieces.join("")}${endMark}</speak>`;
 }
 
 function computeShotBoundaryPauseMs(
