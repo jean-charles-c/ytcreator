@@ -27,6 +27,8 @@ export interface SceneContextAnchors {
   personnages?: string;
   visual_intention?: string;
   location?: string;
+  lieux_ordonnes?: string[];
+  epoques_ordonnees?: string[];
 }
 
 /**
