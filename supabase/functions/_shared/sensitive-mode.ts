@@ -27,6 +27,8 @@ export interface SceneContextAnchors {
   personnages?: string;
   visual_intention?: string;
   location?: string;
+  lieux_ordonnes?: string[];
+  epoques_ordonnees?: string[];
 }
 
 /**
@@ -39,12 +41,22 @@ export function buildContextBlock(anchors: SceneContextAnchors | null | undefine
 
   const parts: string[] = [];
 
-  if (anchors.epoque) parts.push(`Era/Period: ${anchors.epoque}`);
-  if (anchors.lieu || anchors.location) parts.push(`Location: ${anchors.lieu || anchors.location}`);
+  // Use ordered lists if available, otherwise fallback to single values
+  if (anchors.epoques_ordonnees && anchors.epoques_ordonnees.length > 0) {
+    parts.push(`Era/Period (chronological order): ${anchors.epoques_ordonnees.join(" → ")}`);
+  } else if (anchors.epoque) {
+    parts.push(`Era/Period: ${anchors.epoque}`);
+  }
+
+  if (anchors.lieux_ordonnes && anchors.lieux_ordonnes.length > 0) {
+    parts.push(`Location (chronological order): ${anchors.lieux_ordonnes.join(" → ")}`);
+  } else if (anchors.lieu || anchors.location) {
+    parts.push(`Location: ${anchors.lieu || anchors.location}`);
+  }
+
   if (anchors.sujet) parts.push(`Subject: ${anchors.sujet}`);
   if (anchors.contexte_scene) parts.push(`Scene context: ${anchors.contexte_scene}`);
   if (anchors.visual_intention) parts.push(`Visual intention: ${anchors.visual_intention}`);
-  // Include key characters but truncate if very long
   if (anchors.personnages) {
     const chars = anchors.personnages.length > 200
       ? anchors.personnages.substring(0, 200) + "…"
@@ -73,6 +85,8 @@ export function extractAnchorsFromScene(
     personnages: ctx.personnages || undefined,
     visual_intention: sceneColumns.visual_intention || undefined,
     location: sceneColumns.location || undefined,
+    lieux_ordonnes: Array.isArray(ctx.lieux_ordonnes) ? ctx.lieux_ordonnes : undefined,
+    epoques_ordonnees: Array.isArray(ctx.epoques_ordonnees) ? ctx.epoques_ordonnees : undefined,
   };
 }
 

@@ -63,12 +63,25 @@ function validateSceneBlock(raw: Record<string, unknown>, index: number): {
   location: string;
   scene_type: string;
   continuity: string;
+  locations_ordered: string[];
+  epochs_ordered: string[];
 } {
   const str = (v: unknown, fallback: string) =>
     typeof v === "string" && v.trim() ? v.trim() : fallback;
 
   const scene_type_raw = str(raw.scene_type, "description").toLowerCase();
   const continuity_raw = str(raw.continuity, index === 0 ? "new" : "continues").toLowerCase();
+
+  // Parse ordered arrays — accept string[] from AI or fallback to single location/epoch
+  const parseOrderedArray = (v: unknown, fallbackSingle: string): string[] => {
+    if (Array.isArray(v) && v.length > 0) return v.map(x => String(x).trim()).filter(Boolean);
+    if (fallbackSingle && fallbackSingle !== "unspecified" && fallbackSingle !== "Non spécifié") return [fallbackSingle];
+    return [];
+  };
+
+  const location = str(raw.location, "unspecified");
+  const locationsOrdered = parseOrderedArray(raw.locations_ordered, location);
+  const epochsOrdered = parseOrderedArray(raw.epochs_ordered, "");
 
   return {
     title: str(raw.title, `Scene ${index + 1}`),
@@ -77,9 +90,11 @@ function validateSceneBlock(raw: Record<string, unknown>, index: number): {
     visual_intention: str(raw.visual_intention, "Non spécifié"),
     narrative_action: str(raw.narrative_action, "Non spécifié"),
     characters: str(raw.characters, "none"),
-    location: str(raw.location, "unspecified"),
+    location,
     scene_type: VALID_SCENE_TYPES.includes(scene_type_raw) ? scene_type_raw : "description",
     continuity: VALID_CONTINUITY.includes(continuity_raw) ? continuity_raw : (index === 0 ? "new" : "continues"),
+    locations_ordered: locationsOrdered,
+    epochs_ordered: epochsOrdered,
   };
 }
 
@@ -374,6 +389,12 @@ LOCATION TRACKING RULES:
 - If no specific location is mentioned in THIS scene's text, write "Non spécifié" — the system will inherit from global context.
 - Do NOT repeat the global location if the scene text doesn't explicitly mention it.
 
+CHRONOLOGICAL ORDER TRACKING — CRITICAL:
+- "locations_ordered": List ALL distinct locations mentioned in the scene text, IN THE EXACT ORDER they appear in the narration. Example: if the text mentions Mesopotamia, then Greece, then medieval Europe, return ["Mésopotamie", "Grèce", "Europe médiévale"]. If no location is explicitly mentioned, return an empty array [].
+- "epochs_ordered": List ALL distinct time periods/epochs mentioned in the scene text, IN THE EXACT ORDER they appear in the narration. Example: ["Antiquité", "Moyen Âge", "Renaissance"]. If no epoch is explicitly mentioned, return an empty array [].
+- These arrays capture the CHRONOLOGICAL WRITING ORDER, not a general summary. Only include items EXPLICITLY stated in the scene's source_text.
+- Values must be in FRENCH.
+
 ${needsFrenchTranslation ? `TRANSLATION RULE: **MANDATORY**: Provide "source_text_fr" for EVERY scene: a faithful French translation of source_text. This field is REQUIRED.` : "The narration is already in French. Do NOT include source_text_fr."}
 
 Return data via the segment_narration tool call only.`
@@ -404,6 +425,8 @@ Return data via the segment_narration tool call only.`
                     narrative_action: { type: "string" },
                     characters: { type: "string" },
                     location: { type: "string" },
+                    locations_ordered: { type: "array", items: { type: "string" }, description: "Chronological order of all distinct locations mentioned in this scene's text, in FRENCH. Empty array if none." },
+                    epochs_ordered: { type: "array", items: { type: "string" }, description: "Chronological order of all distinct epochs/time periods mentioned in this scene's text, in FRENCH. Empty array if none." },
                     scene_type: { type: "string", enum: VALID_SCENE_TYPES },
                     continuity: { type: "string", enum: VALID_CONTINUITY },
                   },
@@ -411,7 +434,8 @@ Return data via the segment_narration tool call only.`
                     "title", "source_text",
                     ...(needsFrenchTranslation ? ["source_text_fr"] : []),
                     "visual_intention", "narrative_action",
-                    "characters", "location", "scene_type", "continuity",
+                    "characters", "location", "locations_ordered", "epochs_ordered",
+                    "scene_type", "continuity",
                   ],
                   additionalProperties: false,
                 },
@@ -536,6 +560,17 @@ const processChunk = async (
   return scenes;
 };
 
+/** Deduplicate array while preserving first-occurrence order (case-insensitive) */
+const deduplicateOrdered = (arr: string[]): string[] => {
+  const seen = new Set<string>();
+  return arr.filter(v => {
+    const k = v.toLowerCase().trim();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+};
+
 /**
  * Merge pass: fuse scenes at chunk boundaries when they describe the same action.
  * Two adjacent scenes are merged if:
@@ -580,6 +615,9 @@ const mergeChunkBoundaryScenes = (
         location: prev.location === curr.location ? prev.location : prev.location,
         scene_type: prev.scene_type,
         continuity: prev.continuity,
+        // Merge ordered arrays: concatenate and deduplicate while preserving order
+        locations_ordered: deduplicateOrdered([...prev.locations_ordered, ...curr.locations_ordered]),
+        epochs_ordered: deduplicateOrdered([...prev.epochs_ordered, ...curr.epochs_ordered]),
       };
       result.splice(idx - 1, 2, merged);
     }
@@ -759,20 +797,34 @@ serve(async (req) => {
         && scene.characters !== "Aucun personnage actif"
         ? scene.characters : null;
 
+      // ─── Ordered locations: use scene's list, or inherit last from previous scene ─
+      const prevLocationsOrdered: string[] = prevContext?.lieux_ordonnes || [];
+      const sceneLocationsOrdered = scene.locations_ordered.length > 0
+        ? scene.locations_ordered
+        : prevLocationsOrdered.length > 0
+          ? [prevLocationsOrdered[prevLocationsOrdered.length - 1]]  // inherit last
+          : (gc.lieu_principal && gc.lieu_principal !== "Non déterminé" ? [gc.lieu_principal] : []);
+
+      // ─── Ordered epochs: use scene's list, or inherit last from previous scene ─
+      const prevEpochsOrdered: string[] = prevContext?.epoques_ordonnees || [];
+      const sceneEpochsOrdered = scene.epochs_ordered.length > 0
+        ? scene.epochs_ordered
+        : prevEpochsOrdered.length > 0
+          ? [prevEpochsOrdered[prevEpochsOrdered.length - 1]]  // inherit last
+          : (gc.epoque && gc.epoque !== "Non déterminé" ? [gc.epoque] : []);
+
       // Temporal variation detection from scene text
       const temporalShift = detectTemporalVariation(scene.source_text, gc.epoque || "");
 
-      // Determine epoch: temporal shift > previous scene epoch (stability) > global
-      const prevEpoque = prevContext?.epoque || null;
-      const resolvedEpoque = temporalShift
-        || (prevEpoque && prevEpoque !== "Non déterminé" && !temporalShift ? prevEpoque : null)
-        || gc.epoque || "Non déterminé";
+      // Determine epoch: use last from ordered list > temporal shift > previous > global
+      const resolvedEpoque = sceneEpochsOrdered.length > 0
+        ? sceneEpochsOrdered[sceneEpochsOrdered.length - 1]
+        : temporalShift || gc.epoque || "Non déterminé";
 
-      // Determine location: local > previous scene (stability unless scene changes it) > global
-      const prevLieu = prevContext?.lieu || null;
-      const resolvedLieu = localLieu
-        || (prevLieu && prevLieu !== "Non déterminé" && scene.continuity !== "new" ? prevLieu : null)
-        || gc.lieu_principal || "Non déterminé";
+      // Determine location: use last from ordered list > local > previous > global
+      const resolvedLieu = sceneLocationsOrdered.length > 0
+        ? sceneLocationsOrdered[sceneLocationsOrdered.length - 1]
+        : localLieu || gc.lieu_principal || "Non déterminé";
 
       // Determine characters: local if present, else inherit from previous scene if continuity
       const globalChars = gc.personnages?.length > 0
@@ -789,6 +841,8 @@ serve(async (req) => {
         lieu: resolvedLieu,
         epoque: resolvedEpoque,
         personnages: resolvedPersonnages,
+        lieux_ordonnes: sceneLocationsOrdered,
+        epoques_ordonnees: sceneEpochsOrdered,
         coherence_globale: buildCoherenceNote(scene, gc, temporalShift, prevContext),
       };
     };
