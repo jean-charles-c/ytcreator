@@ -47,7 +47,7 @@ import VoiceOverStudio from "@/components/editor/VoiceOverStudio";
 import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 import VideoEditTab from "@/components/editor/VideoEditTab";
 import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
-import { ScopeOverrideControl, type SensitiveLevel } from "@/components/editor/sensitiveMode";
+import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sensitiveMode";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
@@ -205,37 +205,8 @@ export default function Editor() {
   const [currentShotVersionId, setCurrentShotVersionId] = useState<number | null>(null);
   const [previewShotVersionId, setPreviewShotVersionId] = useState<number | null>(null);
 
-  // ── Sensitive mode state ──────────────────────────────────────
-  const [globalSensitiveLevel, setGlobalSensitiveLevel] = useState<SensitiveLevel | null>(null);
-  const [sceneSensitiveLevels, setSceneSensitiveLevels] = useState<Map<string, SensitiveLevel | null>>(new Map());
-  const [shotSensitiveLevels, setShotSensitiveLevels] = useState<Map<string, SensitiveLevel | null>>(new Map());
-
-  const setSceneSensitiveLevel = useCallback((sceneId: string, level: SensitiveLevel | null) => {
-    setSceneSensitiveLevels((prev) => {
-      const next = new Map(prev);
-      if (level == null) next.delete(sceneId);
-      else next.set(sceneId, level);
-      return next;
-    });
-  }, []);
-
-  const setShotSensitiveLevel = useCallback((shotId: string, level: SensitiveLevel | null) => {
-    setShotSensitiveLevels((prev) => {
-      const next = new Map(prev);
-      if (level == null) next.delete(shotId);
-      else next.set(shotId, level);
-      return next;
-    });
-  }, []);
-
-  const getSceneEffectiveInherited = useCallback((_sceneId: string): SensitiveLevel | null => {
-    return globalSensitiveLevel;
-  }, [globalSensitiveLevel]);
-
-  const getShotEffectiveInherited = useCallback((sceneId: string): SensitiveLevel | null => {
-    const sceneLocal = sceneSensitiveLevels.get(sceneId) ?? null;
-    return sceneLocal ?? globalSensitiveLevel;
-  }, [sceneSensitiveLevels, globalSensitiveLevel]);
+  // ── Sensitive mode (hierarchy: global → scene → shot) ──────
+  const sensitiveMode = useSensitiveMode();
 
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
     try {
@@ -1761,8 +1732,8 @@ export default function Editor() {
             {scenes.length > 0 && !generatingStoryboard && (
               <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
                 <ScopeOverrideControl
-                  value={{ localLevel: globalSensitiveLevel, inheritedLevel: null }}
-                  onChangeLocal={setGlobalSensitiveLevel}
+                  value={sensitiveMode.getGlobalValue()}
+                  onChangeLocal={sensitiveMode.setGlobalLevel}
                   scopeLabel="Toutes les scènes"
                   parentLabel={undefined}
                 />
@@ -2084,11 +2055,8 @@ export default function Editor() {
                                   {/* Scene-level sensitive mode */}
                                   <div className="rounded border border-border/50 bg-secondary/20 p-2.5">
                                     <ScopeOverrideControl
-                                      value={{
-                                        localLevel: sceneSensitiveLevels.get(scene.id) ?? null,
-                                        inheritedLevel: getSceneEffectiveInherited(scene.id),
-                                      }}
-                                      onChangeLocal={(lvl) => setSceneSensitiveLevel(scene.id, lvl)}
+                                      value={sensitiveMode.getSceneValue(scene.id)}
+                                      onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
                                       scopeLabel={`Scène ${scene.scene_order}`}
                                       parentLabel="Global"
                                       compact
@@ -2185,11 +2153,8 @@ export default function Editor() {
                                           {/* Shot-level sensitive mode */}
                                           <div className="mb-1.5 pl-1">
                                             <ScopeOverrideControl
-                                              value={{
-                                                localLevel: shotSensitiveLevels.get(shot.id) ?? null,
-                                                inheritedLevel: getShotEffectiveInherited(scene.id),
-                                              }}
-                                              onChangeLocal={(lvl) => setShotSensitiveLevel(shot.id, lvl)}
+                                              value={sensitiveMode.getShotValue(scene.id, shot.id)}
+                                              onChangeLocal={(lvl) => sensitiveMode.setShotLevel(shot.id, lvl)}
                                               scopeLabel={`Shot ${globalIdx}`}
                                               parentLabel={`Scène ${scene.scene_order}`}
                                               compact

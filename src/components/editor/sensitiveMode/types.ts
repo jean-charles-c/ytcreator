@@ -39,3 +39,47 @@ export function computeEffective(value: SensitiveModeValue): {
   }
   return { effectiveLevel: null, state: "none" };
 }
+
+// ── Hierarchy resolution ──────────────────────────────────────────
+
+export interface SensitiveModeStore {
+  globalLevel: SensitiveLevel | null;
+  sceneLevels: Map<string, SensitiveLevel | null>;
+  shotLevels: Map<string, SensitiveLevel | null>;
+}
+
+/**
+ * Resolve the effective sensitive level for a specific shot
+ * by walking the hierarchy: shot → scene → global.
+ */
+export function resolveShotEffective(
+  store: SensitiveModeStore,
+  sceneId: string,
+  shotId: string,
+): { effectiveLevel: SensitiveLevel | null; source: "shot" | "scene" | "global" | "none" } {
+  const shotLocal = store.shotLevels.get(shotId) ?? null;
+  if (shotLocal != null) return { effectiveLevel: shotLocal, source: "shot" };
+
+  const sceneLocal = store.sceneLevels.get(sceneId) ?? null;
+  if (sceneLocal != null) return { effectiveLevel: sceneLocal, source: "scene" };
+
+  if (store.globalLevel != null) return { effectiveLevel: store.globalLevel, source: "global" };
+
+  return { effectiveLevel: null, source: "none" };
+}
+
+/**
+ * Resolve the effective sensitive level for a specific scene
+ * by walking the hierarchy: scene → global.
+ */
+export function resolveSceneEffective(
+  store: SensitiveModeStore,
+  sceneId: string,
+): { effectiveLevel: SensitiveLevel | null; source: "scene" | "global" | "none" } {
+  const sceneLocal = store.sceneLevels.get(sceneId) ?? null;
+  if (sceneLocal != null) return { effectiveLevel: sceneLocal, source: "scene" };
+
+  if (store.globalLevel != null) return { effectiveLevel: store.globalLevel, source: "global" };
+
+  return { effectiveLevel: null, source: "none" };
+}
