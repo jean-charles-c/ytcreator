@@ -357,7 +357,8 @@ After the script, output these 3 editorial blocks:
 
 Rules:
 - All 13 tags must appear in order. No text before [[HOOK]] (except <plan>).
-- CRITICAL: [[ACT2B]] is MANDATORY. It must ALWAYS be present with substantial content (minimum 3 paragraphs). NEVER skip or merge it into ACT2 or ACT3. If you omit [[ACT2B]], the entire script is INVALID.
+- CRITICAL: [[ACT2B]] is MANDATORY and SEPARATE from [[ACT2]]. It must ALWAYS be present as its own distinct block with substantial content (minimum 3 paragraphs). NEVER merge ACT2B content into [[ACT2]]. NEVER skip the [[ACT2B]] tag. The parser will REJECT any script where [[ACT2B]] is missing. If your [[ACT2]] block exceeds 30% of the total script, you have almost certainly merged ACT2B into it — split them.
+- STRUCTURAL RULE: [[ACT2]] ends. Then [[ACT2B]] begins on a NEW line. These are TWO SEPARATE analytical movements: ACT2 = thesis/evidence, ACT2B = complication/counter-point. If ACT2B could be inserted into ACT2 without disruption, rewrite ACT2B to genuinely challenge the ACT2 thesis.
 - Between core tags (1-10): pure narration only. No titles, headers, "---", "###", "**", or meta-commentary.
 - The narration must flow seamlessly across section boundaries — the tags are invisible to the viewer.
 - No meta-commentary like "In this video…" or "Let's explore…".
