@@ -2327,6 +2327,7 @@ export default function Editor() {
                                             onRegenerate={handleShotRegenerate}
                                             onGenerateImage={handleGenerateShotImage}
                                             onMergeWithNext={handleShotMergeWithNext}
+                                            onSplit={handleShotSplit}
                                           />
                                         </div>
                                       )}
