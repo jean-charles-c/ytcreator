@@ -181,6 +181,7 @@ export default function Editor() {
   const [qaCounts, setQaCounts] = useState<{ errors: number; warnings: number }>({ errors: 0, warnings: 0 });
   const [qaIssues, setQaIssues] = useState<{ level: string; sceneOrder?: number; shotOrder?: number }[]>([]);
   const storyAbortRef = useRef<AbortController | null>(null);
+  const [regeneratingShots, setRegeneratingShots] = useState<Record<string, boolean>>({});
 
   const storyboardManifest = useMemo(
     () => projectId ? buildManifest(projectId, scenes, shots) : null,
