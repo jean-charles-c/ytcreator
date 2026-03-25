@@ -183,8 +183,11 @@ serve(async (req) => {
 
     if (!project) throw new Error("Unauthorized");
 
-    const prompt = shot.prompt_export || shot.description;
-    if (!prompt) throw new Error("No prompt available for this shot");
+    const rawPrompt = shot.prompt_export || shot.description;
+    if (!rawPrompt) throw new Error("No prompt available for this shot");
+
+    // Apply sensitive mode transformation to the prompt
+    const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level);
 
     const buildPrompt = (text: string) => [
       "Generate one single cinematic image.",
