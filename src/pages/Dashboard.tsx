@@ -47,7 +47,7 @@ export default function Dashboard() {
   const [editTitle, setEditTitle] = useState("");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editGroupName, setEditGroupName] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string> | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const groupInputRef = useRef<HTMLInputElement>(null);
