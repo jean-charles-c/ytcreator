@@ -25,6 +25,8 @@ interface SceneContext {
   epoque: string;
   personnages: string;
   coherence_globale: string;
+  lieux_ordonnes?: string[];
+  epoques_ordonnees?: string[];
 }
 
 type Scene = Tables<"scenes">;
