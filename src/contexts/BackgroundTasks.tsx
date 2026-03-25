@@ -842,6 +842,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           shot_id: remainingShotIds[i],
                           model: params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
+                            ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
+                            : {}),
                         }),
                         signal: shotAc.signal,
                       }
