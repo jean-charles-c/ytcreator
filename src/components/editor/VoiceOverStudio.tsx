@@ -393,6 +393,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group">
           <Mic className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold font-display text-foreground flex-1 text-left">VoiceOver</span>
+          {desyncWarning ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 text-destructive px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+              <XCircle className="h-3 w-3" />
+              Désync
+            </span>
+          ) : desyncWarning === null && shots && shots.length > 0 ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-500 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+              <CheckCircle2 className="h-3 w-3" />
+              Sync OK
+            </span>
+          ) : null}
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${voOpen ? "rotate-180" : ""}`} />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-4">
