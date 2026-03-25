@@ -51,6 +51,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
+  const [editSourceSentence, setEditSourceSentence] = useState(shot.source_sentence ?? "");
+  const [editSourceSentenceFr, setEditSourceSentenceFr] = useState(shot.source_sentence_fr ?? "");
   const [saving, setSaving] = useState(false);
   
   const [generatingImage, setGeneratingImage] = useState(false);
