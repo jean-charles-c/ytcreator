@@ -2182,6 +2182,19 @@ export default function Editor() {
                                       startGlobalIndex={startIndex}
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
+                                          {/* Shot-level sensitive mode */}
+                                          <div className="mb-1.5 pl-1">
+                                            <ScopeOverrideControl
+                                              value={{
+                                                localLevel: shotSensitiveLevels.get(shot.id) ?? null,
+                                                inheritedLevel: getShotEffectiveInherited(scene.id),
+                                              }}
+                                              onChangeLocal={(lvl) => setShotSensitiveLevel(shot.id, lvl)}
+                                              scopeLabel={`Shot ${globalIdx}`}
+                                              parentLabel={`Scène ${scene.scene_order}`}
+                                              compact
+                                            />
+                                          </div>
                                           <ShotCard
                                             key={shot.id}
                                             shot={shot}
