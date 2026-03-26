@@ -52,7 +52,7 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
   return (
     <button
       onClick={onClick}
-      className="group relative w-full rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-card/80 transition-all duration-200 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+      className="group relative w-full rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-card/80 transition-all duration-200 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background active:scale-[0.98]"
     >
       {/* Thumbnail */}
       <div className="aspect-video w-full bg-secondary/50 relative overflow-hidden">
