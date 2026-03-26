@@ -20,11 +20,6 @@ import {
 } from "lucide-react";
 import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
