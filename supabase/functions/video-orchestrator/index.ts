@@ -50,6 +50,58 @@ interface PollResult {
   generationTimeMs?: number;
 }
 
+interface NormalizedProviderError {
+  code: string | number | null;
+  message: string;
+  rawMessage: string;
+  requestId: string | null;
+}
+
+function tryParseProviderJson(rawMessage: string): Record<string, unknown> | null {
+  const jsonStart = rawMessage.indexOf("{");
+  if (jsonStart === -1) return null;
+
+  try {
+    return JSON.parse(rawMessage.slice(jsonStart)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeProviderError(provider: string, error: unknown): NormalizedProviderError {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const parsed = tryParseProviderJson(rawMessage);
+  const code = parsed?.code ?? null;
+  const requestId = typeof parsed?.request_id === "string" ? parsed.request_id : null;
+  const providerMessage = typeof parsed?.message === "string" ? parsed.message : rawMessage;
+
+  if (provider === "kling" && String(code) === "1102") {
+    return {
+      code,
+      requestId,
+      rawMessage,
+      message:
+        "Kling API : solde API insuffisant pour le package vidéo du workspace lié à ces clés. Les crédits visibles dans l'interface Kling ne suffisent pas toujours pour l'API.",
+    };
+  }
+
+  if (provider === "kling" && String(code) === "1000") {
+    return {
+      code,
+      requestId,
+      rawMessage,
+      message: "Kling API : authentification invalide. Vérifiez l'Access Key et la Secret Key du bon workspace.",
+    };
+  }
+
+  return {
+    code,
+    requestId,
+    rawMessage,
+    message: providerMessage,
+  };
+}
+
 async function submitToKling(params: {
   imageUrl: string;
   prompt: string;
@@ -383,17 +435,57 @@ Deno.serve(async (req: Request) => {
         aspectRatio,
       } = body;
 
-      // Submit to provider
-      const submitResult = await submitGeneration(provider, {
-        imageUrl: sourceImageUrl,
-        prompt: promptUsed,
-        negativePrompt: negativePrompt ?? "",
-        durationSec,
-        aspectRatio,
-      });
+      let submitResult: SubmitResult;
+      try {
+        submitResult = await submitGeneration(provider, {
+          imageUrl: sourceImageUrl,
+          prompt: promptUsed,
+          negativePrompt: negativePrompt ?? "",
+          durationSec,
+          aspectRatio,
+        });
+      } catch (submitError) {
+        const normalizedError = normalizeProviderError(provider, submitError);
 
-      // Create DB record
-      const { error: insertError } = await supabase.from("video_generations").insert({
+        await supabase.from("video_generations").upsert({
+          id: generationId,
+          user_id: userId,
+          project_id: projectId,
+          source_type: sourceType,
+          source_shot_id: sourceShotId ?? null,
+          source_upload_id: sourceUploadId ?? null,
+          source_image_url: sourceImageUrl,
+          provider,
+          prompt_used: promptUsed,
+          negative_prompt: negativePrompt ?? "",
+          duration_sec: durationSec,
+          aspect_ratio: aspectRatio,
+          status: "error",
+          provider_job_id: null,
+          error_message: normalizedError.message,
+          provider_metadata: {
+            provider_error_code: normalizedError.code,
+            provider_request_id: normalizedError.requestId,
+            provider_raw_error: normalizedError.rawMessage,
+          },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            generationId,
+            providerJobId: null,
+            status: "error",
+            errorMessage: normalizedError.message,
+            providerErrorCode: normalizedError.code,
+            providerRequestId: normalizedError.requestId,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const { error: upsertError } = await supabase.from("video_generations").upsert({
         id: generationId,
         user_id: userId,
         project_id: projectId,
@@ -408,12 +500,14 @@ Deno.serve(async (req: Request) => {
         aspect_ratio: aspectRatio,
         status: submitResult.status,
         provider_job_id: submitResult.providerJobId,
-      });
+        error_message: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "id" });
 
-      if (insertError) {
-        console.error("DB insert error:", insertError);
+      if (upsertError) {
+        console.error("DB upsert error:", upsertError);
         return new Response(
-          JSON.stringify({ error: "Failed to record generation", details: insertError.message }),
+          JSON.stringify({ error: "Failed to record generation", details: upsertError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }

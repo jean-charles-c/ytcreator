@@ -27,8 +27,10 @@ export interface SubmitGenerationParams {
 export interface SubmitGenerationResult {
   success: boolean;
   generationId: string;
-  providerJobId: string;
+  providerJobId: string | null;
   status: VideoGenerationStatus;
+  errorMessage?: string | null;
+  providerErrorCode?: string | number | null;
 }
 
 export interface PollGenerationResult {
@@ -47,7 +49,22 @@ async function callOrchestrator<T>(body: Record<string, unknown>): Promise<T> {
   });
 
   if (error) {
-    throw new Error(`Orchestrator error: ${error.message}`);
+    let message = error.message;
+    const response = (error as { context?: Response }).context;
+
+    if (response instanceof Response) {
+      const text = await response.text();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text) as { error?: string };
+          message = parsed.error ?? text;
+        } catch {
+          message = text;
+        }
+      }
+    }
+
+    throw new Error(message);
   }
 
   return data as T;

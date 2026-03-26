@@ -157,8 +157,7 @@ export default function VideoGenerationPanel({
         description: `${capability.name} — ${durationSec}s — en attente du provider`,
       });
 
-      // Fire orchestration (non-blocking)
-      submitVideoGeneration({
+      const submitResult = await submitVideoGeneration({
         generationId,
         projectId,
         sourceType: asset.source,
@@ -170,33 +169,69 @@ export default function VideoGenerationPanel({
         negativePrompt: negativePrompt.trim(),
         durationSec,
         aspectRatio,
-      }).then(() => {
-        // Start polling in background
-        pollUntilDone(generationId, {
-          intervalMs: 5000,
-          onProgress: (result) => {
-            // Update the generation row status
-            supabase
-              .from("video_generations")
-              .update({
+      });
+
+      if (!submitResult.success || submitResult.status === "error") {
+        const errorMessage = submitResult.errorMessage ?? "Le provider a refusé la génération.";
+
+        await supabase
+          .from("video_generations")
+          .update({
+            status: "error",
+            error_message: errorMessage,
+            provider_job_id: submitResult.providerJobId,
+          })
+          .eq("id", generationId);
+
+        onGenerationCreated({
+          ...newGen,
+          status: "error",
+          providerJobId: submitResult.providerJobId,
+          errorMessage,
+        });
+
+        toast({
+          title: "Échec provider",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      onGenerationCreated({
+        ...newGen,
+        status: submitResult.status,
+        providerJobId: submitResult.providerJobId,
+      });
+
+      toast({
+        title: "Provider accepté",
+        description: "La génération est partie chez le provider, suivi en cours…",
+      });
+
+      void pollUntilDone(generationId, {
+        intervalMs: 5000,
+        onProgress: (result) => {
+          supabase
+            .from("video_generations")
+            .update({
+              status: result.status,
+              result_video_url: result.resultVideoUrl ?? null,
+              result_thumbnail_url: result.resultThumbnailUrl ?? null,
+              error_message: result.errorMessage ?? null,
+            })
+            .eq("id", generationId)
+            .then(() => {
+              onGenerationCreated({
+                ...newGen,
+                providerJobId: submitResult.providerJobId,
                 status: result.status,
-                result_video_url: result.resultVideoUrl ?? null,
-                result_thumbnail_url: result.resultThumbnailUrl ?? null,
-                error_message: result.errorMessage ?? null,
-              })
-              .eq("id", generationId)
-              .then(() => {
-                // Refresh parent with updated gen
-                onGenerationCreated({
-                  ...newGen,
-                  status: result.status,
-                  resultVideoUrl: result.resultVideoUrl ?? null,
-                  resultThumbnailUrl: result.resultThumbnailUrl ?? null,
-                  errorMessage: result.errorMessage ?? null,
-                });
+                resultVideoUrl: result.resultVideoUrl ?? null,
+                resultThumbnailUrl: result.resultThumbnailUrl ?? null,
+                errorMessage: result.errorMessage ?? null,
               });
-          },
-        }).catch(console.error);
+            });
+        },
       }).catch((err) => {
         console.error("Orchestration submit failed:", err);
         supabase
