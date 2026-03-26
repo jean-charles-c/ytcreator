@@ -303,18 +303,27 @@ export default function VideoPromptGallery({
     [generationsByAsset],
   );
 
+  const hasExportSelection = useCallback(
+    (assetId: string): boolean => {
+      return (generationsByAsset.get(assetId) ?? []).some((g) => g.selectedForExport);
+    },
+    [generationsByAsset],
+  );
+
   // Enrich assets with video counts
   const enrichedGallery = useMemo(() => {
     return galleryAssets.map((a) => ({
       ...a,
       videoCount: getVideoCount(a.id),
+      hasExportSelection: hasExportSelection(a.id),
     }));
-  }, [galleryAssets, getVideoCount]);
+  }, [galleryAssets, getVideoCount, hasExportSelection]);
 
   const enrichedExternals = useMemo(() => {
     return externalUploads.map((a) => ({
       ...a,
       videoCount: getVideoCount(a.id),
+      hasExportSelection: hasExportSelection(a.id),
     }));
   }, [externalUploads, getVideoCount]);
 
@@ -490,6 +499,7 @@ export default function VideoPromptGallery({
                     asset={asset}
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
+                    hasExportSelection={asset.hasExportSelection}
                     onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}
@@ -530,6 +540,7 @@ export default function VideoPromptGallery({
                     asset={asset}
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
+                    hasExportSelection={asset.hasExportSelection}
                     onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}

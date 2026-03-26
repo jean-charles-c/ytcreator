@@ -100,14 +100,15 @@ export default function VideoGenerationPanel({
     }
   }, [provider, aspectRatio, capability]);
 
-  // Pre-fill prompt from default prompt + asset context
+  // Pre-fill prompt: defaultPrompt replaces everything, otherwise use asset context
   useEffect(() => {
-    const parts: string[] = [];
-    if (defaultPrompt) parts.push(defaultPrompt);
-    if (asset.scriptSentence?.sourceSentence) parts.push(asset.scriptSentence.sourceSentence);
-    else if (asset.label) parts.push(asset.label);
-    if (parts.length > 0 && !prompt) {
-      setPrompt(parts.join("\n\n"));
+    if (defaultPrompt) {
+      setPrompt(defaultPrompt);
+    } else {
+      const fallback = asset.scriptSentence?.sourceSentence || asset.label || "";
+      if (fallback && !prompt) {
+        setPrompt(fallback);
+      }
     }
   }, [asset, defaultPrompt]);
 
