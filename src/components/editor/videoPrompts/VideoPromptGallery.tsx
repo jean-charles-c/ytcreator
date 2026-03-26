@@ -50,7 +50,11 @@ interface VideoPromptGalleryProps {
 }
 
 /** Build VisualAsset list from shots that have images */
-function buildGalleryAssets(scenes: Scene[], shots: Shot[]): VisualAsset[] {
+function buildGalleryAssets(
+  scenes: Scene[],
+  shots: Shot[],
+  voDurations: Map<string, number>,
+): VisualAsset[] {
   const sceneMap = new Map(scenes.map((s) => [s.id, s]));
 
   return shots
@@ -72,7 +76,7 @@ function buildGalleryAssets(scenes: Scene[], shots: Shot[]): VisualAsset[] {
             shotOrder: sh.shot_order,
             sourceSentence: sh.source_sentence ?? "",
             sourceSentenceFr: sh.source_sentence_fr ?? null,
-            voDurationSec: null, // Will be enriched if VO data available
+            voDurationSec: voDurations.get(sh.id) ?? null,
           }
         : null;
 
@@ -90,6 +94,23 @@ function buildGalleryAssets(scenes: Scene[], shots: Shot[]): VisualAsset[] {
         createdAt: sh.created_at,
       };
     });
+}
+
+/** Compute per-shot duration from timepoints */
+function computeVoDurations(
+  timepoints: ShotTimepoint[] | null,
+  totalDuration: number,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!timepoints || timepoints.length === 0) return map;
+
+  const sorted = [...timepoints].sort((a, b) => a.timeSeconds - b.timeSeconds);
+  for (let i = 0; i < sorted.length; i++) {
+    const start = sorted[i].timeSeconds;
+    const end = i < sorted.length - 1 ? sorted[i + 1].timeSeconds : totalDuration;
+    map.set(sorted[i].shotId, Math.max(0, end - start));
+  }
+  return map;
 }
 
 export default function VideoPromptGallery({
