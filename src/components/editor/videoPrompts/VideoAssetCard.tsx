@@ -81,10 +81,10 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
 
         {/* Video count badge */}
         {videoCount > 0 && (
-          <div className="absolute bottom-2 right-2">
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
+          <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
               <Play className="h-2.5 w-2.5 mr-0.5" />
-              {videoCount} vidéo{videoCount > 1 ? "s" : ""}
+              {videoCount}
             </Badge>
           </div>
         )}
