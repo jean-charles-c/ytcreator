@@ -100,14 +100,16 @@ export default function VideoGenerationPanel({
     }
   }, [provider, aspectRatio, capability]);
 
-  // Pre-fill prompt from asset context
+  // Pre-fill prompt from default prompt + asset context
   useEffect(() => {
-    if (!prompt && asset.scriptSentence?.sourceSentence) {
-      setPrompt(asset.scriptSentence.sourceSentence);
-    } else if (!prompt && asset.label) {
-      setPrompt(asset.label);
+    const parts: string[] = [];
+    if (defaultPrompt) parts.push(defaultPrompt);
+    if (asset.scriptSentence?.sourceSentence) parts.push(asset.scriptSentence.sourceSentence);
+    else if (asset.label) parts.push(asset.label);
+    if (parts.length > 0 && !prompt) {
+      setPrompt(parts.join("\n\n"));
     }
-  }, [asset]);
+  }, [asset, defaultPrompt]);
 
   const canSubmit = !!asset.imageUrl && !!prompt.trim() && !isSubmitting;
   const missingImage = !asset.imageUrl;
