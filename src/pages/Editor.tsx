@@ -1052,12 +1052,16 @@ export default function Editor() {
     const effectiveLevel = sceneId
       ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
       : null;
+    const effectiveStyle = sceneId
+      ? visualStyle.resolveShot(sceneId, shotId).effectiveStyleId
+      : null;
     bgStartImageGen({
       projectId,
       shotIds: [shotId],
       model: imageModel,
       aspectRatio: imageAspectRatio,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
+      ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
     });
   };
 
