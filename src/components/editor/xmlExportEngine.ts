@@ -6,9 +6,6 @@ import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 import type { ManifestTimingEntry } from "./manifestTiming";
 import { supabase } from "@/integrations/supabase/client";
-import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
-import type { Chapter } from "./chapterTypes";
-import type { ManifestTimingEntry } from "./manifestTiming";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
