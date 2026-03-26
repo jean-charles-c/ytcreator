@@ -56,6 +56,20 @@ function buildGalleryAssets(
   voDurations: Map<string, number>,
 ): VisualAsset[] {
   const sceneMap = new Map(scenes.map((s) => [s.id, s]));
+  const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+
+  // Build global sequential index map (same as VisualPrompts)
+  const globalIndexMap = new Map<string, number>();
+  let globalIdx = 1;
+  for (const scene of sortedScenes) {
+    const sceneShots = shots
+      .filter((s) => s.scene_id === scene.id)
+      .sort((a, b) => a.shot_order - b.shot_order);
+    for (const sh of sceneShots) {
+      globalIndexMap.set(sh.id, globalIdx);
+      globalIdx++;
+    }
+  }
 
   return shots
     .filter((sh) => !!sh.image_url)
@@ -68,6 +82,7 @@ function buildGalleryAssets(
     })
     .map((sh, i) => {
       const scene = sceneMap.get(sh.scene_id);
+      const gIdx = globalIndexMap.get(sh.id) ?? i + 1;
       const scriptSentence: ScriptSentence | null = scene
         ? {
             shotId: sh.id,
@@ -88,7 +103,7 @@ function buildGalleryAssets(
         shotId: sh.id,
         sceneId: sh.scene_id,
         scriptSentence,
-        label: `Shot ${sh.shot_order}`,
+        label: `Shot ${String(gIdx).padStart(4, "0")}`,
         displayOrder: i,
         videoCount: 0,
         createdAt: sh.created_at,

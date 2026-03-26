@@ -32,6 +32,8 @@ import { PROVIDER_CAPABILITIES } from "./providerCapabilityConfig";
 interface VideoVariantGridProps {
   generations: VideoGeneration[];
   onDeleted: (id: string) => void;
+  /** Label for the parent asset, e.g. "Shot 0012" */
+  assetLabel?: string;
 }
 
 export default function VideoVariantGrid({ generations, onDeleted }: VideoVariantGridProps) {
