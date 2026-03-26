@@ -716,9 +716,12 @@ export default function PdfDocumentaryTab({
   const cleanScriptForExport = (raw: string): string => {
     const sectionHeadingRegex = /^(HOOK|WELCOME(?:\s+TO\s+.+)?|BIENVENUE(?:\s+SUR\s+.+)?|INTRODUCTION(?:\s+DU\s+MYST[ÈE]RE|\s+OF\s+THE\s+MYSTERY)?|PRESENTATION\s+OF\s+THE\s+MYSTERY|MYST[ÈE]RE|MYSTERY|CONTEXTE|CONTEXT(?:\s+SETTING)?|ACT(?:E)?\s*(?:\d+|[IVXLCDM]+)|CHAP(?:ITRE|TER)\s*\d+|PART(?:IE)?\s*\d+|D[ÉE]COUVERTE|DISCOVERY|INVESTIGATION|ESCALADE|ESCALATION|CLIMAX|R[ÉE]V[ÉE]LATION|REVELATION|CONCLUSION)\b/i;
 
-    return raw
-      // Strip all [[TAG]] markers (e.g. [[HOOK]], [[PROMISE]], [[ACT1]], etc.)
-      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION|TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\]\]\s*/gi, "")
+    // First: strip everything from [[TRANSITIONS]] onward (editorial blocks)
+    const withoutEditorial = raw.replace(/\[\[\s*(TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\s*\]\][\s\S]*/i, "").trim();
+
+    return withoutEditorial
+      // Strip remaining [[TAG]] markers (core blocks)
+      .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
       .split("\n")
       .filter((line) => {
         const t = line.trim();
