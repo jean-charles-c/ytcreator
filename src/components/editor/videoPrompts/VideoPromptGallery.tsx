@@ -540,6 +540,7 @@ export default function VideoPromptGallery({
                     asset={asset}
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
+                    hasExportSelection={asset.hasExportSelection}
                     onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}
