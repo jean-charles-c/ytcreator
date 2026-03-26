@@ -218,6 +218,7 @@ export default function VideoPromptGallery({
         providerMetadata: row.provider_metadata,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        selectedForExport: row.selected_for_export ?? false,
       })));
 
       setLoading(false);
@@ -260,6 +261,7 @@ export default function VideoPromptGallery({
         providerMetadata: row.provider_metadata,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        selectedForExport: row.selected_for_export ?? false,
       })));
     }
 

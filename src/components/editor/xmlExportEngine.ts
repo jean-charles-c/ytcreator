@@ -5,6 +5,7 @@ import { buildClipFrames, escapeXml } from "./xmlExportUtils";
 import { buildChapterMarkers, generateMarkerXml } from "./xmlMarkerBuilder";
 import type { Chapter } from "./chapterTypes";
 import type { ManifestTimingEntry } from "./manifestTiming";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Fetch a file as ArrayBuffer, returns null on failure.
@@ -69,6 +70,8 @@ interface XmlSegment {
   sentenceFr: string | null;
   imageUrl: string | null;
   shotType: string;
+  /** If a video is selected for export, its URL */
+  selectedVideoUrl?: string | null;
 }
 
 /**
@@ -202,6 +205,53 @@ function generateXml(
     const localPath = imageFileNames.get(i) ?? "";
     const masterClipId = `masterclip-${exportUid}-img-${globalIndex}`;
     const fileId = `file-${exportUid}-img-${globalIndex}`;
+    const isVideo = !!seg.selectedVideoUrl && localPath.endsWith(".mp4");
+
+    if (isVideo) {
+      // Video clip — not a still frame
+      return `
+      <clipitem id="clip-${exportUid}-${globalIndex}">
+        <masterclipid>${masterClipId}</masterclipid>
+        <name>${name}</name>
+        <enabled>TRUE</enabled>
+        <duration>${dur}</duration>
+        <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+        <start>${startFrame}</start>
+        <end>${endFrame}</end>
+        <in>0</in>
+        <out>${dur}</out>
+        <anamorphic>FALSE</anamorphic>
+        <pixelaspectratio>square</pixelaspectratio>
+        <sourcetrack>
+          <mediatype>video</mediatype>
+        </sourcetrack>
+        <file id="${fileId}">
+          <name>shot_${paddedIndex}</name>
+          <pathurl>${escapeXml(localPath)}</pathurl>
+          <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+          <duration>${dur}</duration>
+          <media>
+            <video>
+              <duration>${dur}</duration>
+              <samplecharacteristics>
+                <width>1920</width>
+                <height>1080</height>
+                <pixelaspectratio>square</pixelaspectratio>
+                <fielddominance>none</fielddominance>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+              </samplecharacteristics>
+            </video>
+          </media>
+        </file>
+        <comments>
+          <mastercomment1>${sentence}</mastercomment1>
+          <mastercomment2>${description}</mastercomment2>
+          <mastercomment3>Type: ${escapeXml(seg.shotType)} [VIDEO]</mastercomment3>
+        </comments>
+      </clipitem>`;
+    }
+
+    // Still image clip (original behavior)
     const fileDuration = dur + HANDLE_FRAMES * 2;
     const inPoint = HANDLE_FRAMES;
     const outPoint = HANDLE_FRAMES + dur;
@@ -397,16 +447,49 @@ export async function exportTimelineToXmlZip(
 
   const imageFileNames = new Map<number, string>();
 
-  // ── Download images ──
+  // ── Fetch selected videos for export ──
+  // Query video_generations where selected_for_export = true for shots in this project
+  const shotIds = exportSegments.map((seg) => seg.id).filter(Boolean);
+  let selectedVideoMap = new Map<string, string>(); // shotId -> videoUrl
+  if (shotIds.length > 0) {
+    const { data: selectedVids } = await supabase
+      .from("video_generations")
+      .select("source_shot_id, result_video_url")
+      .eq("selected_for_export", true)
+      .eq("status", "completed")
+      .in("source_shot_id", shotIds);
+
+    if (selectedVids) {
+      for (const v of selectedVids as any[]) {
+        if (v.source_shot_id && v.result_video_url) {
+          selectedVideoMap.set(v.source_shot_id, v.result_video_url);
+        }
+      }
+    }
+  }
+
+  // ── Download images and videos ──
   for (let i = 0; i < exportSegments.length; i++) {
     const seg = exportSegments[i];
+    const selectedVideoUrl = selectedVideoMap.get(seg.id);
+
     onProgress?.({
       phase: "images",
       percent: Math.round((i / exportSegments.length) * 60),
-      message: `Téléchargement image ${i + 1}/${exportSegments.length}…`,
+      message: selectedVideoUrl
+        ? `Téléchargement vidéo ${i + 1}/${exportSegments.length}…`
+        : `Téléchargement image ${i + 1}/${exportSegments.length}…`,
     });
 
-    if (seg.imageUrl) {
+    if (selectedVideoUrl) {
+      // Download video instead of image
+      const fileName = `shot_${String(i + 1).padStart(3, "0")}.mp4`;
+      const data = await fetchMedia(selectedVideoUrl);
+      if (data) {
+        mediaFolder.file(fileName, data);
+        imageFileNames.set(i, `media/${fileName}`);
+      }
+    } else if (seg.imageUrl) {
       const ext = getImageExtension(seg.imageUrl);
       const fileName = `shot_${String(i + 1).padStart(3, "0")}.${ext}`;
       const data = await fetchMedia(seg.imageUrl);
@@ -447,13 +530,11 @@ export async function exportTimelineToXmlZip(
   let totalFrames: number;
 
   if (useManifest) {
-    // PRIMARY PATH: frames from manifest timing (deterministic, no drift)
     clipFrames = buildClipFramesFromManifest(manifestEntries, fps);
     totalFrames = clipFrames.length > 0
       ? clipFrames[clipFrames.length - 1].end
       : Math.ceil(timeline.totalDuration * fps);
   } else {
-    // LEGACY PATH: frames from timeline timepoints
     clipFrames = buildClipFrames(timeline, fps);
     totalFrames = clipFrames.length > 0
       ? clipFrames[clipFrames.length - 1].end
@@ -469,6 +550,7 @@ export async function exportTimelineToXmlZip(
     sentenceFr: seg.sentenceFr,
     imageUrl: seg.imageUrl,
     shotType: seg.shotType,
+    selectedVideoUrl: selectedVideoMap.get(seg.id) ?? null,
   }));
 
   // ── Generate XML ──
