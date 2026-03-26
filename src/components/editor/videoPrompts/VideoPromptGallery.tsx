@@ -366,6 +366,21 @@ export default function VideoPromptGallery({
 
   return (
     <div className="py-3 sm:py-4 md:py-6 px-2 sm:px-4 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
+      {/* Default prompt */}
+      <div className="mb-4 space-y-1.5">
+        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+          <Sparkles className="h-3 w-3" />
+          Prompt par défaut (pré-rempli dans chaque génération)
+        </label>
+        <textarea
+          value={defaultPrompt}
+          onChange={(e) => setDefaultPrompt(e.target.value)}
+          placeholder="Ex: Slow cinematic motion, dramatic lighting, shallow depth of field…"
+          className="w-full min-h-[50px] text-xs bg-secondary/30 border border-border rounded-md p-2 resize-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+          rows={2}
+        />
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-x-4 sm:gap-y-2 mb-4 sm:mb-5 pb-3 border-b border-border">
         <div className="flex items-center gap-2">
