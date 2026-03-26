@@ -1142,6 +1142,7 @@ export default function Editor() {
       model: imageModel,
       aspectRatio: imageAspectRatio,
       sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
+      visualStyles: buildVisualStylesMap(sceneShots),
     });
   };
 
