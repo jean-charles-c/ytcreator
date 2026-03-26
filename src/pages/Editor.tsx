@@ -2529,6 +2529,7 @@ export default function Editor() {
                                             onGenerateImage={handleGenerateShotImage}
                                             onMergeWithNext={handleShotMergeWithNext}
                                             onSplit={handleShotSplit}
+                                            onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
                                           />
                                         </div>
                                       )}
