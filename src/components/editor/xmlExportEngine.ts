@@ -205,6 +205,53 @@ function generateXml(
     const localPath = imageFileNames.get(i) ?? "";
     const masterClipId = `masterclip-${exportUid}-img-${globalIndex}`;
     const fileId = `file-${exportUid}-img-${globalIndex}`;
+    const isVideo = !!seg.selectedVideoUrl && localPath.endsWith(".mp4");
+
+    if (isVideo) {
+      // Video clip — not a still frame
+      return `
+      <clipitem id="clip-${exportUid}-${globalIndex}">
+        <masterclipid>${masterClipId}</masterclipid>
+        <name>${name}</name>
+        <enabled>TRUE</enabled>
+        <duration>${dur}</duration>
+        <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+        <start>${startFrame}</start>
+        <end>${endFrame}</end>
+        <in>0</in>
+        <out>${dur}</out>
+        <anamorphic>FALSE</anamorphic>
+        <pixelaspectratio>square</pixelaspectratio>
+        <sourcetrack>
+          <mediatype>video</mediatype>
+        </sourcetrack>
+        <file id="${fileId}">
+          <name>shot_${paddedIndex}</name>
+          <pathurl>${escapeXml(localPath)}</pathurl>
+          <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+          <duration>${dur}</duration>
+          <media>
+            <video>
+              <duration>${dur}</duration>
+              <samplecharacteristics>
+                <width>1920</width>
+                <height>1080</height>
+                <pixelaspectratio>square</pixelaspectratio>
+                <fielddominance>none</fielddominance>
+                <rate><timebase>${fps}</timebase><ntsc>FALSE</ntsc></rate>
+              </samplecharacteristics>
+            </video>
+          </media>
+        </file>
+        <comments>
+          <mastercomment1>${sentence}</mastercomment1>
+          <mastercomment2>${description}</mastercomment2>
+          <mastercomment3>Type: ${escapeXml(seg.shotType)} [VIDEO]</mastercomment3>
+        </comments>
+      </clipitem>`;
+    }
+
+    // Still image clip (original behavior)
     const fileDuration = dur + HANDLE_FRAMES * 2;
     const inPoint = HANDLE_FRAMES;
     const outPoint = HANDLE_FRAMES + dur;
