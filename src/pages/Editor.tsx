@@ -2224,6 +2224,12 @@ export default function Editor() {
                                       scopeLabel={`Scène ${scene.scene_order}`}
                                       parentLabel="Toutes les scènes"
                                     />
+                                    <VisualStyleSelector
+                                      value={visualStyle.getSceneValue(scene.id)}
+                                      onChange={(id) => visualStyle.setSceneStyle(scene.id, id)}
+                                      scopeLabel={`Scène ${scene.scene_order}`}
+                                      parentLabel="Global"
+                                    />
                                   </div>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     {/* Realign shots button — only show if shots are out of text order */}
