@@ -22,6 +22,9 @@ export interface SubmitGenerationParams {
   negativePrompt?: string;
   durationSec: number;
   aspectRatio: string;
+  klingModelName?: string;
+  klingMode?: string;
+  klingSound?: string;
 }
 
 export interface SubmitGenerationResult {
@@ -87,6 +90,32 @@ export async function pollVideoGeneration(
   return callOrchestrator<PollGenerationResult>({
     action: "poll",
     generationId,
+  });
+}
+
+// ── Balance ──────────────────────────────────────────────────────
+
+export interface ProviderBalanceResult {
+  provider: string;
+  packages: Array<{
+    name: string;
+    remaining: number;
+    total: number;
+    status: string;
+    expiresAt: string;
+  }>;
+  totalRemaining: number | null;
+  error?: string;
+  note?: string;
+}
+
+/** Query the remaining balance/credits for a provider */
+export async function queryProviderBalance(
+  provider: VideoProvider,
+): Promise<ProviderBalanceResult> {
+  return callOrchestrator<ProviderBalanceResult>({
+    action: "balance",
+    provider,
   });
 }
 
