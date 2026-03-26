@@ -83,7 +83,13 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, hasExpor
 
         {/* Video count badge */}
         {videoCount > 0 && (
-          <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+          <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 flex items-center gap-1">
+            {hasExportSelection && (
+              <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 backdrop-blur-sm">
+                <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
+                <span className="hidden sm:inline">Export</span>
+              </Badge>
+            )}
             <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
               <Play className="h-2.5 w-2.5 mr-0.5" />
               {videoCount}
