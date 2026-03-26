@@ -1950,6 +1950,12 @@ export default function Editor() {
                   <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
                     <ImageIcon className="h-4 w-4" /> Voir les visuels
                   </Button>
+                  {scriptLanguage !== "fr" && (
+                    <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
+                      {retranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                      {retranslating ? "Retraduction..." : "Retraduire les fragments 🇫🇷"}
+                    </Button>
+                  )}
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
