@@ -1027,6 +1027,7 @@ export default function Editor() {
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [shotImageModelOverrides, setShotImageModelOverrides] = useState<Record<string, string>>({});
+  const [sceneImageModelOverrides, setSceneImageModelOverrides] = useState<Record<string, string>>({});
   const [galleryOpen, setGalleryOpen] = useState(false);
    const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
    const [showWarnings, setShowWarnings] = useState(false);
