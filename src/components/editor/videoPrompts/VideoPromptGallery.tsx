@@ -11,8 +11,6 @@ import {
   Filter,
   Loader2,
   ImageIcon,
-  ChevronDown,
-  Upload,
 } from "lucide-react";
 import {
   Select,
@@ -22,10 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Tables } from "@/integrations/supabase/types";
