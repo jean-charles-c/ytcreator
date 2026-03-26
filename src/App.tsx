@@ -34,6 +34,7 @@ const App = () => (
               <Route path="/editor/:id" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
               <Route path="/title-injector" element={<TitleInjector />} />
               <Route path="/title-fixer" element={<TitleFixer />} />
+              <Route path="/ai-costs" element={<ProtectedRoute><AiCostDashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

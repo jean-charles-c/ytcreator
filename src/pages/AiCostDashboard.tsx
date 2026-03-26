@@ -31,7 +31,7 @@ export default function AiCostDashboard() {
   const [loading, setLoading] = useState(true);
   const [projectCosts, setProjectCosts] = useState<ProjectCost[]>([]);
   const [dailyCosts, setDailyCosts] = useState<DailyCost[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedProject] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Coûts IA — YouTube Creator Toolkit";
