@@ -1866,6 +1866,15 @@ export default function Editor() {
                         ))}
                       </select>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">🎨 Style :</span>
+                      <VisualStyleSelector
+                        value={visualStyle.getGlobalValue()}
+                        onChange={visualStyle.setGlobalStyleId}
+                        scopeLabel="Toutes les scènes"
+                        compact
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
