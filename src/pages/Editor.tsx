@@ -1027,6 +1027,7 @@ export default function Editor() {
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [shotImageModelOverrides, setShotImageModelOverrides] = useState<Record<string, string>>({});
+  const [sceneImageModelOverrides, setSceneImageModelOverrides] = useState<Record<string, string>>({});
   const [galleryOpen, setGalleryOpen] = useState(false);
    const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
    const [showWarnings, setShowWarnings] = useState(false);
@@ -1206,10 +1207,11 @@ export default function Editor() {
       .filter((s) => s.scene_id === sceneId)
       .sort((a, b) => a.shot_order - b.shot_order);
     if (sceneShots.length === 0) return;
+    const sceneModel = sceneImageModelOverrides[sceneId] || imageModel;
     bgStartImageGen({
       projectId,
       shotIds: sceneShots.map((s) => s.id),
-      model: imageModel,
+      model: sceneModel,
       aspectRatio: imageAspectRatio,
       sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
       visualStyles: buildVisualStylesMap(sceneShots),
@@ -2423,15 +2425,28 @@ export default function Editor() {
                                         </button>
                                       );
                                     })()}
-                                    <button
-                                      onClick={() => handleGenerateSceneImages(scene.id)}
-                                      disabled={generatingAllImages}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
-                                      title="Générer tous les visuels de la scène"
-                                    >
-                                      {generatingAllImages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
-                                      <span>Générer tous les visuels de la scène</span>
-                                    </button>
+                                    <div className="flex items-center gap-1.5">
+                                      <select
+                                        value={sceneImageModelOverrides[scene.id] || imageModel}
+                                        onChange={(e) => setSceneImageModelOverrides(prev => ({ ...prev, [scene.id]: e.target.value }))}
+                                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px]"
+                                      >
+                                        {IMAGE_MODELS.map((m) => (
+                                          <option key={m.value} value={m.value}>
+                                            {m.label} — {m.price}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <button
+                                        onClick={() => handleGenerateSceneImages(scene.id)}
+                                        disabled={generatingAllImages}
+                                        className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px]"
+                                        title="Générer tous les visuels de la scène"
+                                      >
+                                        {generatingAllImages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                                        <span>Générer tous les visuels de la scène</span>
+                                      </button>
+                                    </div>
                                   </div>
 
                                   {/* Scene source text */}
