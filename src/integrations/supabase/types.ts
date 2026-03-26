@@ -532,6 +532,7 @@ export type Database = {
           provider_metadata: Json | null
           result_thumbnail_url: string | null
           result_video_url: string | null
+          selected_for_export: boolean
           source_image_url: string
           source_shot_id: string | null
           source_type: string
@@ -556,6 +557,7 @@ export type Database = {
           provider_metadata?: Json | null
           result_thumbnail_url?: string | null
           result_video_url?: string | null
+          selected_for_export?: boolean
           source_image_url: string
           source_shot_id?: string | null
           source_type?: string
@@ -580,6 +582,7 @@ export type Database = {
           provider_metadata?: Json | null
           result_thumbnail_url?: string | null
           result_video_url?: string | null
+          selected_for_export?: boolean
           source_image_url?: string
           source_shot_id?: string | null
           source_type?: string
