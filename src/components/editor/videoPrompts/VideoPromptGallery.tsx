@@ -12,7 +12,7 @@ import {
   Loader2,
   ImageIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+// Button will be used for bulk actions in later prompts
 import {
   Select,
   SelectContent,
