@@ -121,10 +121,10 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
             </span>
           )}
 
-          {/* Scene title */}
+          {/* Shot number */}
           {asset.scriptSentence && (
-            <span className="truncate max-w-[80px] sm:max-w-[120px]">
-              {asset.scriptSentence.sceneTitle}
+            <span className="font-mono text-[9px] sm:text-[10px] text-muted-foreground">
+              Shot {String(asset.scriptSentence.shotOrder).padStart(4, "0")}
             </span>
           )}
         </div>
