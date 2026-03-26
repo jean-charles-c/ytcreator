@@ -49,6 +49,7 @@ import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 import VideoEditTab from "@/components/editor/VideoEditTab";
 import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
 import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sensitiveMode";
+import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
@@ -209,6 +210,7 @@ export default function Editor() {
 
   // ── Sensitive mode (hierarchy: global → scene → shot) ──────
   const sensitiveMode = useSensitiveMode();
+  const visualStyle = useVisualStyle();
 
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
     try {
@@ -1050,12 +1052,16 @@ export default function Editor() {
     const effectiveLevel = sceneId
       ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
       : null;
+    const effectiveStyle = sceneId
+      ? visualStyle.resolveShot(sceneId, shotId).effectiveStyleId
+      : null;
     bgStartImageGen({
       projectId,
       shotIds: [shotId],
       model: imageModel,
       aspectRatio: imageAspectRatio,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
+      ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
     });
   };
 
@@ -1069,6 +1075,18 @@ export default function Editor() {
       const resolved = sensitiveMode.resolveShot(s.scene_id, s.id);
       if (resolved.effectiveLevel != null) {
         map[s.id] = resolved.effectiveLevel;
+      }
+    }
+    return Object.keys(map).length > 0 ? map : undefined;
+  };
+
+  /** Build a map of shotId → effective visual style for a list of shots */
+  const buildVisualStylesMap = (shotList: typeof shots) => {
+    const map: Record<string, string> = {};
+    for (const s of shotList) {
+      const resolved = visualStyle.resolveShot(s.scene_id, s.id);
+      if (resolved.effectiveStyleId != null) {
+        map[s.id] = resolved.effectiveStyleId;
       }
     }
     return Object.keys(map).length > 0 ? map : undefined;
@@ -1090,6 +1108,7 @@ export default function Editor() {
       model: imageModel,
       aspectRatio: imageAspectRatio,
       sensitiveLevels: buildSensitiveLevelsMap(missingShots),
+      visualStyles: buildVisualStylesMap(missingShots),
     });
   };
 
@@ -1123,6 +1142,7 @@ export default function Editor() {
       model: imageModel,
       aspectRatio: imageAspectRatio,
       sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
+      visualStyles: buildVisualStylesMap(sceneShots),
     });
   };
 
@@ -1847,6 +1867,15 @@ export default function Editor() {
                         ))}
                       </select>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">🎨 Style :</span>
+                      <VisualStyleSelector
+                        value={visualStyle.getGlobalValue()}
+                        onChange={visualStyle.setGlobalStyleId}
+                        scopeLabel="Toutes les scènes"
+                        compact
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2196,6 +2225,12 @@ export default function Editor() {
                                       scopeLabel={`Scène ${scene.scene_order}`}
                                       parentLabel="Toutes les scènes"
                                     />
+                                    <VisualStyleSelector
+                                      value={visualStyle.getSceneValue(scene.id)}
+                                      onChange={(id) => visualStyle.setSceneStyle(scene.id, id)}
+                                      scopeLabel={`Scène ${scene.scene_order}`}
+                                      parentLabel="Global"
+                                    />
                                   </div>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     {/* Realign shots button — only show if shots are out of text order */}
@@ -2311,6 +2346,13 @@ export default function Editor() {
                                             <ScopeOverrideControl
                                               value={sensitiveMode.getShotValue(scene.id, shot.id)}
                                               onChangeLocal={(lvl) => sensitiveMode.setShotLevel(shot.id, lvl)}
+                                              scopeLabel={`Shot ${globalIdx}`}
+                                              parentLabel={`Scène ${scene.scene_order}`}
+                                              compact
+                                            />
+                                            <VisualStyleSelector
+                                              value={visualStyle.getShotValue(scene.id, shot.id)}
+                                              onChange={(id) => visualStyle.setShotStyle(shot.id, id)}
                                               scopeLabel={`Shot ${globalIdx}`}
                                               parentLabel={`Scène ${scene.scene_order}`}
                                               compact
