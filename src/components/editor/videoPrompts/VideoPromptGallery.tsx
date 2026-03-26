@@ -523,7 +523,7 @@ export default function VideoPromptGallery({
                     asset={asset}
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
-                    onClick={() => onAssetClick(asset)}
+                    onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}
               </div>
