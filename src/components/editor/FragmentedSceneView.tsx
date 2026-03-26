@@ -1,9 +1,24 @@
 import { useMemo, useState } from "react";
 import { Languages, Loader2 } from "lucide-react";
-import type { NormalisedScene, Fragment as ManifestFragment } from "./visualPromptTypes";
+import type { NormalisedScene } from "./visualPromptTypes";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
+
+function RetranslateBtn({ shotId, onRetranslate, label }: { shotId: string; onRetranslate: (id: string) => Promise<void>; label?: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      onClick={async () => { setBusy(true); try { await onRetranslate(shotId); } finally { setBusy(false); } }}
+      disabled={busy}
+      className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 flex items-center gap-1"
+      title="Retraduire ce fragment"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+      {label && <span className="text-[10px]">{label}</span>}
+    </button>
+  );
+}
 
 interface FragmentedSceneViewProps {
   normalisedScene: NormalisedScene;
