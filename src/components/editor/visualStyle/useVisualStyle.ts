@@ -3,7 +3,7 @@
  * Mirrors useSensitiveMode: Global → Scene → Shot inheritance.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   type VisualStyleStore,
   type VisualStyleValue,
