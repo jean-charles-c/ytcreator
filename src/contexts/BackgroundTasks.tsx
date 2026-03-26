@@ -847,6 +847,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
                             ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
                             : {}),
+                          ...(params.visualStyles?.[remainingShotIds[i]] != null
+                            ? { visual_style: params.visualStyles[remainingShotIds[i]] }
+                            : {}),
                         }),
                         signal: shotAc.signal,
                       }
