@@ -94,6 +94,11 @@ export default function VideoPromptsTab({
     setGenRefreshKey((k) => k + 1);
   }, []);
 
+  const handleGenerationDeleted = useCallback((id: string) => {
+    setModalGenerations((prev) => prev.filter((g) => g.id !== id));
+    setGenRefreshKey((k) => k + 1);
+  }, []);
+
   return (
     <>
       <VideoPromptGallery
@@ -108,6 +113,7 @@ export default function VideoPromptsTab({
         open={!!selectedAsset}
         onClose={handleCloseModal}
         onGenerationCreated={handleGenerationCreated}
+        onGenerationDeleted={handleGenerationDeleted}
       />
     </>
   );
