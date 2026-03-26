@@ -67,6 +67,7 @@ export default function VideoPromptsTab({
           providerMetadata: row.provider_metadata,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
+          selectedForExport: row.selected_for_export ?? false,
         })),
       );
     }
