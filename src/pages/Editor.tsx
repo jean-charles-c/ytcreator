@@ -1025,6 +1025,7 @@ export default function Editor() {
   // generatingSceneImages removed — all image gen routes through bgStartImageGen
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
+  const [shotImageModelOverrides, setShotImageModelOverrides] = useState<Record<string, string>>({});
   const [galleryOpen, setGalleryOpen] = useState(false);
    const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
    const [showWarnings, setShowWarnings] = useState(false);
@@ -1055,10 +1056,11 @@ export default function Editor() {
     const effectiveStyle = sceneId
       ? visualStyle.resolveShot(sceneId, shotId).effectiveStyleId
       : null;
+    const shotModel = shotImageModelOverrides[shotId] || imageModel;
     bgStartImageGen({
       projectId,
       shotIds: [shotId],
-      model: imageModel,
+      model: shotModel,
       aspectRatio: imageAspectRatio,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
       ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
@@ -2426,6 +2428,20 @@ export default function Editor() {
                                               parentLabel={`Scène ${scene.scene_order}`}
                                               compact
                                             />
+                                            <div className="flex items-center gap-1.5">
+                                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">IA :</span>
+                                              <select
+                                                value={shotImageModelOverrides[shot.id] || imageModel}
+                                                onChange={(e) => setShotImageModelOverrides(prev => ({ ...prev, [shot.id]: e.target.value }))}
+                                                className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[180px]"
+                                              >
+                                                {IMAGE_MODELS.map((m) => (
+                                                  <option key={m.value} value={m.value}>
+                                                    {m.label} — {m.price}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                            </div>
                                           </div>
                                           <ShotCard
                                             key={shot.id}
