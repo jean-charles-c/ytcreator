@@ -1492,7 +1492,7 @@ export default function Editor() {
   const validatedCount = scenes.filter((s) => s.validated).length;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       <header className="border-b border-border shrink-0 sticky top-0 z-40 bg-background">
         <div className="flex h-14 items-center px-4 gap-2 sm:gap-4">
           <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2">
