@@ -50,6 +50,7 @@ export default function VideoGenerationPanel({
   asset,
   projectId,
   onGenerationCreated,
+  defaultPrompt,
 }: VideoGenerationPanelProps) {
   const enabledProviders = useMemo(() => getEnabledProviders(), []);
 
