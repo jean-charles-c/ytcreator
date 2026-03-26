@@ -36,7 +36,7 @@ interface VideoVariantGridProps {
   assetLabel?: string;
 }
 
-export default function VideoVariantGrid({ generations, onDeleted }: VideoVariantGridProps) {
+export default function VideoVariantGrid({ generations, onDeleted, assetLabel }: VideoVariantGridProps) {
   const completed = generations.filter((g) => g.status === "completed");
   const [playingId, setPlayingId] = useState<string | null>(null);
 
