@@ -256,6 +256,10 @@ export default function Dashboard() {
             <span className="font-display text-base sm:text-lg font-semibold text-foreground">Mes projets</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/ai-costs")} className="min-h-[40px]" title="Coûts IA">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Coûts IA</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={createGroup} className="min-h-[40px]" title="Créer un groupe">
               <FolderPlus className="h-4 w-4" />
               <span className="hidden sm:inline">Nouveau groupe</span>
