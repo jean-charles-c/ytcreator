@@ -1138,7 +1138,30 @@ export default function Editor() {
     }
   };
 
-  const handleGenerateAllImages = () => {
+  // ── Re-translate a single shot fragment ──
+  const handleRetranslateSingleShot = async (shotId: string) => {
+    const shot = shots.find((s: any) => s.id === shotId);
+    if (!shot?.source_sentence) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-fragments", {
+        body: { fragments: [{ id: shotId, text: shot.source_sentence.trim() }], sourceLanguage: scriptLanguage },
+      });
+      if (error) throw error;
+      const translations: Array<{ id: string; translated: string }> = data?.translations ?? [];
+      if (translations.length > 0) {
+        const t = translations[0];
+        await supabase.from("shots").update({ source_sentence_fr: t.translated }).eq("id", t.id);
+        setShots((prev: any[]) => prev.map((s) => s.id === t.id ? { ...s, source_sentence_fr: t.translated } : s));
+        toast.success("Fragment retraduit ✓");
+      } else {
+        toast.warning("Pas de traduction retournée.");
+      }
+    } catch (e: any) {
+      toast.error("Erreur retraduction : " + (e.message || "Erreur"));
+    }
+  };
+
+
     if (!projectId || generatingAllImages) return;
     const missingShots = shots
       .filter((s) => !s.image_url)
