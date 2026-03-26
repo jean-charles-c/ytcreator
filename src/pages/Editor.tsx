@@ -2532,6 +2532,7 @@ export default function Editor() {
                 { label: "Scene Mapping", desc: "Correspondance narration ↔ scènes ↔ shots", generate: generateSceneMapping, disabled: scenes.length === 0 },
                 { label: "Narration Segmentation", desc: "Découpage narratif brut", generate: generateNarrationSegmentation, disabled: scenes.length === 0 },
                 { label: "Visuels (.zip)", desc: "Télécharger tous les visuels générés", generate: downloadAllImages, disabled: !shots.some((s: any) => s.image_url) },
+                { label: "Vidéos générées (.zip)", desc: "Télécharger toutes les vidéos produites", generate: downloadAllVideos, disabled: scenes.length === 0 },
               ].map((exp, i) => (
                 <div key={exp.label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-border bg-card p-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms` }}>
                   <div>
