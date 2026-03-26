@@ -222,6 +222,46 @@ export default function VideoPromptGallery({
     }
 
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, projectId]);
+
+  // Separate effect for refreshKey — only update generations without resetting scroll
+  useEffect(() => {
+    if (!userId || refreshKey === 0) return;
+
+    async function refreshGenerations() {
+      const { data } = await supabase
+        .from("video_generations" as any)
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
+      setGenerations(((data as any[]) ?? []).map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        projectId: row.project_id,
+        visualAssetId: row.source_shot_id ?? row.source_upload_id ?? "",
+        sourceType: row.source_type,
+        sourceImageUrl: row.source_image_url,
+        provider: row.provider,
+        promptUsed: row.prompt_used,
+        negativePrompt: row.negative_prompt,
+        durationSec: row.duration_sec,
+        aspectRatio: row.aspect_ratio,
+        status: row.status,
+        resultVideoUrl: row.result_video_url,
+        resultThumbnailUrl: row.result_thumbnail_url,
+        errorMessage: row.error_message,
+        providerJobId: row.provider_job_id,
+        generationTimeMs: row.generation_time_ms,
+        estimatedCostUsd: row.estimated_cost_usd,
+        providerMetadata: row.provider_metadata,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      })));
+    }
+
+    refreshGenerations();
   }, [userId, projectId, refreshKey]);
 
   // Build gallery assets from shots (now with VO durations)
