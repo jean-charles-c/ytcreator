@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Languages, Loader2 } from "lucide-react";
 import type { NormalisedScene, Fragment as ManifestFragment } from "./visualPromptTypes";
 import type { Tables } from "@/integrations/supabase/types";
 
