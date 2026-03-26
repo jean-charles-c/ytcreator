@@ -157,7 +157,6 @@ export default function AiCostDashboard() {
               <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                 {filteredDaily.slice(0, 30).map((d) => {
                   const total = d.imageCost + d.videoCost;
-                  const total = d.imageCost + d.videoCost;
                   return (
                     <div key={d.date} className="flex items-center gap-2 text-xs">
                       <span className="w-20 text-muted-foreground shrink-0">{d.date}</span>
