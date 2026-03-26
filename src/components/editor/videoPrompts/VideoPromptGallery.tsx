@@ -341,10 +341,23 @@ export default function VideoPromptGallery({
             {totalAssets} visuel{totalAssets > 1 ? "s" : ""}
           </span>
           {completedCount > 0 && (
-            <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">
+            <button
+              onClick={() => {
+                if (statusFilter === "completed") {
+                  setStatusFilter("all");
+                } else {
+                  setStatusFilter("completed");
+                }
+              }}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                statusFilter === "completed"
+                  ? "bg-emerald-500/25 text-emerald-300 ring-1 ring-emerald-500/40"
+                  : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+              }`}
+            >
               <Film className="h-3 w-3" />
               {completedCount} vidéo{completedCount > 1 ? "s" : ""}
-            </span>
+            </button>
           )}
         </div>
 
