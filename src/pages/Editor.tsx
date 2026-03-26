@@ -1956,12 +1956,21 @@ export default function Editor() {
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
                     {generatingAllImages ? (
-                      <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
-                        <Square className="h-4 w-4" /> Stopper la génération
-                        {imageGenTask?.completedShots != null && imageGenTask?.totalShots
-                          ? ` (${imageGenTask.successShots ?? 0}✓ — ${imageGenTask.completedShots}/${imageGenTask.totalShots})`
-                          : ""}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
+                          <Square className="h-4 w-4" /> Stopper la génération
+                          {imageGenTask?.completedShots != null && imageGenTask?.totalShots
+                            ? ` (${imageGenTask.successShots ?? 0}✓ — ${imageGenTask.completedShots}/${imageGenTask.totalShots})`
+                            : ""}
+                        </Button>
+                        {imageGenTask?.imageGenModel && (
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
+                            🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
+                            {" — "}
+                            {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
+                          </span>
+                        )}
+                      </div>
                     ) : (() => {
                       const hasAnyImage = shots.some((s: any) => s.image_url);
                       const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
