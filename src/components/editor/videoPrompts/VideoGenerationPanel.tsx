@@ -332,7 +332,7 @@ export default function VideoGenerationPanel({
 
         <Button
           onClick={handleGenerate}
-          disabled={!canSubmit}
+          disabled={isSubmitting}
           size="sm"
           className="gap-1.5 h-10 sm:h-8 w-full sm:w-auto"
         >
@@ -351,10 +351,20 @@ export default function VideoGenerationPanel({
       </div>
 
       {/* Validation warnings */}
-      {!asset.imageUrl && (
-        <div className="flex items-center gap-1.5 text-[10px] text-destructive">
-          <AlertCircle className="h-3 w-3" />
-          Aucune image source — génération impossible
+      {(missingImage || missingPrompt) && (
+        <div className="space-y-1">
+          {missingImage && (
+            <div className="flex items-center gap-1.5 text-[10px] text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              Aucune image source — génération impossible
+            </div>
+          )}
+          {missingPrompt && !missingImage && (
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
+              <AlertCircle className="h-3 w-3" />
+              Renseignez un prompt pour lancer la génération
+            </div>
+          )}
         </div>
       )}
     </div>
