@@ -312,7 +312,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             </div>
             <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
             {shot.source_sentence_fr && (
-              <p className="text-xs text-muted-foreground leading-relaxed mt-1 italic border-t border-border/50 pt-1 break-words">🇫🇷 "{shot.source_sentence_fr}"</p>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 italic break-words">🇫🇷 "{shot.source_sentence_fr}"</p>
             )}
           </div>
         )}
