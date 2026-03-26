@@ -766,6 +766,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
       completedShots: 0,
       successShots: 0,
       totalShots: total,
+      imageGenModel: params.model,
     });
 
     (async () => {
