@@ -3,7 +3,7 @@
  * Shows thumbnail, script excerpt, VO duration, video status badge, and variant count.
  */
 
-import { Film, Clock, Play, AlertCircle, Loader2, Image as ImageIcon } from "lucide-react";
+import { Film, Clock, Play, AlertCircle, Loader2, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { VisualAsset, VideoGenerationStatus } from "./videoGeneration.types";
 
@@ -13,6 +13,8 @@ interface VideoAssetCardProps {
   bestStatus: VideoGenerationStatus;
   /** Number of completed videos */
   videoCount: number;
+  /** Whether a video is selected for export */
+  hasExportSelection?: boolean;
   onClick: () => void;
 }
 
