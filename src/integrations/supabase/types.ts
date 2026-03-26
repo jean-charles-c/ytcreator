@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      external_uploads: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+          label: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+          label?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+          label?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_uploads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorite_voice_profile: {
         Row: {
           created_at: string | null
@@ -473,6 +511,103 @@ export type Database = {
             columns: ["scene_id"]
             isOneToOne: false
             referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_generations: {
+        Row: {
+          aspect_ratio: string
+          created_at: string
+          duration_sec: number
+          error_message: string | null
+          estimated_cost_usd: number | null
+          generation_time_ms: number | null
+          id: string
+          negative_prompt: string
+          project_id: string
+          prompt_used: string
+          provider: string
+          provider_job_id: string | null
+          provider_metadata: Json | null
+          result_thumbnail_url: string | null
+          result_video_url: string | null
+          source_image_url: string
+          source_shot_id: string | null
+          source_type: string
+          source_upload_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          created_at?: string
+          duration_sec?: number
+          error_message?: string | null
+          estimated_cost_usd?: number | null
+          generation_time_ms?: number | null
+          id?: string
+          negative_prompt?: string
+          project_id: string
+          prompt_used?: string
+          provider?: string
+          provider_job_id?: string | null
+          provider_metadata?: Json | null
+          result_thumbnail_url?: string | null
+          result_video_url?: string | null
+          source_image_url: string
+          source_shot_id?: string | null
+          source_type?: string
+          source_upload_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aspect_ratio?: string
+          created_at?: string
+          duration_sec?: number
+          error_message?: string | null
+          estimated_cost_usd?: number | null
+          generation_time_ms?: number | null
+          id?: string
+          negative_prompt?: string
+          project_id?: string
+          prompt_used?: string
+          provider?: string
+          provider_job_id?: string | null
+          provider_metadata?: Json | null
+          result_thumbnail_url?: string | null
+          result_video_url?: string | null
+          source_image_url?: string
+          source_shot_id?: string | null
+          source_type?: string
+          source_upload_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_generations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_generations_source_shot_id_fkey"
+            columns: ["source_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_generations_source_upload_id_fkey"
+            columns: ["source_upload_id"]
+            isOneToOne: false
+            referencedRelation: "external_uploads"
             referencedColumns: ["id"]
           },
         ]
