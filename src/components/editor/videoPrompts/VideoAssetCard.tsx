@@ -46,7 +46,7 @@ const STATUS_CONFIG: Record<VideoGenerationStatus, { label: string; className: s
   },
 };
 
-export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick }: VideoAssetCardProps) {
+export default function VideoAssetCard({ asset, bestStatus, videoCount, hasExportSelection, onClick }: VideoAssetCardProps) {
   const statusCfg = STATUS_CONFIG[bestStatus];
   const hasImage = !!asset.imageUrl;
   const isExternal = asset.source === "external_upload";
