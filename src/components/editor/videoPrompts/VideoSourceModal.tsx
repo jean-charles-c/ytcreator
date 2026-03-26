@@ -247,6 +247,7 @@ export default function VideoSourceModal({
                 <VideoVariantGrid
                   generations={generations}
                   onDeleted={(id) => onGenerationDeleted?.(id)}
+                  assetLabel={asset.label}
                 />
               </TabsContent>
 
