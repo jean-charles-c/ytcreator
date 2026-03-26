@@ -46,7 +46,7 @@ interface VideoPromptGalleryProps {
   projectId: string;
   scenes: Scene[];
   shots: Shot[];
-  onAssetClick: (asset: VisualAsset) => void;
+  onAssetClick: (asset: VisualAsset, defaultPrompt?: string) => void;
   refreshKey?: number;
 }
 
