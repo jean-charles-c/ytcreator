@@ -2349,6 +2349,13 @@ export default function Editor() {
                                               parentLabel={`Scène ${scene.scene_order}`}
                                               compact
                                             />
+                                            <VisualStyleSelector
+                                              value={visualStyle.getShotValue(scene.id, shot.id)}
+                                              onChange={(id) => visualStyle.setShotStyle(shot.id, id)}
+                                              scopeLabel={`Shot ${globalIdx}`}
+                                              parentLabel={`Scène ${scene.scene_order}`}
+                                              compact
+                                            />
                                           </div>
                                           <ShotCard
                                             key={shot.id}
