@@ -1,8 +1,24 @@
-import { useMemo } from "react";
-import type { NormalisedScene, Fragment as ManifestFragment } from "./visualPromptTypes";
+import { useMemo, useState } from "react";
+import { Languages, Loader2 } from "lucide-react";
+import type { NormalisedScene } from "./visualPromptTypes";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
+
+function RetranslateBtn({ shotId, onRetranslate, label }: { shotId: string; onRetranslate: (id: string) => Promise<void>; label?: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      onClick={async () => { setBusy(true); try { await onRetranslate(shotId); } finally { setBusy(false); } }}
+      disabled={busy}
+      className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 flex items-center gap-1"
+      title="Retraduire ce fragment"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+      {label && <span className="text-[10px]">{label}</span>}
+    </button>
+  );
+}
 
 interface FragmentedSceneViewProps {
   normalisedScene: NormalisedScene;
@@ -12,6 +28,8 @@ interface FragmentedSceneViewProps {
   renderShot: (shot: Shot, globalIndex: number, isLast: boolean) => React.ReactNode;
   /** First global shot index for this scene */
   startGlobalIndex: number;
+  /** Callback to retranslate a single shot */
+  onRetranslate?: (shotId: string) => Promise<void>;
 }
 
 /**
@@ -22,6 +40,7 @@ export default function FragmentedSceneView({
   dbShots,
   renderShot,
   startGlobalIndex,
+  onRetranslate,
 }: FragmentedSceneViewProps) {
   const shotMap = useMemo(() => {
     const map = new Map<string, Shot>();
@@ -64,9 +83,16 @@ export default function FragmentedSceneView({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-foreground leading-relaxed italic break-words">"{frag.text}"</p>
-                {dbShot?.source_sentence_fr && (
-                  <p className="text-xs text-muted-foreground leading-relaxed italic break-words mt-0.5">🇫🇷 "{dbShot.source_sentence_fr}"</p>
-                )}
+                {dbShot?.source_sentence_fr ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{dbShot.source_sentence_fr}"</p>
+                    {onRetranslate && (
+                      <RetranslateBtn shotId={dbShot.id} onRetranslate={onRetranslate} />
+                    )}
+                  </div>
+                ) : onRetranslate && dbShot ? (
+                  <RetranslateBtn shotId={dbShot.id} onRetranslate={onRetranslate} label="Traduire 🇫🇷" />
+                ) : null}
                 <span className="text-[9px] text-muted-foreground mt-0.5 block">
                   Fragment {frag.order + 1} • {normShot?.kind === "merged" ? "Merged" : normShot?.kind === "single" ? "Single" : "Split"}
                 </span>
