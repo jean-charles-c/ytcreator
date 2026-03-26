@@ -18,6 +18,7 @@ import {
   History,
   Sparkles,
 } from "lucide-react";
+import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
 import {
   Dialog,
   DialogContent,
