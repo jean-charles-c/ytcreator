@@ -26,6 +26,7 @@ import {
   RefreshCw,
   ArrowUpDown,
   AlertTriangle,
+  Languages,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -1094,6 +1095,49 @@ export default function Editor() {
     return Object.keys(map).length > 0 ? map : undefined;
   };
 
+  // ── Re-translate all shot fragments ──
+  const [retranslating, setRetranslating] = useState(false);
+  const handleRetranslateFragments = async () => {
+    if (!projectId || retranslating) return;
+    const fragmentsToTranslate = shots
+      .filter((s: any) => s.source_sentence && s.source_sentence.trim())
+      .map((s: any) => ({ id: s.id, text: s.source_sentence.trim() }));
+    if (fragmentsToTranslate.length === 0) {
+      toast.info("Aucun fragment à traduire.");
+      return;
+    }
+    setRetranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-fragments", {
+        body: { fragments: fragmentsToTranslate, sourceLanguage: scriptLanguage },
+      });
+      if (error) throw error;
+      const translations: Array<{ id: string; translated: string }> = data?.translations ?? [];
+      if (translations.length === 0) {
+        toast.warning("Aucune traduction retournée.");
+        setRetranslating(false);
+        return;
+      }
+      // Update DB
+      for (const t of translations) {
+        await supabase.from("shots").update({ source_sentence_fr: t.translated }).eq("id", t.id);
+      }
+      // Update local state
+      setShots((prev: any[]) =>
+        prev.map((s) => {
+          const found = translations.find((t) => t.id === s.id);
+          return found ? { ...s, source_sentence_fr: found.translated } : s;
+        })
+      );
+      toast.success(`${translations.length} fragment(s) retraduit(s) avec succès.`);
+    } catch (e: any) {
+      console.error("Retranslate error:", e);
+      toast.error("Erreur lors de la retraduction : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setRetranslating(false);
+    }
+  };
+
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
     const missingShots = shots
@@ -1906,6 +1950,12 @@ export default function Editor() {
                   <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
                     <ImageIcon className="h-4 w-4" /> Voir les visuels
                   </Button>
+                  {scriptLanguage !== "fr" && (
+                    <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
+                      {retranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                      {retranslating ? "Retraduction..." : "Retraduire les fragments 🇫🇷"}
+                    </Button>
+                  )}
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
