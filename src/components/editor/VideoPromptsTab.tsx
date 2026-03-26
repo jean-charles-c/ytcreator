@@ -25,6 +25,7 @@ export default function VideoPromptsTab({
   shots,
 }: VideoPromptsTabProps) {
   const [selectedAsset, setSelectedAsset] = useState<VisualAsset | null>(null);
+  const [defaultPrompt, setDefaultPrompt] = useState<string>("");
   const [modalGenerations, setModalGenerations] = useState<VideoGeneration[]>([]);
   const [genRefreshKey, setGenRefreshKey] = useState(0);
 
