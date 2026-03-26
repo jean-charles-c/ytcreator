@@ -207,16 +207,16 @@ export default function VideoGenerationPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Provider + Duration row */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Provider */}
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Provider
           </Label>
           <Select value={provider} onValueChange={(v) => setProvider(v as VideoProvider)}>
-            <SelectTrigger className="h-9 text-xs bg-secondary/50 border-border">
+            <SelectTrigger className="h-10 sm:h-9 text-xs bg-secondary/50 border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -232,7 +232,7 @@ export default function VideoGenerationPanel({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[10px] text-muted-foreground/60">{capability.description}</p>
+          <p className="text-[10px] text-muted-foreground/60 hidden sm:block">{capability.description}</p>
         </div>
 
         {/* Duration */}
@@ -244,7 +244,7 @@ export default function VideoGenerationPanel({
             value={String(durationSec)}
             onValueChange={(v) => setDurationSec(Number(v))}
           >
-            <SelectTrigger className="h-9 text-xs bg-secondary/50 border-border">
+            <SelectTrigger className="h-10 sm:h-9 text-xs bg-secondary/50 border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
