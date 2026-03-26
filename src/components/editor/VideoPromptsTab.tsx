@@ -74,8 +74,9 @@ export default function VideoPromptsTab({
     loadGenerations();
   }, [selectedAsset, genRefreshKey]);
 
-  const handleAssetClick = useCallback((asset: VisualAsset) => {
+  const handleAssetClick = useCallback((asset: VisualAsset, prompt?: string) => {
     setSelectedAsset(asset);
+    if (prompt) setDefaultPrompt(prompt);
   }, []);
 
   const handleCloseModal = useCallback(() => {
