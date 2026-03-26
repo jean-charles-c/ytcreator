@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -39,6 +39,7 @@ interface ShotCardProps {
   onGenerateImage?: (shotId: string) => Promise<void>;
   onMergeWithNext?: (shotId: string) => Promise<void>;
   onSplit?: (shotId: string, splitIndex: number) => Promise<void>;
+  onRetranslate?: (shotId: string) => Promise<void>;
 }
 
 const formatUsd = (value: number | string | null | undefined) => {
@@ -46,7 +47,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -64,6 +65,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
   const [splitting, setSplitting] = useState(false);
+  const [retranslating, setRetranslating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
@@ -312,7 +314,36 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             </div>
             <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
             {shot.source_sentence_fr && (
-              <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 italic break-words">🇫🇷 "{shot.source_sentence_fr}"</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{shot.source_sentence_fr}"</p>
+                {onRetranslate && (
+                  <button
+                    onClick={async () => {
+                      setRetranslating(true);
+                      try { await onRetranslate(shot.id); } finally { setRetranslating(false); }
+                    }}
+                    disabled={retranslating}
+                    className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                    title="Retraduire ce fragment"
+                  >
+                    {retranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                  </button>
+                )}
+              </div>
+            )}
+            {!shot.source_sentence_fr && onRetranslate && (
+              <button
+                onClick={async () => {
+                  setRetranslating(true);
+                  try { await onRetranslate(shot.id); } finally { setRetranslating(false); }
+                }}
+                disabled={retranslating}
+                className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                title="Traduire ce fragment en français"
+              >
+                {retranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                <span>Traduire en 🇫🇷</span>
+              </button>
             )}
           </div>
         )}
