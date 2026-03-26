@@ -225,15 +225,13 @@ export default function VideoSourceModal({
 
               {/* Generate tab — VideoGenerationPanel placeholder (Prompt 6) */}
               <TabsContent value="generate" className="mt-3">
-                <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
-                  <Sparkles className="h-8 w-8 text-primary/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Le panneau de génération vidéo sera intégré ici.
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    Choix du provider, durée, prompt éditable, lancement de génération
-                  </p>
-                </div>
+                {asset && (
+                  <VideoGenerationPanel
+                    asset={asset}
+                    projectId={asset.projectId}
+                    onGenerationCreated={(gen) => onGenerationCreated?.(gen)}
+                  />
+                )}
               </TabsContent>
 
               {/* Variants tab — VideoVariantGrid placeholder (Prompt 7) */}
