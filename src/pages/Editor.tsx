@@ -1864,11 +1864,12 @@ export default function Editor() {
 
             {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
             {scenes.length > 0 && !generatingStoryboard && (
-              <div className="mb-4 rounded border border-border bg-card p-3 sm:p-4 space-y-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-display font-semibold text-foreground">🛡 Toutes les scènes d'un coup</span>
-                  <span className="text-[10px] text-muted-foreground">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
-                </div>
+              <details className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
+                <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0">
+                  🛡 Toutes les scènes d'un coup
+                  <span className="text-[10px] text-muted-foreground font-normal">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
+                </summary>
+                <div className="space-y-3 mt-3">
                 <ScopeOverrideControl
                   value={sensitiveMode.getGlobalValue()}
                   onChangeLocal={sensitiveMode.setGlobalLevel}
@@ -1943,7 +1944,8 @@ export default function Editor() {
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
+              </details>
             )}
 
             {/* Shot version buttons */}
@@ -2259,9 +2261,8 @@ export default function Editor() {
                               {isOpen && (
                                 <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
                                    {/* Scene-level sensitive mode */}
-                                  <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-1">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-1.5">
+                                  <details className="rounded-lg border border-border bg-secondary/30 p-3">
+                                    <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
                                         <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                                         <span className="text-xs font-display font-semibold text-foreground">
                                           Mode sensible — Scène {scene.scene_order}
@@ -2269,34 +2270,37 @@ export default function Editor() {
                                         <span className="text-[10px] text-muted-foreground">
                                           ({sceneShots.length} shot{sceneShots.length > 1 ? "s" : ""})
                                         </span>
+                                    </summary>
+                                    <div className="space-y-1 mt-2">
+                                      <div className="flex items-center justify-end mb-1">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-[10px] px-2 gap-1"
+                                          disabled={isRegenerating}
+                                          onClick={() => runStoryboard(scene.id)}
+                                        >
+                                          {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                          Régénérer tous les prompts de la scène
+                                        </Button>
                                       </div>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 text-[10px] px-2 gap-1"
-                                        disabled={isRegenerating}
-                                        onClick={() => runStoryboard(scene.id)}
-                                      >
-                                        {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                        Régénérer tous les prompts de la scène
-                                      </Button>
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
+                                        Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
+                                      </p>
+                                      <ScopeOverrideControl
+                                        value={sensitiveMode.getSceneValue(scene.id)}
+                                        onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
+                                        scopeLabel={`Scène ${scene.scene_order}`}
+                                        parentLabel="Toutes les scènes"
+                                      />
+                                      <VisualStyleSelector
+                                        value={visualStyle.getSceneValue(scene.id)}
+                                        onChange={(id) => visualStyle.setSceneStyle(scene.id, id)}
+                                        scopeLabel={`Scène ${scene.scene_order}`}
+                                        parentLabel="Global"
+                                      />
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
-                                      Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
-                                    </p>
-                                    <ScopeOverrideControl
-                                      value={sensitiveMode.getSceneValue(scene.id)}
-                                      onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
-                                      scopeLabel={`Scène ${scene.scene_order}`}
-                                      parentLabel="Toutes les scènes"
-                                    />
-                                    <VisualStyleSelector
-                                      value={visualStyle.getSceneValue(scene.id)}
-                                      onChange={(id) => visualStyle.setSceneStyle(scene.id, id)}
-                                      scopeLabel={`Scène ${scene.scene_order}`}
-                                      parentLabel="Global"
-                                    />
-                                  </div>
+                                  </details>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     {/* Realign shots button — only show if shots are out of text order */}
                                     {(() => {
@@ -2479,7 +2483,7 @@ export default function Editor() {
               </Collapsible>
 
               {/* QA Contrôle qualité */}
-              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
+              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3">
                 <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Contrôle qualité
