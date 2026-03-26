@@ -25,6 +25,7 @@ export default function FragmentedSceneView({
   dbShots,
   renderShot,
   startGlobalIndex,
+  onRetranslate,
 }: FragmentedSceneViewProps) {
   const shotMap = useMemo(() => {
     const map = new Map<string, Shot>();
