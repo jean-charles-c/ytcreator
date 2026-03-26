@@ -1944,6 +1944,7 @@ export default function Editor() {
                     </div>
                   </div>
                 </div>
+                </div>
               </details>
             )}
 
