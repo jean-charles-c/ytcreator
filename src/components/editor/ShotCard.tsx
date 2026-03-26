@@ -242,6 +242,39 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   return (
     <>
       <div className="group rounded border border-border bg-card p-3 sm:p-4 transition-colors hover:border-primary/30 relative">
+        {/* Action buttons — above image */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            {globalIndex !== undefined && <span className="text-xs font-display font-bold text-emerald-500">Shot {globalIndex}</span>}
+            <span className="text-[10px] text-muted-foreground">{shot.shot_type}</span>
+          </div>
+          <div className="flex gap-0.5 sm:gap-1 shrink-0 flex-wrap">
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Uploader une image">
+              {uploading ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
+            </button>
+            <button onClick={copyPrompt} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Copier le prompt">
+              <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            </button>
+            <button onClick={startEdit} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Éditer">
+              <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            </button>
+            {onMergeWithNext && !isLastInScene && (
+              <button onClick={handleMerge} disabled={merging} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Fusionner avec le shot suivant">
+                {merging ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
+              </button>
+            )}
+            {onSplit && shot.source_sentence && shot.source_sentence.length >= 10 && (
+              <button onClick={openSplitDialog} disabled={splitting} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Scinder ce shot en deux">
+                {splitting ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
+              </button>
+            )}
+            <button onClick={() => setDeleteDialogOpen(true)} className="p-2 sm:p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Supprimer ce shot">
+              <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            </button>
+          </div>
+        </div>
+
         {imageUrl && (
           <div
             className="mb-3 rounded overflow-hidden border border-border cursor-pointer"
