@@ -118,6 +118,7 @@ export default function VideoPromptGallery({
   scenes,
   shots,
   onAssetClick,
+  refreshKey = 0,
 }: VideoPromptGalleryProps) {
   const { user } = useAuth();
   const userId = user?.id;
