@@ -268,7 +268,7 @@ export default function VideoGenerationPanel({
             <button
               key={ratio}
               onClick={() => setAspectRatio(ratio)}
-              className={`px-2.5 py-1 text-[10px] rounded-md border transition-colors ${
+              className={`px-3 py-1.5 sm:px-2.5 sm:py-1 text-[10px] rounded-md border transition-colors min-h-[32px] sm:min-h-0 ${
                 aspectRatio === ratio
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/50"
