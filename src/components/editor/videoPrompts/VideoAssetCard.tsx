@@ -100,14 +100,14 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
       </div>
 
       {/* Info */}
-      <div className="p-2.5 space-y-1.5">
+      <div className="p-2 sm:p-2.5 space-y-1 sm:space-y-1.5">
         {/* Script excerpt or label */}
-        <p className="text-xs text-foreground font-medium leading-snug line-clamp-2 min-h-[2rem]">
+        <p className="text-[11px] sm:text-xs text-foreground font-medium leading-snug line-clamp-2 min-h-[2rem]">
           {asset.scriptSentence?.sourceSentence || asset.label || "Sans texte"}
         </p>
 
         {/* Meta row */}
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[9px] sm:text-[10px] text-muted-foreground">
           {/* VO duration */}
           {asset.scriptSentence?.voDurationSec != null ? (
             <span className="flex items-center gap-0.5">
@@ -123,7 +123,7 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
 
           {/* Scene title */}
           {asset.scriptSentence && (
-            <span className="truncate max-w-[120px]">
+            <span className="truncate max-w-[80px] sm:max-w-[120px]">
               {asset.scriptSentence.sceneTitle}
             </span>
           )}

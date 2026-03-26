@@ -314,7 +314,7 @@ export default function VideoGenerationPanel({
       )}
 
       {/* Cost estimate + Generate button */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <DollarSign className="h-3 w-3" />
           <span>Coût estimé : ~${capability.estimatedCostPerGeneration.toFixed(2)}</span>
@@ -324,7 +324,7 @@ export default function VideoGenerationPanel({
           onClick={handleGenerate}
           disabled={!canSubmit}
           size="sm"
-          className="gap-1.5"
+          className="gap-1.5 h-10 sm:h-8 w-full sm:w-auto"
         >
           {isSubmitting ? (
             <>

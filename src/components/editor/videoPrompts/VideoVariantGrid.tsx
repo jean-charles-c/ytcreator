@@ -194,7 +194,7 @@ export default function VideoVariantGrid({ generations, onDeleted }: VideoVarian
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-[10px] px-2 gap-1 text-destructive hover:text-destructive"
+                    className="h-8 sm:h-6 text-[10px] px-3 sm:px-2 gap-1 text-destructive hover:text-destructive min-w-[44px]"
                   >
                     <Trash2 className="h-3 w-3" />
                     Supprimer
