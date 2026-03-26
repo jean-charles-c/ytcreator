@@ -26,6 +26,7 @@ export default function VideoPromptsTab({
 }: VideoPromptsTabProps) {
   const [selectedAsset, setSelectedAsset] = useState<VisualAsset | null>(null);
   const [modalGenerations, setModalGenerations] = useState<VideoGeneration[]>([]);
+  const [genRefreshKey, setGenRefreshKey] = useState(0);
 
   // Load generations for selected asset
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function VideoPromptsTab({
     }
 
     loadGenerations();
-  }, [selectedAsset]);
+  }, [selectedAsset, genRefreshKey]);
 
   const handleAssetClick = useCallback((asset: VisualAsset) => {
     setSelectedAsset(asset);
@@ -78,6 +79,19 @@ export default function VideoPromptsTab({
 
   const handleCloseModal = useCallback(() => {
     setSelectedAsset(null);
+  }, []);
+
+  const handleGenerationCreated = useCallback((gen: VideoGeneration) => {
+    setModalGenerations((prev) => {
+      const idx = prev.findIndex((g) => g.id === gen.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = gen;
+        return updated;
+      }
+      return [gen, ...prev];
+    });
+    setGenRefreshKey((k) => k + 1);
   }, []);
 
   return (
@@ -93,6 +107,7 @@ export default function VideoPromptsTab({
         generations={modalGenerations}
         open={!!selectedAsset}
         onClose={handleCloseModal}
+        onGenerationCreated={handleGenerationCreated}
       />
     </>
   );

@@ -3,13 +3,12 @@
  *
  * Layout:
  *  - Top: Large image + script context (sentence, scene, VO duration, origin badge)
- *  - Middle: VideoGenerationPanel placeholder (Prompt 6)
+ *  - Middle: VideoGenerationPanel (Prompt 6)
  *  - Bottom: Tabs for Variants and History (Prompt 7)
  */
 
 import { useState } from "react";
 import {
-  
   Clock,
   Film,
   Camera,
@@ -30,12 +29,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
+import VideoGenerationPanel from "./VideoGenerationPanel";
 
 interface VideoSourceModalProps {
   asset: VisualAsset | null;
   generations: VideoGeneration[];
   open: boolean;
   onClose: () => void;
+  onGenerationCreated?: (gen: VideoGeneration) => void;
 }
 
 export default function VideoSourceModal({
@@ -43,6 +44,7 @@ export default function VideoSourceModal({
   generations,
   open,
   onClose,
+  onGenerationCreated,
 }: VideoSourceModalProps) {
   const [activeTab, setActiveTab] = useState<"generate" | "variants" | "history">("generate");
 
@@ -223,15 +225,13 @@ export default function VideoSourceModal({
 
               {/* Generate tab — VideoGenerationPanel placeholder (Prompt 6) */}
               <TabsContent value="generate" className="mt-3">
-                <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
-                  <Sparkles className="h-8 w-8 text-primary/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Le panneau de génération vidéo sera intégré ici.
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    Choix du provider, durée, prompt éditable, lancement de génération
-                  </p>
-                </div>
+                {asset && (
+                  <VideoGenerationPanel
+                    asset={asset}
+                    projectId={asset.projectId}
+                    onGenerationCreated={(gen) => onGenerationCreated?.(gen)}
+                  />
+                )}
               </TabsContent>
 
               {/* Variants tab — VideoVariantGrid placeholder (Prompt 7) */}
