@@ -1162,6 +1162,7 @@ export default function Editor() {
   };
 
 
+  const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
     const missingShots = shots
       .filter((s) => !s.image_url)
