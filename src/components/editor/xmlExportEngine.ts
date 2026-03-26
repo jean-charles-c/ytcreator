@@ -73,6 +73,8 @@ interface XmlSegment {
   sentenceFr: string | null;
   imageUrl: string | null;
   shotType: string;
+  /** If a video is selected for export, its URL */
+  selectedVideoUrl?: string | null;
 }
 
 /**
