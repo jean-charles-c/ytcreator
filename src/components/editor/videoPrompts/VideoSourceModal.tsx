@@ -61,54 +61,55 @@ export default function VideoSourceModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 gap-0 bg-card border-border overflow-hidden">
+      <DialogContent className="max-w-4xl w-[98vw] sm:w-[95vw] max-h-[95vh] sm:max-h-[90vh] p-0 gap-0 bg-card border-border overflow-hidden">
         {/* ── Header ──────────────────────────────────────────────── */}
-        <DialogHeader className="px-5 pt-4 pb-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="font-display text-base font-semibold text-foreground flex items-center gap-2">
-              <Film className="h-4 w-4 text-primary" />
-              {isExternal ? "Image externe" : `Shot ${sentence?.shotOrder ?? "—"}`}
+        <DialogHeader className="px-3 sm:px-5 pt-3 sm:pt-4 pb-0">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle className="font-display text-sm sm:text-base font-semibold text-foreground flex items-center gap-2 min-w-0">
+              <Film className="h-4 w-4 text-primary shrink-0" />
+              <span className="truncate">
+                {isExternal ? "Image externe" : `Shot ${sentence?.shotOrder ?? "—"}`}
+              </span>
             </DialogTitle>
-            <div className="flex items-center gap-2">
-              {/* Origin badge */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <Badge
                 variant="outline"
-                className={`text-[10px] px-2 py-0.5 ${
+                className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 ${
                   isExternal
                     ? "bg-violet-500/15 text-violet-400 border-violet-500/30"
                     : "bg-primary/10 text-primary border-primary/30"
                 }`}
               >
-                {isExternal ? "Upload externe" : "Galerie script"}
+                {isExternal ? "Externe" : "Script"}
               </Badge>
               {hasVideos && (
                 <Badge
                   variant="outline"
-                  className="text-[10px] px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                  className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                 >
                   <Play className="h-2.5 w-2.5 mr-0.5" />
-                  {completedVideos.length} vidéo{completedVideos.length > 1 ? "s" : ""}
+                  {completedVideos.length}
                 </Badge>
               )}
             </div>
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-60px)]">
-          <div className="px-5 pb-5">
+        <ScrollArea className="max-h-[calc(95vh-50px)] sm:max-h-[calc(90vh-60px)]">
+          <div className="px-3 sm:px-5 pb-4 sm:pb-5">
             {/* ── Top zone: Image + Script context ────────────────── */}
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-4">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-3 sm:gap-4">
               {/* Large image */}
               <div className="rounded-lg overflow-hidden border border-border bg-secondary/30">
                 {asset.imageUrl ? (
                   <img
                     src={asset.imageUrl}
                     alt={asset.label || "Visual asset"}
-                    className="w-full h-auto max-h-[400px] object-contain bg-black/20"
+                    className="w-full h-auto max-h-[250px] sm:max-h-[400px] object-contain bg-black/20"
                   />
                 ) : (
                   <div className="aspect-video flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
+                    <ImageIcon className="h-10 sm:h-12 w-10 sm:w-12 text-muted-foreground/30" />
                   </div>
                 )}
               </div>
