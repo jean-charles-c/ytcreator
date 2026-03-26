@@ -46,6 +46,7 @@ interface VideoPromptGalleryProps {
   scenes: Scene[];
   shots: Shot[];
   onAssetClick: (asset: VisualAsset) => void;
+  refreshKey?: number;
 }
 
 /** Build VisualAsset list from shots that have images */
@@ -117,6 +118,7 @@ export default function VideoPromptGallery({
   scenes,
   shots,
   onAssetClick,
+  refreshKey = 0,
 }: VideoPromptGalleryProps) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -205,7 +207,7 @@ export default function VideoPromptGallery({
     }
 
     load();
-  }, [userId, projectId]);
+  }, [userId, projectId, refreshKey]);
 
   // Build gallery assets from shots (now with VO durations)
   const galleryAssets = useMemo(() => buildGalleryAssets(scenes, shots, voDurations), [scenes, shots, voDurations]);

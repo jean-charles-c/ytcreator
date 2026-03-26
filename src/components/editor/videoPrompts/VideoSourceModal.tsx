@@ -71,17 +71,15 @@ export default function VideoSourceModal({
                 {isExternal ? "Image externe" : `Shot ${sentence?.shotOrder ?? "—"}`}
               </span>
             </DialogTitle>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Badge
-                variant="outline"
-                className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 ${
-                  isExternal
-                    ? "bg-violet-500/15 text-violet-400 border-violet-500/30"
-                    : "bg-primary/10 text-primary border-primary/30"
-                }`}
-              >
-                {isExternal ? "Externe" : "Script"}
-              </Badge>
+            <div className="flex items-center gap-1.5 shrink-0 mr-6">
+              {isExternal && (
+                <Badge
+                  variant="outline"
+                  className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 bg-violet-500/15 text-violet-400 border-violet-500/30"
+                >
+                  Externe
+                </Badge>
+              )}
               {hasVideos && (
                 <Badge
                   variant="outline"

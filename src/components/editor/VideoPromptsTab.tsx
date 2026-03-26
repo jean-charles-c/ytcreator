@@ -106,6 +106,7 @@ export default function VideoPromptsTab({
         scenes={scenes}
         shots={shots}
         onAssetClick={handleAssetClick}
+        refreshKey={genRefreshKey}
       />
       <VideoSourceModal
         asset={selectedAsset}
