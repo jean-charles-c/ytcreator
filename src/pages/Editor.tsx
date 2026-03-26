@@ -2454,6 +2454,7 @@ export default function Editor() {
                                       normalisedScene={normScene}
                                       dbShots={sceneShots}
                                       startGlobalIndex={startIndex}
+                                      onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
                                           {/* Shot-level sensitive mode + regenerate */}
