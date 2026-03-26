@@ -14,6 +14,7 @@ import Editor from "./pages/Editor";
 import NotFound from "./pages/NotFound";
 import TitleInjector from "./pages/TitleInjector";
 import TitleFixer from "./pages/TitleFixer";
+import AiCostDashboard from "./pages/AiCostDashboard";
 
 const queryClient = new QueryClient();
 
