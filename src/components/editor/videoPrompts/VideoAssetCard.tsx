@@ -52,7 +52,7 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
   return (
     <button
       onClick={onClick}
-      className="group relative w-full rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-card/80 transition-all duration-200 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+      className="group relative w-full rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-card/80 transition-all duration-200 overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background active:scale-[0.98]"
     >
       {/* Thumbnail */}
       <div className="aspect-video w-full bg-secondary/50 relative overflow-hidden">
@@ -70,44 +70,44 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
         )}
 
         {/* Status badge overlay */}
-        <div className="absolute top-2 right-2">
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${statusCfg.className} backdrop-blur-sm`}>
-            <span className="flex items-center gap-1">
+        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+          <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 ${statusCfg.className} backdrop-blur-sm`}>
+            <span className="flex items-center gap-0.5 sm:gap-1">
               {statusCfg.icon}
-              {statusCfg.label}
+              <span className="hidden sm:inline">{statusCfg.label}</span>
             </span>
           </Badge>
         </div>
 
         {/* Video count badge */}
         {videoCount > 0 && (
-          <div className="absolute bottom-2 right-2">
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
+          <div className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
               <Play className="h-2.5 w-2.5 mr-0.5" />
-              {videoCount} vidéo{videoCount > 1 ? "s" : ""}
+              {videoCount}
             </Badge>
           </div>
         )}
 
         {/* External badge */}
         {isExternal && (
-          <div className="absolute top-2 left-2">
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-violet-500/15 text-violet-400 border-violet-500/30 backdrop-blur-sm">
-              Upload
+          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-violet-500/15 text-violet-400 border-violet-500/30 backdrop-blur-sm">
+              Ext.
             </Badge>
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-2.5 space-y-1.5">
+      <div className="p-2 sm:p-2.5 space-y-1 sm:space-y-1.5">
         {/* Script excerpt or label */}
-        <p className="text-xs text-foreground font-medium leading-snug line-clamp-2 min-h-[2rem]">
+        <p className="text-[11px] sm:text-xs text-foreground font-medium leading-snug line-clamp-2 min-h-[2rem]">
           {asset.scriptSentence?.sourceSentence || asset.label || "Sans texte"}
         </p>
 
         {/* Meta row */}
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[9px] sm:text-[10px] text-muted-foreground">
           {/* VO duration */}
           {asset.scriptSentence?.voDurationSec != null ? (
             <span className="flex items-center gap-0.5">
@@ -123,7 +123,7 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
 
           {/* Scene title */}
           {asset.scriptSentence && (
-            <span className="truncate max-w-[120px]">
+            <span className="truncate max-w-[80px] sm:max-w-[120px]">
               {asset.scriptSentence.sceneTitle}
             </span>
           )}

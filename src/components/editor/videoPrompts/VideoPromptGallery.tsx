@@ -266,12 +266,12 @@ export default function VideoPromptGallery({
   }
 
   return (
-    <div className="py-4 sm:py-6 px-4 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
+    <div className="py-3 sm:py-4 md:py-6 px-2 sm:px-4 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 pb-3 border-b border-border">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-x-4 sm:gap-y-2 mb-4 sm:mb-5 pb-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Film className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
+          <h2 className="font-display text-base sm:text-lg md:text-xl font-semibold text-foreground">
             VideoPrompts
           </h2>
         </div>
@@ -290,10 +290,10 @@ export default function VideoPromptGallery({
         </div>
 
         {/* Filters */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
           <Select value={sceneFilter} onValueChange={setSceneFilter}>
-            <SelectTrigger className="h-7 text-[11px] w-[140px] bg-secondary border-border">
-              <Layers className="h-3 w-3 mr-1" />
+            <SelectTrigger className="h-8 sm:h-7 text-[11px] flex-1 sm:flex-none sm:w-[140px] bg-secondary border-border">
+              <Layers className="h-3 w-3 mr-1 shrink-0" />
               <SelectValue placeholder="Toutes scènes" />
             </SelectTrigger>
             <SelectContent>
@@ -307,8 +307,8 @@ export default function VideoPromptGallery({
           </Select>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-7 text-[11px] w-[130px] bg-secondary border-border">
-              <Filter className="h-3 w-3 mr-1" />
+            <SelectTrigger className="h-8 sm:h-7 text-[11px] flex-1 sm:flex-none sm:w-[130px] bg-secondary border-border">
+              <Filter className="h-3 w-3 mr-1 shrink-0" />
               <SelectValue placeholder="Tous statuts" />
             </SelectTrigger>
             <SelectContent>
@@ -347,8 +347,8 @@ export default function VideoPromptGallery({
                 <Camera className="h-3.5 w-3.5" />
                 Visuels du script ({filteredGallery.length})
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {filteredGallery.map((asset) => (
+               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+                 {filteredGallery.map((asset) => (
                   <VideoAssetCard
                     key={asset.id}
                     asset={asset}
@@ -368,7 +368,7 @@ export default function VideoPromptGallery({
                 <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
                 Images externes ({enrichedExternals.length})
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                 {enrichedExternals.map((asset) => (
                   <VideoAssetCard
                     key={asset.id}
