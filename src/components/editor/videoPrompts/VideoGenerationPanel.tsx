@@ -82,11 +82,21 @@ export default function VideoGenerationPanel({
   }, [asset]);
 
   const canSubmit = !!asset.imageUrl && !!prompt.trim() && !isSubmitting;
+  const missingImage = !asset.imageUrl;
+  const missingPrompt = !prompt.trim();
 
   async function handleGenerate() {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (missingImage) {
+        toast({ title: "Image manquante", description: "Aucune image source disponible pour ce shot.", variant: "destructive" });
+      } else if (missingPrompt) {
+        toast({ title: "Prompt vide", description: "Renseignez un prompt avant de lancer la génération.", variant: "destructive" });
+      }
+      return;
+    }
 
     setIsSubmitting(true);
+    toast({ title: "⏳ Préparation…", description: "Enregistrement de la demande de génération…" });
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
