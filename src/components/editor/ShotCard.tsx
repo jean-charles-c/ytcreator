@@ -65,6 +65,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
   const [splitting, setSplitting] = useState(false);
+  const [retranslating, setRetranslating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
