@@ -251,8 +251,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
           <div className="flex flex-col gap-1 min-w-0">
-            <span className={`text-xs font-display font-medium ${shot.image_url ? "text-green-500" : "text-destructive"}`}>{globalIndex !== undefined ? `Shot ${globalIndex} — ` : ""}{shot.shot_type}</span>
-            {sceneLabel && <span className="text-[10px] text-muted-foreground">{sceneLabel}</span>}
+            <div className="flex items-center gap-2">
+              {globalIndex !== undefined && <span className="text-xs font-display font-bold text-emerald-500">Shot {globalIndex}</span>}
+              <span className="text-[10px] text-muted-foreground">{shot.shot_type}</span>
+            </div>
             <span className="inline-flex w-fit items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
               Coût IA : {formatUsd(cost)}
             </span>
