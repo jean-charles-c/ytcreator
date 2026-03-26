@@ -3,8 +3,8 @@
  * Reads capabilities from ProviderCapabilityConfig. Creates a new VideoGeneration row on submit.
  */
 
-import { useState, useEffect, useMemo } from "react";
-import { Sparkles, Loader2, AlertCircle, DollarSign } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Sparkles, Loader2, AlertCircle, DollarSign, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,9 @@ import {
   getProviderCapability,
   getProviderDurations,
   providerSupportsAspectRatio,
+  KLING_MODELS,
+  KLING_MODES,
+  KLING_SOUND_OPTIONS,
 } from "./providerCapabilityConfig";
 import type {
   VideoProvider,
@@ -32,6 +35,8 @@ import type {
 import {
   submitVideoGeneration,
   pollUntilDone,
+  queryProviderBalance,
+  type ProviderBalanceResult,
 } from "./videoOrchestrationClient";
 
 interface VideoGenerationPanelProps {
@@ -53,6 +58,27 @@ export default function VideoGenerationPanel({
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [klingModel, setKlingModel] = useState("kling-v1");
+  const [klingMode, setKlingMode] = useState("std");
+  const [klingSound, setKlingSound] = useState("off");
+  const [balance, setBalance] = useState<ProviderBalanceResult | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  const fetchBalance = useCallback(async (p: VideoProvider) => {
+    setBalanceLoading(true);
+    try {
+      const result = await queryProviderBalance(p);
+      setBalance(result);
+    } catch {
+      setBalance(null);
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBalance(provider);
+  }, [provider, fetchBalance]);
 
   const capability = useMemo(() => getProviderCapability(provider), [provider]);
   const durations = useMemo(() => getProviderDurations(provider), [provider]);
@@ -169,6 +195,9 @@ export default function VideoGenerationPanel({
         negativePrompt: negativePrompt.trim(),
         durationSec,
         aspectRatio,
+        klingModelName: provider === "kling" ? klingModel : undefined,
+        klingMode: provider === "kling" ? klingMode : undefined,
+        klingSound: provider === "kling" ? klingSound : undefined,
       });
 
       if (!submitResult.success || submitResult.status === "error") {
@@ -253,6 +282,29 @@ export default function VideoGenerationPanel({
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      {/* Balance display */}
+      {balance && (
+        <div className="flex items-center gap-1.5 text-[10px] p-2 rounded-md bg-secondary/40 border border-border">
+          <Wallet className="h-3 w-3 text-primary shrink-0" />
+          {balance.error ? (
+            <span className="text-destructive">{balance.error}</span>
+          ) : balance.totalRemaining !== null ? (
+            <span>
+              <span className="font-medium text-foreground">{balance.totalRemaining.toFixed(1)}</span>
+              {" "}crédits API restants
+              {balance.packages.filter(p => p.status === "online").length > 0 && (
+                <span className="text-muted-foreground/60">
+                  {" "}({balance.packages.filter(p => p.status === "online").map(p => p.name).join(", ")})
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Solde non disponible pour ce provider</span>
+          )}
+          {balanceLoading && <Loader2 className="h-2.5 w-2.5 animate-spin ml-auto" />}
+        </div>
+      )}
+
       {/* Provider + Duration row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Provider */}
@@ -302,6 +354,66 @@ export default function VideoGenerationPanel({
           </Select>
         </div>
       </div>
+
+      {/* Kling-specific options */}
+      {provider === "kling" && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Model */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Modèle Kling
+            </Label>
+            <Select value={klingModel} onValueChange={setKlingModel}>
+              <SelectTrigger className="h-10 sm:h-9 text-xs bg-secondary/50 border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KLING_MODELS.map((m) => (
+                  <SelectItem key={m.value} value={m.value} className="text-xs">
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Mode */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Qualité
+            </Label>
+            <Select value={klingMode} onValueChange={setKlingMode}>
+              <SelectTrigger className="h-10 sm:h-9 text-xs bg-secondary/50 border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KLING_MODES.map((m) => (
+                  <SelectItem key={m.value} value={m.value} className="text-xs">
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Sound */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Audio
+            </Label>
+            <Select value={klingSound} onValueChange={setKlingSound}>
+              <SelectTrigger className="h-10 sm:h-9 text-xs bg-secondary/50 border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KLING_SOUND_OPTIONS.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Aspect ratio */}
       <div className="space-y-1.5">

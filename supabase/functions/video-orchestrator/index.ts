@@ -12,6 +12,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { create } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
+const KLING_API_BASE = "https://api.klingai.com";
+
 // ── Kling JWT helper ──────────────────────────────────────────────
 async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
   const cryptoKey = await crypto.subtle.importKey(
@@ -108,6 +110,9 @@ async function submitToKling(params: {
   negativePrompt: string;
   durationSec: number;
   aspectRatio: string;
+  modelName?: string;
+  mode?: string;
+  sound?: string;
 }): Promise<SubmitResult> {
   const accessKey = Deno.env.get("KLING_ACCESS_KEY");
   const secretKey = Deno.env.get("KLING_SECRET_KEY");
@@ -115,21 +120,22 @@ async function submitToKling(params: {
 
   const token = await generateKlingJWT(accessKey, secretKey);
 
-  const resp = await fetch("https://api.klingai.com/v1/videos/image2video", {
+  const resp = await fetch(`${KLING_API_BASE}/v1/videos/image2video`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({
-      model_name: "kling-v1",
+      model_name: params.modelName ?? "kling-v1",
       image: params.imageUrl,
       prompt: params.prompt,
       negative_prompt: params.negativePrompt,
       cfg_scale: 0.5,
-      mode: "std",
+      mode: params.mode ?? "std",
       duration: String(params.durationSec),
       aspect_ratio: params.aspectRatio,
+      sound: params.sound ?? "off",
     }),
   });
 
@@ -149,7 +155,7 @@ async function pollKling(jobId: string): Promise<PollResult> {
 
   const token = await generateKlingJWT(accessKey, secretKey);
 
-  const resp = await fetch(`https://api.klingai.com/v1/videos/image2video/${jobId}`, {
+  const resp = await fetch(`${KLING_API_BASE}/v1/videos/image2video/${jobId}`, {
     headers: { "Authorization": `Bearer ${token}` },
   });
 
@@ -435,6 +441,10 @@ Deno.serve(async (req: Request) => {
         aspectRatio,
       } = body;
 
+      const klingModelName = body.klingModelName;
+      const klingMode = body.klingMode;
+      const klingSound = body.klingSound;
+
       let submitResult: SubmitResult;
       try {
         submitResult = await submitGeneration(provider, {
@@ -443,6 +453,9 @@ Deno.serve(async (req: Request) => {
           negativePrompt: negativePrompt ?? "",
           durationSec,
           aspectRatio,
+          modelName: klingModelName,
+          mode: klingMode,
+          sound: klingSound,
         });
       } catch (submitError) {
         const normalizedError = normalizeProviderError(provider, submitError);
@@ -639,6 +652,60 @@ Deno.serve(async (req: Request) => {
           status: pollResult.status,
           errorMessage: pollResult.errorMessage ?? null,
         }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: `Unknown action: ${action}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+    }
+
+    // ── BALANCE ───────────────────────────────────────────────────
+    if (action === "balance") {
+      const { provider: balanceProvider } = body;
+
+      if (balanceProvider === "kling") {
+        try {
+          const accessKey = Deno.env.get("KLING_ACCESS_KEY");
+          const secretKey = Deno.env.get("KLING_SECRET_KEY");
+          if (!accessKey || !secretKey) throw new Error("KLING keys not configured");
+
+          const token = await generateKlingJWT(accessKey, secretKey);
+          const now = Date.now();
+          const resp = await fetch(
+            `${KLING_API_BASE}/account/costs?start_time=${now - 365 * 86400000}&end_time=${now + 365 * 86400000}`,
+            { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } },
+          );
+          const data = await resp.json();
+
+          const infos = data.data?.resource_pack_subscribe_infos ?? [];
+          const packages = infos.map((p: any) => ({
+            name: p.resource_pack_name,
+            remaining: p.remaining_quantity,
+            total: p.total_quantity,
+            status: p.status,
+            expiresAt: new Date(p.invalid_time).toISOString(),
+          }));
+          const totalRemaining = packages
+            .filter((p: any) => p.status === "online")
+            .reduce((sum: number, p: any) => sum + p.remaining, 0);
+
+          return new Response(
+            JSON.stringify({ provider: "kling", packages, totalRemaining }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        } catch (err: any) {
+          return new Response(
+            JSON.stringify({ provider: "kling", error: err.message, packages: [], totalRemaining: 0 }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ provider: balanceProvider, packages: [], totalRemaining: null, note: "Balance check not available" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
