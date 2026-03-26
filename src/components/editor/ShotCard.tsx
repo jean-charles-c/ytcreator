@@ -366,6 +366,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             )}
           </div>
         </details>
+      </div>
 
       {lightboxOpen && imageUrl && (
         <div
