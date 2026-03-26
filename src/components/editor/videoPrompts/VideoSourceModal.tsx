@@ -20,11 +20,6 @@ import {
 } from "lucide-react";
 import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -209,54 +204,33 @@ export default function VideoSourceModal({
             {/* ── Work zone: Tabs ─────────────────────────────────── */}
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
               <TabsList className="w-full grid grid-cols-3 bg-secondary/50 h-9 sm:h-10">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="generate" className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-1 sm:px-3">
-                      <Sparkles className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
-                      <span className="hidden xs:inline">Générer</span>
-                      <span className="xs:hidden">Gen.</span>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Lancer une nouvelle génération vidéo depuis ce visuel
-                  </TooltipContent>
-                </Tooltip>
+                <TabsTrigger value="generate" className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-1 sm:px-3" title="Lancer une nouvelle génération vidéo depuis ce visuel">
+                  <Sparkles className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+                  <span className="hidden xs:inline">Générer</span>
+                  <span className="xs:hidden">Gen.</span>
+                </TabsTrigger>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="variants" className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-1 sm:px-3">
-                      <Play className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
-                      <span className="hidden xs:inline">Variantes</span>
-                      <span className="xs:hidden">Var.</span>
-                      {hasVideos && (
-                        <Badge variant="secondary" className="ml-0.5 sm:ml-1 text-[8px] sm:text-[9px] px-1 py-0 h-3.5 sm:h-4">
-                          {completedVideos.length}
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Consulter et comparer les vidéos terminées
-                  </TooltipContent>
-                </Tooltip>
+                <TabsTrigger value="variants" className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-1 sm:px-3" title="Consulter et comparer les vidéos terminées">
+                  <Play className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+                  <span className="hidden xs:inline">Variantes</span>
+                  <span className="xs:hidden">Var.</span>
+                  {hasVideos && (
+                    <Badge variant="secondary" className="ml-0.5 sm:ml-1 text-[8px] sm:text-[9px] px-1 py-0 h-3.5 sm:h-4">
+                      {completedVideos.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="history" className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-1 sm:px-3">
-                      <History className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
-                      <span className="hidden xs:inline">Historique</span>
-                      <span className="xs:hidden">Hist.</span>
-                      {generations.length > 0 && (
-                        <Badge variant="secondary" className="ml-0.5 sm:ml-1 text-[8px] sm:text-[9px] px-1 py-0 h-3.5 sm:h-4">
-                          {generations.length}
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Historique chronologique de toutes les tentatives
-                  </TooltipContent>
-                </Tooltip>
+                <TabsTrigger value="history" className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-1 sm:px-3" title="Historique chronologique de toutes les tentatives">
+                  <History className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+                  <span className="hidden xs:inline">Historique</span>
+                  <span className="xs:hidden">Hist.</span>
+                  {generations.length > 0 && (
+                    <Badge variant="secondary" className="ml-0.5 sm:ml-1 text-[8px] sm:text-[9px] px-1 py-0 h-3.5 sm:h-4">
+                      {generations.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
               </TabsList>
 
               {/* Generate tab — VideoGenerationPanel placeholder (Prompt 6) */}
