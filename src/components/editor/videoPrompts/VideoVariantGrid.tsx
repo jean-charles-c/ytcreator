@@ -66,16 +66,22 @@ export default function VideoVariantGrid({ generations, onDeleted }: VideoVarian
     onDeleted(gen.id);
   }
 
-  function handleDownload(gen: VideoGeneration) {
+  async function handleDownload(gen: VideoGeneration) {
     if (!gen.resultVideoUrl) return;
-    const a = document.createElement("a");
-    a.href = gen.resultVideoUrl;
-    a.download = `video-${gen.provider}-${gen.durationSec}s-${gen.id.slice(0, 8)}.mp4`;
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const resp = await fetch(gen.resultVideoUrl);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `video-${gen.provider}-${gen.durationSec}s-${gen.id.slice(0, 8)}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(gen.resultVideoUrl, "_blank");
+    }
   }
 
   const providerName = (id: string) =>

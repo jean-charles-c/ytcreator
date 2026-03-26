@@ -46,6 +46,7 @@ interface VideoPromptGalleryProps {
   scenes: Scene[];
   shots: Shot[];
   onAssetClick: (asset: VisualAsset) => void;
+  refreshKey?: number;
 }
 
 /** Build VisualAsset list from shots that have images */
