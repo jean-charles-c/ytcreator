@@ -297,67 +297,75 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             </button>
           </div>
         </div>
-        {shot.source_sentence && (
-          <div className="mb-2 rounded bg-secondary/50 border border-border px-2 sm:px-3 py-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
-              {(() => {
-                const len = shot.source_sentence.trim().length;
-                const isShort = len < 40;
-                const isLong = len > 180;
-                const isOverSoft = len > 120 && len <= 180;
-                if (isShort) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-600 border-amber-500/20">Court ({len}c) — exception</span>;
-                if (isLong) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-destructive/10 text-destructive border-destructive/20">Long ({len}c) — re-segmenter</span>;
-                if (isOverSoft) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-600 border-amber-500/20">{len}c — toléré</span>;
-                return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">{len}c ✓</span>;
-              })()}
-            </div>
-            <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
-            {shot.source_sentence_fr && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{shot.source_sentence_fr}"</p>
-                {onRetranslate && (
+        <details className="group/shot-details">
+          <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
+            Phrase illustrée / Prompt
+            <span className="ml-auto text-[9px] group-open/shot-details:rotate-90 transition-transform">▶</span>
+          </summary>
+          <div className="mt-2 space-y-2">
+            {shot.source_sentence && (
+              <div className="rounded bg-secondary/50 border border-border px-2 sm:px-3 py-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Phrase illustrée</span>
+                  {(() => {
+                    const len = shot.source_sentence.trim().length;
+                    const isShort = len < 40;
+                    const isLong = len > 180;
+                    const isOverSoft = len > 120 && len <= 180;
+                    if (isShort) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-600 border-amber-500/20">Court ({len}c) — exception</span>;
+                    if (isLong) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-destructive/10 text-destructive border-destructive/20">Long ({len}c) — re-segmenter</span>;
+                    if (isOverSoft) return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-600 border-amber-500/20">{len}c — toléré</span>;
+                    return <span className="text-[9px] px-1.5 py-0.5 rounded border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">{len}c ✓</span>;
+                  })()}
+                </div>
+                <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
+                {shot.source_sentence_fr && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{shot.source_sentence_fr}"</p>
+                    {onRetranslate && (
+                      <button
+                        onClick={async () => {
+                          setRetranslating(true);
+                          try { await onRetranslate(shot.id); } finally { setRetranslating(false); }
+                        }}
+                        disabled={retranslating}
+                        className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                        title="Retraduire ce fragment"
+                      >
+                        {retranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!shot.source_sentence_fr && onRetranslate && (
                   <button
                     onClick={async () => {
                       setRetranslating(true);
                       try { await onRetranslate(shot.id); } finally { setRetranslating(false); }
                     }}
                     disabled={retranslating}
-                    className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-                    title="Retraduire ce fragment"
+                    className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                    title="Traduire ce fragment en français"
                   >
                     {retranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                    <span>Traduire en 🇫🇷</span>
                   </button>
                 )}
               </div>
             )}
-            {!shot.source_sentence_fr && onRetranslate && (
-              <button
-                onClick={async () => {
-                  setRetranslating(true);
-                  try { await onRetranslate(shot.id); } finally { setRetranslating(false); }
-                }}
-                disabled={retranslating}
-                className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                title="Traduire ce fragment en français"
-              >
-                {retranslating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
-                <span>Traduire en 🇫🇷</span>
-              </button>
+            <p className="text-xs text-muted-foreground leading-relaxed break-words">{shot.description}</p>
+            {shot.prompt_export && (
+              <details className="group/details">
+                <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                  Prompt visuel (EN)
+                </summary>
+                <pre className="mt-1 rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
+                  {shot.prompt_export}
+                </pre>
+              </details>
             )}
           </div>
-        )}
-        <p className="text-xs text-muted-foreground leading-relaxed mb-2 break-words">{shot.description}</p>
-        {shot.prompt_export && (
-          <details className="group/details">
-            <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
-              Prompt visuel (EN)
-            </summary>
-            <pre className="mt-1 rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
-              {shot.prompt_export}
-            </pre>
-          </details>
-        )}
+        </details>
       </div>
 
       {lightboxOpen && imageUrl && (
