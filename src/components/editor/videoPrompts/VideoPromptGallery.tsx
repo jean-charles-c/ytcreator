@@ -11,8 +11,9 @@ import {
   Filter,
   Loader2,
   ImageIcon,
+  ChevronDown,
+  Upload,
 } from "lucide-react";
-// Button will be used for bulk actions in later prompts
 import {
   Select,
   SelectContent,
@@ -20,9 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Tables } from "@/integrations/supabase/types";
+import type { ShotTimepoint } from "../timelineAssembly";
 import type {
   VisualAsset,
   ScriptSentence,
