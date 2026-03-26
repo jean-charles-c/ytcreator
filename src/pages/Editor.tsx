@@ -1280,6 +1280,71 @@ export default function Editor() {
     toast.success(`${blocks.length} bloc(s) Voice Over exporté(s)`);
   }, [title, generatedScript]);
 
+  const downloadAllVideos = useCallback(async () => {
+    if (!projectId) return;
+    toast.info("Récupération des vidéos…");
+    const { data: gens } = await supabase
+      .from("video_generations")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("status", "completed")
+      .order("created_at", { ascending: true });
+
+    const completed = (gens ?? []).filter((g: any) => g.result_video_url);
+    if (completed.length === 0) {
+      toast.warning("Aucune vidéo générée à exporter");
+      return;
+    }
+
+    // Build global shot index map
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    const globalIndexMap = new Map<string, number>();
+    let gIdx = 1;
+    for (const sc of sortedScenes) {
+      const scShots = shots.filter((s) => s.scene_id === sc.id).sort((a, b) => a.shot_order - b.shot_order);
+      for (const sh of scShots) {
+        globalIndexMap.set(sh.id, gIdx);
+        gIdx++;
+      }
+    }
+
+    const zip = new JSZip();
+    let count = 0;
+    for (const gen of completed) {
+      try {
+        const resp = await fetch((gen as any).result_video_url);
+        if (!resp.ok) continue;
+        const blob = await resp.blob();
+        const shotIdx = (gen as any).source_shot_id ? globalIndexMap.get((gen as any).source_shot_id) : null;
+        const shotLabel = shotIdx ? `Shot_${String(shotIdx).padStart(4, "0")}` : "External";
+        const createdDate = new Date((gen as any).created_at);
+        const dateStr = createdDate.toISOString().slice(0, 10);
+        const timeStr = `${String(createdDate.getHours()).padStart(2, "0")}h${String(createdDate.getMinutes()).padStart(2, "0")}`;
+        const fileName = `${shotLabel}_${(gen as any).duration_sec}s_${dateStr}_${timeStr}.mp4`;
+        zip.file(fileName, blob);
+        count++;
+      } catch (e) {
+        console.warn("Failed to download video for zip:", e);
+      }
+    }
+
+    if (count === 0) {
+      toast.error("Impossible de télécharger les vidéos");
+      return;
+    }
+
+    const content = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}_videos.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`${count} vidéo(s) exportée(s)`);
+  }, [projectId, title, scenes, shots]);
+
   const downloadAll = useCallback(async () => {
     const zip = new JSZip();
     const prefix = title.replace(/\s+/g, "_");
