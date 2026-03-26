@@ -3,18 +3,33 @@
  * Mirrors useSensitiveMode: Global → Scene → Shot inheritance.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   type VisualStyleStore,
   type VisualStyleValue,
   resolveShotStyle,
   resolveSceneStyle,
+  DEFAULT_VISUAL_STYLE_ID,
 } from "./types";
 
+const STORAGE_KEY = "visualStyle_globalId";
+
 export function useVisualStyle() {
-  const [globalStyleId, setGlobalStyleId] = useState<string | null>(null);
+  const [globalStyleId, setGlobalStyleIdRaw] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || DEFAULT_VISUAL_STYLE_ID;
+    } catch {
+      return DEFAULT_VISUAL_STYLE_ID;
+    }
+  });
   const [sceneStyles, setSceneStyles] = useState<Map<string, string | null>>(new Map());
   const [shotStyles, setShotStyles] = useState<Map<string, string | null>>(new Map());
+
+  const setGlobalStyleId = useCallback((id: string | null) => {
+    const value = id ?? DEFAULT_VISUAL_STYLE_ID;
+    setGlobalStyleIdRaw(value);
+    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
+  }, []);
 
   const store: VisualStyleStore = useMemo(
     () => ({ globalStyleId, sceneStyles, shotStyles }),
