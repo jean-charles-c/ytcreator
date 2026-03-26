@@ -11,6 +11,7 @@ import {
   Filter,
   Loader2,
   ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import {
   Select,
