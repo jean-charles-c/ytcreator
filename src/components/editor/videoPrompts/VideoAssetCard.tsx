@@ -121,10 +121,10 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
             </span>
           )}
 
-          {/* Shot number */}
-          {asset.scriptSentence && (
+          {/* Shot label (global numbering) */}
+          {asset.label && (
             <span className="font-mono text-[9px] sm:text-[10px] text-muted-foreground">
-              Shot {String(asset.scriptSentence.shotOrder).padStart(4, "0")}
+              {asset.label}
             </span>
           )}
         </div>
