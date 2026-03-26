@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2, Pencil, Check, X, FolderPlus, Folder, FolderOpen, GripVertical } from "lucide-react";
+import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2, Pencil, Check, X, FolderPlus, Folder, FolderOpen, GripVertical, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
