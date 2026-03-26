@@ -14,6 +14,7 @@ import Editor from "./pages/Editor";
 import NotFound from "./pages/NotFound";
 import TitleInjector from "./pages/TitleInjector";
 import TitleFixer from "./pages/TitleFixer";
+import AiCostDashboard from "./pages/AiCostDashboard";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/editor/:id" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
               <Route path="/title-injector" element={<TitleInjector />} />
               <Route path="/title-fixer" element={<TitleFixer />} />
+              <Route path="/ai-costs" element={<ProtectedRoute><AiCostDashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
