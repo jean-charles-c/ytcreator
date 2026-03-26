@@ -123,17 +123,18 @@ export default function VideoPromptGallery({
 
   const [externalUploads, setExternalUploads] = useState<VisualAsset[]>([]);
   const [generations, setGenerations] = useState<VideoGeneration[]>([]);
+  const [voDurations, setVoDurations] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [sceneFilter, setSceneFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Load external uploads and generations
+  // Load external uploads, generations, and VO timepoints
   useEffect(() => {
     if (!userId) return;
 
     async function load() {
       setLoading(true);
-      const [uploadsRes, gensRes] = await Promise.all([
+      const [uploadsRes, gensRes, voRes] = await Promise.all([
         supabase
           .from("external_uploads" as any)
           .select("*")
@@ -144,7 +145,21 @@ export default function VideoPromptGallery({
           .select("*")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("vo_audio_history")
+          .select("shot_timepoints, duration_estimate")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1),
       ]);
+
+      // Compute VO durations from latest audio
+      if (voRes.data && voRes.data.length > 0) {
+        const audio = voRes.data[0];
+        const timepoints = (audio.shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
+        const duration = audio.duration_estimate ?? 0;
+        setVoDurations(computeVoDurations(timepoints, duration));
+      }
 
       // Map external uploads
       const uploads: VisualAsset[] = ((uploadsRes.data as any[]) ?? []).map((row: any, i: number) => ({
@@ -192,8 +207,8 @@ export default function VideoPromptGallery({
     load();
   }, [userId, projectId]);
 
-  // Build gallery assets from shots
-  const galleryAssets = useMemo(() => buildGalleryAssets(scenes, shots), [scenes, shots]);
+  // Build gallery assets from shots (now with VO durations)
+  const galleryAssets = useMemo(() => buildGalleryAssets(scenes, shots, voDurations), [scenes, shots, voDurations]);
 
   // Compute video counts and best status per asset
   const generationsByAsset = useMemo(() => {
