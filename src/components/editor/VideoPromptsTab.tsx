@@ -81,6 +81,19 @@ export default function VideoPromptsTab({
     setSelectedAsset(null);
   }, []);
 
+  const handleGenerationCreated = useCallback((gen: VideoGeneration) => {
+    setModalGenerations((prev) => {
+      const idx = prev.findIndex((g) => g.id === gen.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = gen;
+        return updated;
+      }
+      return [gen, ...prev];
+    });
+    setGenRefreshKey((k) => k + 1);
+  }, []);
+
   return (
     <>
       <VideoPromptGallery
@@ -94,6 +107,7 @@ export default function VideoPromptsTab({
         generations={modalGenerations}
         open={!!selectedAsset}
         onClose={handleCloseModal}
+        onGenerationCreated={handleGenerationCreated}
       />
     </>
   );
