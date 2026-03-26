@@ -91,11 +91,14 @@ async function submitToKling(params: {
 }
 
 async function pollKling(jobId: string): Promise<PollResult> {
-  const apiKey = Deno.env.get("KLING_API_KEY");
-  if (!apiKey) throw new Error("KLING_API_KEY not configured");
+  const accessKey = Deno.env.get("KLING_ACCESS_KEY");
+  const secretKey = Deno.env.get("KLING_SECRET_KEY");
+  if (!accessKey || !secretKey) throw new Error("KLING_ACCESS_KEY / KLING_SECRET_KEY not configured");
+
+  const token = await generateKlingJWT(accessKey, secretKey);
 
   const resp = await fetch(`https://api.klingai.com/v1/videos/image2video/${jobId}`, {
-    headers: { "Authorization": `Bearer ${apiKey}` },
+    headers: { "Authorization": `Bearer ${token}` },
   });
 
   const data = await resp.json();
