@@ -40,6 +40,7 @@ interface VideoSourceModalProps {
   onClose: () => void;
   onGenerationCreated?: (gen: VideoGeneration) => void;
   onGenerationDeleted?: (id: string) => void;
+  defaultPrompt?: string;
 }
 
 export default function VideoSourceModal({
