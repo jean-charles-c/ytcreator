@@ -43,6 +43,7 @@ interface VideoGenerationPanelProps {
   asset: VisualAsset;
   projectId: string;
   onGenerationCreated: (gen: VideoGeneration) => void;
+  defaultPrompt?: string;
 }
 
 export default function VideoGenerationPanel({
