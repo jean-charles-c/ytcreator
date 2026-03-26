@@ -18,6 +18,7 @@ import {
   History,
   Sparkles,
 } from "lucide-react";
+import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
 import {
   Dialog,
   DialogContent,
@@ -28,8 +29,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
 import VideoGenerationPanel from "./VideoGenerationPanel";
+import VideoVariantGrid from "./VideoVariantGrid";
+import VideoGenerationTimeline from "./VideoGenerationTimeline";
 
 interface VideoSourceModalProps {
   asset: VisualAsset | null;
@@ -37,6 +39,7 @@ interface VideoSourceModalProps {
   open: boolean;
   onClose: () => void;
   onGenerationCreated?: (gen: VideoGeneration) => void;
+  onGenerationDeleted?: (id: string) => void;
 }
 
 export default function VideoSourceModal({
@@ -45,6 +48,7 @@ export default function VideoSourceModal({
   open,
   onClose,
   onGenerationCreated,
+  onGenerationDeleted,
 }: VideoSourceModalProps) {
   const [activeTab, setActiveTab] = useState<"generate" | "variants" | "history">("generate");
 
@@ -234,120 +238,25 @@ export default function VideoSourceModal({
                 )}
               </TabsContent>
 
-              {/* Variants tab — VideoVariantGrid placeholder (Prompt 7) */}
+              {/* Variants tab */}
               <TabsContent value="variants" className="mt-3">
-                {hasVideos ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {completedVideos.map((gen) => (
-                      <div
-                        key={gen.id}
-                        className="rounded-lg border border-border bg-secondary/30 overflow-hidden"
-                      >
-                        {gen.resultThumbnailUrl ? (
-                          <img
-                            src={gen.resultThumbnailUrl}
-                            alt="Video thumbnail"
-                            className="w-full aspect-video object-cover"
-                          />
-                        ) : (
-                          <div className="w-full aspect-video bg-black/20 flex items-center justify-center">
-                            <Play className="h-6 w-6 text-muted-foreground/30" />
-                          </div>
-                        )}
-                        <div className="p-2 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                              {gen.provider}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground">
-                              {gen.durationSec}s
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {gen.promptUsed.slice(0, 60)}…
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
-                    <Play className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      Aucune vidéo générée pour ce visuel
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      Lancez une génération depuis l'onglet "Générer vidéo"
-                    </p>
-                  </div>
-                )}
+                <VideoVariantGrid
+                  generations={generations}
+                  onDeleted={(id) => onGenerationDeleted?.(id)}
+                />
               </TabsContent>
 
-              {/* History tab — VideoGenerationTimeline placeholder (Prompt 7) */}
+              {/* History tab */}
               <TabsContent value="history" className="mt-3">
-                {generations.length > 0 ? (
-                  <div className="space-y-2">
-                    {generations.map((gen) => (
-                      <div
-                        key={gen.id}
-                        className="flex items-center gap-3 rounded-md border border-border bg-secondary/30 p-2.5"
-                      >
-                        <div className="shrink-0">
-                          <StatusDot status={gen.status} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                              {gen.provider}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground">
-                              {gen.durationSec}s • {gen.aspectRatio}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                            {gen.promptUsed.slice(0, 80)}
-                          </p>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground text-right shrink-0">
-                          {new Date(gen.createdAt).toLocaleDateString("fr-FR", {
-                            day: "2-digit",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
-                    <History className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      Aucun historique de génération
-                    </p>
-                  </div>
-                )}
+                <VideoGenerationTimeline
+                  generations={generations}
+                  onDeleted={(id) => onGenerationDeleted?.(id)}
+                />
               </TabsContent>
             </Tabs>
           </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ── Status indicator ─────────────────────────────────────────────
-
-function StatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    not_generated: "bg-muted-foreground",
-    pending: "bg-amber-400",
-    processing: "bg-blue-400 animate-pulse",
-    completed: "bg-emerald-400",
-    error: "bg-destructive",
-  };
-
-  return (
-    <div className={`h-2.5 w-2.5 rounded-full ${colors[status] ?? "bg-muted-foreground"}`} />
   );
 }
