@@ -48,6 +48,7 @@ export default function VideoSourceModal({
   open,
   onClose,
   onGenerationCreated,
+  onGenerationDeleted,
 }: VideoSourceModalProps) {
   const [activeTab, setActiveTab] = useState<"generate" | "variants" | "history">("generate");
 
