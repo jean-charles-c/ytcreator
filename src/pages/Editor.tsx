@@ -2270,34 +2270,37 @@ export default function Editor() {
                                         <span className="text-[10px] text-muted-foreground">
                                           ({sceneShots.length} shot{sceneShots.length > 1 ? "s" : ""})
                                         </span>
+                                    </summary>
+                                    <div className="space-y-1 mt-2">
+                                      <div className="flex items-center justify-end mb-1">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-[10px] px-2 gap-1"
+                                          disabled={isRegenerating}
+                                          onClick={() => runStoryboard(scene.id)}
+                                        >
+                                          {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                          Régénérer tous les prompts de la scène
+                                        </Button>
                                       </div>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 text-[10px] px-2 gap-1"
-                                        disabled={isRegenerating}
-                                        onClick={() => runStoryboard(scene.id)}
-                                      >
-                                        {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                        Régénérer tous les prompts de la scène
-                                      </Button>
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
+                                        Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
+                                      </p>
+                                      <ScopeOverrideControl
+                                        value={sensitiveMode.getSceneValue(scene.id)}
+                                        onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
+                                        scopeLabel={`Scène ${scene.scene_order}`}
+                                        parentLabel="Toutes les scènes"
+                                      />
+                                      <VisualStyleSelector
+                                        value={visualStyle.getSceneValue(scene.id)}
+                                        onChange={(id) => visualStyle.setSceneStyle(scene.id, id)}
+                                        scopeLabel={`Scène ${scene.scene_order}`}
+                                        parentLabel="Global"
+                                      />
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
-                                      Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
-                                    </p>
-                                    <ScopeOverrideControl
-                                      value={sensitiveMode.getSceneValue(scene.id)}
-                                      onChangeLocal={(lvl) => sensitiveMode.setSceneLevel(scene.id, lvl)}
-                                      scopeLabel={`Scène ${scene.scene_order}`}
-                                      parentLabel="Toutes les scènes"
-                                    />
-                                    <VisualStyleSelector
-                                      value={visualStyle.getSceneValue(scene.id)}
-                                      onChange={(id) => visualStyle.setSceneStyle(scene.id, id)}
-                                      scopeLabel={`Scène ${scene.scene_order}`}
-                                      parentLabel="Global"
-                                    />
-                                  </div>
+                                  </details>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
                                     {/* Realign shots button — only show if shots are out of text order */}
                                     {(() => {
