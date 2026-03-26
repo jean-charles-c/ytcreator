@@ -11,6 +11,7 @@ import {
   Filter,
   Loader2,
   ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import {
   Select,
@@ -45,7 +46,7 @@ interface VideoPromptGalleryProps {
   projectId: string;
   scenes: Scene[];
   shots: Shot[];
-  onAssetClick: (asset: VisualAsset) => void;
+  onAssetClick: (asset: VisualAsset, defaultPrompt?: string) => void;
   refreshKey?: number;
 }
 
@@ -144,6 +145,7 @@ export default function VideoPromptGallery({
   const [loading, setLoading] = useState(true);
   const [sceneFilter, setSceneFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [defaultPrompt, setDefaultPrompt] = useState<string>("");
 
   // Load external uploads, generations, and VO timepoints
   useEffect(() => {
@@ -222,6 +224,46 @@ export default function VideoPromptGallery({
     }
 
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, projectId]);
+
+  // Separate effect for refreshKey — only update generations without resetting scroll
+  useEffect(() => {
+    if (!userId || refreshKey === 0) return;
+
+    async function refreshGenerations() {
+      const { data } = await supabase
+        .from("video_generations" as any)
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
+      setGenerations(((data as any[]) ?? []).map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        projectId: row.project_id,
+        visualAssetId: row.source_shot_id ?? row.source_upload_id ?? "",
+        sourceType: row.source_type,
+        sourceImageUrl: row.source_image_url,
+        provider: row.provider,
+        promptUsed: row.prompt_used,
+        negativePrompt: row.negative_prompt,
+        durationSec: row.duration_sec,
+        aspectRatio: row.aspect_ratio,
+        status: row.status,
+        resultVideoUrl: row.result_video_url,
+        resultThumbnailUrl: row.result_thumbnail_url,
+        errorMessage: row.error_message,
+        providerJobId: row.provider_job_id,
+        generationTimeMs: row.generation_time_ms,
+        estimatedCostUsd: row.estimated_cost_usd,
+        providerMetadata: row.provider_metadata,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      })));
+    }
+
+    refreshGenerations();
   }, [userId, projectId, refreshKey]);
 
   // Build gallery assets from shots (now with VO durations)
@@ -326,6 +368,21 @@ export default function VideoPromptGallery({
 
   return (
     <div className="py-3 sm:py-4 md:py-6 px-2 sm:px-4 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
+      {/* Default prompt */}
+      <div className="mb-4 space-y-1.5">
+        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+          <Sparkles className="h-3 w-3" />
+          Prompt par défaut (pré-rempli dans chaque génération)
+        </label>
+        <textarea
+          value={defaultPrompt}
+          onChange={(e) => setDefaultPrompt(e.target.value)}
+          placeholder="Ex: Slow cinematic motion, dramatic lighting, shallow depth of field…"
+          className="w-full min-h-[50px] text-xs bg-secondary/30 border border-border rounded-md p-2 resize-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+          rows={2}
+        />
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-x-4 sm:gap-y-2 mb-4 sm:mb-5 pb-3 border-b border-border">
         <div className="flex items-center gap-2">
@@ -341,10 +398,23 @@ export default function VideoPromptGallery({
             {totalAssets} visuel{totalAssets > 1 ? "s" : ""}
           </span>
           {completedCount > 0 && (
-            <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">
+            <button
+              onClick={() => {
+                if (statusFilter === "completed") {
+                  setStatusFilter("all");
+                } else {
+                  setStatusFilter("completed");
+                }
+              }}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                statusFilter === "completed"
+                  ? "bg-emerald-500/25 text-emerald-300 ring-1 ring-emerald-500/40"
+                  : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+              }`}
+            >
               <Film className="h-3 w-3" />
               {completedCount} vidéo{completedCount > 1 ? "s" : ""}
-            </span>
+            </button>
           )}
         </div>
 
@@ -413,7 +483,7 @@ export default function VideoPromptGallery({
                     asset={asset}
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
-                    onClick={() => onAssetClick(asset)}
+                    onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}
               </div>
@@ -453,7 +523,7 @@ export default function VideoPromptGallery({
                     asset={asset}
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
-                    onClick={() => onAssetClick(asset)}
+                    onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}
               </div>

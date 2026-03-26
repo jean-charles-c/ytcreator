@@ -40,6 +40,7 @@ interface VideoSourceModalProps {
   onClose: () => void;
   onGenerationCreated?: (gen: VideoGeneration) => void;
   onGenerationDeleted?: (id: string) => void;
+  defaultPrompt?: string;
 }
 
 export default function VideoSourceModal({
@@ -49,6 +50,7 @@ export default function VideoSourceModal({
   onClose,
   onGenerationCreated,
   onGenerationDeleted,
+  defaultPrompt,
 }: VideoSourceModalProps) {
   const [activeTab, setActiveTab] = useState<"generate" | "variants" | "history">("generate");
 
@@ -238,6 +240,7 @@ export default function VideoSourceModal({
                     asset={asset}
                     projectId={asset.projectId}
                     onGenerationCreated={(gen) => onGenerationCreated?.(gen)}
+                    defaultPrompt={defaultPrompt}
                   />
                 )}
               </TabsContent>

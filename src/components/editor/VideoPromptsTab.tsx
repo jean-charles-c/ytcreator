@@ -25,6 +25,7 @@ export default function VideoPromptsTab({
   shots,
 }: VideoPromptsTabProps) {
   const [selectedAsset, setSelectedAsset] = useState<VisualAsset | null>(null);
+  const [defaultPrompt, setDefaultPrompt] = useState<string>("");
   const [modalGenerations, setModalGenerations] = useState<VideoGeneration[]>([]);
   const [genRefreshKey, setGenRefreshKey] = useState(0);
 
@@ -73,8 +74,9 @@ export default function VideoPromptsTab({
     loadGenerations();
   }, [selectedAsset, genRefreshKey]);
 
-  const handleAssetClick = useCallback((asset: VisualAsset) => {
+  const handleAssetClick = useCallback((asset: VisualAsset, prompt?: string) => {
     setSelectedAsset(asset);
+    if (prompt) setDefaultPrompt(prompt);
   }, []);
 
   const handleCloseModal = useCallback(() => {
@@ -115,6 +117,7 @@ export default function VideoPromptsTab({
         onClose={handleCloseModal}
         onGenerationCreated={handleGenerationCreated}
         onGenerationDeleted={handleGenerationDeleted}
+        defaultPrompt={defaultPrompt}
       />
     </>
   );
