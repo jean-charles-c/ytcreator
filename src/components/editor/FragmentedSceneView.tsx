@@ -13,6 +13,8 @@ interface FragmentedSceneViewProps {
   renderShot: (shot: Shot, globalIndex: number, isLast: boolean) => React.ReactNode;
   /** First global shot index for this scene */
   startGlobalIndex: number;
+  /** Callback to retranslate a single shot */
+  onRetranslate?: (shotId: string) => Promise<void>;
 }
 
 /**
