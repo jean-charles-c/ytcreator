@@ -175,16 +175,17 @@ export default function VideoVariantGrid({ generations, onDeleted }: VideoVarian
             </p>
 
             {/* Actions */}
-            <div className="flex items-center gap-1.5 pt-1">
+            <div className="flex items-center gap-1.5 pt-1 flex-wrap">
               {gen.resultVideoUrl && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-[10px] px-2 gap-1"
+                  className="h-8 sm:h-6 text-[10px] px-3 sm:px-2 gap-1 min-w-[44px]"
                   onClick={() => handleDownload(gen)}
                 >
                   <Download className="h-3 w-3" />
-                  Télécharger
+                  <span className="hidden sm:inline">Télécharger</span>
+                  <span className="sm:hidden">DL</span>
                 </Button>
               )}
 
