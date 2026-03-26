@@ -1080,6 +1080,18 @@ export default function Editor() {
     return Object.keys(map).length > 0 ? map : undefined;
   };
 
+  /** Build a map of shotId → effective visual style for a list of shots */
+  const buildVisualStylesMap = (shotList: typeof shots) => {
+    const map: Record<string, string> = {};
+    for (const s of shotList) {
+      const resolved = visualStyle.resolveShot(s.scene_id, s.id);
+      if (resolved.effectiveStyleId != null) {
+        map[s.id] = resolved.effectiveStyleId;
+      }
+    }
+    return Object.keys(map).length > 0 ? map : undefined;
+  };
+
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
     const missingShots = shots
