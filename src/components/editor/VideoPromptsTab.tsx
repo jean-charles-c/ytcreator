@@ -117,6 +117,7 @@ export default function VideoPromptsTab({
         onClose={handleCloseModal}
         onGenerationCreated={handleGenerationCreated}
         onGenerationDeleted={handleGenerationDeleted}
+        defaultPrompt={defaultPrompt}
       />
     </>
   );

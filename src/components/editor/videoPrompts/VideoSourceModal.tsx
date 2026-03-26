@@ -240,6 +240,7 @@ export default function VideoSourceModal({
                     asset={asset}
                     projectId={asset.projectId}
                     onGenerationCreated={(gen) => onGenerationCreated?.(gen)}
+                    defaultPrompt={defaultPrompt}
                   />
                 )}
               </TabsContent>
