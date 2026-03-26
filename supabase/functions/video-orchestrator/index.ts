@@ -10,6 +10,24 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { create } from "https://deno.land/x/djwt@v2.8/mod.ts";
+
+// ── Kling JWT helper ──────────────────────────────────────────────
+async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secretKey),
+    { name: "HMAC", hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const now = Math.floor(Date.now() / 1000);
+  return await create(
+    { alg: "HS256", typ: "JWT" },
+    { iss: accessKey, exp: now + 1800, nbf: now - 5 },
+    cryptoKey,
+  );
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,14 +57,17 @@ async function submitToKling(params: {
   durationSec: number;
   aspectRatio: string;
 }): Promise<SubmitResult> {
-  const apiKey = Deno.env.get("KLING_API_KEY");
-  if (!apiKey) throw new Error("KLING_API_KEY not configured");
+  const accessKey = Deno.env.get("KLING_ACCESS_KEY");
+  const secretKey = Deno.env.get("KLING_SECRET_KEY");
+  if (!accessKey || !secretKey) throw new Error("KLING_ACCESS_KEY / KLING_SECRET_KEY not configured");
+
+  const token = await generateKlingJWT(accessKey, secretKey);
 
   const resp = await fetch("https://api.klingai.com/v1/videos/image2video", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({
       model_name: "kling-v1",
@@ -70,11 +91,14 @@ async function submitToKling(params: {
 }
 
 async function pollKling(jobId: string): Promise<PollResult> {
-  const apiKey = Deno.env.get("KLING_API_KEY");
-  if (!apiKey) throw new Error("KLING_API_KEY not configured");
+  const accessKey = Deno.env.get("KLING_ACCESS_KEY");
+  const secretKey = Deno.env.get("KLING_SECRET_KEY");
+  if (!accessKey || !secretKey) throw new Error("KLING_ACCESS_KEY / KLING_SECRET_KEY not configured");
+
+  const token = await generateKlingJWT(accessKey, secretKey);
 
   const resp = await fetch(`https://api.klingai.com/v1/videos/image2video/${jobId}`, {
-    headers: { "Authorization": `Bearer ${apiKey}` },
+    headers: { "Authorization": `Bearer ${token}` },
   });
 
   const data = await resp.json();
