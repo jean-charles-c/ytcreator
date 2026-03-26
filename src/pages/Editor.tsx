@@ -1108,6 +1108,7 @@ export default function Editor() {
       model: imageModel,
       aspectRatio: imageAspectRatio,
       sensitiveLevels: buildSensitiveLevelsMap(missingShots),
+      visualStyles: buildVisualStylesMap(missingShots),
     });
   };
 
