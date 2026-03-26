@@ -2428,6 +2428,20 @@ export default function Editor() {
                                               parentLabel={`Scène ${scene.scene_order}`}
                                               compact
                                             />
+                                            <div className="flex items-center gap-1.5">
+                                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">IA :</span>
+                                              <select
+                                                value={shotImageModelOverrides[shot.id] || imageModel}
+                                                onChange={(e) => setShotImageModelOverrides(prev => ({ ...prev, [shot.id]: e.target.value }))}
+                                                className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[180px]"
+                                              >
+                                                {IMAGE_MODELS.map((m) => (
+                                                  <option key={m.value} value={m.value}>
+                                                    {m.label} — {m.price}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                            </div>
                                           </div>
                                           <ShotCard
                                             key={shot.id}
