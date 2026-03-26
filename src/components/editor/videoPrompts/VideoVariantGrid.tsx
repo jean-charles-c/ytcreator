@@ -194,6 +194,38 @@ export default function VideoVariantGrid({ generations, onDeleted, assetLabel, o
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+              {/* Select for export */}
+              <Button
+                variant={gen.selectedForExport ? "default" : "outline"}
+                size="sm"
+                className={`h-8 sm:h-6 text-[10px] px-3 sm:px-2 gap-1 min-w-[44px] ${
+                  gen.selectedForExport
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                    : ""
+                }`}
+                onClick={async () => {
+                  const newVal = !gen.selectedForExport;
+                  const { error } = await supabase
+                    .from("video_generations")
+                    .update({ selected_for_export: newVal } as any)
+                    .eq("id", gen.id);
+                  if (error) {
+                    toast({ title: "Erreur", description: error.message, variant: "destructive" });
+                    return;
+                  }
+                  const updated = { ...gen, selectedForExport: newVal };
+                  onSelectionChanged?.(updated);
+                  toast({ title: newVal ? "✅ Sélectionné pour l'export" : "Désélectionné de l'export" });
+                }}
+              >
+                {gen.selectedForExport ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : (
+                  <Circle className="h-3 w-3" />
+                )}
+                <span className="hidden sm:inline">{gen.selectedForExport ? "Export ✓" : "Export"}</span>
+              </Button>
+
               {gen.resultVideoUrl && (
                 <Button
                   variant="outline"
