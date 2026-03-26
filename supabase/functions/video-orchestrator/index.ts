@@ -656,12 +656,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    return new Response(
-      JSON.stringify({ error: `Unknown action: ${action}` }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-    }
-
     // ── BALANCE ───────────────────────────────────────────────────
     if (action === "balance") {
       const { provider: balanceProvider } = body;
