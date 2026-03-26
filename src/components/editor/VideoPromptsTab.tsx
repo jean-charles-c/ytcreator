@@ -26,6 +26,7 @@ export default function VideoPromptsTab({
 }: VideoPromptsTabProps) {
   const [selectedAsset, setSelectedAsset] = useState<VisualAsset | null>(null);
   const [modalGenerations, setModalGenerations] = useState<VideoGeneration[]>([]);
+  const [genRefreshKey, setGenRefreshKey] = useState(0);
 
   // Load generations for selected asset
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function VideoPromptsTab({
     }
 
     loadGenerations();
-  }, [selectedAsset]);
+  }, [selectedAsset, genRefreshKey]);
 
   const handleAssetClick = useCallback((asset: VisualAsset) => {
     setSelectedAsset(asset);
