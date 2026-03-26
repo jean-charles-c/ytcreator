@@ -59,11 +59,14 @@ export default function FragmentedSceneView({
           <div key={frag.fragmentId} className="rounded border border-border/50 bg-secondary/20 p-2 sm:p-3 space-y-2">
             {/* Fragment text */}
             <div className="flex items-start gap-2">
-              <span className="shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary">
-                {fragIdx + 1}
+              <span className="shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-500">
+                {globalIdx}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-foreground leading-relaxed italic break-words">"{frag.text}"</p>
+                {dbShot?.source_sentence_fr && (
+                  <p className="text-xs text-muted-foreground leading-relaxed italic break-words mt-0.5">🇫🇷 "{dbShot.source_sentence_fr}"</p>
+                )}
                 <span className="text-[9px] text-muted-foreground mt-0.5 block">
                   Fragment {frag.order + 1} • {normShot?.kind === "merged" ? "Merged" : normShot?.kind === "single" ? "Single" : "Split"}
                 </span>
