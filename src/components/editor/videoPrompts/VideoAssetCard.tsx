@@ -70,11 +70,11 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
         )}
 
         {/* Status badge overlay */}
-        <div className="absolute top-2 right-2">
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${statusCfg.className} backdrop-blur-sm`}>
-            <span className="flex items-center gap-1">
+        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+          <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 ${statusCfg.className} backdrop-blur-sm`}>
+            <span className="flex items-center gap-0.5 sm:gap-1">
               {statusCfg.icon}
-              {statusCfg.label}
+              <span className="hidden sm:inline">{statusCfg.label}</span>
             </span>
           </Badge>
         </div>
