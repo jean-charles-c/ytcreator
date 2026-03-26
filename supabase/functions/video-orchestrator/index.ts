@@ -10,6 +10,24 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { create } from "https://deno.land/x/djwt@v2.8/mod.ts";
+
+// ── Kling JWT helper ──────────────────────────────────────────────
+async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secretKey),
+    { name: "HMAC", hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const now = Math.floor(Date.now() / 1000);
+  return await create(
+    { alg: "HS256", typ: "JWT" },
+    { iss: accessKey, exp: now + 1800, nbf: now - 5 },
+    cryptoKey,
+  );
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
