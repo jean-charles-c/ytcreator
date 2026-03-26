@@ -2479,7 +2479,7 @@ export default function Editor() {
               </Collapsible>
 
               {/* QA Contrôle qualité */}
-              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3" open>
+              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3">
                 <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Contrôle qualité
