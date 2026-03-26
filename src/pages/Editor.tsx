@@ -1207,10 +1207,11 @@ export default function Editor() {
       .filter((s) => s.scene_id === sceneId)
       .sort((a, b) => a.shot_order - b.shot_order);
     if (sceneShots.length === 0) return;
+    const sceneModel = sceneImageModelOverrides[sceneId] || imageModel;
     bgStartImageGen({
       projectId,
       shotIds: sceneShots.map((s) => s.id),
-      model: imageModel,
+      model: sceneModel,
       aspectRatio: imageAspectRatio,
       sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
       visualStyles: buildVisualStylesMap(sceneShots),
