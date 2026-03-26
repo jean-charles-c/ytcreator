@@ -365,6 +365,46 @@ export default function VideoPromptGallery({
         </div>
       </div>
 
+      {/* External uploads — collapsible accordion above gallery, closed by default */}
+      <Accordion type="single" collapsible className="mb-4">
+        <AccordionItem value="externals" className="border-border">
+          <AccordionTrigger className="py-2.5 hover:no-underline">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
+              Images externes ({enrichedExternals.length})
+              {userId && " — Upload"}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            {/* Upload panel */}
+            {userId && (
+              <div className="mb-4">
+                <ExternalUploadPanel
+                  projectId={projectId}
+                  userId={userId}
+                  onUploaded={handleExternalUpload}
+                />
+              </div>
+            )}
+
+            {/* External cards grid */}
+            {enrichedExternals.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+                {enrichedExternals.map((asset) => (
+                  <VideoAssetCard
+                    key={asset.id}
+                    asset={asset}
+                    bestStatus={getAssetStatus(asset.id)}
+                    videoCount={asset.videoCount}
+                    onClick={() => onAssetClick(asset)}
+                  />
+                ))}
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       {/* Gallery grid */}
       {filteredGallery.length === 0 && enrichedExternals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
@@ -376,7 +416,7 @@ export default function VideoPromptGallery({
               Aucun visuel disponible
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Générez d'abord des visuels dans le tab VisualPrompts, ou uploadez des images externes ci-dessous.
+              Générez d'abord des visuels dans le tab VisualPrompts, ou uploadez des images externes ci-dessus.
             </p>
           </div>
         </div>
@@ -389,29 +429,8 @@ export default function VideoPromptGallery({
                 <Camera className="h-3.5 w-3.5" />
                 Visuels du script ({filteredGallery.length})
               </h3>
-               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                 {filteredGallery.map((asset) => (
-                  <VideoAssetCard
-                    key={asset.id}
-                    asset={asset}
-                    bestStatus={getAssetStatus(asset.id)}
-                    videoCount={asset.videoCount}
-                    onClick={() => onAssetClick(asset)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* External uploads */}
-          {enrichedExternals.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
-                Images externes ({enrichedExternals.length})
-              </h3>
-               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                {enrichedExternals.map((asset) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+                {filteredGallery.map((asset) => (
                   <VideoAssetCard
                     key={asset.id}
                     asset={asset}
@@ -425,17 +444,6 @@ export default function VideoPromptGallery({
           )}
         </>
       )}
-
-      {/* External upload panel */}
-      <div className="mt-6">
-        {userId && (
-          <ExternalUploadPanel
-            projectId={projectId}
-            userId={userId}
-            onUploaded={handleExternalUpload}
-          />
-        )}
-      </div>
     </div>
   );
 }
