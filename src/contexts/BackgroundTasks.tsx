@@ -34,6 +34,8 @@ export interface BackgroundTask {
   completedShots?: number;
   successShots?: number;
   totalShots?: number;
+  /** Image gen model used */
+  imageGenModel?: string;
 }
 
 type Listener = (task: BackgroundTask) => void;
