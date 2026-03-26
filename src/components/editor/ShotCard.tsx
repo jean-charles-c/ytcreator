@@ -283,52 +283,21 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-contain" loading="lazy" />
           </div>
         )}
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex items-center gap-2">
-              {globalIndex !== undefined && <span className="text-xs font-display font-bold text-emerald-500">Shot {globalIndex}</span>}
-              <span className="text-[10px] text-muted-foreground">{shot.shot_type}</span>
-            </div>
-            <span className="inline-flex w-fit items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-              Coût IA : {formatUsd(cost)}
+        {/* Badges */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            Coût IA : {formatUsd(cost)}
+          </span>
+          {shot.guardrails === "safety_filtered" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600" title="Le prompt original a déclenché le filtre de sécurité du modèle.">
+              <ShieldAlert className="h-3 w-3" /> Prompt adapté (safety)
             </span>
-            {shot.guardrails === "safety_filtered" && (
-              <span className="inline-flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600" title="Le prompt original a déclenché le filtre de sécurité du modèle. L'image a été générée avec un prompt adapté. Vous pouvez copier le prompt original pour l'utiliser avec une IA plus permissive.">
-                <ShieldAlert className="h-3 w-3" /> Prompt adapté (safety)
-              </span>
-            )}
-            {shot.guardrails === "safety_blocked" && (
-              <span className="inline-flex w-fit items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive" title="Le prompt a été bloqué par le filtre de sécurité, même après adaptation. Copiez le prompt original pour l'utiliser avec une IA externe plus permissive.">
-                <ShieldOff className="h-3 w-3" /> Bloqué par safety — copier prompt ↓
-              </span>
-            )}
-          </div>
-          <div className="flex gap-0.5 sm:gap-1 shrink-0 flex-wrap">
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
-            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Uploader une image">
-              {uploading ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
-            </button>
-            <button onClick={copyPrompt} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Copier le prompt">
-              <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            </button>
-            <button onClick={startEdit} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Éditer">
-              <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            </button>
-            {onMergeWithNext && !isLastInScene && (
-              <button onClick={handleMerge} disabled={merging} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Fusionner avec le shot suivant">
-                {merging ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
-              </button>
-            )}
-            {onSplit && shot.source_sentence && shot.source_sentence.length >= 10 && (
-              <button onClick={openSplitDialog} disabled={splitting} className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Scinder ce shot en deux">
-                {splitting ? <Loader2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
-              </button>
-            )}
-            <button onClick={() => setDeleteDialogOpen(true)} className="p-2 sm:p-1.5 rounded transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center" title="Supprimer ce shot">
-              <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-            </button>
-          </div>
+          )}
+          {shot.guardrails === "safety_blocked" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive" title="Le prompt a été bloqué par le filtre de sécurité.">
+              <ShieldOff className="h-3 w-3" /> Bloqué par safety
+            </span>
+          )}
         </div>
         <details className="group/shot-details">
           <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
