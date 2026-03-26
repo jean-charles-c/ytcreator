@@ -70,13 +70,19 @@ export default function VideoVariantGrid({ generations, onDeleted, assetLabel }:
 
   async function handleDownload(gen: VideoGeneration) {
     if (!gen.resultVideoUrl) return;
+    // Build descriptive filename: Shot_0012_5s_2026-03-26_13h20.mp4
+    const shotName = assetLabel ? assetLabel.replace(/\s+/g, "_") : "video";
+    const createdDate = new Date(gen.createdAt);
+    const dateStr = createdDate.toISOString().slice(0, 10); // 2026-03-26
+    const timeStr = `${String(createdDate.getHours()).padStart(2, "0")}h${String(createdDate.getMinutes()).padStart(2, "0")}`;
+    const fileName = `${shotName}_${gen.durationSec}s_${dateStr}_${timeStr}.mp4`;
     try {
       const resp = await fetch(gen.resultVideoUrl);
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `video-${gen.provider}-${gen.durationSec}s-${gen.id.slice(0, 8)}.mp4`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
