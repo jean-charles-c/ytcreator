@@ -3,13 +3,12 @@
  *
  * Layout:
  *  - Top: Large image + script context (sentence, scene, VO duration, origin badge)
- *  - Middle: VideoGenerationPanel placeholder (Prompt 6)
+ *  - Middle: VideoGenerationPanel (Prompt 6)
  *  - Bottom: Tabs for Variants and History (Prompt 7)
  */
 
 import { useState } from "react";
 import {
-  
   Clock,
   Film,
   Camera,
@@ -30,12 +29,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
+import VideoGenerationPanel from "./VideoGenerationPanel";
 
 interface VideoSourceModalProps {
   asset: VisualAsset | null;
   generations: VideoGeneration[];
   open: boolean;
   onClose: () => void;
+  onGenerationCreated?: (gen: VideoGeneration) => void;
 }
 
 export default function VideoSourceModal({
