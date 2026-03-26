@@ -104,6 +104,8 @@ export interface VideoGeneration {
   estimatedCostUsd: number | null;
   /** Provider raw response metadata */
   providerMetadata: Record<string, unknown> | null;
+  /** Whether this video is selected for export */
+  selectedForExport: boolean;
   createdAt: string;
   updatedAt: string;
 }
