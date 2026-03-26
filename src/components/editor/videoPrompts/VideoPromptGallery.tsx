@@ -12,7 +12,6 @@ import {
   Loader2,
   ImageIcon,
 } from "lucide-react";
-// Button will be used for bulk actions in later prompts
 import {
   Select,
   SelectContent,
@@ -20,9 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Tables } from "@/integrations/supabase/types";
+import type { ShotTimepoint } from "../timelineAssembly";
 import type {
   VisualAsset,
   ScriptSentence,
@@ -43,7 +49,11 @@ interface VideoPromptGalleryProps {
 }
 
 /** Build VisualAsset list from shots that have images */
-function buildGalleryAssets(scenes: Scene[], shots: Shot[]): VisualAsset[] {
+function buildGalleryAssets(
+  scenes: Scene[],
+  shots: Shot[],
+  voDurations: Map<string, number>,
+): VisualAsset[] {
   const sceneMap = new Map(scenes.map((s) => [s.id, s]));
 
   return shots
@@ -65,7 +75,7 @@ function buildGalleryAssets(scenes: Scene[], shots: Shot[]): VisualAsset[] {
             shotOrder: sh.shot_order,
             sourceSentence: sh.source_sentence ?? "",
             sourceSentenceFr: sh.source_sentence_fr ?? null,
-            voDurationSec: null, // Will be enriched if VO data available
+            voDurationSec: voDurations.get(sh.id) ?? null,
           }
         : null;
 
@@ -85,6 +95,23 @@ function buildGalleryAssets(scenes: Scene[], shots: Shot[]): VisualAsset[] {
     });
 }
 
+/** Compute per-shot duration from timepoints */
+function computeVoDurations(
+  timepoints: ShotTimepoint[] | null,
+  totalDuration: number,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!timepoints || timepoints.length === 0) return map;
+
+  const sorted = [...timepoints].sort((a, b) => a.timeSeconds - b.timeSeconds);
+  for (let i = 0; i < sorted.length; i++) {
+    const start = sorted[i].timeSeconds;
+    const end = i < sorted.length - 1 ? sorted[i + 1].timeSeconds : totalDuration;
+    map.set(sorted[i].shotId, Math.max(0, end - start));
+  }
+  return map;
+}
+
 export default function VideoPromptGallery({
   projectId,
   scenes,
@@ -96,17 +123,18 @@ export default function VideoPromptGallery({
 
   const [externalUploads, setExternalUploads] = useState<VisualAsset[]>([]);
   const [generations, setGenerations] = useState<VideoGeneration[]>([]);
+  const [voDurations, setVoDurations] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [sceneFilter, setSceneFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Load external uploads and generations
+  // Load external uploads, generations, and VO timepoints
   useEffect(() => {
     if (!userId) return;
 
     async function load() {
       setLoading(true);
-      const [uploadsRes, gensRes] = await Promise.all([
+      const [uploadsRes, gensRes, voRes] = await Promise.all([
         supabase
           .from("external_uploads" as any)
           .select("*")
@@ -117,7 +145,21 @@ export default function VideoPromptGallery({
           .select("*")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("vo_audio_history")
+          .select("shot_timepoints, duration_estimate")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1),
       ]);
+
+      // Compute VO durations from latest audio
+      if (voRes.data && voRes.data.length > 0) {
+        const audio = voRes.data[0];
+        const timepoints = (audio.shot_timepoints as unknown as ShotTimepoint[] | null) ?? null;
+        const duration = audio.duration_estimate ?? 0;
+        setVoDurations(computeVoDurations(timepoints, duration));
+      }
 
       // Map external uploads
       const uploads: VisualAsset[] = ((uploadsRes.data as any[]) ?? []).map((row: any, i: number) => ({
@@ -165,8 +207,8 @@ export default function VideoPromptGallery({
     load();
   }, [userId, projectId]);
 
-  // Build gallery assets from shots
-  const galleryAssets = useMemo(() => buildGalleryAssets(scenes, shots), [scenes, shots]);
+  // Build gallery assets from shots (now with VO durations)
+  const galleryAssets = useMemo(() => buildGalleryAssets(scenes, shots, voDurations), [scenes, shots, voDurations]);
 
   // Compute video counts and best status per asset
   const generationsByAsset = useMemo(() => {
@@ -323,6 +365,46 @@ export default function VideoPromptGallery({
         </div>
       </div>
 
+      {/* External uploads — collapsible accordion above gallery, closed by default */}
+      <Accordion type="single" collapsible className="mb-4">
+        <AccordionItem value="externals" className="border-border">
+          <AccordionTrigger className="py-2.5 hover:no-underline">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
+              Images externes ({enrichedExternals.length})
+              {userId && " — Upload"}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            {/* Upload panel */}
+            {userId && (
+              <div className="mb-4">
+                <ExternalUploadPanel
+                  projectId={projectId}
+                  userId={userId}
+                  onUploaded={handleExternalUpload}
+                />
+              </div>
+            )}
+
+            {/* External cards grid */}
+            {enrichedExternals.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+                {enrichedExternals.map((asset) => (
+                  <VideoAssetCard
+                    key={asset.id}
+                    asset={asset}
+                    bestStatus={getAssetStatus(asset.id)}
+                    videoCount={asset.videoCount}
+                    onClick={() => onAssetClick(asset)}
+                  />
+                ))}
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       {/* Gallery grid */}
       {filteredGallery.length === 0 && enrichedExternals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
@@ -334,7 +416,7 @@ export default function VideoPromptGallery({
               Aucun visuel disponible
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Générez d'abord des visuels dans le tab VisualPrompts, ou uploadez des images externes ci-dessous.
+              Générez d'abord des visuels dans le tab VisualPrompts, ou uploadez des images externes ci-dessus.
             </p>
           </div>
         </div>
@@ -347,29 +429,8 @@ export default function VideoPromptGallery({
                 <Camera className="h-3.5 w-3.5" />
                 Visuels du script ({filteredGallery.length})
               </h3>
-               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                 {filteredGallery.map((asset) => (
-                  <VideoAssetCard
-                    key={asset.id}
-                    asset={asset}
-                    bestStatus={getAssetStatus(asset.id)}
-                    videoCount={asset.videoCount}
-                    onClick={() => onAssetClick(asset)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* External uploads */}
-          {enrichedExternals.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
-                Images externes ({enrichedExternals.length})
-              </h3>
-               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-                {enrichedExternals.map((asset) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+                {filteredGallery.map((asset) => (
                   <VideoAssetCard
                     key={asset.id}
                     asset={asset}
@@ -383,17 +444,6 @@ export default function VideoPromptGallery({
           )}
         </>
       )}
-
-      {/* External upload panel */}
-      <div className="mt-6">
-        {userId && (
-          <ExternalUploadPanel
-            projectId={projectId}
-            userId={userId}
-            onUploaded={handleExternalUpload}
-          />
-        )}
-      </div>
     </div>
   );
 }
