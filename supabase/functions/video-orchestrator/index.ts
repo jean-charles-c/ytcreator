@@ -57,14 +57,17 @@ async function submitToKling(params: {
   durationSec: number;
   aspectRatio: string;
 }): Promise<SubmitResult> {
-  const apiKey = Deno.env.get("KLING_API_KEY");
-  if (!apiKey) throw new Error("KLING_API_KEY not configured");
+  const accessKey = Deno.env.get("KLING_ACCESS_KEY");
+  const secretKey = Deno.env.get("KLING_SECRET_KEY");
+  if (!accessKey || !secretKey) throw new Error("KLING_ACCESS_KEY / KLING_SECRET_KEY not configured");
+
+  const token = await generateKlingJWT(accessKey, secretKey);
 
   const resp = await fetch("https://api.klingai.com/v1/videos/image2video", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({
       model_name: "kling-v1",
