@@ -179,6 +179,7 @@ export default function VideoGenerationPanel({
         providerMetadata: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        selectedForExport: false,
       };
       onGenerationCreated(newGen);
 
