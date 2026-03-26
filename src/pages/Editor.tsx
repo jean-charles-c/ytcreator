@@ -1095,6 +1095,49 @@ export default function Editor() {
     return Object.keys(map).length > 0 ? map : undefined;
   };
 
+  // ── Re-translate all shot fragments ──
+  const [retranslating, setRetranslating] = useState(false);
+  const handleRetranslateFragments = async () => {
+    if (!projectId || retranslating) return;
+    const fragmentsToTranslate = shots
+      .filter((s: any) => s.source_sentence && s.source_sentence.trim())
+      .map((s: any) => ({ id: s.id, text: s.source_sentence.trim() }));
+    if (fragmentsToTranslate.length === 0) {
+      toast.info("Aucun fragment à traduire.");
+      return;
+    }
+    setRetranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-fragments", {
+        body: { fragments: fragmentsToTranslate, sourceLanguage: scriptLanguage },
+      });
+      if (error) throw error;
+      const translations: Array<{ id: string; translated: string }> = data?.translations ?? [];
+      if (translations.length === 0) {
+        toast.warning("Aucune traduction retournée.");
+        setRetranslating(false);
+        return;
+      }
+      // Update DB
+      for (const t of translations) {
+        await supabase.from("shots").update({ source_sentence_fr: t.translated }).eq("id", t.id);
+      }
+      // Update local state
+      setShots((prev: any[]) =>
+        prev.map((s) => {
+          const found = translations.find((t) => t.id === s.id);
+          return found ? { ...s, source_sentence_fr: found.translated } : s;
+        })
+      );
+      toast.success(`${translations.length} fragment(s) retraduit(s) avec succès.`);
+    } catch (e: any) {
+      console.error("Retranslate error:", e);
+      toast.error("Erreur lors de la retraduction : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setRetranslating(false);
+    }
+  };
+
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
     const missingShots = shots
