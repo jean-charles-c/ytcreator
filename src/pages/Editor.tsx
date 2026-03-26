@@ -1056,10 +1056,11 @@ export default function Editor() {
     const effectiveStyle = sceneId
       ? visualStyle.resolveShot(sceneId, shotId).effectiveStyleId
       : null;
+    const shotModel = shotImageModelOverrides[shotId] || imageModel;
     bgStartImageGen({
       projectId,
       shotIds: [shotId],
-      model: imageModel,
+      model: shotModel,
       aspectRatio: imageAspectRatio,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
       ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
