@@ -251,6 +251,7 @@ export default function VideoSourceModal({
                   generations={generations}
                   onDeleted={(id) => onGenerationDeleted?.(id)}
                   assetLabel={asset.label}
+                  onSelectionChanged={(gen) => onGenerationCreated?.(gen)}
                 />
               </TabsContent>
 
