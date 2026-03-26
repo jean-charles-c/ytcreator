@@ -1,0 +1,353 @@
+/**
+ * VideoSourceModal — Full-size modal for a gallery visual asset.
+ *
+ * Layout:
+ *  - Top: Large image + script context (sentence, scene, VO duration, origin badge)
+ *  - Middle: VideoGenerationPanel placeholder (Prompt 6)
+ *  - Bottom: Tabs for Variants and History (Prompt 7)
+ */
+
+import { useState } from "react";
+import {
+  
+  Clock,
+  Film,
+  Camera,
+  ImageIcon,
+  Layers,
+  Play,
+  History,
+  Sparkles,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import type { VisualAsset, VideoGeneration } from "./videoGeneration.types";
+
+interface VideoSourceModalProps {
+  asset: VisualAsset | null;
+  generations: VideoGeneration[];
+  open: boolean;
+  onClose: () => void;
+}
+
+export default function VideoSourceModal({
+  asset,
+  generations,
+  open,
+  onClose,
+}: VideoSourceModalProps) {
+  const [activeTab, setActiveTab] = useState<"generate" | "variants" | "history">("generate");
+
+  if (!asset) return null;
+
+  const isExternal = asset.source === "external_upload";
+  const sentence = asset.scriptSentence;
+  const completedVideos = generations.filter((g) => g.status === "completed");
+  const hasVideos = completedVideos.length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 gap-0 bg-card border-border overflow-hidden">
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <DialogHeader className="px-5 pt-4 pb-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="font-display text-base font-semibold text-foreground flex items-center gap-2">
+              <Film className="h-4 w-4 text-primary" />
+              {isExternal ? "Image externe" : `Shot ${sentence?.shotOrder ?? "—"}`}
+            </DialogTitle>
+            <div className="flex items-center gap-2">
+              {/* Origin badge */}
+              <Badge
+                variant="outline"
+                className={`text-[10px] px-2 py-0.5 ${
+                  isExternal
+                    ? "bg-violet-500/15 text-violet-400 border-violet-500/30"
+                    : "bg-primary/10 text-primary border-primary/30"
+                }`}
+              >
+                {isExternal ? "Upload externe" : "Galerie script"}
+              </Badge>
+              {hasVideos && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                >
+                  <Play className="h-2.5 w-2.5 mr-0.5" />
+                  {completedVideos.length} vidéo{completedVideos.length > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[calc(90vh-60px)]">
+          <div className="px-5 pb-5">
+            {/* ── Top zone: Image + Script context ────────────────── */}
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-4">
+              {/* Large image */}
+              <div className="rounded-lg overflow-hidden border border-border bg-secondary/30">
+                {asset.imageUrl ? (
+                  <img
+                    src={asset.imageUrl}
+                    alt={asset.label || "Visual asset"}
+                    className="w-full h-auto max-h-[400px] object-contain bg-black/20"
+                  />
+                ) : (
+                  <div className="aspect-video flex items-center justify-center">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
+                  </div>
+                )}
+              </div>
+
+              {/* Script context */}
+              <div className="flex flex-col gap-3">
+                {/* Script sentence */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Phrase du script
+                  </label>
+                  <div className="rounded-md bg-secondary/50 border border-border p-3">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {sentence?.sourceSentence || asset.label || "Aucun texte associé"}
+                    </p>
+                    {sentence?.sourceSentenceFr && (
+                      <p className="text-xs text-muted-foreground mt-2 italic leading-relaxed">
+                        {sentence.sourceSentenceFr}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Metadata grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Scene */}
+                  {sentence && (
+                    <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                        <Layers className="h-3 w-3" />
+                        Scène
+                      </div>
+                      <p className="text-xs text-foreground font-medium truncate">
+                        {sentence.sceneTitle}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* VO Duration */}
+                  <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                      <Clock className="h-3 w-3" />
+                      Durée VO
+                    </div>
+                    <p className="text-xs text-foreground font-medium">
+                      {sentence?.voDurationSec != null
+                        ? `${sentence.voDurationSec.toFixed(1)}s`
+                        : "Non disponible"}
+                    </p>
+                  </div>
+
+                  {/* Shot order */}
+                  {sentence && (
+                    <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                        <Camera className="h-3 w-3" />
+                        Shot
+                      </div>
+                      <p className="text-xs text-foreground font-medium">
+                        #{sentence.shotOrder}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Total generations */}
+                  <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
+                      <Film className="h-3 w-3" />
+                      Générations
+                    </div>
+                    <p className="text-xs text-foreground font-medium">
+                      {generations.length} tentative{generations.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+
+                {/* External label */}
+                {isExternal && asset.label && (
+                  <div className="rounded-md bg-violet-500/5 border border-violet-500/20 p-2.5">
+                    <div className="flex items-center gap-1.5 text-[10px] text-violet-400 mb-1">
+                      <ImageIcon className="h-3 w-3" />
+                      Description
+                    </div>
+                    <p className="text-xs text-foreground">{asset.label}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+
+            {/* ── Work zone: Tabs ─────────────────────────────────── */}
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              <TabsList className="w-full grid grid-cols-3 bg-secondary/50">
+                <TabsTrigger value="generate" className="text-xs gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Générer vidéo
+                </TabsTrigger>
+                <TabsTrigger value="variants" className="text-xs gap-1.5">
+                  <Play className="h-3.5 w-3.5" />
+                  Variantes
+                  {hasVideos && (
+                    <Badge variant="secondary" className="ml-1 text-[9px] px-1 py-0 h-4">
+                      {completedVideos.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="history" className="text-xs gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  Historique
+                  {generations.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-[9px] px-1 py-0 h-4">
+                      {generations.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Generate tab — VideoGenerationPanel placeholder (Prompt 6) */}
+              <TabsContent value="generate" className="mt-3">
+                <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
+                  <Sparkles className="h-8 w-8 text-primary/40 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Le panneau de génération vidéo sera intégré ici.
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    Choix du provider, durée, prompt éditable, lancement de génération
+                  </p>
+                </div>
+              </TabsContent>
+
+              {/* Variants tab — VideoVariantGrid placeholder (Prompt 7) */}
+              <TabsContent value="variants" className="mt-3">
+                {hasVideos ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {completedVideos.map((gen) => (
+                      <div
+                        key={gen.id}
+                        className="rounded-lg border border-border bg-secondary/30 overflow-hidden"
+                      >
+                        {gen.resultThumbnailUrl ? (
+                          <img
+                            src={gen.resultThumbnailUrl}
+                            alt="Video thumbnail"
+                            className="w-full aspect-video object-cover"
+                          />
+                        ) : (
+                          <div className="w-full aspect-video bg-black/20 flex items-center justify-center">
+                            <Play className="h-6 w-6 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <div className="p-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                              {gen.provider}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {gen.durationSec}s
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {gen.promptUsed.slice(0, 60)}…
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
+                    <Play className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Aucune vidéo générée pour ce visuel
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1">
+                      Lancez une génération depuis l'onglet "Générer vidéo"
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* History tab — VideoGenerationTimeline placeholder (Prompt 7) */}
+              <TabsContent value="history" className="mt-3">
+                {generations.length > 0 ? (
+                  <div className="space-y-2">
+                    {generations.map((gen) => (
+                      <div
+                        key={gen.id}
+                        className="flex items-center gap-3 rounded-md border border-border bg-secondary/30 p-2.5"
+                      >
+                        <div className="shrink-0">
+                          <StatusDot status={gen.status} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                              {gen.provider}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {gen.durationSec}s • {gen.aspectRatio}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                            {gen.promptUsed.slice(0, 80)}
+                          </p>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground text-right shrink-0">
+                          {new Date(gen.createdAt).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
+                    <History className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Aucun historique de génération
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Status indicator ─────────────────────────────────────────────
+
+function StatusDot({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    not_generated: "bg-muted-foreground",
+    pending: "bg-amber-400",
+    processing: "bg-blue-400 animate-pulse",
+    completed: "bg-emerald-400",
+    error: "bg-destructive",
+  };
+
+  return (
+    <div className={`h-2.5 w-2.5 rounded-full ${colors[status] ?? "bg-muted-foreground"}`} />
+  );
+}
