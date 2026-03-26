@@ -326,7 +326,12 @@ export default function VideoPromptGallery({
       result = result.filter((a) => a.sceneId === sceneFilter);
     }
 
-    if (statusFilter !== "all") {
+    if (statusFilter === "has_video") {
+      result = result.filter((a) => {
+        const s = getAssetStatus(a.id);
+        return s === "completed" || s === "processing" || s === "pending";
+      });
+    } else if (statusFilter !== "all") {
       result = result.filter((a) => getAssetStatus(a.id) === statusFilter);
     }
 
