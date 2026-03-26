@@ -91,9 +91,9 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, onClick 
 
         {/* External badge */}
         {isExternal && (
-          <div className="absolute top-2 left-2">
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-violet-500/15 text-violet-400 border-violet-500/30 backdrop-blur-sm">
-              Upload
+          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-violet-500/15 text-violet-400 border-violet-500/30 backdrop-blur-sm">
+              Ext.
             </Badge>
           </div>
         )}
