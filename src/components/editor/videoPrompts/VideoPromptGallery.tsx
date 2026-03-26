@@ -144,6 +144,7 @@ export default function VideoPromptGallery({
   const [loading, setLoading] = useState(true);
   const [sceneFilter, setSceneFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [defaultPrompt, setDefaultPrompt] = useState<string>("");
 
   // Load external uploads, generations, and VO timepoints
   useEffect(() => {
