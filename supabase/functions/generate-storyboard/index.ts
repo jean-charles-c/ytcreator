@@ -611,7 +611,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { project_id, scene_id, sensitive_level, segment_only } = await req.json();
+    const { project_id, scene_id, sensitive_level, segment_only, prompt_only } = await req.json();
     if (!project_id) throw new Error("Missing project_id");
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
