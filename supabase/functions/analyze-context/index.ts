@@ -172,6 +172,24 @@ RULES:
                     type: "string",
                     description: "Type de narration (ex: documentaire, storytelling, investigation, etc.)",
                   },
+                  objets_recurrents: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", description: "UUID unique de l'objet" },
+                        nom: { type: "string", description: "Nom exact de l'objet (ex: Ferrari 250 GTO, Colisée de Rome)" },
+                        type: { type: "string", enum: ["vehicle", "building", "artifact", "weapon", "object"], description: "Catégorie de l'objet" },
+                        description_visuelle: { type: "string", description: "Description physique détaillée des caractéristiques visuelles distinctives" },
+                        epoque: { type: "string", description: "Époque ou version de l'objet" },
+                        mentions_scenes: { type: "array", items: { type: "number" }, description: "Numéros des scènes où l'objet est mentionné (si connu)" },
+                        identity_prompt: { type: "string", description: "Prompt d'identité visuelle verrouillée pour maintenir la cohérence dans toutes les images" },
+                      },
+                      required: ["id", "nom", "type", "description_visuelle", "epoque", "identity_prompt"],
+                      additionalProperties: false,
+                    },
+                    description: "Liste des objets, véhicules, bâtiments ou artefacts récurrents qui apparaissent dans plusieurs scènes et dont l'identité visuelle doit être strictement maintenue",
+                  },
                 },
                 required: [
                   "sujet_principal",
@@ -188,6 +206,7 @@ RULES:
                   "niveau_technologique",
                   "indices_visuels",
                   "type_narration",
+                  "objets_recurrents",
                 ],
                 additionalProperties: false,
               },
