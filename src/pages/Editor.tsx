@@ -647,8 +647,9 @@ export default function Editor() {
   }, [projectId, stopTask]);
 
   // Generate storyboard (all or single scene)
-  const runStoryboard = useCallback(async (sceneId?: string) => {
+  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean }) => {
     if (!projectId) return;
+    const segmentOnly = options?.segmentOnly ?? false;
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
@@ -668,6 +669,7 @@ export default function Editor() {
               project_id: projectId,
               scene_id: sceneId,
               sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
+              segment_only: segmentOnly,
             }),
           }
         );
@@ -678,7 +680,7 @@ export default function Editor() {
           const { reordered } = reorderShotsByReadingPosition(shotData as Shot[], scenes);
           setShots(reordered);
         }
-        toast.success(`${data?.shots_count ?? 0} shots générés`);
+        toast.success(`${data?.shots_count ?? 0} shots ${segmentOnly ? "découpés" : "générés"}`);
       } catch (e: any) {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
@@ -701,7 +703,7 @@ export default function Editor() {
         return;
       }
       setShots([]);
-      bgStartStoryboard({ projectId, sceneIds });
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
