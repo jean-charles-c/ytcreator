@@ -2472,8 +2472,9 @@ export default function Editor() {
                               {isOpen && (
                                 <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
                                    {/* Scene-level sensitive mode */}
-                                  <details className="rounded-lg border border-border bg-secondary/30 p-3">
-                                    <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
+                                  <details className="rounded-lg border border-border bg-secondary/30 p-3 group/sens">
+                                    <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                                        <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform group-open/sens:rotate-90 shrink-0" />
                                         <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                                         <span className="text-xs font-display font-semibold text-foreground">
                                           Mode sensible — Scène {scene.scene_order}
