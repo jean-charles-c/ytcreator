@@ -123,7 +123,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const generatePrompt = useCallback((id: string) => {
     const obj = objects.find((o) => o.id === id);
     if (!obj) return;
-    updateObject(id, { identity_prompt: IDENTITY_TEMPLATES[obj.type](obj.nom || "[NOM]") });
+    updateObject(id, { identity_prompt: IDENTITY_TEMPLATES[obj.type](obj.nom || "[NOM]", obj.epoque || undefined) });
   }, [objects, updateObject]);
 
   const toggleScene = useCallback((id: string, sceneOrder: number) => {
