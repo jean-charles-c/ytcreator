@@ -1953,10 +1953,10 @@ export default function Editor() {
 
                 {/* Full narration with French translation */}
                 {scriptLanguage !== "fr" && (
-                  <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group">
+                  <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group/trad">
                     <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/trad:rotate-90 shrink-0" />
                       🇫🇷 Traduction française du narratif
-                      <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
                     </summary>
                     <div className="mt-3">
                       {scenes.some((s) => s.source_text_fr) ? (
