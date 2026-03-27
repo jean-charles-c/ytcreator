@@ -671,6 +671,18 @@ export default function Editor() {
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
 
+  // --- Object Registry ---
+  const handleObjectRegistryChange = useCallback(async (objects: RecurringObject[]) => {
+    const updated = { ...globalContext, objets_recurrents: objects };
+    setGlobalContext(updated);
+    if (projectId) {
+      await (supabase as any).from("project_scriptcreator_state").upsert(
+        { project_id: projectId, global_context: updated },
+        { onConflict: "project_id" }
+      );
+    }
+  }, [globalContext, projectId]);
+
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
     setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
