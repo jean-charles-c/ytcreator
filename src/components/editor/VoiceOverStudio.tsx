@@ -64,6 +64,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [audioProgress, setAudioProgress] = useState(0);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [activeProfileName, setActiveProfileName] = useState<string | null>(null);
+  const [forceStandardMode, setForceStandardMode] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
@@ -164,19 +165,20 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       let useMarkedSync = false;
       let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
-      if (expectedShotIds.length > 0 && userEditedScript) {
-        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération.");
+      if (forceStandardMode) {
+        console.info("Force standard mode enabled — skipping shot sync validation.");
+        useMarkedSync = false;
+      } else if (expectedShotIds.length > 0 && userEditedScript) {
+        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération. Ou activez « Forcer sans synchronisation ».");
         return;
-      }
-
-      if (!userEditedScript) {
+      } else if (!userEditedScript) {
         shotSentences = buildShotSentences();
         const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
         const exactShotScript = stripThousandSeparators(buildExactShotScript(getSortedShots()));
         const voMatchesShots = normalizeExactSyncText(voScript) === normalizeExactSyncText(exactShotScript);
 
         if (expectedShotIds.length > 0 && !voMatchesShots) {
-          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le depuis les shots avant de générer.");
+          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le ou activez « Forcer sans synchronisation ».");
           return;
         }
 
@@ -464,6 +466,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                       <p className="text-[10px] text-muted-foreground mt-1">
                         ➜ Cliquez sur « Coller le script généré » puis régénérez la voix off.
                       </p>
+                      <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={forceStandardMode}
+                          onChange={(e) => setForceStandardMode(e.target.checked)}
+                          className="rounded border-amber-400/50 accent-amber-500"
+                        />
+                        <span className="text-[11px] text-amber-200">Forcer la génération sans synchronisation (mode standard)</span>
+                      </label>
                     </div>
                   </div>
                 )}
