@@ -202,11 +202,6 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   {meta.icon} {meta.label}
                 </span>
                 <span className="font-medium text-foreground truncate flex-1">{obj.nom || "(sans nom)"}</span>
-                {obj.mentions_scenes.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    S{obj.mentions_scenes.join(", S")}
-                  </span>
-                )}
                 <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                 <span
                   role="button"
