@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSensitiveModeInstruction } from "../_shared/sensitive-mode.ts";
-import { segmentSceneNarrative, getNarrativeSegments, computeNarrativeShotCount } from "../_shared/narrative-segmentation.ts";
+import { getNarrativeSegments } from "../_shared/narrative-segmentation.ts";
+import { splitTextIntoSentences } from "../_shared/sentence-splitting.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
 
@@ -163,11 +164,7 @@ const CAMERA_TYPES = [
   "Plan de détail scientifique",
 ];
 
-const splitSentences = (text: string): string[] => {
-  const matches = text.match(/[^.!?]+[.!?]?/g) ?? [];
-  const cleaned = matches.map((s) => s.trim()).filter(Boolean);
-  return cleaned.length > 0 ? cleaned : [text.trim()].filter(Boolean);
-};
+const splitSentences = (text: string): string[] => splitTextIntoSentences(text);
 
 const TARGET_CHARS_PER_SHOT = 100;
 
@@ -644,10 +641,6 @@ serve(async (req) => {
     const globalContext = scriptState?.global_context as Record<string, any> | null;
     const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
 
-    // Shot count: narrative segmentation based on sense units
-    const calcShotCount = (text: string): number => {
-      return computeNarrativeShotCount(text);
-    };
 
     const scriptLang = project.script_language || "fr";
     const needsTranslation = scriptLang.toLowerCase() !== "fr";
