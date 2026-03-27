@@ -13,6 +13,8 @@ import {
   Landmark,
   Box,
   RefreshCw,
+  User,
+  MapPin,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────
