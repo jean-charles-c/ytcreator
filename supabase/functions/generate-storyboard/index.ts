@@ -84,6 +84,13 @@ The visual style must resemble high-end historical documentaries such as BBC His
 
 Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
 
+## TEXT RENDERING PROHIBITION — CRITICAL
+Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene.
+Never render, quote, copy, or spell out the narrative wording of the prompt itself.
+Do not turn the descriptive sentence of the prompt into visible text in the image.
+The prompt is only an instruction for image creation, not a source of text to display.
+If written elements appear, they must be context-appropriate and independent from the prompt wording.
+
 ## PHOTOREALISM ENFORCEMENT RULE
 All scenes must resemble frames from a high-budget historical film production.
 Mandatory elements whenever relevant:
@@ -1018,6 +1025,12 @@ serve(async (req) => {
               promptExport = lockPrefix + promptExport;
             }
           }
+        }
+
+        // Inject anti-text-leak suffix
+        const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
+        if (!promptExport.toLowerCase().includes("any visible writing in the image")) {
+          promptExport = promptExport.trimEnd() + "\n\n" + antiTextLeak;
         }
 
         shotRows.push({
