@@ -153,35 +153,74 @@ You MUST return ONLY valid JSON with this exact structure:
       cleaned = cleaned.substring(jsonStart);
 
       // If JSON is truncated (finish_reason=length), try to repair it
-      // Count unmatched braces/brackets and close them
-      let braces = 0, brackets = 0, inString = false, escapeNext = false;
-      for (const ch of cleaned) {
-        if (escapeNext) { escapeNext = false; continue; }
-        if (ch === '\\' && inString) { escapeNext = true; continue; }
-        if (ch === '"') { inString = !inString; continue; }
-        if (inString) continue;
-        if (ch === '{') braces++;
-        else if (ch === '}') braces--;
-        else if (ch === '[') brackets++;
-        else if (ch === ']') brackets--;
+      if (finishReason === "length" || finishReason === "MAX_TOKENS") {
+        console.log("Response truncated by token limit — attempting JSON repair");
+        // If we're inside a string, close it first
+        let inStr = false, esc = false;
+        for (const ch of cleaned) {
+          if (esc) { esc = false; continue; }
+          if (ch === '\\' && inStr) { esc = true; continue; }
+          if (ch === '"') inStr = !inStr;
+        }
+        if (inStr) cleaned += '"';
+
+        // Remove trailing incomplete property (key:value that got cut)
+        // Work backwards to find the last complete JSON structure
+        let lastValid = cleaned.length;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          // Try removing progressively more trailing content
+          const truncated = cleaned.substring(0, lastValid);
+          // Count braces/brackets
+          let b = 0, k = 0, s = false, e = false;
+          for (const ch of truncated) {
+            if (e) { e = false; continue; }
+            if (ch === '\\' && s) { e = true; continue; }
+            if (ch === '"') { s = !s; continue; }
+            if (s) continue;
+            if (ch === '{') b++; else if (ch === '}') b--;
+            if (ch === '[') k++; else if (ch === ']') k--;
+          }
+          // Close it
+          let repaired = truncated
+            .replace(/,\s*$/g, "")
+            .replace(/,\s*"[^"]*"?\s*:?\s*"?[^"{}[\]]*$/s, "");
+          repaired = repaired.replace(/,\s*$/g, "");
+          // Recount after cleanup
+          b = 0; k = 0; s = false; e = false;
+          for (const ch of repaired) {
+            if (e) { e = false; continue; }
+            if (ch === '\\' && s) { e = true; continue; }
+            if (ch === '"') { s = !s; continue; }
+            if (s) continue;
+            if (ch === '{') b++; else if (ch === '}') b--;
+            if (ch === '[') k++; else if (ch === ']') k--;
+          }
+          repaired += "]".repeat(Math.max(0, k)) + "}".repeat(Math.max(0, b));
+          repaired = repaired.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+          try {
+            globalContext = JSON.parse(repaired);
+            console.log("JSON repair succeeded on attempt", attempt + 1);
+            break;
+          } catch {
+            // Cut back to last comma or closing bracket
+            const cutPoint = Math.max(
+              truncated.lastIndexOf(","),
+              truncated.lastIndexOf("}"),
+              truncated.lastIndexOf("]")
+            );
+            if (cutPoint <= 0) throw new Error("Cannot repair truncated JSON");
+            lastValid = cutPoint;
+          }
+        }
+        if (!globalContext!) throw new Error("JSON repair failed after 5 attempts");
+      } else {
+        // Normal (non-truncated) parsing
+        cleaned = cleaned
+          .replace(/,\s*}/g, "}")
+          .replace(/,\s*]/g, "]")
+          .replace(/[\x00-\x1F\x7F]/g, "");
+        globalContext = JSON.parse(cleaned);
       }
-
-      // Remove any trailing incomplete key-value (after last comma in truncated JSON)
-      if (braces > 0 || brackets > 0) {
-        console.log(`JSON truncated: ${braces} unclosed braces, ${brackets} unclosed brackets — repairing`);
-        // Remove trailing incomplete value after last complete entry
-        cleaned = cleaned.replace(/,\s*"[^"]*"?\s*:?\s*"?[^"{}[\]]*$/s, "");
-        // Close arrays then objects
-        cleaned += "]".repeat(Math.max(0, brackets)) + "}".repeat(Math.max(0, braces));
-      }
-
-      // Fix common LLM JSON issues
-      cleaned = cleaned
-        .replace(/,\s*}/g, "}")
-        .replace(/,\s*]/g, "]")
-        .replace(/[\x00-\x1F\x7F]/g, "");
-
-      globalContext = JSON.parse(cleaned);
     } catch (parseErr) {
       console.error("Failed to parse JSON response (length=" + content.length + "):", content.slice(0, 1500));
       console.error("Parse error:", parseErr);
