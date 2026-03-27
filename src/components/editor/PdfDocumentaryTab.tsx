@@ -594,14 +594,18 @@ export default function PdfDocumentaryTab({
     }
   }, [script, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
 
-  // VO Optimize — rewrite for real voiceover feel
+  // VO Optimize — rewrite each section individually for deep rewriting
   const handleVoOptimize = useCallback(async () => {
-    if (!script || script.trim().length < 100) {
-      toast.error("Script trop court pour l'optimisation VO");
+    // Filter core narrative sections only (no editorial)
+    const coreSections = sections.filter(
+      (s) => !["transitions", "style_check", "risk_check"].includes(s.key) && s.content.trim().length > 10
+    );
+    if (coreSections.length === 0) {
+      toast.error("Aucune section narrative à optimiser");
       return;
     }
     setVoOptimizing(true);
-    toast.info("Optimisation voix-off en cours…");
+    toast.info(`Optimisation voix-off section par section (${coreSections.length} blocs)…`);
 
     try {
       const response = await fetch(
@@ -613,7 +617,10 @@ export default function PdfDocumentaryTab({
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ script, language: scriptLanguage }),
+          body: JSON.stringify({
+            sections: coreSections.map((s) => ({ key: s.key, label: s.label, content: s.content })),
+            language: scriptLanguage,
+          }),
         }
       );
 
@@ -626,7 +633,8 @@ export default function PdfDocumentaryTab({
       if (!reader) throw new Error("No stream");
       const decoder = new TextDecoder();
       let buffer = "";
-      let result = "";
+      let processedCount = 0;
+      const updatedSections = new Map<string, string>();
 
       while (true) {
         const { done, value } = await reader.read();
@@ -643,15 +651,26 @@ export default function PdfDocumentaryTab({
           if (jsonStr === "[DONE]") break;
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) result += content;
+            if (parsed.section_key && parsed.content) {
+              const optimizedContent = applyFrenchTypography(parsed.content.trim());
+              updatedSections.set(parsed.section_key, optimizedContent);
+              processedCount++;
+              // Update section in real-time
+              onSectionContentChange(parsed.section_key, optimizedContent);
+              toast.info(`VO optimisée : ${parsed.section_key} (${processedCount}/${coreSections.length})`);
+            }
           } catch { /* partial chunk */ }
         }
       }
 
-      if (!result.trim()) throw new Error("Empty VO-optimized result");
+      if (updatedSections.size === 0) throw new Error("Aucune section optimisée");
 
-      const optimized = applyFrenchTypography(result.trim());
+      // Rebuild full script from updated sections
+      const finalSections = sections.map((s) => ({
+        ...s,
+        content: updatedSections.get(s.key) || s.content,
+      }));
+      const optimized = reassembleSections(finalSections);
       onScriptChange(optimized);
 
       const versionStyle = narrativeStyleId === "custom" ? (customStyleLabel || "custom") : narrativeStyleId;
@@ -661,14 +680,14 @@ export default function PdfDocumentaryTab({
         return [...prev, { id: nextId, content: optimized, style: `${versionStyle} · VO optimisée` }];
       });
 
-      toast.success("Script optimisé voix-off et sauvegardé comme nouvelle version");
+      toast.success(`Script VO optimisé (${updatedSections.size} sections réécrites)`);
     } catch (e: any) {
       console.error("VO optimize error:", e);
       toast.error(e?.message || "Erreur lors de l'optimisation VO");
     } finally {
       setVoOptimizing(false);
     }
-  }, [script, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
+  }, [sections, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange, onSectionContentChange]);
 
   // Translate a section to French
   const handleTranslateSection = useCallback(async (sectionKey: string) => {
