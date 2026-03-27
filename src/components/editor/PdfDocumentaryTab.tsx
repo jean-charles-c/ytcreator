@@ -11,6 +11,7 @@ import NarrativeScriptBlock, { type ScriptVersion } from "./NarrativeScriptBlock
 import ChapterCollapse from "./ChapterCollapse";
 import type { ChapterListState } from "./chapterTypes";
 import * as pdfjsLib from "pdfjs-dist";
+import { applyFrenchTypography } from "./frenchTypography";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 

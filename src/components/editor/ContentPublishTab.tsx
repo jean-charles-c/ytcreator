@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { Tables } from "@/integrations/supabase/types";
+import { applyFrenchTypography } from "./frenchTypography";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;

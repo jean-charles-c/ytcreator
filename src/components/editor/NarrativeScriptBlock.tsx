@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import SectionCard, { type NarrativeSection, type SectionHistoryEntry, EDITORIAL_SECTIONS } from "./SectionCard";
 import { isEditorialSection } from "./canonicalScriptTypes";
+import { applyFrenchTypography } from "./frenchTypography";
 
 /* ── Types ─────────────────────────────────────────── */
 

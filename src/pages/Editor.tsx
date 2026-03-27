@@ -50,7 +50,7 @@ import RsearchEngineTab from "@/components/editor/RsearchEngineTab";
 import VideoEditTab from "@/components/editor/VideoEditTab";
 import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
 import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sensitiveMode";
-import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
+import { applyFrenchTypography } from "@/components/editor/frenchTypography";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
