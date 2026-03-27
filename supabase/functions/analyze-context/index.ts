@@ -55,7 +55,10 @@ RULES:
 - Only extract information that is EXPLICITLY present or CLEARLY inferable from the script text.
 - Do NOT invent characters, locations, or time periods that are not supported by the text.
 - If a field cannot be determined, use "Non déterminé" rather than guessing.
-- Be precise and concise in your descriptions.
+- Be CONCISE: each string field should be 1-2 sentences max, not paragraphs.
+- Keep "role" descriptions under 10 words.
+- Keep "description_visuelle" under 30 words.
+- Keep "identity_prompt" under 80 words.
 
 RECURRING OBJECTS DETECTION (CRITICAL):
 - Identify any object, vehicle, building, artifact, or weapon that appears or is referenced across MULTIPLE scenes/sections of the script.
