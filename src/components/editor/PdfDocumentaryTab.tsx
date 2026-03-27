@@ -1183,7 +1183,9 @@ export default function PdfDocumentaryTab({
         onVersionPreviewToggle={setShowVersionPreviewId}
         showVersionPreviewId={showVersionPreviewId}
         onRegenerate={() => runFullScriptGeneration(true)}
-        canRegenerate={!generatingScript}
+        canRegenerate={!generatingScript && !humanizing}
+        onHumanize={() => handleHumanize()}
+        humanizing={humanizing}
         analyzingScript={analyzingScript}
         onAnalyzeScript={() => handleAnalyzeScript()}
         toolbarSlot={
