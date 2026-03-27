@@ -254,7 +254,8 @@ function mergeShortSegments(
       if (result.length > 0) {
         const prev = result[result.length - 1];
         const mergedLen = prev.text.length + current.text.length + 1;
-        if (mergedLen <= MAX_CHARS_SOFT) {
+        const hasInternalSentenceBoundary = /[.!?]\s+\S/.test(prev.text);
+        if (mergedLen <= MAX_CHARS_SOFT && !hasInternalSentenceBoundary) {
           prev.text = prev.text + " " + current.text;
           continue;
         }
