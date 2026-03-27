@@ -178,7 +178,7 @@ ${script}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model,
         messages: [
           { role: "system", content: VO_SYSTEM },
           { role: "user", content: userPrompt },
