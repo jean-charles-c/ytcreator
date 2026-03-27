@@ -7,37 +7,93 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type JsonRecord = Record<string, unknown>;
+// ── Tool definitions ─────────────────────────────────────────────
 
-function extractJsonObject(content: string) {
-  let cleaned = content
-    .replace(/```json\s*/gi, "")
-    .replace(/```\s*/g, "")
-    .trim();
+const contextTool = {
+  type: "function" as const,
+  function: {
+    name: "extract_global_context",
+    description: "Extracts the global context from a narrative script. All fields must be in French.",
+    parameters: {
+      type: "object",
+      properties: {
+        sujet_principal: { type: "string" },
+        lieu_principal: { type: "string" },
+        epoque: { type: "string" },
+        personnages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              nom: { type: "string" },
+              role: { type: "string" },
+            },
+            required: ["nom", "role"],
+            additionalProperties: false,
+          },
+        },
+        nombre_personnages: { type: "number" },
+        contexte_narratif: { type: "string" },
+        resume_narratif: { type: "string" },
+        ton: { type: "string" },
+        ambiance: { type: "string" },
+        type_decor: { type: "string" },
+        marqueurs_culturels: { type: "string" },
+        niveau_technologique: { type: "string" },
+        indices_visuels: { type: "array", items: { type: "string" } },
+        type_narration: { type: "string" },
+      },
+      required: [
+        "sujet_principal", "lieu_principal", "epoque", "personnages",
+        "nombre_personnages", "contexte_narratif", "resume_narratif",
+        "ton", "ambiance", "type_decor", "marqueurs_culturels",
+        "niveau_technologique", "indices_visuels", "type_narration",
+      ],
+      additionalProperties: false,
+    },
+  },
+};
 
-  const jsonStart = cleaned.indexOf("{");
-  const jsonEnd = cleaned.lastIndexOf("}");
-  if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
-    throw new Error("No JSON object found in response");
-  }
+const objectsTool = {
+  type: "function" as const,
+  function: {
+    name: "extract_recurring_objects",
+    description: "Extracts recurring visual objects from a narrative script.",
+    parameters: {
+      type: "object",
+      properties: {
+        objets_recurrents: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              nom: { type: "string" },
+              type: { type: "string", enum: ["vehicle", "building", "artifact", "weapon", "object"] },
+              description_visuelle: { type: "string" },
+              epoque: { type: "string" },
+              mentions_scenes: { type: "array", items: { type: "number" } },
+              identity_prompt: { type: "string" },
+            },
+            required: ["id", "nom", "type", "description_visuelle", "epoque", "identity_prompt"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["objets_recurrents"],
+      additionalProperties: false,
+    },
+  },
+};
 
-  cleaned = cleaned.slice(jsonStart, jsonEnd + 1)
-    .replace(/,\s*}/g, "}")
-    .replace(/,\s*]/g, "]")
-    .replace(/[\x00-\x1F\x7F]/g, "");
+// ── Helper ───────────────────────────────────────────────────────
 
-  return JSON.parse(cleaned) as JsonRecord;
-}
-
-async function callLovableAI({
-  apiKey,
-  systemPrompt,
-  userPrompt,
-}: {
-  apiKey: string;
-  systemPrompt: string;
-  userPrompt: string;
-}) {
+async function callWithToolCall(
+  apiKey: string,
+  systemPrompt: string,
+  userPrompt: string,
+  tool: typeof contextTool | typeof objectsTool,
+): Promise<Record<string, unknown>> {
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -45,14 +101,15 @@ async function callLovableAI({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      temperature: 0.1,
+      model: "google/gemini-2.5-flash",
+      temperature: 0.15,
       max_tokens: 8192,
-      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
+      tools: [tool],
+      tool_choice: { type: "function", function: { name: tool.function.name } },
     }),
   });
 
@@ -61,21 +118,21 @@ async function callLovableAI({
     console.error("AI gateway error:", response.status, errText);
     if (response.status === 429) throw new Error("Trop de requêtes, réessayez dans quelques instants.");
     if (response.status === 402) throw new Error("Crédits AI épuisés.");
-    throw new Error(`AI gateway error: ${response.status}`);
+    throw new Error("AI gateway error: " + response.status);
   }
 
   const aiData = await response.json();
-  const content = aiData.choices?.[0]?.message?.content;
-  const finishReason = aiData.choices?.[0]?.finish_reason;
-  console.log(`AI response: finish_reason=${finishReason}, content_length=${content?.length || 0}`);
+  const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-  if (!content) {
-    console.error("No content in AI response:", JSON.stringify(aiData).slice(0, 500));
-    throw new Error("L'analyse n'a pas retourné de contenu valide");
+  if (!toolCall || toolCall.function?.name !== tool.function.name) {
+    console.error("No valid tool call:", JSON.stringify(aiData).slice(0, 500));
+    throw new Error("L'IA n'a pas retourné de résultat structuré");
   }
 
-  return extractJsonObject(content);
+  return JSON.parse(toolCall.function.arguments);
 }
+
+// ── Main ─────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -84,8 +141,7 @@ serve(async (req) => {
     const { project_id } = await req.json();
     if (!project_id) {
       return new Response(JSON.stringify({ error: "project_id manquant" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -102,128 +158,73 @@ serve(async (req) => {
 
     if (projErr || !project) {
       return new Response(JSON.stringify({ error: "Projet introuvable" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const narration = project.narration?.trim();
     if (!narration || narration.length < 100) {
-      return new Response(JSON.stringify({ error: "Script trop court pour analyse contextuelle (min 100 caractères)" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Script trop court (min 100 caractères)" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const langMap: Record<string, string> = {
-      en: "English",
-      fr: "French",
-      es: "Spanish",
-      de: "German",
-      pt: "Portuguese",
-      it: "Italian",
-    };
+    const langMap: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
     const langLabel = langMap[project.script_language] || "English";
 
-    const baseProjectPrompt = `Titre du projet : ${project.title || "Sans titre"}
-Sujet : ${project.subject || "Non précisé"}
+    const userPrompt = `Titre : ${project.title || "Sans titre"}\nSujet : ${project.subject || "Non précisé"}\n\n--- SCRIPT ---\n${narration}`;
 
---- SCRIPT ---
-${narration}`;
+    // ── Call 1: Global context (same approach as before) ─────────
+    console.log("=== Step 1: Global context extraction ===");
+    const globalCtx = await callWithToolCall(
+      LOVABLE_API_KEY,
+      `You are a script analysis engine. You receive a YouTube documentary script written in ${langLabel}.
+Extract the global context. All values in French. Be concise. If unknown, use "Non déterminé".`,
+      `Analyse ce script et extrais le contexte global.\n\n${userPrompt}`,
+      contextTool,
+    );
 
-    const globalContext = await callLovableAI({
-      apiKey: LOVABLE_API_KEY,
-      systemPrompt: `You analyze a complete YouTube documentary script written in ${langLabel}.
-Return ONLY valid JSON.
-All values must be in French.
-Be concise.
-Do not invent unsupported facts.
-If unknown, use "Non déterminé".
-
-Return exactly this shape:
-{
-  "sujet_principal": "string",
-  "lieu_principal": "string",
-  "epoque": "string",
-  "personnages": [{"nom": "string", "role": "string"}],
-  "nombre_personnages": 0,
-  "contexte_narratif": "string",
-  "resume_narratif": "string",
-  "ton": "string",
-  "ambiance": "string",
-  "type_decor": "string",
-  "marqueurs_culturels": "string",
-  "niveau_technologique": "string",
-  "indices_visuels": ["string"],
-  "type_narration": "string"
-}`,
-      userPrompt: `Analyse ce script complet et extrais le contexte global en JSON.
-${baseProjectPrompt}`,
-    });
-
-    const objectData = await callLovableAI({
-      apiKey: LOVABLE_API_KEY,
-      systemPrompt: `You analyze a complete YouTube documentary script written in ${langLabel}.
-Return ONLY valid JSON.
-All values must be in French except the identity lock prompts, which must stay in English.
-Be concise.
-Only include objects that recur across multiple scenes or sections.
-If none exist, return an empty array.
-
-Return exactly this shape:
-{
-  "objets_recurrents": [
-    {
-      "id": "obj-xxxx",
-      "nom": "string",
-      "type": "vehicle|building|artifact|weapon|object",
-      "description_visuelle": "string",
-      "epoque": "string",
-      "mentions_scenes": [1,2],
-      "identity_prompt": "string"
+    // ── Call 2: Recurring objects ────────────────────────────────
+    console.log("=== Step 2: Recurring objects extraction ===");
+    let objectsResult: Record<string, unknown> = { objets_recurrents: [] };
+    try {
+      objectsResult = await callWithToolCall(
+        LOVABLE_API_KEY,
+        `You are a visual continuity engine. You receive a YouTube documentary script written in ${langLabel}.
+Identify objects, vehicles, buildings, or artifacts that appear across MULTIPLE scenes.
+For each, generate an "identity_prompt" that locks the visual identity in English.
+Use "obj-" prefix for IDs. If no recurring objects, return an empty array.`,
+        `Identifie les objets récurrents de ce script.\n\n${userPrompt}`,
+        objectsTool,
+      );
+    } catch (objErr) {
+      console.warn("Objects extraction failed (non-blocking):", objErr);
     }
-  ]
-}`,
-      userPrompt: `Identifie uniquement les objets récurrents de ce script et retourne seulement le JSON demandé.
-${baseProjectPrompt}`,
-    });
 
-    const mergedContext: JsonRecord = {
-      sujet_principal: globalContext.sujet_principal || "Non déterminé",
-      lieu_principal: globalContext.lieu_principal || "Non déterminé",
-      epoque: globalContext.epoque || "Non déterminé",
-      personnages: Array.isArray(globalContext.personnages) ? globalContext.personnages : [],
-      nombre_personnages: Array.isArray(globalContext.personnages) ? globalContext.personnages.length : 0,
-      contexte_narratif: globalContext.contexte_narratif || "Non déterminé",
-      resume_narratif: globalContext.resume_narratif || "Non déterminé",
-      ton: globalContext.ton || "Non déterminé",
-      ambiance: globalContext.ambiance || "Non déterminé",
-      type_decor: globalContext.type_decor || "Non déterminé",
-      marqueurs_culturels: globalContext.marqueurs_culturels || "Non déterminé",
-      niveau_technologique: globalContext.niveau_technologique || "Non déterminé",
-      indices_visuels: Array.isArray(globalContext.indices_visuels) ? globalContext.indices_visuels : [],
-      type_narration: globalContext.type_narration || "Non déterminé",
-      objets_recurrents: Array.isArray(objectData.objets_recurrents) ? objectData.objets_recurrents : [],
+    // ── Merge & persist ─────────────────────────────────────────
+    const merged: Record<string, unknown> = {
+      ...globalCtx,
+      personnages: Array.isArray(globalCtx.personnages) ? globalCtx.personnages : [],
+      nombre_personnages: Array.isArray(globalCtx.personnages) ? globalCtx.personnages.length : 0,
+      indices_visuels: Array.isArray(globalCtx.indices_visuels) ? globalCtx.indices_visuels : [],
+      objets_recurrents: Array.isArray(objectsResult.objets_recurrents) ? objectsResult.objets_recurrents : [],
     };
 
     const { error: upsertErr } = await sb
       .from("project_scriptcreator_state")
-      .upsert({ project_id, global_context: mergedContext }, { onConflict: "project_id" });
+      .upsert({ project_id, global_context: merged }, { onConflict: "project_id" });
 
     if (upsertErr) console.error("Failed to persist global_context:", upsertErr);
 
-    console.log(
-      `ContexteGlobal built: ${Array.isArray(mergedContext.personnages) ? mergedContext.personnages.length : 0} personnages, ${Array.isArray(mergedContext.objets_recurrents) ? mergedContext.objets_recurrents.length : 0} objets récurrents`
-    );
+    console.log(`ContexteGlobal: ${(merged.personnages as any[]).length} personnages, ${(merged.objets_recurrents as any[]).length} objets récurrents`);
 
-    return new Response(JSON.stringify({ global_context: mergedContext }), {
+    return new Response(JSON.stringify({ global_context: merged }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("analyze-context error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erreur inconnue" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
