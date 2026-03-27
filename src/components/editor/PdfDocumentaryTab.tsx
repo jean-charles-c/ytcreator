@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
 import { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
-import NarrativeScriptBlock, { type ScriptVersion } from "./NarrativeScriptBlock";
+import NarrativeScriptBlock, { type ScriptVersion, getPersistedScriptAiModel, persistScriptAiModel, type ScriptAiModelId } from "./NarrativeScriptBlock";
 import ChapterCollapse from "./ChapterCollapse";
 import type { ChapterListState } from "./chapterTypes";
 import * as pdfjsLib from "pdfjs-dist";
