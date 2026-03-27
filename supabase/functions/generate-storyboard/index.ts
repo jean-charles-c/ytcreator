@@ -659,6 +659,14 @@ serve(async (req) => {
       `SCRIPT LANGUAGE: ${scriptLang}`,
     ].filter(Boolean).join("\n");
 
+    // Build recurring objects identity block for AI context
+    const objectIdentityBlock = recurringObjects.length > 0
+      ? "\n\nRECURRING OBJECT IDENTITY LOCKS (apply to every shot where the object appears):\n" +
+        recurringObjects.map((obj: any) =>
+          `- ${obj.nom} (${obj.type}, ${obj.epoque || "N/A"})${Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0 ? ` [Scenes: ${obj.mentions_scenes.join(", ")}]` : ""}:\n  ${obj.identity_prompt || ""}\n  Visual details: ${obj.description_visuelle || ""}`
+        ).join("\n")
+      : "";
+
     const sceneDescriptions = scenes.map((s: any) => {
       const narrativeSegments = getNarrativeSegments(s.source_text);
       const shotCount = Math.max(1, narrativeSegments.length);
@@ -683,12 +691,23 @@ serve(async (req) => {
         `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
       ].filter(Boolean).join("\n") : "";
 
+      // Check which recurring objects are relevant for this scene
+      const sceneObjects = recurringObjects.filter((obj: any) => {
+        if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+          return obj.mentions_scenes.includes(s.scene_order);
+        }
+        return false;
+      });
+      const sceneObjectBlock = sceneObjects.length > 0
+        ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: ${sceneObjects.map((o: any) => o.nom).join(", ")} — APPLY THEIR IDENTITY LOCKS`
+        : "";
+
       // List pre-computed narrative fragments so the AI knows exactly which text each shot must illustrate
       const fragmentList = narrativeSegments
         .map((seg, idx) => `    Fragment ${idx + 1}: "${seg}"`)
         .join("\n");
 
-      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
