@@ -2060,10 +2060,10 @@ export default function Editor() {
             {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
             {scenes.length > 0 && !generatingStoryboard && (
               <details className="mb-4 rounded border border-border bg-card p-3 sm:p-4 group/details">
-                <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/details:rotate-90 shrink-0" />
-                  🛡 Toutes les scènes d'un coup
-                  <span className="text-[10px] text-muted-foreground font-normal">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
+                <summary className="text-sm font-medium text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/details:rotate-90 shrink-0" />
+                  <Layers className="h-4 w-4 text-primary" />
+                  Actions communes à toutes les scènes
                 </summary>
                 <div className="space-y-3 mt-3">
                 <ScopeOverrideControl
@@ -2079,8 +2079,8 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
-                      <ImageIcon className="h-4 w-4" /> Voir les visuels
+                    <Button variant="default" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px] gap-1.5">
+                      <ImageIcon className="h-4 w-4" /> Voir tous les visuels
                     </Button>
                     {scriptLanguage !== "fr" && (
                       <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
@@ -2726,9 +2726,9 @@ export default function Editor() {
 
               {/* QA Contrôle qualité */}
               <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3 group/qa">
-                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="h-3 w-3 transition-transform group-open/qa:rotate-90 shrink-0" />
-                  <ShieldCheck className="h-3.5 w-3.5" />
+                <summary className="text-sm font-medium text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/qa:rotate-90 shrink-0" />
+                  <ShieldCheck className="h-4 w-4 text-primary" />
                   Contrôle qualité
                   {qaCounts.errors > 0 && (
                     <span className="ml-1.5 text-[10px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
@@ -2753,9 +2753,10 @@ export default function Editor() {
 
               {/* Manifest Timing */}
               <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3 group/timing">
-                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="h-3 w-3 transition-transform group-open/timing:rotate-90 shrink-0" />
-                  Manifest Timing (synchronisation audio/image)
+                <summary className="text-sm font-medium text-foreground cursor-pointer hover:text-foreground/80 transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/timing:rotate-90 shrink-0" />
+                  <ArrowUpDown className="h-4 w-4 text-primary" />
+                  Manifest Timing
                 </summary>
                 <div className="mt-3">
                   <ManifestTimingPanel projectId={projectId!} manifest={storyboardManifest!} />
