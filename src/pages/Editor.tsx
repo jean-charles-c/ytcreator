@@ -647,8 +647,9 @@ export default function Editor() {
   }, [projectId, stopTask]);
 
   // Generate storyboard (all or single scene)
-  const runStoryboard = useCallback(async (sceneId?: string) => {
+  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean }) => {
     if (!projectId) return;
+    const segmentOnly = options?.segmentOnly ?? false;
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
@@ -668,6 +669,7 @@ export default function Editor() {
               project_id: projectId,
               scene_id: sceneId,
               sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
+              segment_only: segmentOnly,
             }),
           }
         );
@@ -678,7 +680,7 @@ export default function Editor() {
           const { reordered } = reorderShotsByReadingPosition(shotData as Shot[], scenes);
           setShots(reordered);
         }
-        toast.success(`${data?.shots_count ?? 0} shots générés`);
+        toast.success(`${data?.shots_count ?? 0} shots ${segmentOnly ? "découpés" : "générés"}`);
       } catch (e: any) {
         console.error(e);
         toast.error(e?.message || "Erreur inattendue");
@@ -701,7 +703,7 @@ export default function Editor() {
         return;
       }
       setShots([]);
-      bgStartStoryboard({ projectId, sceneIds });
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
@@ -1868,9 +1870,9 @@ export default function Editor() {
                   <Button variant="outline" size="sm" onClick={runSegmentation} disabled={segmenting} className="min-h-[40px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
-                  <Button variant="hero" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                  <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                    VisualPrompts
+                    Créer les SHOTS
                   </Button>
                 </div>
               )}
@@ -2047,9 +2049,9 @@ export default function Editor() {
                   <Button variant="outline" onClick={runSegmentation} disabled={segmenting} className="min-h-[44px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
-                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px]">
+                  <Button variant="hero" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[44px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                    {generatingStoryboard ? "Génération..." : "Générer les VisualPrompts"}
+                    {generatingStoryboard ? "Découpage..." : "Créer les SHOTS"}
                   </Button>
                 </div>
               </>
@@ -2117,8 +2119,12 @@ export default function Editor() {
                 {/* Actions globales shots */}
                 <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
                   <div className="flex gap-2 flex-wrap items-center">
-                    <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
-                      <Play className="h-4 w-4" /> Re-générer tous les shots
+                    <Button variant="outline" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
+                      <Play className="h-4 w-4" /> Redécouper tous les shots
+                    </Button>
+                    <Button variant="hero" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                      {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
+                      Générer tous les prompts
                     </Button>
                     <Button variant="default" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px] gap-1.5">
                       <ImageIcon className="h-4 w-4" /> Voir tous les visuels
@@ -2570,11 +2576,22 @@ export default function Editor() {
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
                                       disabled={isRegenerating}
-                                      onClick={() => runStoryboard(scene.id)}
+                                      onClick={() => runStoryboard(scene.id, { segmentOnly: true })}
                                       title="Refaire tout le découpage des shots de cette scène"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                      Refaire le découpage des shots
+                                      Refaire le découpage
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs px-2 gap-1"
+                                      disabled={isRegenerating}
+                                      onClick={() => runStoryboard(scene.id)}
+                                      title="Régénérer les prompts visuels de cette scène via IA"
+                                    >
+                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
+                                      Générer les prompts
                                     </Button>
                                     <button
                                       onClick={async () => {

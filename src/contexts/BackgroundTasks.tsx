@@ -96,6 +96,7 @@ export interface SegmentationParams {
 export interface StoryboardParams {
   projectId: string;
   sceneIds: string[];
+  segmentOnly?: boolean;
 }
 
 const BackgroundTasksContext = createContext<BackgroundTasksContextValue | null>(null);
@@ -434,7 +435,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                   apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                   "x-supabase-client-platform": "web",
                 },
-                body: JSON.stringify({ project_id: params.projectId, scene_id: sid }),
+                body: JSON.stringify({ project_id: params.projectId, scene_id: sid, segment_only: params.segmentOnly ?? false }),
                 signal: ac.signal,
               }
             );
