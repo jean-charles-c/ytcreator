@@ -716,6 +716,42 @@ export default function Editor() {
     }
   }, [projectId]);
 
+  const handleSearchMoreRecurrences = useCallback(async (excludeNames: string[]) => {
+    if (!projectId) return;
+    setIsContextAnalyzing(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-context`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ project_id: projectId, exclude_names: excludeNames, search_more: true }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        toast.error("Recherche échouée : " + (data?.error || "Erreur inconnue"));
+        return;
+      }
+      setGlobalContext(data.global_context);
+      const newCount = data.new_objects_count || 0;
+      if (newCount > 0) {
+        toast.success(`${newCount} nouvelle(s) récurrence(s) trouvée(s)`);
+      } else {
+        toast.info("Aucune nouvelle récurrence trouvée");
+      }
+    } catch (e: any) {
+      toast.error("Erreur : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setIsContextAnalyzing(false);
+    }
+  }, [projectId]);
+
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
     setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
@@ -1915,6 +1951,7 @@ export default function Editor() {
                   onChange={handleObjectRegistryChange}
                   sceneCount={scenes.length}
                   onReanalyze={handleReanalyzeContext}
+                  onSearchMore={handleSearchMoreRecurrences}
                   isAnalyzing={isContextAnalyzing}
                 />
 

@@ -160,7 +160,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { project_id } = await req.json();
+    const { project_id, exclude_names, search_more } = await req.json();
     if (!project_id) {
       return new Response(JSON.stringify({ error: "project_id manquant" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -203,6 +203,11 @@ serve(async (req) => {
     );
 
     console.log("=== Step 2: Recurring objects, characters & locations extraction ===");
+    const excludeList = Array.isArray(exclude_names) && exclude_names.length > 0 ? exclude_names : [];
+    const excludeInstruction = excludeList.length > 0
+      ? `\n\nIMPORTANT: The following elements have ALREADY been identified. Do NOT return them again:\n${excludeList.map((n: string) => `- ${n}`).join("\n")}\nFind OTHER recurring elements that are NOT in this list.`
+      : "";
+    
     let objectsResult: Record<string, unknown> = { objets_recurrents: [] };
     try {
       objectsResult = await callObjectsJson(
@@ -221,6 +226,7 @@ For each element, generate an identity_prompt in English following these templat
 - For characters: Start with "Subject: [name] during [period]" then CHARACTER IDENTITY LOCK + TIME PERIOD LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT
 - For locations: Start with "Subject: [name] during [period]" then LOCATION IDENTITY LOCK + TIME PERIOD / HISTORICAL STATE LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT  
 - For objects/vehicles: Start with "Subject: [name] [version]" then OBJECT IDENTITY LOCK + VERSION / TIME PERIOD LOCK + MANDATORY VISUAL FEATURES + NO OBJECT DRIFT
+${excludeInstruction}
 
 Return exactly:
 {
@@ -240,10 +246,27 @@ Return exactly:
 - Les personnages nommés qui reviennent dans plusieurs passages
 - Les lieux précis qui apparaissent dans plusieurs scènes
 - Les véhicules, objets, artefacts récurrents
-Pour chaque élément, génère un identity_prompt structuré en anglais.\n\n${userPrompt}`,
+Pour chaque élément, génère un identity_prompt structuré en anglais.${excludeInstruction}\n\n${userPrompt}`,
       );
     } catch (objErr) {
       console.warn("Objects extraction failed (non-blocking):", objErr);
+    }
+
+    const newObjects = Array.isArray(objectsResult.objets_recurrents) ? objectsResult.objets_recurrents : [];
+
+    // If search_more mode, merge new objects with existing ones instead of replacing
+    let finalObjects: unknown[];
+    if (search_more && excludeList.length > 0) {
+      // Load existing state to get current objects
+      const { data: existingState } = await sb
+        .from("project_scriptcreator_state")
+        .select("global_context")
+        .eq("project_id", project_id)
+        .single();
+      const existingObjects = (existingState?.global_context as any)?.objets_recurrents || [];
+      finalObjects = [...existingObjects, ...newObjects];
+    } else {
+      finalObjects = newObjects;
     }
 
     const merged: Record<string, unknown> = {
@@ -251,7 +274,7 @@ Pour chaque élément, génère un identity_prompt structuré en anglais.\n\n${u
       personnages: Array.isArray(globalCtx.personnages) ? globalCtx.personnages : [],
       nombre_personnages: Array.isArray(globalCtx.personnages) ? globalCtx.personnages.length : 0,
       indices_visuels: Array.isArray(globalCtx.indices_visuels) ? globalCtx.indices_visuels : [],
-      objets_recurrents: Array.isArray(objectsResult.objets_recurrents) ? objectsResult.objets_recurrents : [],
+      objets_recurrents: finalObjects,
     };
 
     const { error: upsertErr } = await sb
@@ -260,9 +283,9 @@ Pour chaque élément, génère un identity_prompt structuré en anglais.\n\n${u
 
     if (upsertErr) console.error("Failed to persist global_context:", upsertErr);
 
-    console.log(`ContexteGlobal: ${(merged.personnages as any[]).length} personnages, ${(merged.objets_recurrents as any[]).length} objets récurrents`);
+    console.log(`ContexteGlobal: ${(merged.personnages as any[]).length} personnages, ${finalObjects.length} objets récurrents (${newObjects.length} nouveaux)`);
 
-    return new Response(JSON.stringify({ global_context: merged }), {
+    return new Response(JSON.stringify({ global_context: merged, new_objects_count: newObjects.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

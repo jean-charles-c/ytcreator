@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   ChevronDown,
-  Save,
   Car,
   Building2,
   Landmark,
@@ -15,6 +14,8 @@ import {
   RefreshCw,
   User,
   MapPin,
+  X,
+  Search,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -83,10 +84,11 @@ interface ObjectRegistryPanelProps {
   onChange: (objects: RecurringObject[]) => void;
   sceneCount: number;
   onReanalyze?: () => void;
+  onSearchMore?: (excludeNames: string[]) => void;
   isAnalyzing?: boolean;
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, isAnalyzing }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const addObject = useCallback(() => {
@@ -194,6 +196,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   </span>
                 )}
                 <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                <span
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); removeObject(obj.id); }}
+                  className="ml-1 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  title="Supprimer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </span>
               </button>
 
               {/* Expanded form */}
@@ -301,6 +311,18 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             <Button variant="secondary" size="sm" onClick={onReanalyze} disabled={isAnalyzing} className="flex-1 min-h-[40px] text-xs">
               <RefreshCw className={`h-3.5 w-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
               {isAnalyzing ? "Analyse…" : "Relancer l'analyse IA"}
+            </Button>
+          )}
+          {onSearchMore && objects.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onSearchMore(objects.map(o => o.nom).filter(Boolean))}
+              disabled={isAnalyzing}
+              className="flex-1 min-h-[40px] text-xs"
+            >
+              <Search className="h-3.5 w-3.5" />
+              {isAnalyzing ? "Recherche…" : "Chercher d'autres récurrences"}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
