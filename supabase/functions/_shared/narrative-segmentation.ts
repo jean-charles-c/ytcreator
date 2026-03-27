@@ -277,8 +277,11 @@ function mergeShortSegments(
       if (result.length > 0) {
         const prev = result[result.length - 1];
         const mergedLen = prev.text.length + current.text.length + 1;
-        // Merge with previous if result stays within soft max
-        if (mergedLen <= MAX_CHARS_SOFT) {
+        // Don't merge backward if prev already contains an internal sentence boundary
+        // (i.e. a period/!/? followed by a space) — this prevents gluing 3+ sentences together
+        const hasInternalSentenceBoundary = /[.!?]\s+\S/.test(prev.text);
+        // Merge with previous if result stays within soft max AND prev is not already multi-sentence
+        if (mergedLen <= MAX_CHARS_SOFT && !hasInternalSentenceBoundary) {
           prev.text = prev.text + " " + current.text;
           continue;
         }
