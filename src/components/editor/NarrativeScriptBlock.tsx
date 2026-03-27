@@ -112,6 +112,8 @@ export default function NarrativeScriptBlock({
   canRegenerate,
   onHumanize,
   humanizing,
+  onVoOptimize,
+  voOptimizing,
   analyzingScript,
   onAnalyzeScript,
   toolbarSlot,
