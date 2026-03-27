@@ -2119,8 +2119,12 @@ export default function Editor() {
                 {/* Actions globales shots */}
                 <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
                   <div className="flex gap-2 flex-wrap items-center">
-                    <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
-                      <Play className="h-4 w-4" /> Re-générer tous les shots
+                    <Button variant="outline" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
+                      <Play className="h-4 w-4" /> Redécouper tous les shots
+                    </Button>
+                    <Button variant="hero" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                      {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
+                      Générer tous les prompts
                     </Button>
                     <Button variant="default" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px] gap-1.5">
                       <ImageIcon className="h-4 w-4" /> Voir tous les visuels
