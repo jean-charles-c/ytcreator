@@ -475,7 +475,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                           onChange={(e) => setForceStandardMode(e.target.checked)}
                           className="rounded border-amber-400/50 accent-amber-500"
                         />
-                        <span className="text-[11px] text-amber-200">Forcer la génération sans synchronisation (mode standard)</span>
+                        <span className="text-[11px] text-amber-200">Forcer la génération avec synchronisation (ignorer les validations)</span>
                       </label>
                     </div>
                   </div>

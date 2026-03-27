@@ -1453,8 +1453,8 @@ serve(async (req) => {
 
     const useMarkedMode = syncMode === "shot_marked" && shotSentences && shotSentences.length > 0 && supportsMarks;
 
-    // STRICT: validate shotSentences match DB shots exactly before generating
-    if (useMarkedMode) {
+    // STRICT: validate shotSentences match DB shots exactly before generating (unless forceSync)
+    if (useMarkedMode && !forceSync) {
       const sentenceValidation = validateExactShotSentences(expectedShotIds, shotSentences!);
       if (!sentenceValidation.ok) {
         console.error("Shot-sentence validation failed:", sentenceValidation.errors);
@@ -1470,6 +1470,8 @@ serve(async (req) => {
         );
       }
       console.log(`Shot-sentence validation passed: ${expectedShotIds.length} shots aligned`);
+    } else if (useMarkedMode && forceSync) {
+      console.warn(`Force sync enabled — skipping shot-sentence validation for ${shotSentences!.length} shots`);
     }
     const MAX_CHARS = 4800;
 
