@@ -64,6 +64,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [audioProgress, setAudioProgress] = useState(0);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [activeProfileName, setActiveProfileName] = useState<string | null>(null);
+  const [forceStandardMode, setForceStandardMode] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
