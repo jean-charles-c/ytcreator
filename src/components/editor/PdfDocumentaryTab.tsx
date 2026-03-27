@@ -593,7 +593,7 @@ export default function PdfDocumentaryTab({
     } finally {
       setHumanizing(false);
     }
-  }, [script, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
+  }, [script, scriptLanguage, scriptAiModel, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
 
   // VO Optimize — rewrite the FULL script globally for deep coherent rewriting, then reconstitute sections
   const handleVoOptimize = useCallback(async () => {
