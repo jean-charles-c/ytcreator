@@ -42,6 +42,7 @@ import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribut
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
 import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
+import ObjectRegistryPanel, { type RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
@@ -669,6 +670,18 @@ export default function Editor() {
   }, [projectId, stopTask]);
 
   const getShotsForScene = (sceneId: string) => shots.filter((s) => s.scene_id === sceneId);
+
+  // --- Object Registry ---
+  const handleObjectRegistryChange = useCallback(async (objects: RecurringObject[]) => {
+    const updated = { ...globalContext, objets_recurrents: objects };
+    setGlobalContext(updated);
+    if (projectId) {
+      await (supabase as any).from("project_scriptcreator_state").upsert(
+        { project_id: projectId, global_context: updated },
+        { onConflict: "project_id" }
+      );
+    }
+  }, [globalContext, projectId]);
 
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
@@ -1863,6 +1876,13 @@ export default function Editor() {
                     </div>
                   </details>
                 )}
+                {/* Object Registry Panel */}
+                <ObjectRegistryPanel
+                  objects={(globalContext?.objets_recurrents as RecurringObject[]) || []}
+                  onChange={handleObjectRegistryChange}
+                  sceneCount={scenes.length}
+                />
+
                 {/* Segmentation QA Panel */}
                 <SegmentationQaPanel scenes={scenes} />
 

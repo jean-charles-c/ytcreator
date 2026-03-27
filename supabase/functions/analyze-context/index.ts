@@ -78,7 +78,17 @@ RULES:
 - If a field cannot be determined, use "Non déterminé" rather than guessing.
 - Be precise and concise in your descriptions.
 - The "personnages" array should list ONLY named or clearly identified characters/subjects.
-- The "resume_narratif" should be a 2-3 sentence summary of the script's narrative arc.`;
+- The "resume_narratif" should be a 2-3 sentence summary of the script's narrative arc.
+
+RECURRING OBJECTS DETECTION:
+- Identify any object, vehicle, building, artifact, or weapon that appears or is referenced across MULTIPLE scenes/sections of the script.
+- For each recurring object, provide:
+  - A precise name (brand + model + year/version if applicable)
+  - A detailed visual description of its distinctive physical characteristics
+  - An "identity_prompt" that LOCKS the visual identity across all images. Example for a vehicle:
+    "VEHICLE IDENTITY LOCK: The vehicle must remain strictly identifiable as a [exact name] in every image. Always preserve its signature silhouette, body proportions, roofline, front fascia, grille shape, headlight design, air intakes, fender curves, rear profile, wheelbase, stance, and emblem placement. Do not reinterpret, modernize, hybridize, or redesign the vehicle."
+  - Generate a UUID for the "id" field using format like "obj-" followed by a short hash
+- If no recurring objects are found, return an empty array.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -172,6 +182,24 @@ RULES:
                     type: "string",
                     description: "Type de narration (ex: documentaire, storytelling, investigation, etc.)",
                   },
+                  objets_recurrents: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", description: "UUID unique de l'objet" },
+                        nom: { type: "string", description: "Nom exact de l'objet (ex: Ferrari 250 GTO, Colisée de Rome)" },
+                        type: { type: "string", enum: ["vehicle", "building", "artifact", "weapon", "object"], description: "Catégorie de l'objet" },
+                        description_visuelle: { type: "string", description: "Description physique détaillée des caractéristiques visuelles distinctives" },
+                        epoque: { type: "string", description: "Époque ou version de l'objet" },
+                        mentions_scenes: { type: "array", items: { type: "number" }, description: "Numéros des scènes où l'objet est mentionné (si connu)" },
+                        identity_prompt: { type: "string", description: "Prompt d'identité visuelle verrouillée pour maintenir la cohérence dans toutes les images" },
+                      },
+                      required: ["id", "nom", "type", "description_visuelle", "epoque", "identity_prompt"],
+                      additionalProperties: false,
+                    },
+                    description: "Liste des objets, véhicules, bâtiments ou artefacts récurrents qui apparaissent dans plusieurs scènes et dont l'identité visuelle doit être strictement maintenue",
+                  },
                 },
                 required: [
                   "sujet_principal",
@@ -188,6 +216,7 @@ RULES:
                   "niveau_technologique",
                   "indices_visuels",
                   "type_narration",
+                  "objets_recurrents",
                 ],
                 additionalProperties: false,
               },

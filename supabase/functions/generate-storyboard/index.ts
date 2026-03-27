@@ -269,7 +269,7 @@ const splitLongSentenceIntoSegments = (
 const splitSceneIntoShotSegments = (text: string): string[] =>
   getNarrativeSegments(text);
 
-const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number): string => {
+const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number, recurringObjects?: any[]): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
 
   // 1. Historical & geographic anchor (mandatory first sentence)
@@ -295,7 +295,6 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const fragmentLower = fragment.toLowerCase();
   let characterNote = "";
   if (personnages && personnages !== "Non déterminé") {
-    // Only inject character details if the fragment mentions people or actions
     const hasHumanCue = /\b(people|person|king|queen|ruler|trader|craftsmen|builder|worker|priest|warrior|chief|community|population|inhabitants|they|he|she|them)\b/i.test(fragment)
       || /\b(peuple|roi|reine|dirigeant|commerçant|artisan|bâtisseur|ouvrier|prêtre|guerrier|chef|communauté|population|habitants|ils|il|elle|eux)\b/i.test(fragment);
     if (hasHumanCue) {
@@ -321,8 +320,26 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const continuity = scene?.continuity;
   const continuityNote = continuity ? ` Scene continuity: ${continuity}.` : "";
 
-  // 7. Build the prompt — fragment is the core subject
-  return `${anchor}, ${cameraFraming.toLowerCase()} illustrating: "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote} Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+  // 7. Recurring object identity locks
+  let objectIdentityBlock = "";
+  if (recurringObjects && recurringObjects.length > 0) {
+    const sceneOrder = scene?.scene_order;
+    const matchingObjects = recurringObjects.filter((obj: any) => {
+      // Check if this object is relevant to this scene
+      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+        return obj.mentions_scenes.includes(sceneOrder);
+      }
+      // If no scenes specified, check if the fragment mentions the object name
+      const objNameLower = (obj.nom || "").toLowerCase();
+      return objNameLower && fragmentLower.includes(objNameLower.split(" ")[0].toLowerCase());
+    });
+    if (matchingObjects.length > 0) {
+      objectIdentityBlock = " " + matchingObjects.map((obj: any) => obj.identity_prompt || "").filter(Boolean).join(" ");
+    }
+  }
+
+  // 8. Build the prompt — fragment is the core subject
+  return `${anchor}, ${cameraFraming.toLowerCase()} illustrating: "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 };
 
 // Keep legacy name for compatibility
@@ -618,6 +635,15 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Fetch global_context for recurring objects
+    const { data: scriptState } = await supabase
+      .from("project_scriptcreator_state")
+      .select("global_context")
+      .eq("project_id", project_id)
+      .maybeSingle();
+    const globalContext = scriptState?.global_context as Record<string, any> | null;
+    const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
+
     // Shot count: narrative segmentation based on sense units
     const calcShotCount = (text: string): number => {
       return computeNarrativeShotCount(text);
@@ -632,6 +658,14 @@ serve(async (req) => {
       project.subject ? `PROJECT SUBJECT / HISTORICAL CONTEXT: ${project.subject}` : null,
       `SCRIPT LANGUAGE: ${scriptLang}`,
     ].filter(Boolean).join("\n");
+
+    // Build recurring objects identity block for AI context
+    const objectIdentityBlock = recurringObjects.length > 0
+      ? "\n\nRECURRING OBJECT IDENTITY LOCKS (apply to every shot where the object appears):\n" +
+        recurringObjects.map((obj: any) =>
+          `- ${obj.nom} (${obj.type}, ${obj.epoque || "N/A"})${Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0 ? ` [Scenes: ${obj.mentions_scenes.join(", ")}]` : ""}:\n  ${obj.identity_prompt || ""}\n  Visual details: ${obj.description_visuelle || ""}`
+        ).join("\n")
+      : "";
 
     const sceneDescriptions = scenes.map((s: any) => {
       const narrativeSegments = getNarrativeSegments(s.source_text);
@@ -657,12 +691,23 @@ serve(async (req) => {
         `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
       ].filter(Boolean).join("\n") : "";
 
+      // Check which recurring objects are relevant for this scene
+      const sceneObjects = recurringObjects.filter((obj: any) => {
+        if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+          return obj.mentions_scenes.includes(s.scene_order);
+        }
+        return false;
+      });
+      const sceneObjectBlock = sceneObjects.length > 0
+        ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: ${sceneObjects.map((o: any) => o.nom).join(", ")} — APPLY THEIR IDENTITY LOCKS`
+        : "";
+
       // List pre-computed narrative fragments so the AI knows exactly which text each shot must illustrate
       const fragmentList = narrativeSegments
         .map((seg, idx) => `    Fragment ${idx + 1}: "${seg}"`)
         .join("\n");
 
-      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
@@ -682,7 +727,7 @@ serve(async (req) => {
           max_tokens: 8192,
           messages: [
             { role: "system", content: CINEMATIC_PROMPT_SYSTEM + sensitiveModeBlock },
-            { role: "user", content: `${projectContext}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque). This anchoring is MANDATORY in every single prompt_export. All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be specific to that era, culture, and place. Never use generic, Western, or anachronistic elements.\n\nSCENE CONTEXT USAGE RULE:\nEach scene below includes a CONTEXTE DE LA SCÈNE block with: Contexte, Sujet, Lieu, Époque, Personnages, Ambiance, Ton, and Cohérence. You MUST use this information SELECTIVELY:\n- ALWAYS ground every prompt_export in the correct lieu and époque\n- Include personnages ONLY when the fragment mentions or implies people\n- Include ambiance/ton ONLY when it enhances the visual quality of THAT specific fragment\n- Do NOT mechanically inject all context fields — select only what is visually relevant\n\nFRAGMENT-SPECIFIC PROMPTS — CRITICAL:\nEach scene includes PRE-COMPUTED FRAGMENTS. Each fragment = exactly one shot.\n- Use each fragment as the source_sentence for its corresponding shot\n- The prompt_export MUST illustrate ONLY what THAT fragment describes, not the full scene\n- If a fragment describes stone walls, the prompt focuses on stone walls — not on trade routes or city life\n- Context from CONTEXTE enriches the prompt but the FRAGMENT is the visual subject\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE.\n2. Each shot MUST use the corresponding PRE-COMPUTED FRAGMENT as its source_sentence.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT fragment text copied verbatim.\n5. prompt_export MUST be in ENGLISH and must illustrate ONLY that exact fragment.\n6. Do NOT merge fragments. Do NOT skip fragments.\n7. Prompts must stay strictly faithful to the fragment text, enriched by scene context.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly open with the historical period/era and geographic location from the scene's CONTEXTE — this is MANDATORY for every single prompt.${translationRule}\n\n${sceneDescriptions}` },
+            { role: "user", content: `${projectContext}${objectIdentityBlock}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque). This anchoring is MANDATORY in every single prompt_export. All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be specific to that era, culture, and place. Never use generic, Western, or anachronistic elements.\n\nSCENE CONTEXT USAGE RULE:\nEach scene below includes a CONTEXTE DE LA SCÈNE block with: Contexte, Sujet, Lieu, Époque, Personnages, Ambiance, Ton, and Cohérence. You MUST use this information SELECTIVELY:\n- ALWAYS ground every prompt_export in the correct lieu and époque\n- Include personnages ONLY when the fragment mentions or implies people\n- Include ambiance/ton ONLY when it enhances the visual quality of THAT specific fragment\n- Do NOT mechanically inject all context fields — select only what is visually relevant\n\nRECURRING OBJECT RULE:\nWhen a scene contains a recurring object (listed in OBJETS RÉCURRENTS), EVERY shot in that scene that depicts or implies that object MUST include the full IDENTITY LOCK prompt for that object in its prompt_export. The object must look identical across all shots and all scenes.\n\nFRAGMENT-SPECIFIC PROMPTS — CRITICAL:\nEach scene includes PRE-COMPUTED FRAGMENTS. Each fragment = exactly one shot.\n- Use each fragment as the source_sentence for its corresponding shot\n- The prompt_export MUST illustrate ONLY what THAT fragment describes, not the full scene\n- If a fragment describes stone walls, the prompt focuses on stone walls — not on trade routes or city life\n- Context from CONTEXTE enriches the prompt but the FRAGMENT is the visual subject\n\nGenerate cinematic documentary shots optimized for Grok Image for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE.\n2. Each shot MUST use the corresponding PRE-COMPUTED FRAGMENT as its source_sentence.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT fragment text copied verbatim.\n5. prompt_export MUST be in ENGLISH and must illustrate ONLY that exact fragment.\n6. Do NOT merge fragments. Do NOT skip fragments.\n7. Prompts must stay strictly faithful to the fragment text, enriched by scene context.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly open with the historical period/era and geographic location from the scene's CONTEXTE — this is MANDATORY for every single prompt.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
             {
