@@ -106,6 +106,8 @@ export default function NarrativeScriptBlock({
   showVersionPreviewId,
   onRegenerate,
   canRegenerate,
+  onHumanize,
+  humanizing,
   analyzingScript,
   onAnalyzeScript,
   toolbarSlot,
