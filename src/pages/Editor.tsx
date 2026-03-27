@@ -704,7 +704,7 @@ export default function Editor() {
         toast.error("Aucune scène à traiter");
         return;
       }
-      bgStartStoryboard({ projectId, sceneIds, segmentOnly });
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
