@@ -1322,6 +1322,7 @@ serve(async (req) => {
       projectId,
       shotSentences,
       syncMode = "standard",
+      forceSync = false,
     } = body;
 
     // Apply narration profile modulation on top of user settings
