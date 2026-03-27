@@ -197,6 +197,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   </span>
                 )}
                 <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                <span
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); removeObject(obj.id); }}
+                  className="ml-1 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  title="Supprimer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </span>
               </button>
 
               {/* Expanded form */}
