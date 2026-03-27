@@ -2696,8 +2696,9 @@ export default function Editor() {
                 </div>
                 {/* Action history */}
                 {manifestHistory.length > 0 && (
-                  <details className="mt-4 sm:mt-6 rounded border border-border bg-secondary/30 p-2 sm:p-3">
-                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                  <details className="mt-4 sm:mt-6 rounded border border-border bg-secondary/30 p-2 sm:p-3 group/hist">
+                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                      <ChevronRight className="h-3 w-3 transition-transform group-open/hist:rotate-90 shrink-0" />
                       Historique des actions ({manifestHistory.length})
                     </summary>
                     <div className="mt-2 space-y-1.5 sm:space-y-1 max-h-40 overflow-y-auto">
