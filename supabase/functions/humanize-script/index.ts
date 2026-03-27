@@ -28,7 +28,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { script, language } = await req.json();
+    const { script, language, model } = await req.json();
     if (!script || typeof script !== "string") {
       return new Response(JSON.stringify({ error: "Missing script" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
