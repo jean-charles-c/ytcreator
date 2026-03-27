@@ -140,7 +140,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
         <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[44px]">
           <Package className="h-4 w-4 text-primary shrink-0" />
-          <span>Objets Récurrents</span>
+          <span>Objets & Personnages Récurrents</span>
           <span className="ml-1 text-xs text-muted-foreground font-normal">— Identité visuelle verrouillée</span>
           <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
         </summary>
