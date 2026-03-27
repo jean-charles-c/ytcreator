@@ -205,6 +205,18 @@ export default function NarrativeScriptBlock({
                       {humanizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Humaniser
                     </Button>
                   )}
+
+                  {onVoOptimize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onVoOptimize}
+                      disabled={voOptimizing || !canRegenerate}
+                      className="h-8 text-xs border-accent/40 text-accent-foreground hover:bg-accent/10"
+                    >
+                      {voOptimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Vraie voix-off
+                    </Button>
+                  )}
                 </div>
               )}
 
