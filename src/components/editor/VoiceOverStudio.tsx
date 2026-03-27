@@ -230,7 +230,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             projectId,
             customFileName: customFileName.trim() || undefined,
             ...(useMarkedSync
-              ? { shotSentences, syncMode: "shot_marked" }
+              ? { shotSentences, syncMode: "shot_marked", ...(forceStandardMode ? { forceSync: true } : {}) }
               : { syncMode: "standard" }),
           }),
         }
