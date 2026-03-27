@@ -22,6 +22,7 @@ import {
   Search,
   ImageIcon,
   ChevronDown,
+  ChevronRight,
   ShieldCheck,
   RefreshCw,
   ArrowUpDown,
@@ -1900,11 +1901,11 @@ export default function Editor() {
               <>
                 {/* ContexteGlobal display */}
                 {globalContext && (
-                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group">
+                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group/ctx">
                     <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/ctx:rotate-90 shrink-0" />
                       🧠 Contexte Global
                       <span className="ml-1 text-xs text-muted-foreground font-normal">— Mémoire de référence du script</span>
-                      <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
                     </summary>
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div className="space-y-2">
@@ -1952,10 +1953,10 @@ export default function Editor() {
 
                 {/* Full narration with French translation */}
                 {scriptLanguage !== "fr" && (
-                  <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group">
+                  <details className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5 group/trad">
                     <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/trad:rotate-90 shrink-0" />
                       🇫🇷 Traduction française du narratif
-                      <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
                     </summary>
                     <div className="mt-3">
                       {scenes.some((s) => s.source_text_fr) ? (
@@ -2058,8 +2059,9 @@ export default function Editor() {
 
             {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
             {scenes.length > 0 && !generatingStoryboard && (
-              <details className="mb-4 rounded border border-border bg-card p-3 sm:p-4">
-                <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0">
+              <details className="mb-4 rounded border border-border bg-card p-3 sm:p-4 group/details">
+                <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/details:rotate-90 shrink-0" />
                   🛡 Toutes les scènes d'un coup
                   <span className="text-[10px] text-muted-foreground font-normal">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
                 </summary>
@@ -2077,42 +2079,16 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    {generatingAllImages ? (
-                      <div className="flex items-center gap-2">
-                        <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
-                          <Square className="h-4 w-4" /> Stopper la génération
-                          {imageGenTask?.completedShots != null && imageGenTask?.totalShots
-                            ? ` (${imageGenTask.successShots ?? 0}✓ — ${imageGenTask.completedShots}/${imageGenTask.totalShots})`
-                            : ""}
-                        </Button>
-                        {imageGenTask?.imageGenModel && (
-                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
-                            🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
-                            {" — "}
-                            {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
-                          </span>
-                        )}
-                      </div>
-                    ) : (() => {
-                      const hasAnyImage = shots.some((s: any) => s.image_url);
-                      const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
-                      return (
-                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
-                          <ImageIcon className="h-4 w-4" />
-                          {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
-                        </Button>
-                      );
-                    })()}
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
-                    <ImageIcon className="h-4 w-4" /> Voir les visuels
-                  </Button>
-                  {scriptLanguage !== "fr" && (
-                    <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
-                      {retranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
-                      {retranslating ? "Retraduction..." : "Retraduire les fragments 🇫🇷"}
+                    <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
+                      <ImageIcon className="h-4 w-4" /> Voir les visuels
                     </Button>
-                  )}
+                    {scriptLanguage !== "fr" && (
+                      <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
+                        {retranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                        {retranslating ? "Retraduction..." : "Retraduire les fragments 🇫🇷"}
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
@@ -2151,6 +2127,32 @@ export default function Editor() {
                         compact
                       />
                     </div>
+                    {generatingAllImages ? (
+                      <div className="flex items-center gap-2">
+                        <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
+                          <Square className="h-4 w-4" /> Stopper la génération
+                          {imageGenTask?.completedShots != null && imageGenTask?.totalShots
+                            ? ` (${imageGenTask.successShots ?? 0}✓ — ${imageGenTask.completedShots}/${imageGenTask.totalShots})`
+                            : ""}
+                        </Button>
+                        {imageGenTask?.imageGenModel && (
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
+                            🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
+                            {" — "}
+                            {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
+                          </span>
+                        )}
+                      </div>
+                    ) : (() => {
+                      const hasAnyImage = shots.some((s: any) => s.image_url);
+                      const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
+                      return (
+                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
+                          <ImageIcon className="h-4 w-4" />
+                          {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
                 </div>
@@ -2470,8 +2472,9 @@ export default function Editor() {
                               {isOpen && (
                                 <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-border space-y-3 sm:space-y-4 animate-fade-in">
                                    {/* Scene-level sensitive mode */}
-                                  <details className="rounded-lg border border-border bg-secondary/30 p-3">
-                                    <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
+                                  <details className="rounded-lg border border-border bg-secondary/30 p-3 group/sens">
+                                    <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                                        <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform group-open/sens:rotate-90 shrink-0" />
                                         <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                                         <span className="text-xs font-display font-semibold text-foreground">
                                           Mode sensible — Scène {scene.scene_order}
@@ -2693,8 +2696,9 @@ export default function Editor() {
                 </div>
                 {/* Action history */}
                 {manifestHistory.length > 0 && (
-                  <details className="mt-4 sm:mt-6 rounded border border-border bg-secondary/30 p-2 sm:p-3">
-                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                  <details className="mt-4 sm:mt-6 rounded border border-border bg-secondary/30 p-2 sm:p-3 group/hist">
+                    <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                      <ChevronRight className="h-3 w-3 transition-transform group-open/hist:rotate-90 shrink-0" />
                       Historique des actions ({manifestHistory.length})
                     </summary>
                     <div className="mt-2 space-y-1.5 sm:space-y-1 max-h-40 overflow-y-auto">
@@ -2721,8 +2725,9 @@ export default function Editor() {
               </Collapsible>
 
               {/* QA Contrôle qualité */}
-              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3">
-                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0">
+              <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3 group/qa">
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-3 w-3 transition-transform group-open/qa:rotate-90 shrink-0" />
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Contrôle qualité
                   {qaCounts.errors > 0 && (
@@ -2747,8 +2752,9 @@ export default function Editor() {
               </details>
 
               {/* Manifest Timing */}
-              <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
-                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+              <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3 group/timing">
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-3 w-3 transition-transform group-open/timing:rotate-90 shrink-0" />
                   Manifest Timing (synchronisation audio/image)
                 </summary>
                 <div className="mt-3">
