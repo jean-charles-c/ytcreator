@@ -684,6 +684,21 @@ export default function Editor() {
   }, [globalContext, projectId]);
 
   const [isContextAnalyzing, setIsContextAnalyzing] = useState(false);
+  // Apply identity templates to objects that lack proper lock clauses
+  const applyIdentityTemplates = useCallback((objects: RecurringObject[]): RecurringObject[] => {
+    return objects.map(obj => {
+      const hasLockClause = obj.identity_prompt && (
+        obj.identity_prompt.includes("IDENTITY LOCK") ||
+        obj.identity_prompt.includes("PERIOD LOCK") ||
+        obj.identity_prompt.includes("NO TEMPORAL DRIFT") ||
+        obj.identity_prompt.includes("NO OBJECT DRIFT")
+      );
+      if (hasLockClause) return obj;
+      const templateFn = IDENTITY_TEMPLATES[obj.type] || IDENTITY_TEMPLATES.object;
+      return { ...obj, identity_prompt: templateFn(obj.nom, obj.epoque) };
+    });
+  }, []);
+
   const handleReanalyzeContext = useCallback(async () => {
     if (!projectId) return;
     setIsContextAnalyzing(true);
@@ -706,15 +721,20 @@ export default function Editor() {
         toast.error("Analyse contextuelle échouée : " + (data?.error || "Erreur inconnue"));
         return;
       }
-      setGlobalContext(data.global_context);
-      const objCount = data.global_context?.objets_recurrents?.length || 0;
+      // Apply identity templates to all objects
+      const ctx = data.global_context;
+      if (ctx?.objets_recurrents) {
+        ctx.objets_recurrents = applyIdentityTemplates(ctx.objets_recurrents);
+      }
+      setGlobalContext(ctx);
+      const objCount = ctx?.objets_recurrents?.length || 0;
       toast.success(`Analyse contextuelle terminée — ${objCount} objet(s) récurrent(s) détecté(s)`);
     } catch (e: any) {
       toast.error("Erreur : " + (e.message || "Erreur inconnue"));
     } finally {
       setIsContextAnalyzing(false);
     }
-  }, [projectId]);
+  }, [projectId, applyIdentityTemplates]);
 
   const handleSearchMoreRecurrences = useCallback(async (excludeNames: string[]) => {
     if (!projectId) return;
