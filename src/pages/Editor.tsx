@@ -647,9 +647,10 @@ export default function Editor() {
   }, [projectId, stopTask]);
 
   // Generate storyboard (all or single scene)
-  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean }) => {
+  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean; promptOnly?: boolean }) => {
     if (!projectId) return;
     const segmentOnly = options?.segmentOnly ?? false;
+    const promptOnly = options?.promptOnly ?? false;
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
@@ -670,6 +671,7 @@ export default function Editor() {
               scene_id: sceneId,
               sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
               segment_only: segmentOnly,
+              prompt_only: promptOnly,
             }),
           }
         );
@@ -702,7 +704,7 @@ export default function Editor() {
         toast.error("Aucune scène à traiter");
         return;
       }
-      bgStartStoryboard({ projectId, sceneIds, segmentOnly });
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
@@ -2127,7 +2129,7 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Redécouper tous les shots
                     </Button>
-                    <Button variant="hero" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
+                    <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { promptOnly: true })} disabled={generatingStoryboard || shots.length === 0} className="min-h-[40px]">
                       {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                       Générer tous les prompts
                     </Button>

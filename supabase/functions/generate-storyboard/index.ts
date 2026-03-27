@@ -611,7 +611,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { project_id, scene_id, sensitive_level, segment_only } = await req.json();
+    const { project_id, scene_id, sensitive_level, segment_only, prompt_only } = await req.json();
     if (!project_id) throw new Error("Missing project_id");
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
@@ -831,6 +831,239 @@ serve(async (req) => {
       .order("scene_id", { ascending: true })
       .order("shot_order", { ascending: true });
     if (existingShotsError) throw new Error("Failed to load existing shots");
+
+    // ══════════════════════════════════════════════════════════════════
+    // PROMPT-ONLY MODE: preserve existing shot boundaries, only update prompts
+    // ══════════════════════════════════════════════════════════════════
+    if (prompt_only) {
+      console.log("prompt_only mode: preserving existing shot boundaries, updating prompts only");
+      const targetExisting = (existingShots || []).filter((s: any) =>
+        singleScene ? s.scene_id === scene_id : scenes.some((sc: any) => sc.id === s.scene_id)
+      );
+
+      if (targetExisting.length === 0) {
+        throw new Error("No existing shots found. Run segmentation first (Créer les SHOTS).");
+      }
+
+      // Group existing shots by scene for AI context
+      const existingByScene = new Map<string, any[]>();
+      for (const shot of targetExisting) {
+        const bucket = existingByScene.get(shot.scene_id) || [];
+        bucket.push(shot);
+        existingByScene.set(shot.scene_id, bucket);
+      }
+
+      // Build scene descriptions using EXISTING shot fragments (not recomputed)
+      const sceneDescriptionsForPromptOnly = scenes.map((s: any) => {
+        const sceneShots = (existingByScene.get(s.id) || []).sort((a: any, b: any) => a.shot_order - b.shot_order);
+        const shotCount = sceneShots.length;
+        const meta = [
+          s.location ? `Location: ${s.location}` : null,
+          s.characters ? `Characters: ${s.characters}` : null,
+          s.scene_type ? `Scene type: ${s.scene_type}` : null,
+          s.continuity ? `Continuity: ${s.continuity}` : null,
+        ].filter(Boolean).join(" | ");
+
+        const ctx = s.scene_context as Record<string, string> | null;
+        const contextBlock = ctx ? [
+          `  CONTEXTE DE LA SCÈNE:`,
+          `    Contexte: ${ctx.contexte_scene || "Non déterminé"}`,
+          `    Sujet: ${ctx.sujet || "Non déterminé"}`,
+          `    Lieu: ${ctx.lieu || "Non déterminé"}`,
+          `    Époque: ${ctx.epoque || "Non déterminé"}`,
+          `    Personnages: ${ctx.personnages || "Non déterminé"}`,
+          ctx.ambiance ? `    Ambiance: ${ctx.ambiance}` : null,
+          ctx.ton ? `    Ton: ${ctx.ton}` : null,
+          `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
+        ].filter(Boolean).join("\n") : "";
+
+        const sceneObjects = recurringObjects.filter((obj: any) => {
+          if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+            return obj.mentions_scenes.includes(s.scene_order);
+          }
+          return false;
+        });
+        const sceneObjectBlock = sceneObjects.length > 0
+          ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: ${sceneObjects.map((o: any) => o.nom).join(", ")} — APPLY THEIR IDENTITY LOCKS`
+          : "";
+
+        // Use existing shot source_sentences as fragments
+        const fragmentList = sceneShots
+          .map((shot: any, idx: number) => `    Fragment ${idx + 1}: "${shot.source_sentence || ""}"`)
+          .join("\n");
+
+        return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  EXISTING SHOT FRAGMENTS (PRESERVE THESE EXACT BOUNDARIES — generate prompts for each):\n${fragmentList}`;
+      }).join("\n\n");
+
+      // Call AI for prompt generation
+      const aiResponse = await fetch(
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            max_tokens: 8192,
+            messages: [
+              { role: "system", content: CINEMATIC_PROMPT_SYSTEM + sensitiveModeBlock },
+              { role: "user", content: `${projectContext}${objectIdentityBlock}\n\nIMPORTANT: You are in PROMPT-ONLY mode. The shot boundaries (source_sentence for each shot) are ALREADY FIXED by the user. Do NOT change, merge, split, or reorder them.\nYour job is ONLY to generate:\n- prompt_export (English, cinematic documentary prompt for Grok Image)\n- description (French visual description)\n- shot_type (French camera type from the Visual Camera Grid)\n- guardrails (historical constraints)\n\nFor each shot, keep the EXACT source_sentence provided. Do NOT modify it.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque).\n\nRECURRING OBJECT RULE:\nWhen a scene contains a recurring object, EVERY shot in that scene that depicts or implies that object MUST include the full IDENTITY LOCK prompt.\n\n${sceneDescriptionsForPromptOnly}` },
+            ],
+            tools: [
+              {
+                type: "function",
+                function: {
+                  name: "generate_storyboard",
+                  description: "Generates cinematic documentary prompts for existing shots.",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      scenes: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            scene_id: { type: "string" },
+                            shots: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  shot_type: { type: "string" },
+                                  description: { type: "string" },
+                                  source_sentence: { type: "string" },
+                                  prompt_export: { type: "string" },
+                                  guardrails: { type: "string" },
+                                },
+                                required: ["shot_type", "description", "source_sentence", "prompt_export", "guardrails"],
+                                additionalProperties: false,
+                              },
+                            },
+                          },
+                          required: ["scene_id", "shots"],
+                          additionalProperties: false,
+                        },
+                      },
+                    },
+                    required: ["scenes"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+            ],
+            tool_choice: { type: "function", function: { name: "generate_storyboard" } },
+          }),
+        }
+      );
+
+      let aiStoryboard: any[] = [];
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+        try {
+          if (toolCall?.function?.arguments) {
+            const parsed = JSON.parse(toolCall.function.arguments);
+            aiStoryboard = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+          }
+        } catch (parseError) {
+          console.warn("Failed to parse prompt-only AI output", parseError);
+        }
+      } else {
+        console.warn("AI call failed in prompt_only mode, using fallback prompts");
+      }
+
+      // Build a map of AI-generated prompts by scene_id + fragment index
+      const aiPromptMap = new Map<string, any>();
+      for (const sceneData of aiStoryboard) {
+        if (!sceneData?.scene_id || !Array.isArray(sceneData.shots)) continue;
+        sceneData.shots.forEach((shot: any, idx: number) => {
+          aiPromptMap.set(`${sceneData.scene_id}::${idx}`, shot);
+        });
+      }
+
+      // Update existing shots with new prompts ONLY
+      let updatedCount = 0;
+      for (const scene of scenes) {
+        const sceneShots = (existingByScene.get(scene.id) || []).sort((a: any, b: any) => a.shot_order - b.shot_order);
+        const sceneOrder = scene.scene_order;
+        const relevantObjs = recurringObjects.filter((obj: any) => {
+          if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+            return obj.mentions_scenes.includes(sceneOrder);
+          }
+          return false;
+        });
+
+        for (let idx = 0; idx < sceneShots.length; idx++) {
+          const existingShot = sceneShots[idx];
+          const aiShot = aiPromptMap.get(`${scene.id}::${idx}`);
+
+          let promptExport = aiShot?.prompt_export
+            || buildContextualPrompt(existingShot.source_sentence || scene.source_text, scene, existingShot.shot_type, idx, recurringObjects);
+
+          // Inject identity locks
+          if (relevantObjs.length > 0) {
+            const fragmentLower = (existingShot.source_sentence || "").toLowerCase();
+            const matchingLocks = relevantObjs
+              .filter((obj: any) => {
+                const objName = (obj.nom || "").toLowerCase();
+                return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
+              })
+              .map((obj: any) => obj.identity_prompt || "")
+              .filter(Boolean);
+            if (matchingLocks.length > 0) {
+              const lockPrefix = matchingLocks.join("\n\n") + "\n\n";
+              const firstLockSnippet = matchingLocks[0].slice(0, 40).toLowerCase();
+              if (!promptExport.toLowerCase().includes(firstLockSnippet)) {
+                promptExport = lockPrefix + promptExport;
+              }
+            }
+          }
+
+          // Anti-text-leak suffix
+          const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
+          if (!promptExport.toLowerCase().includes("any visible writing in the image")) {
+            promptExport = promptExport.trimEnd() + "\n\n" + antiTextLeak;
+          }
+
+          const payload: any = {
+            prompt_export: promptExport,
+          };
+          if (aiShot?.description) payload.description = aiShot.description;
+          if (aiShot?.shot_type) payload.shot_type = aiShot.shot_type;
+          if (aiShot?.guardrails) payload.guardrails = aiShot.guardrails;
+
+          const { error } = await supabase.from("shots").update(payload).eq("id", existingShot.id);
+          if (error) {
+            console.error("prompt_only update error:", error);
+          } else {
+            updatedCount++;
+          }
+        }
+      }
+
+      await supabase.from("projects").update({ status: "storyboarded" }).eq("id", project_id);
+
+      return new Response(JSON.stringify({
+        shots_count: updatedCount,
+        mode: "prompt_only",
+        allocation: scenes.map((s: any) => ({
+          scene_id: s.id,
+          scene_title: s.title,
+          shot_count: (existingByScene.get(s.id) || []).length,
+          coverage_percent: 100,
+          valid: true,
+          issues_count: 0,
+          issues: [],
+        })),
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // ══════════════════════════════════════════════════════════════════
+    // END PROMPT-ONLY MODE
+    // ══════════════════════════════════════════════════════════════════
 
     const existingShotsBySceneId = new Map<string, any[]>();
     for (const existingShot of existingShots || []) {
