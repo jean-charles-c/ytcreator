@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield } from "lucide-react";
+import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield, Mic } from "lucide-react";
 import { getNarrativeStyleById } from "@/config/narrativeStyles";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -55,6 +55,10 @@ export interface NarrativeScriptBlockProps {
   onHumanize?: () => void;
   humanizing?: boolean;
 
+  /* VO Optimize */
+  onVoOptimize?: () => void;
+  voOptimizing?: boolean;
+
   /* AI Analysis */
   analyzingScript?: boolean;
   onAnalyzeScript?: () => void;
@@ -108,6 +112,8 @@ export default function NarrativeScriptBlock({
   canRegenerate,
   onHumanize,
   humanizing,
+  onVoOptimize,
+  voOptimizing,
   analyzingScript,
   onAnalyzeScript,
   toolbarSlot,
@@ -197,6 +203,18 @@ export default function NarrativeScriptBlock({
                       className="h-8 text-xs border-primary/40 text-primary hover:bg-primary/10"
                     >
                       {humanizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Humaniser
+                    </Button>
+                  )}
+
+                  {onVoOptimize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onVoOptimize}
+                      disabled={voOptimizing || !canRegenerate}
+                      className="h-8 text-xs border-accent/40 text-accent-foreground hover:bg-accent/10"
+                    >
+                      {voOptimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Vraie voix-off
                     </Button>
                   )}
                 </div>
