@@ -1951,6 +1951,7 @@ export default function Editor() {
                   onChange={handleObjectRegistryChange}
                   sceneCount={scenes.length}
                   onReanalyze={handleReanalyzeContext}
+                  onSearchMore={handleSearchMoreRecurrences}
                   isAnalyzing={isContextAnalyzing}
                 />
 
