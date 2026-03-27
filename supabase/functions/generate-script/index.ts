@@ -663,6 +663,11 @@ This is a voice-over script meant to be READ ALOUD. Sentence length must serve o
 - NEVER use vague placeholder attributions: "experts say", "studies show", "scientists believe" — unless a specific expert or study is named in the source.
 - NUMBER FORMATTING: NEVER use commas or dots as thousands separators. Write numbers ≥1000 WITHOUT any separator: 1000, 15000, 2000000.
 
+### 3b. PUNCTUATION RULES (mandatory)
+- NEVER use colons (:) in narration text. Replace every colon with a period (.).
+- FRENCH TYPOGRAPHY: Always insert a space BEFORE the following punctuation marks: ? ! ; (write "question ?" not "question?", "incroyable !" not "incroyable!")
+- These rules apply to ALL narration blocks (1-10). Editorial blocks (11-13) are exempt.
+
 ### 4. NARRATIVE COHERENCE LAYER (NarrativeCoherenceLayer)
 
 The 10 core blocks must function as a SINGLE CONTINUOUS MOVEMENT, not a collection of independent sections. The tags are invisible to the viewer — what they hear is one uninterrupted story.

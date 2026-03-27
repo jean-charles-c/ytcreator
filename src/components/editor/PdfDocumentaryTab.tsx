@@ -11,6 +11,7 @@ import NarrativeScriptBlock, { type ScriptVersion } from "./NarrativeScriptBlock
 import ChapterCollapse from "./ChapterCollapse";
 import type { ChapterListState } from "./chapterTypes";
 import * as pdfjsLib from "pdfjs-dist";
+import { applyFrenchTypography } from "./frenchTypography";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
@@ -719,7 +720,7 @@ export default function PdfDocumentaryTab({
     // First: strip everything from [[TRANSITIONS]] onward (editorial blocks)
     const withoutEditorial = raw.replace(/\[\[\s*(TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\s*\]\][\s\S]*/i, "").trim();
 
-    return withoutEditorial
+    const cleaned = withoutEditorial
       // Strip remaining [[TAG]] markers (core blocks)
       .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
       .split("\n")
@@ -741,6 +742,7 @@ export default function PdfDocumentaryTab({
       .join("\n")
       .replace(/\n{3,}/g, "\n\n") // collapse multiple blank lines to one
       .trim();
+    return applyFrenchTypography(cleaned);
   };
 
   const splitIntoVoiceOverBlocks = (raw: string): string[] => {
