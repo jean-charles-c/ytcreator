@@ -1864,6 +1864,13 @@ export default function Editor() {
                     </div>
                   </details>
                 )}
+                {/* Object Registry Panel */}
+                <ObjectRegistryPanel
+                  objects={(globalContext?.objets_recurrents as RecurringObject[]) || []}
+                  onChange={handleObjectRegistryChange}
+                  sceneCount={scenes.length}
+                />
+
                 {/* Segmentation QA Panel */}
                 <SegmentationQaPanel scenes={scenes} />
 
