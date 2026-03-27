@@ -168,6 +168,7 @@ export default function PdfDocumentaryTab({
   const [findingTension, setFindingTension] = useState(false);
   const [humanizing, setHumanizing] = useState(false);
   const [voOptimizing, setVoOptimizing] = useState(false);
+  const [scriptAiModel, setScriptAiModel] = useState<ScriptAiModelId>(getPersistedScriptAiModel);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
   const [sections, setSections] = useState<NarrativeSection[]>(() => parseScriptIntoSections(script || ""));
