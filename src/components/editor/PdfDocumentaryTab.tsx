@@ -630,7 +630,7 @@ export default function PdfDocumentaryTab({
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ script: taggedScript, language: scriptLanguage }),
+          body: JSON.stringify({ script: taggedScript, language: scriptLanguage, model: scriptAiModel }),
         }
       );
 
