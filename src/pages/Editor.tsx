@@ -683,6 +683,39 @@ export default function Editor() {
     }
   }, [globalContext, projectId]);
 
+  const [isContextAnalyzing, setIsContextAnalyzing] = useState(false);
+  const handleReanalyzeContext = useCallback(async () => {
+    if (!projectId) return;
+    setIsContextAnalyzing(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-context`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ project_id: projectId }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        toast.error("Analyse contextuelle échouée : " + (data?.error || "Erreur inconnue"));
+        return;
+      }
+      setGlobalContext(data.global_context);
+      const objCount = data.global_context?.objets_recurrents?.length || 0;
+      toast.success(`Analyse contextuelle terminée — ${objCount} objet(s) récurrent(s) détecté(s)`);
+    } catch (e: any) {
+      toast.error("Erreur : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setIsContextAnalyzing(false);
+    }
+  }, [projectId]);
+
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
     setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
