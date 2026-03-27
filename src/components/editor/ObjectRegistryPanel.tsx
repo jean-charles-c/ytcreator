@@ -32,6 +32,8 @@ export interface RecurringObject {
 // ── Helpers ────────────────────────────────────────────────────────
 
 const TYPE_META: Record<RecurringObject["type"], { label: string; icon: React.ReactNode; color: string }> = {
+  character: { label: "Personnage", icon: <User className="h-3.5 w-3.5" />, color: "bg-pink-500/10 text-pink-600 border-pink-500/20" },
+  location: { label: "Lieu", icon: <MapPin className="h-3.5 w-3.5" />, color: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20" },
   vehicle: { label: "Véhicule", icon: <Car className="h-3.5 w-3.5" />, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
   building: { label: "Bâtiment", icon: <Building2 className="h-3.5 w-3.5" />, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
   artifact: { label: "Artefact", icon: <Landmark className="h-3.5 w-3.5" />, color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
@@ -39,17 +41,35 @@ const TYPE_META: Record<RecurringObject["type"], { label: string; icon: React.Re
   object: { label: "Objet", icon: <Package className="h-3.5 w-3.5" />, color: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
 
-const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string) => string> = {
-  vehicle: (nom) =>
-    `VEHICLE IDENTITY LOCK:\nThe vehicle must remain strictly identifiable as a ${nom} in every image.\nAlways preserve its signature silhouette, body proportions, roofline, front fascia, grille shape, headlight design, air intakes, fender curves, greenhouse, rear profile, wheelbase, stance, and emblem placement.\nDo not reinterpret, modernize, hybridize, or redesign the vehicle.\nDo not replace its defining features with elements from other models, other generations, or other brands.\nAcross all images, the vehicle must remain visually consistent and immediately recognizable as the same iconic vehicle.`,
-  building: (nom) =>
-    `BUILDING IDENTITY LOCK:\nThe building must remain strictly identifiable as ${nom} in every image.\nAlways preserve its architectural style, proportions, facade details, roofline, windows, entrance, materials, and distinctive ornamental features.\nDo not modernize, simplify, or alter the structure.\nAcross all images, the building must remain visually consistent and immediately recognizable.`,
-  artifact: (nom) =>
-    `ARTIFACT IDENTITY LOCK:\nThe artifact must remain strictly identifiable as ${nom} in every image.\nAlways preserve its shape, material, color, texture, proportions, and distinctive markings or engravings.\nDo not alter, stylize, or reinterpret the object.\nAcross all images, the artifact must remain visually consistent and immediately recognizable.`,
-  weapon: (nom) =>
-    `WEAPON IDENTITY LOCK:\nThe weapon must remain strictly identifiable as ${nom} in every image.\nAlways preserve its shape, dimensions, materials, mechanism details, and distinctive features.\nDo not modernize or alter the weapon design.\nAcross all images, the weapon must remain visually consistent and historically accurate.`,
-  object: (nom) =>
-    `OBJECT IDENTITY LOCK:\nThe object must remain strictly identifiable as ${nom} in every image.\nAlways preserve its shape, proportions, materials, color, and distinctive features.\nDo not alter, stylize, or reinterpret the object.\nAcross all images, the object must remain visually consistent and immediately recognizable.`,
+const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string) => string> = {
+  character: (nom, epoque) => {
+    const period = epoque || "[exact period]";
+    return `Subject: ${nom} during ${period}\n\nCHARACTER IDENTITY LOCK:\nThe character must remain strictly and unmistakably identifiable as ${nom}.\n\nTIME PERIOD LOCK:\nThe character must be shown strictly as they appeared during ${period}.\nPreserve the age appearance, hairstyle, facial traits, clothing logic, accessories, and visual markers specific to that period.\nDo not mix features from earlier or later periods.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [period feature 1]\n- [period feature 2]\n- [period feature 3]\n- [period feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different eras of the same character/person.`;
+  },
+  location: (nom, epoque) => {
+    const period = epoque || "[exact period / state]";
+    return `Subject: ${nom} during ${period}\n\nLOCATION IDENTITY LOCK:\nThe location must remain strictly and unmistakably identifiable as ${nom}.\n\nTIME PERIOD / HISTORICAL STATE LOCK:\nThe location must be shown strictly as it appeared during ${period}.\nPreserve the structural condition, materials, architectural features, surrounding layout, and environmental context specific to that period.\nDo not mix features from earlier or later versions of the same place.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different historical states of the same location.`;
+  },
+  vehicle: (nom, epoque) => {
+    const version = epoque || "[year / version]";
+    return `Subject: ${nom} ${version}\n\nOBJECT IDENTITY LOCK:\nThe object must remain strictly and unmistakably identifiable as ${nom} in every image.\nPreserve its exact silhouette, proportions, structural logic, materials, surface treatment, and all defining visual features.\nDo not redesign, stylize, modernize, simplify, or merge it with another object.\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+  },
+  building: (nom, epoque) => {
+    const period = epoque || "[exact period / state]";
+    return `Subject: ${nom} during ${period}\n\nLOCATION IDENTITY LOCK:\nThe location must remain strictly and unmistakably identifiable as ${nom}.\n\nTIME PERIOD / HISTORICAL STATE LOCK:\nThe location must be shown strictly as it appeared during ${period}.\nPreserve the structural condition, materials, architectural features, surrounding layout, and environmental context specific to that period.\nDo not mix features from earlier or later versions of the same place.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different historical states of the same location.`;
+  },
+  artifact: (nom, epoque) => {
+    const version = epoque || "[year / version]";
+    return `Subject: ${nom} ${version}\n\nOBJECT IDENTITY LOCK:\nThe object must remain strictly and unmistakably identifiable as ${nom} in every image.\nPreserve its exact silhouette, proportions, structural logic, materials, surface treatment, and all defining visual features.\nDo not redesign, stylize, modernize, simplify, or merge it with another object.\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+  },
+  weapon: (nom, epoque) => {
+    const version = epoque || "[year / version]";
+    return `Subject: ${nom} ${version}\n\nOBJECT IDENTITY LOCK:\nThe object must remain strictly and unmistakably identifiable as ${nom} in every image.\nPreserve its exact silhouette, proportions, structural logic, materials, surface treatment, and all defining visual features.\nDo not redesign, stylize, modernize, simplify, or merge it with another object.\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+  },
+  object: (nom, epoque) => {
+    const version = epoque || "[year / version]";
+    return `Subject: ${nom} ${version}\n\nOBJECT IDENTITY LOCK:\nThe object must remain strictly and unmistakably identifiable as ${nom} in every image.\nPreserve its exact silhouette, proportions, structural logic, materials, surface treatment, and all defining visual features.\nDo not redesign, stylize, modernize, simplify, or merge it with another object.\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+  },
 };
 
 function generateId() {
