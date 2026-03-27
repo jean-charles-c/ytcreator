@@ -166,10 +166,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
       if (forceStandardMode) {
-        console.info("Force standard mode enabled — skipping shot sync validation.");
-        useMarkedSync = false;
+        // Force mode: still build shotSentences for markers, but skip text/order validation
+        console.info("Force sync mode enabled — building shotSentences but skipping validation.");
+        shotSentences = buildShotSentences();
+        useMarkedSync = shotSentences != null && shotSentences.length > 0;
       } else if (expectedShotIds.length > 0 && userEditedScript) {
-        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération. Ou activez « Forcer sans synchronisation ».");
+        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération. Ou activez « Forcer la synchronisation ».");
         return;
       } else if (!userEditedScript) {
         shotSentences = buildShotSentences();
@@ -178,7 +180,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         const voMatchesShots = normalizeExactSyncText(voScript) === normalizeExactSyncText(exactShotScript);
 
         if (expectedShotIds.length > 0 && !voMatchesShots) {
-          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le ou activez « Forcer sans synchronisation ».");
+          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le ou activez « Forcer la synchronisation ».");
           return;
         }
 
@@ -228,7 +230,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             projectId,
             customFileName: customFileName.trim() || undefined,
             ...(useMarkedSync
-              ? { shotSentences, syncMode: "shot_marked" }
+              ? { shotSentences, syncMode: "shot_marked", ...(forceStandardMode ? { forceSync: true } : {}) }
               : { syncMode: "standard" }),
           }),
         }
@@ -473,7 +475,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                           onChange={(e) => setForceStandardMode(e.target.checked)}
                           className="rounded border-amber-400/50 accent-amber-500"
                         />
-                        <span className="text-[11px] text-amber-200">Forcer la génération sans synchronisation (mode standard)</span>
+                        <span className="text-[11px] text-amber-200">Forcer la génération avec synchronisation (ignorer les validations)</span>
                       </label>
                     </div>
                   </div>
