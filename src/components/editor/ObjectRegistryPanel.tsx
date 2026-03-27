@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   ChevronDown,
-  Save,
   Car,
   Building2,
   Landmark,
@@ -16,7 +15,7 @@ import {
   User,
   MapPin,
   X,
-  SearchPlus,
+  Search,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────
