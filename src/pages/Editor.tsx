@@ -2079,8 +2079,8 @@ export default function Editor() {
                     <Button variant="outline" size="sm" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[40px]">
                       <Play className="h-4 w-4" /> Re-générer tous les shots
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px]">
-                      <ImageIcon className="h-4 w-4" /> Voir les visuels
+                    <Button variant="default" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px] gap-1.5">
+                      <ImageIcon className="h-4 w-4" /> Voir tous les visuels
                     </Button>
                     {scriptLanguage !== "fr" && (
                       <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
