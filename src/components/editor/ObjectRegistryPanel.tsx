@@ -12,6 +12,7 @@ import {
   Building2,
   Landmark,
   Box,
+  RefreshCw,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -59,9 +60,11 @@ interface ObjectRegistryPanelProps {
   objects: RecurringObject[];
   onChange: (objects: RecurringObject[]) => void;
   sceneCount: number;
+  onReanalyze?: () => void;
+  isAnalyzing?: boolean;
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, isAnalyzing }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const addObject = useCallback(() => {
@@ -121,9 +124,17 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount }: O
         </summary>
         <div className="mt-4 flex flex-col items-center gap-3 py-6">
           <p className="text-sm text-muted-foreground">Aucun objet récurrent détecté. Ajoutez-en manuellement ou relancez l'analyse contextuelle.</p>
-          <Button variant="outline" size="sm" onClick={addObject} className="min-h-[44px]">
-            <Plus className="h-4 w-4" /> Ajouter un objet
-          </Button>
+          <div className="flex gap-2">
+            {onReanalyze && (
+              <Button variant="default" size="sm" onClick={onReanalyze} disabled={isAnalyzing} className="min-h-[44px]">
+                <RefreshCw className={`h-4 w-4 ${isAnalyzing ? "animate-spin" : ""}`} />
+                {isAnalyzing ? "Analyse en cours…" : "Relancer l'analyse contextuelle"}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={addObject} className="min-h-[44px]">
+              <Plus className="h-4 w-4" /> Ajouter manuellement
+            </Button>
+          </div>
         </div>
       </details>
     );
@@ -263,9 +274,17 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount }: O
           );
         })}
 
-        <Button variant="outline" size="sm" onClick={addObject} className="w-full min-h-[40px] text-xs">
-          <Plus className="h-3.5 w-3.5" /> Ajouter un objet récurrent
-        </Button>
+        <div className="flex gap-2">
+          {onReanalyze && (
+            <Button variant="secondary" size="sm" onClick={onReanalyze} disabled={isAnalyzing} className="flex-1 min-h-[40px] text-xs">
+              <RefreshCw className={`h-3.5 w-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
+              {isAnalyzing ? "Analyse…" : "Relancer l'analyse IA"}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
+            <Plus className="h-3.5 w-3.5" /> Ajouter un objet
+          </Button>
+        </div>
       </div>
     </details>
   );

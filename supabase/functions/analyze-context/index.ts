@@ -1,20 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * ANALYZE-CONTEXT — Global Script Context Extraction
- * ═══════════════════════════════════════════════════════════════════
- *
- * Analyses the full script BEFORE segmentation and builds a
- * ContexteGlobal object that serves as reference memory for
- * all downstream operations (segmentation, storyboard, visuals).
- *
- * The ContexteGlobal is stored in project_scriptcreator_state.global_context
- * and is built ONCE per script (or rebuilt on re-analysis).
- * ═══════════════════════════════════════════════════════════════════
- */
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -28,19 +14,15 @@ serve(async (req) => {
     const { project_id } = await req.json();
     if (!project_id) {
       return new Response(JSON.stringify({ error: "project_id manquant" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const sb = createClient(supabaseUrl, supabaseKey);
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Fetch the project narration
     const { data: project, error: projErr } = await sb
       .from("projects")
       .select("narration, title, subject, script_language")
@@ -49,26 +31,23 @@ serve(async (req) => {
 
     if (projErr || !project) {
       return new Response(JSON.stringify({ error: "Projet introuvable" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const narration = project.narration?.trim();
     if (!narration || narration.length < 100) {
       return new Response(JSON.stringify({ error: "Script trop court pour analyse contextuelle (min 100 caractères)" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const langMap: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
     const langLabel = langMap[project.script_language] || "English";
 
-    // ─── AI Call: Extract ContexteGlobal ─────────────────────────────
     const systemPrompt = `You are a script analysis engine. You receive a complete YouTube documentary/narrative script written in ${langLabel}.
 
-Your task is to analyze the ENTIRE script and extract a structured global context object (ContexteGlobal) that captures the essential reference information.
+Your task is to analyze the ENTIRE script and return a JSON object (ContexteGlobal) that captures the essential reference information.
 
 ALL OUTPUT FIELDS MUST BE IN FRENCH regardless of the script language.
 
@@ -77,18 +56,37 @@ RULES:
 - Do NOT invent characters, locations, or time periods that are not supported by the text.
 - If a field cannot be determined, use "Non déterminé" rather than guessing.
 - Be precise and concise in your descriptions.
-- The "personnages" array should list ONLY named or clearly identified characters/subjects.
-- The "resume_narratif" should be a 2-3 sentence summary of the script's narrative arc.
 
-RECURRING OBJECTS DETECTION:
+RECURRING OBJECTS DETECTION (CRITICAL):
 - Identify any object, vehicle, building, artifact, or weapon that appears or is referenced across MULTIPLE scenes/sections of the script.
 - For each recurring object, provide:
-  - A precise name (brand + model + year/version if applicable)
-  - A detailed visual description of its distinctive physical characteristics
-  - An "identity_prompt" that LOCKS the visual identity across all images. Example for a vehicle:
-    "VEHICLE IDENTITY LOCK: The vehicle must remain strictly identifiable as a [exact name] in every image. Always preserve its signature silhouette, body proportions, roofline, front fascia, grille shape, headlight design, air intakes, fender curves, rear profile, wheelbase, stance, and emblem placement. Do not reinterpret, modernize, hybridize, or redesign the vehicle."
-  - Generate a UUID for the "id" field using format like "obj-" followed by a short hash
-- If no recurring objects are found, return an empty array.`;
+  - "id": a unique string like "obj-" followed by a short hash
+  - "nom": precise name (brand + model + year/version if applicable)
+  - "type": one of "vehicle", "building", "artifact", "weapon", "object"
+  - "description_visuelle": detailed visual description of its distinctive physical characteristics
+  - "epoque": era or version of the object
+  - "mentions_scenes": array of scene numbers where mentioned (estimate if needed)
+  - "identity_prompt": a VEHICLE/BUILDING/ARTIFACT IDENTITY LOCK prompt that strictly locks the visual identity across all images
+- If no recurring objects are found, return an empty array.
+
+You MUST return ONLY valid JSON with this exact structure:
+{
+  "sujet_principal": "string",
+  "lieu_principal": "string",
+  "epoque": "string",
+  "personnages": [{"nom": "string", "role": "string"}],
+  "nombre_personnages": number,
+  "contexte_narratif": "string (2-3 phrases)",
+  "resume_narratif": "string (2-3 phrases)",
+  "ton": "string",
+  "ambiance": "string",
+  "type_decor": "string",
+  "marqueurs_culturels": "string",
+  "niveau_technologique": "string",
+  "indices_visuels": ["string"],
+  "type_narration": "string",
+  "objets_recurrents": [{"id":"string","nom":"string","type":"string","description_visuelle":"string","epoque":"string","mentions_scenes":[number],"identity_prompt":"string"}]
+}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -99,131 +97,15 @@ RECURRING OBJECTS DETECTION:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         temperature: 0.15,
-        max_tokens: 4096,
+        max_tokens: 8192,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Analyse ce script complet et extrais le ContexteGlobal.\n\nTitre du projet : ${project.title || "Sans titre"}\nSujet : ${project.subject || "Non précisé"}\n\n--- SCRIPT ---\n${narration}`,
+            content: `Analyse ce script complet et extrais le ContexteGlobal en JSON.\n\nTitre du projet : ${project.title || "Sans titre"}\nSujet : ${project.subject || "Non précisé"}\n\n--- SCRIPT ---\n${narration}`,
           },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_global_context",
-              description: "Extracts the global context from a narrative script. All fields must be in French.",
-              parameters: {
-                type: "object",
-                properties: {
-                  sujet_principal: {
-                    type: "string",
-                    description: "Le sujet principal du script (en français)",
-                  },
-                  lieu_principal: {
-                    type: "string",
-                    description: "Le lieu principal ou la zone géographique (en français)",
-                  },
-                  epoque: {
-                    type: "string",
-                    description: "L'époque ou la période temporelle principale (en français)",
-                  },
-                  personnages: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        nom: { type: "string", description: "Nom du personnage/sujet" },
-                        role: { type: "string", description: "Rôle dans le récit (en français)" },
-                      },
-                      required: ["nom", "role"],
-                      additionalProperties: false,
-                    },
-                    description: "Liste des personnages ou sujets identifiables",
-                  },
-                  nombre_personnages: {
-                    type: "number",
-                    description: "Nombre total de personnages/sujets identifiés",
-                  },
-                  contexte_narratif: {
-                    type: "string",
-                    description: "Le contexte narratif général — ce que raconte le script (en français, 2-3 phrases)",
-                  },
-                  resume_narratif: {
-                    type: "string",
-                    description: "Résumé de l'arc narratif complet (en français, 2-3 phrases)",
-                  },
-                  ton: {
-                    type: "string",
-                    description: "Le ton général du script (ex: dramatique, informatif, contemplatif, etc.)",
-                  },
-                  ambiance: {
-                    type: "string",
-                    description: "L'ambiance visuelle dominante (ex: sombre, lumineuse, mystérieuse, etc.)",
-                  },
-                  type_decor: {
-                    type: "string",
-                    description: "Le type de décor principal (ex: urbain, naturel, intérieur, historique, etc.)",
-                  },
-                  marqueurs_culturels: {
-                    type: "string",
-                    description: "Marqueurs culturels, civilisationnels ou géopolitiques identifiés",
-                  },
-                  niveau_technologique: {
-                    type: "string",
-                    description: "Niveau technologique de l'époque/contexte décrit",
-                  },
-                  indices_visuels: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Liste d'indices visuels structurants pour la cohérence des images (en français)",
-                  },
-                  type_narration: {
-                    type: "string",
-                    description: "Type de narration (ex: documentaire, storytelling, investigation, etc.)",
-                  },
-                  objets_recurrents: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string", description: "UUID unique de l'objet" },
-                        nom: { type: "string", description: "Nom exact de l'objet (ex: Ferrari 250 GTO, Colisée de Rome)" },
-                        type: { type: "string", enum: ["vehicle", "building", "artifact", "weapon", "object"], description: "Catégorie de l'objet" },
-                        description_visuelle: { type: "string", description: "Description physique détaillée des caractéristiques visuelles distinctives" },
-                        epoque: { type: "string", description: "Époque ou version de l'objet" },
-                        mentions_scenes: { type: "array", items: { type: "number" }, description: "Numéros des scènes où l'objet est mentionné (si connu)" },
-                        identity_prompt: { type: "string", description: "Prompt d'identité visuelle verrouillée pour maintenir la cohérence dans toutes les images" },
-                      },
-                      required: ["id", "nom", "type", "description_visuelle", "epoque", "identity_prompt"],
-                      additionalProperties: false,
-                    },
-                    description: "Liste des objets, véhicules, bâtiments ou artefacts récurrents qui apparaissent dans plusieurs scènes et dont l'identité visuelle doit être strictement maintenue",
-                  },
-                },
-                required: [
-                  "sujet_principal",
-                  "lieu_principal",
-                  "epoque",
-                  "personnages",
-                  "nombre_personnages",
-                  "contexte_narratif",
-                  "resume_narratif",
-                  "ton",
-                  "ambiance",
-                  "type_decor",
-                  "marqueurs_culturels",
-                  "niveau_technologique",
-                  "indices_visuels",
-                  "type_narration",
-                  "objets_recurrents",
-                ],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_global_context" } },
       }),
     });
 
@@ -232,61 +114,52 @@ RECURRING OBJECTS DETECTION:
       console.error("AI gateway error:", response.status, errText);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Trop de requêtes, réessayez dans quelques instants." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Crédits AI épuisés." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       throw new Error("AI gateway error: " + response.status);
     }
 
     const aiData = await response.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    const content = aiData.choices?.[0]?.message?.content;
 
-    if (!toolCall || toolCall.function?.name !== "extract_global_context") {
-      console.error("No valid tool call:", JSON.stringify(aiData).slice(0, 500));
+    if (!content) {
+      console.error("No content in AI response:", JSON.stringify(aiData).slice(0, 500));
       throw new Error("L'analyse n'a pas retourné de contexte valide");
     }
 
     let globalContext: Record<string, unknown>;
     try {
-      globalContext = JSON.parse(toolCall.function.arguments);
+      // Strip potential markdown code fences
+      const cleaned = content.replace(/^```json?\s*/i, "").replace(/\s*```$/i, "").trim();
+      globalContext = JSON.parse(cleaned);
     } catch {
-      console.error("Failed to parse tool call:", toolCall.function.arguments?.slice(0, 500));
+      console.error("Failed to parse JSON response:", content.slice(0, 500));
       throw new Error("Réponse d'analyse contextuelle invalide");
     }
 
     // Validate required fields
     const requiredFields = ["sujet_principal", "lieu_principal", "epoque", "personnages", "contexte_narratif"];
     for (const field of requiredFields) {
-      if (!globalContext[field]) {
-        globalContext[field] = "Non déterminé";
-      }
+      if (!globalContext[field]) globalContext[field] = "Non déterminé";
     }
-    if (!Array.isArray(globalContext.personnages)) {
-      globalContext.personnages = [];
-    }
+    if (!Array.isArray(globalContext.personnages)) globalContext.personnages = [];
     globalContext.nombre_personnages = (globalContext.personnages as any[]).length;
+    if (!Array.isArray(globalContext.objets_recurrents)) globalContext.objets_recurrents = [];
 
-    // ─── Persist to project_scriptcreator_state ──────────────────────
+    console.log(`ContexteGlobal built: ${(globalContext.personnages as any[]).length} personnages, ${(globalContext.objets_recurrents as any[]).length} objets récurrents, lieu="${globalContext.lieu_principal}", époque="${globalContext.epoque}"`);
+
+    // Persist
     const { error: upsertErr } = await sb
       .from("project_scriptcreator_state")
-      .upsert(
-        { project_id, global_context: globalContext },
-        { onConflict: "project_id" }
-      );
+      .upsert({ project_id, global_context: globalContext }, { onConflict: "project_id" });
 
-    if (upsertErr) {
-      console.error("Failed to persist global_context:", upsertErr);
-      // Don't fail — still return the context to the client
-    }
-
-    console.log(`ContexteGlobal built for project ${project_id}: ${(globalContext.personnages as any[]).length} personnages, lieu="${globalContext.lieu_principal}", époque="${globalContext.epoque}"`);
+    if (upsertErr) console.error("Failed to persist global_context:", upsertErr);
 
     return new Response(JSON.stringify({ global_context: globalContext }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -294,8 +167,7 @@ RECURRING OBJECTS DETECTION:
   } catch (e) {
     console.error("analyze-context error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erreur inconnue" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
