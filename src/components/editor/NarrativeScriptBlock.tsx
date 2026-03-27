@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield, Mic, Brain } from "lucide-react";
+import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield, Mic } from "lucide-react";
 import { getNarrativeStyleById } from "@/config/narrativeStyles";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
