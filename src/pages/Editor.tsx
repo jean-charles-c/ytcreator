@@ -647,9 +647,10 @@ export default function Editor() {
   }, [projectId, stopTask]);
 
   // Generate storyboard (all or single scene)
-  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean }) => {
+  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean; promptOnly?: boolean }) => {
     if (!projectId) return;
     const segmentOnly = options?.segmentOnly ?? false;
+    const promptOnly = options?.promptOnly ?? false;
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
