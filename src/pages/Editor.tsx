@@ -671,6 +671,7 @@ export default function Editor() {
               scene_id: sceneId,
               sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
               segment_only: segmentOnly,
+              prompt_only: promptOnly,
             }),
           }
         );
