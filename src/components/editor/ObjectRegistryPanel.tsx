@@ -280,10 +280,10 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
 
                   {/* Identity prompt */}
                   <div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Prompt d'identité visuelle (injecté dans chaque shot concerné)</label>
-                      <Button variant="ghost" size="sm" onClick={() => generatePrompt(obj.id)} className="h-6 text-[10px] px-2">
-                        Régénérer template
+                      <Button variant="outline" size="sm" onClick={() => generatePrompt(obj.id)} className="h-7 text-xs px-3 border-primary/30 text-primary hover:bg-primary/10">
+                        <RefreshCw className="h-3 w-3 mr-1" /> Régénérer le prompt
                       </Button>
                     </div>
                     <Textarea
