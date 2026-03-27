@@ -165,19 +165,20 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       let useMarkedSync = false;
       let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
-      if (expectedShotIds.length > 0 && userEditedScript) {
-        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération.");
+      if (forceStandardMode) {
+        console.info("Force standard mode enabled — skipping shot sync validation.");
+        useMarkedSync = false;
+      } else if (expectedShotIds.length > 0 && userEditedScript) {
+        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération. Ou activez « Forcer sans synchronisation ».");
         return;
-      }
-
-      if (!userEditedScript) {
+      } else if (!userEditedScript) {
         shotSentences = buildShotSentences();
         const syncValidation = validateExactAlignedShotSentences(expectedShotIds, shotSentences);
         const exactShotScript = stripThousandSeparators(buildExactShotScript(getSortedShots()));
         const voMatchesShots = normalizeExactSyncText(voScript) === normalizeExactSyncText(exactShotScript);
 
         if (expectedShotIds.length > 0 && !voMatchesShots) {
-          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le depuis les shots avant de générer.");
+          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le ou activez « Forcer sans synchronisation ».");
           return;
         }
 
