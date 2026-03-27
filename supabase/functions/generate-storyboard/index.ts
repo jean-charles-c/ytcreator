@@ -817,10 +817,20 @@ serve(async (req) => {
     }
     } // end of else (full mode)
 
-    if (singleScene) {
-      await supabase.from("shots").delete().eq("scene_id", scene_id);
-    } else {
-      await supabase.from("shots").delete().eq("project_id", project_id);
+    const { data: existingShots, error: existingShotsError } = await supabase
+      .from("shots")
+      .select("*")
+      .eq("project_id", project_id)
+      .order("scene_id", { ascending: true })
+      .order("shot_order", { ascending: true });
+    if (existingShotsError) throw new Error("Failed to load existing shots");
+
+    const existingShotsBySceneId = new Map<string, any[]>();
+    for (const existingShot of existingShots || []) {
+      if (singleScene && existingShot.scene_id !== scene_id) continue;
+      const bucket = existingShotsBySceneId.get(existingShot.scene_id) || [];
+      bucket.push(existingShot);
+      existingShotsBySceneId.set(existingShot.scene_id, bucket);
     }
 
     const storyboardBySceneId = new Map<string, any>();
@@ -831,15 +841,27 @@ serve(async (req) => {
     const shotRows: any[] = [];
     for (const scene of scenes) {
       const sceneData = storyboardBySceneId.get(scene.id);
+      const existingSceneShots = (existingShotsBySceneId.get(scene.id) || []).sort((a, b) => a.shot_order - b.shot_order);
       let sceneShots = Array.isArray(sceneData?.shots) && sceneData.shots.length > 0
         ? sceneData.shots
-        : buildFallbackShots(scene);
+        : (segment_only ? buildFallbackShots(scene) : existingSceneShots.map((shot: any, idx: number) => buildSegmentShot(shot.source_sentence || scene.source_text || "", scene, idx, shot, true)));
 
       const sceneText = normalizeNarrationText(scene.source_text || "");
       const sceneSentences = splitSentences(sceneText);
       const expectedSegments = splitSceneIntoShotSegments(sceneText);
       const requiredShotCount = Math.max(1, expectedSegments.length);
       const normalize = (value: string) => normalizeNarrationText(value).toLowerCase();
+
+      if (!segment_only && existingSceneShots.length === requiredShotCount) {
+        const existingBySegment = new Map(existingSceneShots.map((shot: any) => [normalize(shot.source_sentence || ""), shot]));
+        const canFullyReuse = expectedSegments.every((segment) => existingBySegment.has(normalize(segment)));
+        if (canFullyReuse) {
+          sceneShots = expectedSegments.map((segment, idx) => {
+            const baseShot = existingBySegment.get(normalize(segment));
+            return buildSegmentShot(segment, scene, idx, baseShot, true);
+          });
+        }
+      }
 
       if (requiredShotCount === 1) {
         const currentShot = sceneShots[0];
@@ -982,8 +1004,68 @@ serve(async (req) => {
 
     if (shotRows.length === 0) throw new Error("No shots generated");
 
-    const { error: insertErr } = await supabase.from("shots").insert(shotRows);
-    if (insertErr) { console.error("Insert error:", insertErr); throw new Error("Failed to save shots"); }
+    const targetSceneIds = scenes.map((scene: any) => scene.id);
+    const targetExistingShots = (existingShots || []).filter((shot: any) => targetSceneIds.includes(shot.scene_id));
+    const normalizedRowKey = (row: any) => `${row.scene_id}::${normalizeNarrationText(row.source_sentence || "").toLowerCase()}`;
+    const existingByKey = new Map<string, any>();
+    for (const shot of targetExistingShots) {
+      const key = normalizedRowKey(shot);
+      if (key && !existingByKey.has(key)) existingByKey.set(key, shot);
+    }
+
+    const toUpdate: Array<{ id: string; payload: any }> = [];
+    const toInsert: any[] = [];
+    const matchedIds = new Set<string>();
+
+    for (const row of shotRows) {
+      const key = normalizedRowKey(row);
+      const existingShot = existingByKey.get(key);
+      if (existingShot) {
+        matchedIds.add(existingShot.id);
+        toUpdate.push({
+          id: existingShot.id,
+          payload: {
+            shot_order: row.shot_order,
+            shot_type: row.shot_type,
+            description: row.description,
+            source_sentence: row.source_sentence,
+            source_sentence_fr: row.source_sentence_fr,
+            prompt_export: row.prompt_export,
+            guardrails: row.guardrails,
+          },
+        });
+      } else {
+        toInsert.push(row);
+      }
+    }
+
+    const toDeleteIds = targetExistingShots
+      .filter((shot: any) => !matchedIds.has(shot.id))
+      .map((shot: any) => shot.id);
+
+    for (const update of toUpdate) {
+      const { error } = await supabase.from("shots").update(update.payload).eq("id", update.id);
+      if (error) {
+        console.error("Update error:", error);
+        throw new Error("Failed to update shots");
+      }
+    }
+
+    if (toInsert.length > 0) {
+      const { error: insertErr } = await supabase.from("shots").insert(toInsert);
+      if (insertErr) {
+        console.error("Insert error:", insertErr);
+        throw new Error("Failed to save shots");
+      }
+    }
+
+    if (toDeleteIds.length > 0) {
+      const { error: deleteErr } = await supabase.from("shots").delete().in("id", toDeleteIds);
+      if (deleteErr) {
+        console.error("Delete error:", deleteErr);
+        throw new Error("Failed to cleanup obsolete shots");
+      }
+    }
 
     await supabase.from("projects").update({ status: "storyboarded" }).eq("id", project_id);
 
