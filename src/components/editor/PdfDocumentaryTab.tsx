@@ -594,9 +594,15 @@ export default function PdfDocumentaryTab({
     }
   }, [script, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
 
-  // VO Optimize — rewrite each section individually for deep rewriting
+  // VO Optimize — rewrite the FULL script globally for deep coherent rewriting, then reconstitute sections
   const handleVoOptimize = useCallback(async () => {
-    // Filter core narrative sections only (no editorial)
+    // Build tagged script from core sections
+    const SECTION_TAG_MAP: Record<string, string> = {
+      hook: "[[HOOK]]", context: "[[CONTEXT]]", promise: "[[PROMISE]]",
+      act1: "[[ACT1]]", act2: "[[ACT2]]", act2b: "[[ACT2B]]",
+      act3: "[[ACT3]]", climax: "[[CLIMAX]]", insight: "[[INSIGHT]]",
+      conclusion: "[[CONCLUSION]]",
+    };
     const coreSections = sections.filter(
       (s) => !["transitions", "style_check", "risk_check"].includes(s.key) && s.content.trim().length > 10
     );
@@ -604,8 +610,14 @@ export default function PdfDocumentaryTab({
       toast.error("Aucune section narrative à optimiser");
       return;
     }
+
+    // Assemble full tagged script
+    const taggedScript = coreSections
+      .map((s) => `${SECTION_TAG_MAP[s.key] || `[[${s.key.toUpperCase()}]]`}\n${s.content}`)
+      .join("\n\n");
+
     setVoOptimizing(true);
-    toast.info(`Optimisation voix-off section par section (${coreSections.length} blocs)…`);
+    toast.info("Optimisation voix-off globale en cours…");
 
     try {
       const response = await fetch(
@@ -617,10 +629,7 @@ export default function PdfDocumentaryTab({
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({
-            sections: coreSections.map((s) => ({ key: s.key, label: s.label, content: s.content })),
-            language: scriptLanguage,
-          }),
+          body: JSON.stringify({ script: taggedScript, language: scriptLanguage }),
         }
       );
 
@@ -629,58 +638,86 @@ export default function PdfDocumentaryTab({
         throw new Error(err?.error || `Erreur ${response.status}`);
       }
 
+      // Read SSE stream and accumulate full text
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No stream");
       const decoder = new TextDecoder();
-      let buffer = "";
-      let processedCount = 0;
-      const updatedSections = new Map<string, string>();
+      let sseBuffer = "";
+      let fullText = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        sseBuffer += decoder.decode(value, { stream: true });
 
         let newlineIdx: number;
-        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, newlineIdx);
-          buffer = buffer.slice(newlineIdx + 1);
+        while ((newlineIdx = sseBuffer.indexOf("\n")) !== -1) {
+          let line = sseBuffer.slice(0, newlineIdx);
+          sseBuffer = sseBuffer.slice(newlineIdx + 1);
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (!line.startsWith("data: ")) continue;
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") break;
           try {
             const parsed = JSON.parse(jsonStr);
-            if (parsed.section_key && parsed.content) {
-              const optimizedContent = applyFrenchTypography(parsed.content.trim());
-              updatedSections.set(parsed.section_key, optimizedContent);
-              processedCount++;
-              // Update section in real-time
-              handleSectionContentChange(parsed.section_key, optimizedContent);
-              toast.info(`VO optimisée : ${parsed.section_key} (${processedCount}/${coreSections.length})`);
-            }
+            const delta = parsed?.choices?.[0]?.delta?.content;
+            if (typeof delta === "string") fullText += delta;
           } catch { /* partial chunk */ }
         }
       }
 
-      if (updatedSections.size === 0) throw new Error("Aucune section optimisée");
+      if (!fullText.trim()) throw new Error("Réponse vide de l'IA");
 
-      // Rebuild full script from updated sections
-      const finalSections = sections.map((s) => ({
-        ...s,
-        content: updatedSections.get(s.key) || s.content,
-      }));
-      const optimized = reassembleSections(finalSections);
-      onScriptChange(optimized);
+      // Apply French typography
+      fullText = applyFrenchTypography(fullText.trim());
+
+      // Parse the tagged response back into sections
+      const tagKeys = Object.entries(SECTION_TAG_MAP);
+      const updatedSections = new Map<string, string>();
+
+      for (let i = 0; i < tagKeys.length; i++) {
+        const [key, tag] = tagKeys[i];
+        const tagIdx = fullText.indexOf(tag);
+        if (tagIdx === -1) continue;
+        const contentStart = tagIdx + tag.length;
+        // Find the next tag
+        let contentEnd = fullText.length;
+        for (let j = i + 1; j < tagKeys.length; j++) {
+          const nextIdx = fullText.indexOf(tagKeys[j][1], contentStart);
+          if (nextIdx !== -1) { contentEnd = nextIdx; break; }
+        }
+        const sectionContent = fullText.slice(contentStart, contentEnd).trim();
+        if (sectionContent) {
+          updatedSections.set(key, sectionContent);
+          handleSectionContentChange(key, sectionContent);
+        }
+      }
+
+      if (updatedSections.size === 0) {
+        // Fallback: if no tags found, treat as single block update
+        console.warn("No section tags found in VO response, applying as full script");
+        onScriptChange(fullText);
+      } else {
+        // Rebuild full script from updated sections
+        const finalSections = sections.map((s) => ({
+          ...s,
+          content: updatedSections.get(s.key) || s.content,
+        }));
+        const optimized = reassembleSections(finalSections);
+        onScriptChange(optimized);
+      }
 
       const versionStyle = narrativeStyleId === "custom" ? (customStyleLabel || "custom") : narrativeStyleId;
       onScriptVersionsChange((prev) => {
         const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
         onCurrentVersionIdChange(nextId);
-        return [...prev, { id: nextId, content: optimized, style: `${versionStyle} · VO optimisée` }];
+        const finalScript = updatedSections.size > 0
+          ? reassembleSections(sections.map((s) => ({ ...s, content: updatedSections.get(s.key) || s.content })))
+          : fullText;
+        return [...prev, { id: nextId, content: finalScript, style: `${versionStyle} · VO optimisée` }];
       });
 
-      toast.success(`Script VO optimisé (${updatedSections.size} sections réécrites)`);
+      toast.success(`Script VO optimisé (${updatedSections.size || 1} sections réécrites)`);
     } catch (e: any) {
       console.error("VO optimize error:", e);
       toast.error(e?.message || "Erreur lors de l'optimisation VO");
