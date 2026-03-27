@@ -269,7 +269,7 @@ const splitLongSentenceIntoSegments = (
 const splitSceneIntoShotSegments = (text: string): string[] =>
   getNarrativeSegments(text);
 
-const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number): string => {
+const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number, recurringObjects?: any[]): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
 
   // 1. Historical & geographic anchor (mandatory first sentence)
@@ -295,7 +295,6 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const fragmentLower = fragment.toLowerCase();
   let characterNote = "";
   if (personnages && personnages !== "Non déterminé") {
-    // Only inject character details if the fragment mentions people or actions
     const hasHumanCue = /\b(people|person|king|queen|ruler|trader|craftsmen|builder|worker|priest|warrior|chief|community|population|inhabitants|they|he|she|them)\b/i.test(fragment)
       || /\b(peuple|roi|reine|dirigeant|commerçant|artisan|bâtisseur|ouvrier|prêtre|guerrier|chef|communauté|population|habitants|ils|il|elle|eux)\b/i.test(fragment);
     if (hasHumanCue) {
@@ -321,8 +320,26 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const continuity = scene?.continuity;
   const continuityNote = continuity ? ` Scene continuity: ${continuity}.` : "";
 
-  // 7. Build the prompt — fragment is the core subject
-  return `${anchor}, ${cameraFraming.toLowerCase()} illustrating: "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote} Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+  // 7. Recurring object identity locks
+  let objectIdentityBlock = "";
+  if (recurringObjects && recurringObjects.length > 0) {
+    const sceneOrder = scene?.scene_order;
+    const matchingObjects = recurringObjects.filter((obj: any) => {
+      // Check if this object is relevant to this scene
+      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+        return obj.mentions_scenes.includes(sceneOrder);
+      }
+      // If no scenes specified, check if the fragment mentions the object name
+      const objNameLower = (obj.nom || "").toLowerCase();
+      return objNameLower && fragmentLower.includes(objNameLower.split(" ")[0].toLowerCase());
+    });
+    if (matchingObjects.length > 0) {
+      objectIdentityBlock = " " + matchingObjects.map((obj: any) => obj.identity_prompt || "").filter(Boolean).join(" ");
+    }
+  }
+
+  // 8. Build the prompt — fragment is the core subject
+  return `${anchor}, ${cameraFraming.toLowerCase()} illustrating: "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
 };
 
 // Keep legacy name for compatibility
