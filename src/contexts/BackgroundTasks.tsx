@@ -415,9 +415,6 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
       try {
         const session = (await supabase.auth.getSession()).data.session;
 
-        // Delete existing shots
-        await supabase.from("shots").delete().eq("project_id", params.projectId);
-
         let totalShots = 0;
         const failedSceneIds: string[] = [];
 
@@ -451,10 +448,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         }
 
         updateTask(key, { status: "done" });
+        const completionLabel = params.segmentOnly ? "shots découpés" : "prompts générés";
         if (failedSceneIds.length > 0) {
-          toast.warning(`${totalShots} shots générés, ${failedSceneIds.length} scène(s) à relancer`);
+          toast.warning(`${totalShots} ${completionLabel}, ${failedSceneIds.length} scène(s) à relancer`);
         } else {
-          toast.success(`${totalShots} shots générés sur ${params.sceneIds.length} scènes`);
+          toast.success(`${totalShots} ${completionLabel} sur ${params.sceneIds.length} scènes`);
         }
       } catch (e: any) {
         if (e?.name === "AbortError") {
