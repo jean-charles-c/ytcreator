@@ -60,6 +60,47 @@ type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
 /**
+ * Find best position of a fragment in scene text.
+ * Tries exact indexOf first, then falls back to word-overlap sliding window.
+ */
+function findBestPosition(sceneTextLower: string, fragmentLower: string): number {
+  if (!fragmentLower) return -1;
+  // Exact match
+  const exact = sceneTextLower.indexOf(fragmentLower);
+  if (exact >= 0) return exact;
+  
+  // Try trimmed first 40 chars (handles truncated fragments)
+  const shortFrag = fragmentLower.slice(0, 40);
+  if (shortFrag.length >= 10) {
+    const shortPos = sceneTextLower.indexOf(shortFrag);
+    if (shortPos >= 0) return shortPos;
+  }
+  
+  // Word overlap sliding window
+  const fragWords = fragmentLower.split(/\s+/).filter(w => w.length > 2);
+  if (fragWords.length < 2) return -1;
+  
+  const sceneParts = sceneTextLower.split(/(?<=[.!?])\s+/);
+  let bestPos = -1;
+  let bestScore = 0;
+  let charOffset = 0;
+  
+  for (const part of sceneParts) {
+    const partWords = new Set(part.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    let overlap = 0;
+    for (const w of fragWords) { if (partWords.has(w)) overlap++; }
+    const score = overlap / Math.max(fragWords.length, partWords.size);
+    if (score > bestScore && score >= 0.4) {
+      bestScore = score;
+      bestPos = charOffset;
+    }
+    charOffset += part.length + 1;
+  }
+  
+  return bestPos;
+}
+
+/**
  * Reorder shots within each scene so shot_order follows
  * the reading order of source_sentence in the scene's source_text.
  * Returns shots with corrected shot_order + list of DB updates needed.
@@ -84,12 +125,12 @@ function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reorde
     if (!scene) continue;
     const sceneTextLower = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
 
-    // Sort by position of source_sentence in scene text
+    // Sort by position of source_sentence in scene text using fuzzy match
     sceneShots.sort((a, b) => {
       const sentA = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
       const sentB = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const posA = sentA ? sceneTextLower.indexOf(sentA) : 9999;
-      const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
+      const posA = findBestPosition(sceneTextLower, sentA);
+      const posB = findBestPosition(sceneTextLower, sentB);
       return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
     });
 
