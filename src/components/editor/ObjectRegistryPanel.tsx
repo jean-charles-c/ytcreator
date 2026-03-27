@@ -20,7 +20,7 @@ import {
 export interface RecurringObject {
   id: string;
   nom: string;
-  type: "vehicle" | "building" | "artifact" | "weapon" | "object";
+  type: "vehicle" | "building" | "artifact" | "weapon" | "object" | "character" | "location";
   description_visuelle: string;
   epoque: string;
   mentions_scenes: number[];
