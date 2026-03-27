@@ -511,6 +511,88 @@ export default function PdfDocumentaryTab({
     }
   }, [sections, scriptLanguage, narrativeStyleId, extractedText, handleSectionContentChange, pushSectionHistory]);
 
+  // Humanize the full script via GPT-5
+  const handleHumanize = useCallback(async (scriptToHumanize?: string) => {
+    const inputScript = scriptToHumanize || script;
+    if (!inputScript || inputScript.trim().length < 100) {
+      toast.error("Script trop court pour être humanisé");
+      return;
+    }
+    setHumanizing(true);
+    toast.info("Humanisation du script en cours…");
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/humanize-script`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ script: inputScript, language: scriptLanguage }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error || `Erreur ${response.status}`);
+      }
+
+      // Parse SSE stream
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIdx);
+          buffer = buffer.slice(newlineIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) result += content;
+          } catch { /* partial chunk */ }
+        }
+      }
+
+      if (!result.trim()) throw new Error("Empty humanized result");
+
+      // Apply French typography
+      const humanized = applyFrenchTypography(result.trim());
+
+      // Update script
+      onScriptChange(humanized);
+
+      // Save as new version
+      const versionStyle = narrativeStyleId === "custom" ? (customStyleLabel || "custom") : narrativeStyleId;
+      onScriptVersionsChange((prev) => {
+        const nextId = prev.length > 0 ? Math.max(...prev.map((v) => v.id)) + 1 : 1;
+        onCurrentVersionIdChange(nextId);
+        return [...prev, { id: nextId, content: humanized, style: `${versionStyle} · Humanisée` }];
+      });
+
+      toast.success("Script humanisé et sauvegardé comme nouvelle version");
+    } catch (e: any) {
+      console.error("Humanize error:", e);
+      toast.error(e?.message || "Erreur lors de l'humanisation");
+    } finally {
+      setHumanizing(false);
+    }
+  }, [script, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
+
   // Translate a section to French
   const handleTranslateSection = useCallback(async (sectionKey: string) => {
     const section = sections.find((s) => s.key === sectionKey);
