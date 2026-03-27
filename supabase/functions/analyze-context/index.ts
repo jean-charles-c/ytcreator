@@ -100,7 +100,7 @@ You MUST return ONLY valid JSON with this exact structure:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         temperature: 0.15,
-        max_tokens: 16384,
+        max_tokens: 32768,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
