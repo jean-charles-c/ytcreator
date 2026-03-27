@@ -89,7 +89,7 @@ interface ObjectRegistryPanelProps {
   isAnalyzing?: boolean;
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, isAnalyzing }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const addObject = useCallback(() => {
