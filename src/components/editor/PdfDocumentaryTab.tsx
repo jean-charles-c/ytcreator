@@ -1324,6 +1324,8 @@ export default function PdfDocumentaryTab({
         voOptimizing={voOptimizing}
         analyzingScript={analyzingScript}
         onAnalyzeScript={() => handleAnalyzeScript()}
+        scriptAiModel={scriptAiModel}
+        onScriptAiModelChange={(m) => { setScriptAiModel(m); persistScriptAiModel(m); }}
         toolbarSlot={
           <div className="flex items-center gap-2 flex-wrap">
             <select
