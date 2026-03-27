@@ -641,10 +641,6 @@ serve(async (req) => {
     const globalContext = scriptState?.global_context as Record<string, any> | null;
     const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
 
-    // Shot count: narrative segmentation based on sense units
-    const calcShotCount = (text: string): number => {
-      return computeNarrativeShotCount(text);
-    };
 
     const scriptLang = project.script_language || "fr";
     const needsTranslation = scriptLang.toLowerCase() !== "fr";
