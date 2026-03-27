@@ -265,11 +265,6 @@ export default function NarrativeScriptBlock({
                       </option>
                     ))}
                   </select>
-                      className="h-8 text-xs border-primary/40 text-foreground hover:bg-primary/10"
-                    >
-                      {voOptimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Vraie voix-off
-                    </Button>
-                  )}
                 </div>
               )}
 
