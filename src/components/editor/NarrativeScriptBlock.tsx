@@ -55,6 +55,10 @@ export interface NarrativeScriptBlockProps {
   onHumanize?: () => void;
   humanizing?: boolean;
 
+  /* VO Optimize */
+  onVoOptimize?: () => void;
+  voOptimizing?: boolean;
+
   /* AI Analysis */
   analyzingScript?: boolean;
   onAnalyzeScript?: () => void;
