@@ -758,7 +758,12 @@ export default function Editor() {
         toast.error("Recherche échouée : " + (data?.error || "Erreur inconnue"));
         return;
       }
-      setGlobalContext(data.global_context);
+      // Apply identity templates to new objects
+      const ctx = data.global_context;
+      if (ctx?.objets_recurrents) {
+        ctx.objets_recurrents = applyIdentityTemplates(ctx.objets_recurrents);
+      }
+      setGlobalContext(ctx);
       const newCount = data.new_objects_count || 0;
       if (newCount > 0) {
         toast.success(`${newCount} nouvelle(s) récurrence(s) trouvée(s)`);
