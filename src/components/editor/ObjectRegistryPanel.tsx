@@ -42,7 +42,7 @@ const TYPE_META: Record<RecurringObject["type"], { label: string; icon: React.Re
   object: { label: "Objet", icon: <Package className="h-3.5 w-3.5" />, color: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
 
-const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string) => string> = {
+export const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string) => string> = {
   character: (nom, epoque) => {
     const period = epoque || "[exact period]";
     return `Subject: ${nom} during ${period}\n\nThe character must remain strictly and unmistakably identifiable as ${nom} ${period} in every image.\nPreserve their exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, distinctive traits, and all defining visual cues specific to that period.\nDo not redesign, beautify, modernize, stylize, de-age, age up, or merge them with any other person or character.\n\nCHARACTER IDENTITY LOCK:\nThe character must remain strictly and unmistakably identifiable as ${nom}.\n\nTIME PERIOD LOCK:\nThe character must be shown strictly as they appeared during ${period}.\nPreserve the age appearance, hairstyle, facial traits, clothing logic, accessories, and visual markers specific to that period.\nDo not mix features from earlier or later periods.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [period feature 1]\n- [period feature 2]\n- [period feature 3]\n- [period feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different eras of the same character/person.`;

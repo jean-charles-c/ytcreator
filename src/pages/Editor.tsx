@@ -42,7 +42,7 @@ import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribut
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
 import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
-import ObjectRegistryPanel, { type RecurringObject } from "@/components/editor/ObjectRegistryPanel";
+import ObjectRegistryPanel, { type RecurringObject, IDENTITY_TEMPLATES } from "@/components/editor/ObjectRegistryPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
 import SeoTab from "@/components/editor/SeoTab";
 import ContentPublishTab from "@/components/editor/ContentPublishTab";
