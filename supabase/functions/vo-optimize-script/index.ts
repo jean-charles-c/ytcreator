@@ -142,6 +142,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const language: string = body.language || "fr";
+    const model: string = body.model || "openai/gpt-5";
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -177,7 +178,7 @@ ${script}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model,
         messages: [
           { role: "system", content: VO_SYSTEM },
           { role: "user", content: userPrompt },

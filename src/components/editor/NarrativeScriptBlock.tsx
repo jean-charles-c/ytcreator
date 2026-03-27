@@ -8,6 +8,34 @@ import SectionCard, { type NarrativeSection, type SectionHistoryEntry, EDITORIAL
 import { isEditorialSection } from "./canonicalScriptTypes";
 import { applyFrenchTypography } from "./frenchTypography";
 
+/* ── AI Model options ──────────────────────────────── */
+
+export const SCRIPT_AI_MODELS = [
+  { id: "google/gemini-2.5-flash-lite", label: "Gemini Flash Lite", tier: "$" },
+  { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "$" },
+  { id: "google/gemini-2.5-flash", label: "Gemini Flash", tier: "$$" },
+  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash", tier: "$$" },
+  { id: "openai/gpt-5-mini", label: "GPT-5 Mini", tier: "$$$" },
+  { id: "google/gemini-2.5-pro", label: "Gemini Pro", tier: "$$$$" },
+  { id: "openai/gpt-5", label: "GPT-5", tier: "$$$$$" },
+] as const;
+
+export type ScriptAiModelId = typeof SCRIPT_AI_MODELS[number]["id"];
+
+const LS_KEY_SCRIPT_AI_MODEL = "script-ai-model";
+
+export function getPersistedScriptAiModel(): ScriptAiModelId {
+  try {
+    const stored = localStorage.getItem(LS_KEY_SCRIPT_AI_MODEL);
+    if (stored && SCRIPT_AI_MODELS.some((m) => m.id === stored)) return stored as ScriptAiModelId;
+  } catch {}
+  return "openai/gpt-5";
+}
+
+export function persistScriptAiModel(modelId: ScriptAiModelId) {
+  try { localStorage.setItem(LS_KEY_SCRIPT_AI_MODEL, modelId); } catch {}
+}
+
 /* ── Types ─────────────────────────────────────────── */
 
 export interface ScriptVersion {
@@ -63,6 +91,10 @@ export interface NarrativeScriptBlockProps {
   analyzingScript?: boolean;
   onAnalyzeScript?: () => void;
 
+  /* AI Model selection */
+  scriptAiModel: ScriptAiModelId;
+  onScriptAiModelChange: (model: ScriptAiModelId) => void;
+
   /* Toolbar extras (language, style, chars) */
   toolbarSlot?: React.ReactNode;
 }
@@ -116,6 +148,8 @@ export default function NarrativeScriptBlock({
   voOptimizing,
   analyzingScript,
   onAnalyzeScript,
+  scriptAiModel,
+  onScriptAiModelChange,
   toolbarSlot,
 }: NarrativeScriptBlockProps) {
   const scriptEndRef = useRef<HTMLDivElement>(null);
@@ -217,6 +251,20 @@ export default function NarrativeScriptBlock({
                       {voOptimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Vraie voix-off
                     </Button>
                   )}
+
+                  {/* AI Model selector */}
+                  <select
+                    value={scriptAiModel}
+                    onChange={(e) => onScriptAiModelChange(e.target.value as ScriptAiModelId)}
+                    className="rounded border border-border bg-background px-2 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[200px] h-8"
+                    title="Modèle IA pour Humaniser / Vraie voix-off"
+                  >
+                    {SCRIPT_AI_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label} ({m.tier})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
 

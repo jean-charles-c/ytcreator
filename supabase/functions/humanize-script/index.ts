@@ -28,7 +28,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { script, language } = await req.json();
+    const { script, language, model } = await req.json();
     if (!script || typeof script !== "string") {
       return new Response(JSON.stringify({ error: "Missing script" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -45,7 +45,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model: model || "openai/gpt-5",
         messages: [
           { role: "system", content: HUMANIZE_SYSTEM },
           { role: "user", content: `${langHint}\n\nHere is the script to humanize:\n\n${script}` },

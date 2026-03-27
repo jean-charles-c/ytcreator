@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
 import { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
-import NarrativeScriptBlock, { type ScriptVersion } from "./NarrativeScriptBlock";
+import NarrativeScriptBlock, { type ScriptVersion, getPersistedScriptAiModel, persistScriptAiModel, type ScriptAiModelId } from "./NarrativeScriptBlock";
 import ChapterCollapse from "./ChapterCollapse";
 import type { ChapterListState } from "./chapterTypes";
 import * as pdfjsLib from "pdfjs-dist";
@@ -168,6 +168,7 @@ export default function PdfDocumentaryTab({
   const [findingTension, setFindingTension] = useState(false);
   const [humanizing, setHumanizing] = useState(false);
   const [voOptimizing, setVoOptimizing] = useState(false);
+  const [scriptAiModel, setScriptAiModel] = useState<ScriptAiModelId>(getPersistedScriptAiModel);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
   const [sections, setSections] = useState<NarrativeSection[]>(() => parseScriptIntoSections(script || ""));
@@ -532,7 +533,7 @@ export default function PdfDocumentaryTab({
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ script: inputScript, language: scriptLanguage }),
+          body: JSON.stringify({ script: inputScript, language: scriptLanguage, model: scriptAiModel }),
         }
       );
 
@@ -592,7 +593,7 @@ export default function PdfDocumentaryTab({
     } finally {
       setHumanizing(false);
     }
-  }, [script, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
+  }, [script, scriptLanguage, scriptAiModel, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange]);
 
   // VO Optimize — rewrite the FULL script globally for deep coherent rewriting, then reconstitute sections
   const handleVoOptimize = useCallback(async () => {
@@ -629,7 +630,7 @@ export default function PdfDocumentaryTab({
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ script: taggedScript, language: scriptLanguage }),
+          body: JSON.stringify({ script: taggedScript, language: scriptLanguage, model: scriptAiModel }),
         }
       );
 
@@ -724,7 +725,7 @@ export default function PdfDocumentaryTab({
     } finally {
       setVoOptimizing(false);
     }
-  }, [sections, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange, handleSectionContentChange]);
+  }, [sections, scriptLanguage, scriptAiModel, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange, handleSectionContentChange]);
 
   // Translate a section to French
   const handleTranslateSection = useCallback(async (sectionKey: string) => {
@@ -1323,6 +1324,8 @@ export default function PdfDocumentaryTab({
         voOptimizing={voOptimizing}
         analyzingScript={analyzingScript}
         onAnalyzeScript={() => handleAnalyzeScript()}
+        scriptAiModel={scriptAiModel}
+        onScriptAiModelChange={(m) => { setScriptAiModel(m); persistScriptAiModel(m); }}
         toolbarSlot={
           <div className="flex items-center gap-2 flex-wrap">
             <select
