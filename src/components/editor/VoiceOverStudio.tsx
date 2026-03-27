@@ -466,6 +466,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                       <p className="text-[10px] text-muted-foreground mt-1">
                         ➜ Cliquez sur « Coller le script généré » puis régénérez la voix off.
                       </p>
+                      <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={forceStandardMode}
+                          onChange={(e) => setForceStandardMode(e.target.checked)}
+                          className="rounded border-amber-400/50 accent-amber-500"
+                        />
+                        <span className="text-[11px] text-amber-200">Forcer la génération sans synchronisation (mode standard)</span>
+                      </label>
                     </div>
                   </div>
                 )}
