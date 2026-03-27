@@ -2752,8 +2752,9 @@ export default function Editor() {
               </details>
 
               {/* Manifest Timing */}
-              <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3">
-                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+              <details className="mt-3 sm:mt-4 rounded border border-border bg-card p-2 sm:p-3 group/timing">
+                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-3 w-3 transition-transform group-open/timing:rotate-90 shrink-0" />
                   Manifest Timing (synchronisation audio/image)
                 </summary>
                 <div className="mt-3">
