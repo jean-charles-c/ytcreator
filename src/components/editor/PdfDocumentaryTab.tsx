@@ -725,7 +725,7 @@ export default function PdfDocumentaryTab({
     } finally {
       setVoOptimizing(false);
     }
-  }, [sections, scriptLanguage, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange, handleSectionContentChange]);
+  }, [sections, scriptLanguage, scriptAiModel, narrativeStyleId, customStyleLabel, onScriptChange, onScriptVersionsChange, onCurrentVersionIdChange, handleSectionContentChange]);
 
   // Translate a section to French
   const handleTranslateSection = useCallback(async (sectionKey: string) => {
