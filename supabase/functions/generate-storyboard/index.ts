@@ -618,6 +618,15 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Fetch global_context for recurring objects
+    const { data: scriptState } = await supabase
+      .from("project_scriptcreator_state")
+      .select("global_context")
+      .eq("project_id", project_id)
+      .maybeSingle();
+    const globalContext = scriptState?.global_context as Record<string, any> | null;
+    const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
+
     // Shot count: narrative segmentation based on sense units
     const calcShotCount = (text: string): number => {
       return computeNarrativeShotCount(text);
