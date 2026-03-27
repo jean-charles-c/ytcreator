@@ -124,9 +124,17 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
         </summary>
         <div className="mt-4 flex flex-col items-center gap-3 py-6">
           <p className="text-sm text-muted-foreground">Aucun objet récurrent détecté. Ajoutez-en manuellement ou relancez l'analyse contextuelle.</p>
-          <Button variant="outline" size="sm" onClick={addObject} className="min-h-[44px]">
-            <Plus className="h-4 w-4" /> Ajouter un objet
-          </Button>
+          <div className="flex gap-2">
+            {onReanalyze && (
+              <Button variant="default" size="sm" onClick={onReanalyze} disabled={isAnalyzing} className="min-h-[44px]">
+                <RefreshCw className={`h-4 w-4 ${isAnalyzing ? "animate-spin" : ""}`} />
+                {isAnalyzing ? "Analyse en cours…" : "Relancer l'analyse contextuelle"}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={addObject} className="min-h-[44px]">
+              <Plus className="h-4 w-4" /> Ajouter manuellement
+            </Button>
+          </div>
         </div>
       </details>
     );
