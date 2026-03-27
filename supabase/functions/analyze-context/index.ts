@@ -7,8 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ── Tool definitions ─────────────────────────────────────────────
-
 const contextTool = {
   type: "function" as const,
   function: {
@@ -54,45 +52,10 @@ const contextTool = {
   },
 };
 
-const objectsTool = {
-  type: "function" as const,
-  function: {
-    name: "extract_recurring_objects",
-    description: "Extracts recurring visual objects from a narrative script.",
-    parameters: {
-      type: "object",
-      properties: {
-        objets_recurrents: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              nom: { type: "string" },
-              type: { type: "string", enum: ["vehicle", "building", "artifact", "weapon", "object"] },
-              description_visuelle: { type: "string" },
-              epoque: { type: "string" },
-              mentions_scenes: { type: "array", items: { type: "number" } },
-              identity_prompt: { type: "string" },
-            },
-            required: ["id", "nom", "type", "description_visuelle", "epoque", "identity_prompt"],
-            additionalProperties: false,
-          },
-        },
-      },
-      required: ["objets_recurrents"],
-      additionalProperties: false,
-    },
-  },
-};
-
-// ── Helper ───────────────────────────────────────────────────────
-
 async function callWithToolCall(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  tool: typeof contextTool | typeof objectsTool,
 ): Promise<Record<string, unknown>> {
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -108,8 +71,8 @@ async function callWithToolCall(
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      tools: [tool],
-      tool_choice: { type: "function", function: { name: tool.function.name } },
+      tools: [contextTool],
+      tool_choice: { type: "function", function: { name: contextTool.function.name } },
     }),
   });
 
@@ -124,7 +87,7 @@ async function callWithToolCall(
   const aiData = await response.json();
   const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-  if (!toolCall || toolCall.function?.name !== tool.function.name) {
+  if (!toolCall || toolCall.function?.name !== contextTool.function.name) {
     console.error("No valid tool call:", JSON.stringify(aiData).slice(0, 500));
     throw new Error("L'IA n'a pas retourné de résultat structuré");
   }
@@ -132,7 +95,66 @@ async function callWithToolCall(
   return JSON.parse(toolCall.function.arguments);
 }
 
-// ── Main ─────────────────────────────────────────────────────────
+function extractJsonObject(content: string) {
+  const cleaned = content
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("No JSON object found in response");
+  }
+
+  return JSON.parse(
+    cleaned
+      .slice(start, end + 1)
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+  ) as Record<string, unknown>;
+}
+
+async function callObjectsJson(
+  apiKey: string,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<Record<string, unknown>> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview",
+      temperature: 0.1,
+      max_tokens: 4096,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Objects AI gateway error:", response.status, errText);
+    if (response.status === 429) throw new Error("Trop de requêtes, réessayez dans quelques instants.");
+    if (response.status === 402) throw new Error("Crédits AI épuisés.");
+    throw new Error("AI gateway error: " + response.status);
+  }
+
+  const aiData = await response.json();
+  const content = aiData.choices?.[0]?.message?.content;
+  if (!content) {
+    console.error("No object JSON content:", JSON.stringify(aiData).slice(0, 500));
+    throw new Error("Aucune réponse JSON exploitable pour les objets");
+  }
+
+  return extractJsonObject(content);
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -171,37 +193,52 @@ serve(async (req) => {
 
     const langMap: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
     const langLabel = langMap[project.script_language] || "English";
-
     const userPrompt = `Titre : ${project.title || "Sans titre"}\nSujet : ${project.subject || "Non précisé"}\n\n--- SCRIPT ---\n${narration}`;
 
-    // ── Call 1: Global context (same approach as before) ─────────
     console.log("=== Step 1: Global context extraction ===");
     const globalCtx = await callWithToolCall(
       LOVABLE_API_KEY,
-      `You are a script analysis engine. You receive a YouTube documentary script written in ${langLabel}.
-Extract the global context. All values in French. Be concise. If unknown, use "Non déterminé".`,
+      `You are a script analysis engine. You receive a YouTube documentary script written in ${langLabel}. Extract the global context. All values in French. Be concise. If unknown, use "Non déterminé".`,
       `Analyse ce script et extrais le contexte global.\n\n${userPrompt}`,
-      contextTool,
     );
 
-    // ── Call 2: Recurring objects ────────────────────────────────
     console.log("=== Step 2: Recurring objects extraction ===");
     let objectsResult: Record<string, unknown> = { objets_recurrents: [] };
     try {
-      objectsResult = await callWithToolCall(
+      objectsResult = await callObjectsJson(
         LOVABLE_API_KEY,
-        `You are a visual continuity engine. You receive a YouTube documentary script written in ${langLabel}.
-Identify objects, vehicles, buildings, or artifacts that appear across MULTIPLE scenes.
-For each, generate an "identity_prompt" that locks the visual identity in English.
-Use "obj-" prefix for IDs. If no recurring objects, return an empty array.`,
-        `Identifie les objets récurrents de ce script.\n\n${userPrompt}`,
-        objectsTool,
+        `You are a visual continuity engine analyzing a YouTube documentary script written in ${langLabel}.
+Return ONLY valid JSON.
+All metadata fields must be in French except identity_prompt, which must stay in English.
+Focus ONLY on physical recurring objects that must remain visually consistent across scenes.
+Important examples: a specific car model, a named building, a weapon model, a named artifact, a machine, a ship, a train, a plane.
+Do NOT return abstract concepts, places, or one-off props.
+Return an object only if it appears, is discussed, or is implied across multiple parts of the script.
+If a specific car model like Ferrari 250 GTO is central to the script, it MUST be returned as type "vehicle".
+Keep descriptions concise.
+Return exactly:
+{
+  "objets_recurrents": [
+    {
+      "id": "obj-shortid",
+      "nom": "string",
+      "type": "vehicle|building|artifact|weapon|object",
+      "description_visuelle": "string",
+      "epoque": "string",
+      "mentions_scenes": [1,2],
+      "identity_prompt": "string"
+    }
+  ]
+}`,
+        `Identifie les objets physiques récurrents de ce script.
+Cherche en priorité les véhicules, notamment les modèles de voiture précis, puis les bâtiments, artefacts, armes et objets iconiques.
+Si le script parle de la Ferrari 250 GTO dans plusieurs passages, tu dois la retourner.
+\n${userPrompt}`,
       );
     } catch (objErr) {
       console.warn("Objects extraction failed (non-blocking):", objErr);
     }
 
-    // ── Merge & persist ─────────────────────────────────────────
     const merged: Record<string, unknown> = {
       ...globalCtx,
       personnages: Array.isArray(globalCtx.personnages) ? globalCtx.personnages : [],
