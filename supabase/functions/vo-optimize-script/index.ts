@@ -144,6 +144,7 @@ serve(async (req) => {
     const language: string = body.language || "fr";
     const model: string = body.model || "openai/gpt-5";
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // ── Global script mode (preferred) ──────────────
     // Receives the full script with [[TAGS]], rewrites globally, returns with tags preserved
