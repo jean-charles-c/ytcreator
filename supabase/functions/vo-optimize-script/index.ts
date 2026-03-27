@@ -142,7 +142,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const language: string = body.language || "fr";
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const model: string = body.model || "openai/gpt-5";
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // ── Global script mode (preferred) ──────────────
