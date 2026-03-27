@@ -97,7 +97,7 @@ You MUST return ONLY valid JSON with this exact structure:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         temperature: 0.15,
-        max_tokens: 8192,
+        max_tokens: 16384,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
@@ -135,11 +135,31 @@ You MUST return ONLY valid JSON with this exact structure:
 
     let globalContext: Record<string, unknown>;
     try {
-      // Strip potential markdown code fences
-      const cleaned = content.replace(/^```json?\s*/i, "").replace(/\s*```$/i, "").trim();
-      globalContext = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse JSON response:", content.slice(0, 500));
+      // Robust JSON extraction
+      let cleaned = content
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+
+      // Find JSON boundaries
+      const jsonStart = cleaned.search(/[\{\[]/);
+      const jsonEnd = cleaned.lastIndexOf(jsonStart !== -1 && cleaned[jsonStart] === '[' ? ']' : '}');
+
+      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found");
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+
+      try {
+        globalContext = JSON.parse(cleaned);
+      } catch {
+        // Fix common LLM JSON issues
+        cleaned = cleaned
+          .replace(/,\s*}/g, "}")
+          .replace(/,\s*]/g, "]")
+          .replace(/[\x00-\x1F\x7F]/g, "");
+        globalContext = JSON.parse(cleaned);
+      }
+    } catch (parseErr) {
+      console.error("Failed to parse JSON response:", content.slice(0, 1000));
       throw new Error("Réponse d'analyse contextuelle invalide");
     }
 
