@@ -1,3 +1,5 @@
+import { splitTextIntoSentences } from "./sentence-splitting.ts";
+
 /**
  * Narrative Segmentation Engine
  *
@@ -38,11 +40,7 @@ const MAX_CHARS_HARD = 180; // absolute ceiling before forced split
 
 // ── Sentence splitting ─────────────────────────────────────────────
 
-const splitIntoSentences = (text: string): string[] => {
-  // Split on sentence-ending punctuation followed by space or end
-  const matches = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) ?? [];
-  return matches.map((s) => s.trim()).filter(Boolean);
-};
+const splitIntoSentences = (text: string): string[] => splitTextIntoSentences(text);
 
 // ── Narrative transition detection ─────────────────────────────────
 

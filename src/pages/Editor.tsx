@@ -2571,9 +2571,10 @@ export default function Editor() {
                                       className="h-8 text-xs px-2 gap-1"
                                       disabled={isRegenerating}
                                       onClick={() => runStoryboard(scene.id)}
+                                      title="Refaire tout le découpage des shots de cette scène"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                      Régénérer les prompts
+                                      Refaire le découpage des shots
                                     </Button>
                                     <button
                                       onClick={async () => {

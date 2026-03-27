@@ -164,11 +164,7 @@ const CAMERA_TYPES = [
   "Plan de détail scientifique",
 ];
 
-const splitSentences = (text: string): string[] => {
-  const matches = text.match(/[^.!?]+[.!?]?/g) ?? [];
-  const cleaned = matches.map((s) => s.trim()).filter(Boolean);
-  return cleaned.length > 0 ? cleaned : [text.trim()].filter(Boolean);
-};
+const splitSentences = (text: string): string[] => splitTextIntoSentences(text);
 
 const TARGET_CHARS_PER_SHOT = 100;
 
