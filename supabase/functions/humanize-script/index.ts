@@ -45,7 +45,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model: model || "openai/gpt-5",
         messages: [
           { role: "system", content: HUMANIZE_SYSTEM },
           { role: "user", content: `${langHint}\n\nHere is the script to humanize:\n\n${script}` },
