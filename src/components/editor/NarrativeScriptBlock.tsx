@@ -251,6 +251,25 @@ export default function NarrativeScriptBlock({
                       {voOptimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Vraie voix-off
                     </Button>
                   )}
+
+                  {/* AI Model selector */}
+                  <select
+                    value={scriptAiModel}
+                    onChange={(e) => onScriptAiModelChange(e.target.value as ScriptAiModelId)}
+                    className="rounded border border-border bg-background px-2 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[200px] h-8"
+                    title="Modèle IA pour Humaniser / Vraie voix-off"
+                  >
+                    {SCRIPT_AI_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label} ({m.tier})
+                      </option>
+                    ))}
+                  </select>
+                      className="h-8 text-xs border-primary/40 text-foreground hover:bg-primary/10"
+                    >
+                      {voOptimizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />} Vraie voix-off
+                    </Button>
+                  )}
                 </div>
               )}
 
