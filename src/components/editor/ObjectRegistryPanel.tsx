@@ -60,6 +60,8 @@ interface ObjectRegistryPanelProps {
   objects: RecurringObject[];
   onChange: (objects: RecurringObject[]) => void;
   sceneCount: number;
+  onReanalyze?: () => void;
+  isAnalyzing?: boolean;
 }
 
 export default function ObjectRegistryPanel({ objects, onChange, sceneCount }: ObjectRegistryPanelProps) {
