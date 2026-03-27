@@ -148,6 +148,8 @@ export default function NarrativeScriptBlock({
   voOptimizing,
   analyzingScript,
   onAnalyzeScript,
+  scriptAiModel,
+  onScriptAiModelChange,
   toolbarSlot,
 }: NarrativeScriptBlockProps) {
   const scriptEndRef = useRef<HTMLDivElement>(null);
