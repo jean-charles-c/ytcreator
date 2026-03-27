@@ -656,7 +656,7 @@ export default function PdfDocumentaryTab({
               updatedSections.set(parsed.section_key, optimizedContent);
               processedCount++;
               // Update section in real-time
-              onSectionContentChange(parsed.section_key, optimizedContent);
+              handleSectionContentChange(parsed.section_key, optimizedContent);
               toast.info(`VO optimisée : ${parsed.section_key} (${processedCount}/${coreSections.length})`);
             }
           } catch { /* partial chunk */ }
