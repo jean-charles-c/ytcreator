@@ -702,7 +702,6 @@ export default function Editor() {
         toast.error("Aucune scène à traiter");
         return;
       }
-      setShots([]);
       bgStartStoryboard({ projectId, sceneIds, segmentOnly });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
