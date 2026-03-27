@@ -2238,7 +2238,7 @@ export default function Editor() {
                   if (!pv) return null;
                   return (
                     <Button variant="outline" size="sm" onClick={() => {
-                      setShots(pv.shots);
+                      setShots(pv.shots ?? []);
                       setCurrentShotVersionId(pv.id);
                       setPreviewShotVersionId(null);
                       toast.success(`VisualPrompts V${pv.id} restaurés`);
