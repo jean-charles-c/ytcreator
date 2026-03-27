@@ -707,6 +707,14 @@ serve(async (req) => {
       ? `\n10. The narration is in "${scriptLang}" (NOT French). For each shot, you MUST also provide "source_sentence_fr": a faithful French translation of the source_sentence.`
       : "";
 
+    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; source_sentence?: string; prompt_export: string; guardrails: string }[] }[] = [];
+
+    if (segment_only) {
+      // ── SEGMENT-ONLY MODE: deterministic segmentation, no AI prompts ──
+      console.log("segment_only mode: skipping AI call, using deterministic segmentation");
+      storyboard = buildFallbackStoryboard(scenes);
+    } else {
+      // ── FULL MODE: AI-generated prompts ──
     const aiResponse = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
@@ -789,8 +797,6 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    let storyboard: { scene_id: string; shots: { shot_type: string; description: string; source_sentence?: string; prompt_export: string; guardrails: string }[] }[] = [];
-
     try {
       if (toolCall?.function?.arguments) {
         const parsed = JSON.parse(toolCall.function.arguments);
@@ -809,6 +815,7 @@ serve(async (req) => {
       console.warn("AI returned empty storyboard data, using deterministic fallback generation.");
       storyboard = buildFallbackStoryboard(scenes);
     }
+    } // end of else (full mode)
 
     if (singleScene) {
       await supabase.from("shots").delete().eq("scene_id", scene_id);
