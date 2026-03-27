@@ -1914,6 +1914,8 @@ export default function Editor() {
                   objects={(globalContext?.objets_recurrents as RecurringObject[]) || []}
                   onChange={handleObjectRegistryChange}
                   sceneCount={scenes.length}
+                  onReanalyze={handleReanalyzeContext}
+                  isAnalyzing={isContextAnalyzing}
                 />
 
                 {/* Segmentation QA Panel */}
