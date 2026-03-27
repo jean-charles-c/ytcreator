@@ -2074,6 +2074,7 @@ export default function Editor() {
                   )}
                 </div>
                 {(() => {
+                  const shotsWithPrompt = shots.filter((s) => s.prompt_export && s.prompt_export.trim().length > 0).length;
                   const shotsWithImage = shots.filter((s) => s.image_url).length;
                   const sortedSc = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
                   const completedScenes = sortedSc.filter((sc) => {
@@ -2081,9 +2082,14 @@ export default function Editor() {
                     return scShots.length > 0 && scShots.every((s) => s.image_url);
                   }).length;
                   return (
-                    <p className="text-sm text-muted-foreground">
-                      Visuels générés pour : <span className="font-semibold text-foreground">{shotsWithImage} shot{shotsWithImage > 1 ? "s" : ""}</span> / <span className="font-semibold text-foreground">{completedScenes} scène{completedScenes > 1 ? "s" : ""}</span>
-                    </p>
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Prompts générés pour : <span className="font-semibold text-foreground">{shotsWithPrompt} shot{shotsWithPrompt > 1 ? "s" : ""}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Visuels générés pour : <span className="font-semibold text-foreground">{shotsWithImage} shot{shotsWithImage > 1 ? "s" : ""}</span> / <span className="font-semibold text-foreground">{completedScenes} scène{completedScenes > 1 ? "s" : ""}</span>
+                      </p>
+                    </>
                   );
                 })()}
                 {shots.some((s) => s.generation_cost > 0) && (
