@@ -1900,7 +1900,7 @@ export default function Editor() {
               <>
                 {/* ContexteGlobal display */}
                 {globalContext && (
-                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group" open>
+                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group">
                     <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
                       🧠 Contexte Global
                       <span className="ml-1 text-xs text-muted-foreground font-normal">— Mémoire de référence du script</span>
