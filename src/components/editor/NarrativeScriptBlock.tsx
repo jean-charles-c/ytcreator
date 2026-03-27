@@ -51,6 +51,10 @@ export interface NarrativeScriptBlockProps {
   onRegenerate: () => void;
   canRegenerate: boolean;
 
+  /* Humanize */
+  onHumanize?: () => void;
+  humanizing?: boolean;
+
   /* AI Analysis */
   analyzingScript?: boolean;
   onAnalyzeScript?: () => void;
