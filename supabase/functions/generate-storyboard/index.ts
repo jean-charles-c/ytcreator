@@ -984,10 +984,42 @@ serve(async (req) => {
         });
       }
 
+      // ── POST-PROCESS: inject identity lock prefixes from registry ──
+      const sceneOrder = scene.scene_order;
+      const relevantObjects = recurringObjects.filter((obj: any) => {
+        if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+          return obj.mentions_scenes.includes(sceneOrder);
+        }
+        return false;
+      });
+
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
         const fbType = CAMERA_TYPES[j % CAMERA_TYPES.length];
         const fbSentence = sceneSentences[j] || sceneText;
+        let promptExport = shot?.prompt_export || fallbackPrompt(fbSentence, scene, fbType);
+
+        // Prepend identity lock prompts for relevant recurring objects
+        if (relevantObjects.length > 0) {
+          const fragmentLower = (shot?.source_sentence || fbSentence).toLowerCase();
+          const matchingLocks = relevantObjects
+            .filter((obj: any) => {
+              const objName = (obj.nom || "").toLowerCase();
+              return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
+            })
+            .map((obj: any) => obj.identity_prompt || "")
+            .filter(Boolean);
+
+          if (matchingLocks.length > 0) {
+            const lockPrefix = matchingLocks.join("\n\n") + "\n\n";
+            // Only prepend if not already present
+            const firstLockSnippet = matchingLocks[0].slice(0, 40).toLowerCase();
+            if (!promptExport.toLowerCase().includes(firstLockSnippet)) {
+              promptExport = lockPrefix + promptExport;
+            }
+          }
+        }
+
         shotRows.push({
           scene_id: scene.id,
           project_id,
@@ -996,7 +1028,7 @@ serve(async (req) => {
           description: shot?.description || fallbackDescription(fbSentence),
           source_sentence: shot?.source_sentence || fbSentence,
           source_sentence_fr: shot?.source_sentence_fr || null,
-          prompt_export: shot?.prompt_export || fallbackPrompt(fbSentence, scene, fbType),
+          prompt_export: promptExport,
           guardrails: shot?.guardrails || "historically accurate clothing, architecture, and materials",
         });
       }
