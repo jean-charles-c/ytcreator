@@ -61,7 +61,8 @@ export interface NarrativeScriptBlockProps {
 /* ── Helpers ───────────────────────────────────────── */
 
 function cleanScriptForExport(raw: string): string {
-  return raw.replace(/<plan>[\s\S]*?<\/plan>/gi, "").replace(/\n{3,}/g, "\n\n").trim();
+  const cleaned = raw.replace(/<plan>[\s\S]*?<\/plan>/gi, "").replace(/\n{3,}/g, "\n\n").trim();
+  return applyFrenchTypography(cleaned);
 }
 
 function deriveState(script: string | null, generatingScript: boolean, error?: string | null): BlockState {

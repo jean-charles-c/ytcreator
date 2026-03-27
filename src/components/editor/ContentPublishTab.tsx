@@ -189,7 +189,7 @@ function CollapsibleBlock({
 }
 
 function cleanScriptForExport(raw: string): string {
-  return raw
+  const cleaned = raw
     .split("\n")
     .filter((line) => {
       const t = line.trim();
@@ -200,6 +200,7 @@ function cleanScriptForExport(raw: string): string {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  return applyFrenchTypography(cleaned);
 }
 
 /** Strip section tags [[HOOK]], [[ACT1]] etc. to get pure VO text */

@@ -1314,12 +1314,13 @@ export default function Editor() {
   const cleanScriptForExport = (raw: string): string => {
     // Strip editorial blocks (TRANSITIONS, STYLE CHECK, RISK CHECK) and all content after them
     const withoutEditorial = raw.replace(/\[\[\s*(TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\s*\]\][\s\S]*/i, "").trim();
-    return withoutEditorial
+    const cleaned = withoutEditorial
       .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
       .split("\n")
       .filter((line) => !line.trim().startsWith("---") && line.trim() !== "")
       .map((line) => line.trim())
       .join("\n");
+    return applyFrenchTypography(cleaned);
   };
 
   const splitIntoVoiceOverBlocks = (raw: string): string[] => {
