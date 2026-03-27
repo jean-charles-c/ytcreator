@@ -203,6 +203,11 @@ serve(async (req) => {
     );
 
     console.log("=== Step 2: Recurring objects, characters & locations extraction ===");
+    const excludeList = Array.isArray(exclude_names) && exclude_names.length > 0 ? exclude_names : [];
+    const excludeInstruction = excludeList.length > 0
+      ? `\n\nIMPORTANT: The following elements have ALREADY been identified. Do NOT return them again:\n${excludeList.map((n: string) => `- ${n}`).join("\n")}\nFind OTHER recurring elements that are NOT in this list.`
+      : "";
+    
     let objectsResult: Record<string, unknown> = { objets_recurrents: [] };
     try {
       objectsResult = await callObjectsJson(
@@ -221,6 +226,7 @@ For each element, generate an identity_prompt in English following these templat
 - For characters: Start with "Subject: [name] during [period]" then CHARACTER IDENTITY LOCK + TIME PERIOD LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT
 - For locations: Start with "Subject: [name] during [period]" then LOCATION IDENTITY LOCK + TIME PERIOD / HISTORICAL STATE LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT  
 - For objects/vehicles: Start with "Subject: [name] [version]" then OBJECT IDENTITY LOCK + VERSION / TIME PERIOD LOCK + MANDATORY VISUAL FEATURES + NO OBJECT DRIFT
+${excludeInstruction}
 
 Return exactly:
 {
@@ -240,7 +246,7 @@ Return exactly:
 - Les personnages nommés qui reviennent dans plusieurs passages
 - Les lieux précis qui apparaissent dans plusieurs scènes
 - Les véhicules, objets, artefacts récurrents
-Pour chaque élément, génère un identity_prompt structuré en anglais.\n\n${userPrompt}`,
+Pour chaque élément, génère un identity_prompt structuré en anglais.${excludeInstruction}\n\n${userPrompt}`,
       );
     } catch (objErr) {
       console.warn("Objects extraction failed (non-blocking):", objErr);
