@@ -127,6 +127,9 @@ You MUST return ONLY valid JSON with this exact structure:
 
     const aiData = await response.json();
     const content = aiData.choices?.[0]?.message?.content;
+    const finishReason = aiData.choices?.[0]?.finish_reason;
+
+    console.log(`AI response: finish_reason=${finishReason}, content_length=${content?.length || 0}`);
 
     if (!content) {
       console.error("No content in AI response:", JSON.stringify(aiData).slice(0, 500));
@@ -143,23 +146,42 @@ You MUST return ONLY valid JSON with this exact structure:
 
       // Find JSON boundaries
       const jsonStart = cleaned.search(/[\{\[]/);
-      const jsonEnd = cleaned.lastIndexOf(jsonStart !== -1 && cleaned[jsonStart] === '[' ? ']' : '}');
+      if (jsonStart === -1) throw new Error("No JSON found");
+      cleaned = cleaned.substring(jsonStart);
 
-      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found");
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-
-      try {
-        globalContext = JSON.parse(cleaned);
-      } catch {
-        // Fix common LLM JSON issues
-        cleaned = cleaned
-          .replace(/,\s*}/g, "}")
-          .replace(/,\s*]/g, "]")
-          .replace(/[\x00-\x1F\x7F]/g, "");
-        globalContext = JSON.parse(cleaned);
+      // If JSON is truncated (finish_reason=length), try to repair it
+      // Count unmatched braces/brackets and close them
+      let braces = 0, brackets = 0, inString = false, escapeNext = false;
+      for (const ch of cleaned) {
+        if (escapeNext) { escapeNext = false; continue; }
+        if (ch === '\\' && inString) { escapeNext = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === '{') braces++;
+        else if (ch === '}') braces--;
+        else if (ch === '[') brackets++;
+        else if (ch === ']') brackets--;
       }
+
+      // Remove any trailing incomplete key-value (after last comma in truncated JSON)
+      if (braces > 0 || brackets > 0) {
+        console.log(`JSON truncated: ${braces} unclosed braces, ${brackets} unclosed brackets — repairing`);
+        // Remove trailing incomplete value after last complete entry
+        cleaned = cleaned.replace(/,\s*"[^"]*"?\s*:?\s*"?[^"{}[\]]*$/s, "");
+        // Close arrays then objects
+        cleaned += "]".repeat(Math.max(0, brackets)) + "}".repeat(Math.max(0, braces));
+      }
+
+      // Fix common LLM JSON issues
+      cleaned = cleaned
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]")
+        .replace(/[\x00-\x1F\x7F]/g, "");
+
+      globalContext = JSON.parse(cleaned);
     } catch (parseErr) {
-      console.error("Failed to parse JSON response:", content.slice(0, 1000));
+      console.error("Failed to parse JSON response (length=" + content.length + "):", content.slice(0, 1500));
+      console.error("Parse error:", parseErr);
       throw new Error("Réponse d'analyse contextuelle invalide");
     }
 
