@@ -2484,18 +2484,6 @@ export default function Editor() {
                                         </span>
                                     </summary>
                                     <div className="space-y-1 mt-2">
-                                      <div className="flex items-center justify-end mb-1">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 text-[10px] px-2 gap-1"
-                                          disabled={isRegenerating}
-                                          onClick={() => runStoryboard(scene.id)}
-                                        >
-                                          {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                          Régénérer tous les prompts de la scène
-                                        </Button>
-                                      </div>
                                       <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
                                         Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
                                       </p>
