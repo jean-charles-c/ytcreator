@@ -202,7 +202,7 @@ serve(async (req) => {
       `Analyse ce script et extrais le contexte global.\n\n${userPrompt}`,
     );
 
-    console.log("=== Step 2: Recurring objects extraction ===");
+    console.log("=== Step 2: Recurring objects, characters & locations extraction ===");
     let objectsResult: Record<string, unknown> = { objets_recurrents: [] };
     try {
       objectsResult = await callObjectsJson(
@@ -210,30 +210,37 @@ serve(async (req) => {
         `You are a visual continuity engine analyzing a YouTube documentary script written in ${langLabel}.
 Return ONLY valid JSON.
 All metadata fields must be in French except identity_prompt, which must stay in English.
-Focus ONLY on physical recurring objects that must remain visually consistent across scenes.
-Important examples: a specific car model, a named building, a weapon model, a named artifact, a machine, a ship, a train, a plane.
-Do NOT return abstract concepts, places, or one-off props.
-Return an object only if it appears, is discussed, or is implied across multiple parts of the script.
-If a specific car model like Ferrari 250 GTO is central to the script, it MUST be returned as type "vehicle".
-Keep descriptions concise.
+Focus on physical recurring elements that must remain visually consistent across scenes:
+1. CHARACTERS / PERSONS: Any named person who appears in multiple parts of the script. Include their physical description for the relevant period.
+2. LOCATIONS: Specific named places (factories, circuits, cities, buildings) that appear across multiple scenes.
+3. OBJECTS / VEHICLES: Specific car models, named artifacts, weapons, machines, ships, planes, etc.
+Do NOT return abstract concepts or one-off background props.
+Return an element only if it appears, is discussed, or is implied across multiple parts of the script.
+
+For each element, generate an identity_prompt in English following these templates:
+- For characters: Start with "Subject: [name] during [period]" then CHARACTER IDENTITY LOCK + TIME PERIOD LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT
+- For locations: Start with "Subject: [name] during [period]" then LOCATION IDENTITY LOCK + TIME PERIOD / HISTORICAL STATE LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT  
+- For objects/vehicles: Start with "Subject: [name] [version]" then OBJECT IDENTITY LOCK + VERSION / TIME PERIOD LOCK + MANDATORY VISUAL FEATURES + NO OBJECT DRIFT
+
 Return exactly:
 {
   "objets_recurrents": [
     {
-      "id": "obj-shortid",
+      "id": "unique-short-id",
       "nom": "string",
-      "type": "vehicle|building|artifact|weapon|object",
-      "description_visuelle": "string",
-      "epoque": "string",
-      "mentions_scenes": [1,2],
-      "identity_prompt": "string"
+      "type": "character|location|vehicle|building|artifact|weapon|object",
+      "description_visuelle": "string (in French)",
+      "epoque": "string (in French)",
+      "mentions_scenes": [1,2,3],
+      "identity_prompt": "string (in English, following the template above)"
     }
   ]
 }`,
-        `Identifie les objets physiques récurrents de ce script.
-Cherche en priorité les véhicules, notamment les modèles de voiture précis, puis les bâtiments, artefacts, armes et objets iconiques.
-Si le script parle de la Ferrari 250 GTO dans plusieurs passages, tu dois la retourner.
-\n${userPrompt}`,
+        `Identifie tous les éléments récurrents de ce script :
+- Les personnages nommés qui reviennent dans plusieurs passages
+- Les lieux précis qui apparaissent dans plusieurs scènes
+- Les véhicules, objets, artefacts récurrents
+Pour chaque élément, génère un identity_prompt structuré en anglais.\n\n${userPrompt}`,
       );
     } catch (objErr) {
       console.warn("Objects extraction failed (non-blocking):", objErr);
