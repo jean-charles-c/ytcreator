@@ -187,6 +187,18 @@ export default function NarrativeScriptBlock({
                   >
                     <RotateCcw className="h-3 w-3" /> Régénérer
                   </Button>
+
+                  {onHumanize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onHumanize}
+                      disabled={humanizing || !canRegenerate}
+                      className="h-8 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                    >
+                      {humanizing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Humaniser
+                    </Button>
+                  )}
                 </div>
               )}
 
