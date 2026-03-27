@@ -2060,10 +2060,10 @@ export default function Editor() {
             {/* ── Global Sensitive Mode — Toutes les scènes d'un coup ── */}
             {scenes.length > 0 && !generatingStoryboard && (
               <details className="mb-4 rounded border border-border bg-card p-3 sm:p-4 group/details">
-                <summary className="text-xs font-display font-semibold text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/details:rotate-90 shrink-0" />
-                  🛡 Toutes les scènes d'un coup
-                  <span className="text-[10px] text-muted-foreground font-normal">— Ce réglage s'applique par défaut à toutes les scènes et shots sans surcharge locale</span>
+                <summary className="text-sm font-medium text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-2 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/details:rotate-90 shrink-0" />
+                  <Layers className="h-4 w-4 text-primary" />
+                  Actions communes à toutes les scènes
                 </summary>
                 <div className="space-y-3 mt-3">
                 <ScopeOverrideControl
