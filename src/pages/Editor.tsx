@@ -2576,11 +2576,22 @@ export default function Editor() {
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
                                       disabled={isRegenerating}
-                                      onClick={() => runStoryboard(scene.id)}
+                                      onClick={() => runStoryboard(scene.id, { segmentOnly: true })}
                                       title="Refaire tout le découpage des shots de cette scène"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                      Refaire le découpage des shots
+                                      Refaire le découpage
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs px-2 gap-1"
+                                      disabled={isRegenerating}
+                                      onClick={() => runStoryboard(scene.id)}
+                                      title="Régénérer les prompts visuels de cette scène via IA"
+                                    >
+                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
+                                      Générer les prompts
                                     </Button>
                                     <button
                                       onClick={async () => {
