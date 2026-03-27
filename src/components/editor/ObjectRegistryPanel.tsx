@@ -15,6 +15,8 @@ import {
   RefreshCw,
   User,
   MapPin,
+  X,
+  SearchPlus,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────
