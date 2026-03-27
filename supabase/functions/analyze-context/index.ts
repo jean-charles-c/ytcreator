@@ -160,7 +160,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { project_id } = await req.json();
+    const { project_id, exclude_names, search_more } = await req.json();
     if (!project_id) {
       return new Response(JSON.stringify({ error: "project_id manquant" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
