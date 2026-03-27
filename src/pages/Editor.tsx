@@ -60,6 +60,47 @@ type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
 /**
+ * Find best position of a fragment in scene text.
+ * Tries exact indexOf first, then falls back to word-overlap sliding window.
+ */
+function findBestPosition(sceneTextLower: string, fragmentLower: string): number {
+  if (!fragmentLower) return -1;
+  // Exact match
+  const exact = sceneTextLower.indexOf(fragmentLower);
+  if (exact >= 0) return exact;
+  
+  // Try trimmed first 40 chars (handles truncated fragments)
+  const shortFrag = fragmentLower.slice(0, 40);
+  if (shortFrag.length >= 10) {
+    const shortPos = sceneTextLower.indexOf(shortFrag);
+    if (shortPos >= 0) return shortPos;
+  }
+  
+  // Word overlap sliding window
+  const fragWords = fragmentLower.split(/\s+/).filter(w => w.length > 2);
+  if (fragWords.length < 2) return -1;
+  
+  const sceneParts = sceneTextLower.split(/(?<=[.!?])\s+/);
+  let bestPos = -1;
+  let bestScore = 0;
+  let charOffset = 0;
+  
+  for (const part of sceneParts) {
+    const partWords = new Set(part.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    let overlap = 0;
+    for (const w of fragWords) { if (partWords.has(w)) overlap++; }
+    const score = overlap / Math.max(fragWords.length, partWords.size);
+    if (score > bestScore && score >= 0.4) {
+      bestScore = score;
+      bestPos = charOffset;
+    }
+    charOffset += part.length + 1;
+  }
+  
+  return bestPos;
+}
+
+/**
  * Reorder shots within each scene so shot_order follows
  * the reading order of source_sentence in the scene's source_text.
  * Returns shots with corrected shot_order + list of DB updates needed.
@@ -84,12 +125,12 @@ function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reorde
     if (!scene) continue;
     const sceneTextLower = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
 
-    // Sort by position of source_sentence in scene text
+    // Sort by position of source_sentence in scene text using fuzzy match
     sceneShots.sort((a, b) => {
       const sentA = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
       const sentB = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const posA = sentA ? sceneTextLower.indexOf(sentA) : 9999;
-      const posB = sentB ? sceneTextLower.indexOf(sentB) : 9999;
+      const posA = findBestPosition(sceneTextLower, sentA);
+      const posB = findBestPosition(sceneTextLower, sentB);
       return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
     });
 
@@ -2484,18 +2525,6 @@ export default function Editor() {
                                         </span>
                                     </summary>
                                     <div className="space-y-1 mt-2">
-                                      <div className="flex items-center justify-end mb-1">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 text-[10px] px-2 gap-1"
-                                          disabled={isRegenerating}
-                                          onClick={() => runStoryboard(scene.id)}
-                                        >
-                                          {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                          Régénérer tous les prompts de la scène
-                                        </Button>
-                                      </div>
                                       <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
                                         Le niveau choisi s'applique à tous les shots de cette scène, sauf ceux avec une surcharge locale.
                                       </p>
@@ -2514,51 +2543,6 @@ export default function Editor() {
                                     </div>
                                   </details>
                                   <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
-                                    {/* Realign shots button — only show if shots are out of text order */}
-                                    {(() => {
-                                      const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
-                                      const positions = sceneShots
-                                        .map(sh => ({
-                                          id: sh.id,
-                                          order: sh.shot_order,
-                                          pos: sceneTextLower.indexOf((sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim()),
-                                        }))
-                                        .filter(p => p.pos >= 0);
-                                      const sorted = [...positions].sort((a, b) => a.order - b.order);
-                                      const needsRealign = sorted.some((p, i) => i > 0 && p.pos < sorted[i - 1].pos);
-                                      if (!needsRealign) return null;
-                                      return (
-                                        <button
-                                          onClick={async () => {
-                                            const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
-                                            const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
-                                            for (const u of updates) {
-                                              await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
-                                            }
-                                            // Also fix shots not found in text (keep them at end)
-                                            const fixedIds = new Set(updates.map(u => u.id));
-                                            let nextOrder = updates.length + 1;
-                                            for (const sh of sceneShots) {
-                                              if (!fixedIds.has(sh.id)) {
-                                                await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
-                                              }
-                                            }
-                                            toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte`);
-                                            // Reload shots from DB
-                                            const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
-                                            if (freshShots) {
-                                              const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
-                                              setShots(reordered);
-                                            }
-                                          }}
-                                          className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 transition-colors min-h-[44px] sm:min-h-[36px] border border-amber-500/30"
-                                          title="Réordonner les shots selon leur position dans le texte source"
-                                        >
-                                          <ArrowUpDown className="h-3.5 w-3.5" />
-                                          <span>Réaligner</span>
-                                        </button>
-                                      );
-                                    })()}
                                     <div className="flex items-center gap-1.5">
                                       <select
                                         value={sceneImageModelOverrides[scene.id] || imageModel}
@@ -2581,6 +2565,51 @@ export default function Editor() {
                                         <span>Générer tous les visuels de la scène</span>
                                       </button>
                                     </div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs px-2 gap-1"
+                                      disabled={isRegenerating}
+                                      onClick={() => runStoryboard(scene.id)}
+                                    >
+                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                      Régénérer les prompts
+                                    </Button>
+                                    <button
+                                      onClick={async () => {
+                                        const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
+                                        const positions = sceneShots
+                                          .map(sh => ({
+                                            id: sh.id,
+                                            order: sh.shot_order,
+                                            pos: findBestPosition(sceneTextLower, (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim()),
+                                          }))
+                                          .filter(p => p.pos >= 0);
+                                        const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
+                                        const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
+                                        for (const u of updates) {
+                                          await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
+                                        }
+                                        const fixedIds = new Set(updates.map(u => u.id));
+                                        let nextOrder = updates.length + 1;
+                                        for (const sh of sceneShots) {
+                                          if (!fixedIds.has(sh.id)) {
+                                            await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
+                                          }
+                                        }
+                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte`);
+                                        const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+                                        if (freshShots) {
+                                          const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
+                                          setShots(reordered);
+                                        }
+                                      }}
+                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] sm:min-h-[36px] border border-border"
+                                      title="Réordonner les shots selon leur position dans le texte source"
+                                    >
+                                      <ArrowUpDown className="h-3.5 w-3.5" />
+                                      <span>Réaligner l'ordre</span>
+                                    </button>
                                   </div>
 
                                   {/* Scene source text */}
