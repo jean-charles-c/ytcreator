@@ -2726,9 +2726,9 @@ export default function Editor() {
 
               {/* QA Contrôle qualité */}
               <details className="mt-4 sm:mt-6 rounded border border-border bg-card p-2 sm:p-3 group/qa">
-                <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
-                  <ChevronRight className="h-3 w-3 transition-transform group-open/qa:rotate-90 shrink-0" />
-                  <ShieldCheck className="h-3.5 w-3.5" />
+                <summary className="text-sm font-medium text-foreground cursor-pointer hover:text-foreground/80 transition-colors flex items-center gap-1.5 min-h-[44px] sm:min-h-0 list-none [&::-webkit-details-marker]:hidden">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open/qa:rotate-90 shrink-0" />
+                  <ShieldCheck className="h-4 w-4 text-primary" />
                   Contrôle qualité
                   {qaCounts.errors > 0 && (
                     <span className="ml-1.5 text-[10px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
