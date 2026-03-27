@@ -85,6 +85,7 @@ interface ObjectRegistryPanelProps {
   onChange: (objects: RecurringObject[]) => void;
   sceneCount: number;
   onReanalyze?: () => void;
+  onSearchMore?: (excludeNames: string[]) => void;
   isAnalyzing?: boolean;
 }
 
