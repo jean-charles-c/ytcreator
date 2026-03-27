@@ -78,7 +78,17 @@ RULES:
 - If a field cannot be determined, use "Non déterminé" rather than guessing.
 - Be precise and concise in your descriptions.
 - The "personnages" array should list ONLY named or clearly identified characters/subjects.
-- The "resume_narratif" should be a 2-3 sentence summary of the script's narrative arc.`;
+- The "resume_narratif" should be a 2-3 sentence summary of the script's narrative arc.
+
+RECURRING OBJECTS DETECTION:
+- Identify any object, vehicle, building, artifact, or weapon that appears or is referenced across MULTIPLE scenes/sections of the script.
+- For each recurring object, provide:
+  - A precise name (brand + model + year/version if applicable)
+  - A detailed visual description of its distinctive physical characteristics
+  - An "identity_prompt" that LOCKS the visual identity across all images. Example for a vehicle:
+    "VEHICLE IDENTITY LOCK: The vehicle must remain strictly identifiable as a [exact name] in every image. Always preserve its signature silhouette, body proportions, roofline, front fascia, grille shape, headlight design, air intakes, fender curves, rear profile, wheelbase, stance, and emblem placement. Do not reinterpret, modernize, hybridize, or redesign the vehicle."
+  - Generate a UUID for the "id" field using format like "obj-" followed by a short hash
+- If no recurring objects are found, return an empty array.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
