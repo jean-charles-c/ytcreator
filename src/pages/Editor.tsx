@@ -2230,7 +2230,7 @@ export default function Editor() {
                     {currentShotVersionId === v.id && (
                       <span className="ml-1 text-[9px] opacity-70">actuelle</span>
                     )}
-                    <span className="ml-1 text-[9px] opacity-60">({v.shots.length})</span>
+                    <span className="ml-1 text-[9px] opacity-60">({(v.shots ?? []).length})</span>
                   </button>
                 ))}
                 {previewShotVersionId !== null && (() => {
