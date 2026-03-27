@@ -1901,11 +1901,11 @@ export default function Editor() {
               <>
                 {/* ContexteGlobal display */}
                 {globalContext && (
-                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group">
+                  <details className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:p-5 group/ctx">
                     <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open/ctx:rotate-90 shrink-0" />
                       🧠 Contexte Global
                       <span className="ml-1 text-xs text-muted-foreground font-normal">— Mémoire de référence du script</span>
-                      <span className="ml-auto text-muted-foreground text-xs group-open:rotate-90 transition-transform">▶</span>
                     </summary>
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div className="space-y-2">
