@@ -274,9 +274,17 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
           );
         })}
 
-        <Button variant="outline" size="sm" onClick={addObject} className="w-full min-h-[40px] text-xs">
-          <Plus className="h-3.5 w-3.5" /> Ajouter un objet récurrent
-        </Button>
+        <div className="flex gap-2">
+          {onReanalyze && (
+            <Button variant="secondary" size="sm" onClick={onReanalyze} disabled={isAnalyzing} className="flex-1 min-h-[40px] text-xs">
+              <RefreshCw className={`h-3.5 w-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
+              {isAnalyzing ? "Analyse…" : "Relancer l'analyse IA"}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
+            <Plus className="h-3.5 w-3.5" /> Ajouter un objet
+          </Button>
+        </div>
       </div>
     </details>
   );
