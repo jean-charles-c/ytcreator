@@ -2049,9 +2049,9 @@ export default function Editor() {
                   <Button variant="outline" onClick={runSegmentation} disabled={segmenting} className="min-h-[44px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
-                  <Button variant="hero" onClick={() => runStoryboard()} disabled={generatingStoryboard} className="min-h-[44px]">
+                  <Button variant="hero" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[44px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                    {generatingStoryboard ? "Génération..." : "Générer les VisualPrompts"}
+                    {generatingStoryboard ? "Découpage..." : "Créer les SHOTS"}
                   </Button>
                 </div>
               </>
