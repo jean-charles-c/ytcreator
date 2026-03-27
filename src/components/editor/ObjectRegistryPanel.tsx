@@ -314,6 +314,18 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               {isAnalyzing ? "Analyse…" : "Relancer l'analyse IA"}
             </Button>
           )}
+          {onSearchMore && objects.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onSearchMore(objects.map(o => o.nom).filter(Boolean))}
+              disabled={isAnalyzing}
+              className="flex-1 min-h-[40px] text-xs"
+            >
+              <Search className="h-3.5 w-3.5" />
+              {isAnalyzing ? "Recherche…" : "Chercher d'autres récurrences"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
             <Plus className="h-3.5 w-3.5" /> Ajouter un objet
           </Button>
