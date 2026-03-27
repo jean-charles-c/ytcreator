@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield, Mic } from "lucide-react";
+import { ScrollText, Loader2, ChevronDown, Copy, ArrowRight, RotateCcw, AlertTriangle, Sparkles, Shield, Mic, Brain } from "lucide-react";
 import { getNarrativeStyleById } from "@/config/narrativeStyles";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -7,6 +7,34 @@ import { toast } from "sonner";
 import SectionCard, { type NarrativeSection, type SectionHistoryEntry, EDITORIAL_SECTIONS } from "./SectionCard";
 import { isEditorialSection } from "./canonicalScriptTypes";
 import { applyFrenchTypography } from "./frenchTypography";
+
+/* ── AI Model options ──────────────────────────────── */
+
+export const SCRIPT_AI_MODELS = [
+  { id: "google/gemini-2.5-flash-lite", label: "Gemini Flash Lite", tier: "$" },
+  { id: "openai/gpt-5-nano", label: "GPT-5 Nano", tier: "$" },
+  { id: "google/gemini-2.5-flash", label: "Gemini Flash", tier: "$$" },
+  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash", tier: "$$" },
+  { id: "openai/gpt-5-mini", label: "GPT-5 Mini", tier: "$$$" },
+  { id: "google/gemini-2.5-pro", label: "Gemini Pro", tier: "$$$$" },
+  { id: "openai/gpt-5", label: "GPT-5", tier: "$$$$$" },
+] as const;
+
+export type ScriptAiModelId = typeof SCRIPT_AI_MODELS[number]["id"];
+
+const LS_KEY_SCRIPT_AI_MODEL = "script-ai-model";
+
+export function getPersistedScriptAiModel(): ScriptAiModelId {
+  try {
+    const stored = localStorage.getItem(LS_KEY_SCRIPT_AI_MODEL);
+    if (stored && SCRIPT_AI_MODELS.some((m) => m.id === stored)) return stored as ScriptAiModelId;
+  } catch {}
+  return "openai/gpt-5";
+}
+
+export function persistScriptAiModel(modelId: ScriptAiModelId) {
+  try { localStorage.setItem(LS_KEY_SCRIPT_AI_MODEL, modelId); } catch {}
+}
 
 /* ── Types ─────────────────────────────────────────── */
 
@@ -62,6 +90,10 @@ export interface NarrativeScriptBlockProps {
   /* AI Analysis */
   analyzingScript?: boolean;
   onAnalyzeScript?: () => void;
+
+  /* AI Model selection */
+  scriptAiModel: ScriptAiModelId;
+  onScriptAiModelChange: (model: ScriptAiModelId) => void;
 
   /* Toolbar extras (language, style, chars) */
   toolbarSlot?: React.ReactNode;
