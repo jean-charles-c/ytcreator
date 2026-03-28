@@ -244,7 +244,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   return (
     <>
-      <div className="group rounded border border-border bg-card p-3 sm:p-4 transition-colors hover:border-primary/30 relative">
+      <div className="group rounded border border-border bg-muted p-3 sm:p-4 transition-colors hover:border-primary/30 relative">
         {/* Action buttons — above image */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
