@@ -215,7 +215,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   if (editing) {
     return (
-      <div className="rounded border border-primary/30 bg-card p-3 sm:p-4 space-y-2">
+      <div className="rounded border border-primary/30 bg-muted p-3 sm:p-4 space-y-2">
         <select value={editType} onChange={(e) => setEditType(e.target.value)} className={`${inputClass} min-h-[44px] sm:min-h-0`}>
           {SHOT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           {!SHOT_TYPES.includes(editType) && <option value={editType}>{editType}</option>}
