@@ -335,7 +335,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                   })()}
                 </div>
                 <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
-                {shot.source_sentence_fr && (
+                {shot.source_sentence_fr && scriptLanguage !== "fr" && (
                   <div className="flex items-center gap-1 mt-0.5">
                     <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{shot.source_sentence_fr}"</p>
                     {onRetranslate && (
@@ -353,7 +353,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                     )}
                   </div>
                 )}
-                {!shot.source_sentence_fr && onRetranslate && (
+                {!shot.source_sentence_fr && onRetranslate && scriptLanguage !== "fr" && (
                   <button
                     onClick={async () => {
                       setRetranslating(true);
