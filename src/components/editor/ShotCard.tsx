@@ -33,6 +33,8 @@ interface ShotCardProps {
   globalIndex?: number;
   sceneLabel?: string;
   isLastInScene?: boolean;
+  imageExpanded?: boolean;
+  onToggleImageExpanded?: () => void;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
