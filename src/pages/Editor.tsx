@@ -2681,16 +2681,8 @@ export default function Editor() {
                                       onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
-                                          {/* Shot-level sensitive mode + regenerate */}
-                                          <div className="mb-2 rounded border border-border/50 bg-secondary/20 p-2">
-                                            <div className="flex items-center justify-between mb-1">
-                                              <div className="flex items-center gap-1.5">
-                                                <ShieldCheck className="h-3 w-3 text-primary/70" />
-                                                <span className="text-[10px] font-semibold text-foreground">
-                                                  Appliquer à ce shot
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-1.5">
+                                          {/* Regen buttons row */}
+                                          <div className="mb-1 flex items-center justify-end gap-1.5">
                                                 <Button
                                                   size="sm"
                                                   variant="outline"
@@ -2711,8 +2703,36 @@ export default function Editor() {
                                                   {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
                                                   Régénérer le visuel
                                                 </Button>
-                                              </div>
-                                            </div>
+                                          </div>
+                                          {/* ShotCard with action buttons right below regen */}
+                                          <ShotCard
+                                            key={shot.id}
+                                            shot={shot}
+                                            globalIndex={globalIdx}
+                                            sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
+                                            isLastInScene={isLast}
+                                            imageExpanded={imageOpenShots.has(shot.id)}
+                                            onToggleImageExpanded={() => setImageOpenShots(prev => {
+                                              const next = new Set(prev);
+                                              if (next.has(shot.id)) next.delete(shot.id); else next.add(shot.id);
+                                              return next;
+                                            })}
+                                            onUpdate={handleShotUpdate}
+                                            onDelete={handleShotDelete}
+                                            onRegenerate={handleShotRegenerate}
+                                            onGenerateImage={handleGenerateShotImage}
+                                            onMergeWithNext={handleShotMergeWithNext}
+                                            onSplit={handleShotSplit}
+                                            onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
+                                          />
+                                          {/* Shot-level settings (collapsed) */}
+                                          <details className="mt-1 rounded border border-border/50 bg-secondary/20 p-2 group/shot-settings">
+                                            <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+                                              <ChevronRight className="h-3 w-3 transition-transform group-open/shot-settings:rotate-90 shrink-0" />
+                                              <ShieldCheck className="h-3 w-3 text-primary/70" />
+                                              <span>Paramètres du shot</span>
+                                            </summary>
+                                            <div className="mt-2 space-y-1">
                                             <ScopeOverrideControl
                                               value={sensitiveMode.getShotValue(scene.id, shot.id)}
                                               onChangeLocal={(lvl) => sensitiveMode.setShotLevel(shot.id, lvl)}
@@ -2741,21 +2761,8 @@ export default function Editor() {
                                                 ))}
                                               </select>
                                             </div>
-                                          </div>
-                                          <ShotCard
-                                            key={shot.id}
-                                            shot={shot}
-                                            globalIndex={globalIdx}
-                                            sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
-                                            isLastInScene={isLast}
-                                            onUpdate={handleShotUpdate}
-                                            onDelete={handleShotDelete}
-                                            onRegenerate={handleShotRegenerate}
-                                            onGenerateImage={handleGenerateShotImage}
-                                            onMergeWithNext={handleShotMergeWithNext}
-                                            onSplit={handleShotSplit}
-                                            onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
-                                          />
+                                            </div>
+                                          </details>
                                         </div>
                                       )}
                                     />
