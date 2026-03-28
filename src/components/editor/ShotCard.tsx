@@ -35,6 +35,7 @@ interface ShotCardProps {
   isLastInScene?: boolean;
   imageExpanded?: boolean;
   onToggleImageExpanded?: () => void;
+  scriptLanguage?: string;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
@@ -49,7 +50,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -214,7 +215,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   if (editing) {
     return (
-      <div className="rounded border border-primary/30 bg-card p-3 sm:p-4 space-y-2">
+      <div className="rounded border border-primary/30 bg-muted p-3 sm:p-4 space-y-2">
         <select value={editType} onChange={(e) => setEditType(e.target.value)} className={`${inputClass} min-h-[44px] sm:min-h-0`}>
           {SHOT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           {!SHOT_TYPES.includes(editType) && <option value={editType}>{editType}</option>}
@@ -243,7 +244,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   return (
     <>
-      <div className="group rounded border border-border bg-card p-3 sm:p-4 transition-colors hover:border-primary/30 relative">
+      <div className="group rounded border border-border bg-muted p-3 sm:p-4 transition-colors hover:border-primary/30 relative">
         {/* Action buttons — above image */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -334,7 +335,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                   })()}
                 </div>
                 <p className="text-xs text-foreground leading-relaxed mt-0.5 italic break-words">"{shot.source_sentence}"</p>
-                {shot.source_sentence_fr && (
+                {shot.source_sentence_fr && scriptLanguage !== "fr" && (
                   <div className="flex items-center gap-1 mt-0.5">
                     <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{shot.source_sentence_fr}"</p>
                     {onRetranslate && (
@@ -352,7 +353,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                     )}
                   </div>
                 )}
-                {!shot.source_sentence_fr && onRetranslate && (
+                {!shot.source_sentence_fr && onRetranslate && scriptLanguage !== "fr" && (
                   <button
                     onClick={async () => {
                       setRetranslating(true);

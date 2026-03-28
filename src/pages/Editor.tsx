@@ -2712,6 +2712,7 @@ export default function Editor() {
                                             sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
                                             isLastInScene={isLast}
                                             imageExpanded={imageOpenShots.has(shot.id)}
+                                            scriptLanguage={scriptLanguage}
                                             onToggleImageExpanded={() => setImageOpenShots(prev => {
                                               const next = new Set(prev);
                                               if (next.has(shot.id)) next.delete(shot.id); else next.add(shot.id);
