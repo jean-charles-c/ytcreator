@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -33,6 +33,8 @@ interface ShotCardProps {
   globalIndex?: number;
   sceneLabel?: string;
   isLastInScene?: boolean;
+  imageExpanded?: boolean;
+  onToggleImageExpanded?: () => void;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
@@ -47,7 +49,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
@@ -276,11 +278,22 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
         </div>
 
         {imageUrl && (
-          <div
-            className="mb-3 rounded overflow-hidden border border-border cursor-pointer"
-            onClick={() => setLightboxOpen(true)}
-          >
-            <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-contain" loading="lazy" />
+          <div className="mb-3">
+            <button
+              onClick={() => onToggleImageExpanded?.()}
+              className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors mb-1"
+            >
+              <ChevronRight className={`h-3 w-3 transition-transform ${imageExpanded ? 'rotate-90' : ''}`} />
+              Visuel
+            </button>
+            {imageExpanded && (
+              <div
+                className="rounded overflow-hidden border border-border cursor-pointer"
+                onClick={() => setLightboxOpen(true)}
+              >
+                <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-contain" loading="lazy" />
+              </div>
+            )}
           </div>
         )}
         {/* Badges */}
