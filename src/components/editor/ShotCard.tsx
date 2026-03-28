@@ -278,11 +278,22 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
         </div>
 
         {imageUrl && (
-          <div
-            className="mb-3 rounded overflow-hidden border border-border cursor-pointer"
-            onClick={() => setLightboxOpen(true)}
-          >
-            <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-contain" loading="lazy" />
+          <div className="mb-3">
+            <button
+              onClick={() => onToggleImageExpanded?.()}
+              className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors mb-1"
+            >
+              <ChevronRight className={`h-3 w-3 transition-transform ${imageExpanded ? 'rotate-90' : ''}`} />
+              Visuel
+            </button>
+            {imageExpanded && (
+              <div
+                className="rounded overflow-hidden border border-border cursor-pointer"
+                onClick={() => setLightboxOpen(true)}
+              >
+                <img src={imageUrl} alt={`Shot ${globalIndex ?? ""}`} className="w-full h-auto object-contain" loading="lazy" />
+              </div>
+            )}
           </div>
         )}
         {/* Badges */}
