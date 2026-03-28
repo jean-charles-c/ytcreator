@@ -2291,7 +2291,7 @@ export default function Editor() {
                   const sceneIds = scenes.map((s) => s.id);
                   const allOpen = openSceneIds.length === sceneIds.length && sceneIds.every((id) => openSceneIds.includes(id));
                   return (
-                    <div className="mb-4 flex items-center justify-end gap-2">
+                    <div className="mb-4 flex items-center justify-end gap-2 flex-wrap">
                       <Button
                         variant={showWarnings ? "default" : "outline"}
                         size="sm"
@@ -2304,9 +2304,29 @@ export default function Editor() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setOpenSceneIds(allOpen ? [] : sceneIds)}
+                        onClick={() => {
+                          if (allOpen) {
+                            setOpenSceneIds([]);
+                            setImageOpenShots(new Set());
+                          } else {
+                            setOpenSceneIds(sceneIds);
+                            // Open all images
+                            const allShotIds = new Set(shots.map(s => s.id));
+                            setImageOpenShots(allShotIds);
+                          }
+                        }}
                       >
-                        {allOpen ? "Tout fermer" : "Tout ouvrir"}
+                        {allOpen ? "Tout fermer" : "Tout ouvrir avec les visuels"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setOpenSceneIds(sceneIds);
+                          setImageOpenShots(new Set());
+                        }}
+                      >
+                        Tout ouvrir sans les visuels
                       </Button>
                     </div>
                   );
