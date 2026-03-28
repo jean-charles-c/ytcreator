@@ -1183,6 +1183,7 @@ export default function Editor() {
   const [sceneImageModelOverrides, setSceneImageModelOverrides] = useState<Record<string, string>>({});
   const [galleryOpen, setGalleryOpen] = useState(false);
    const [openSceneIds, setOpenSceneIds] = useState<string[]>([]);
+   const [imageOpenShots, setImageOpenShots] = useState<Set<string>>(new Set());
    const [showWarnings, setShowWarnings] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
