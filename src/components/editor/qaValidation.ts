@@ -113,14 +113,14 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
 
     // Text order check
     const sceneTextLower = scene.sceneText.toLowerCase().replace(/\s+/g, " ").trim();
-    const shotTextPositions: { globalOrder: number; localOrder: number; position: number }[] = [];
+    const shotTextPositions: { globalOrder: number; localOrder: number; position: number; text: string }[] = [];
     for (const shot of activeShots) {
       const frag = scene.fragments.find(f => f.shotId === shot.shotId);
       if (!frag) continue;
       const fragLower = frag.text.toLowerCase().replace(/\s+/g, " ").trim();
       if (!fragLower) continue;
       const pos = sceneTextLower.indexOf(fragLower);
-      shotTextPositions.push({ globalOrder: shot.globalOrder, localOrder: shot.localOrder, position: pos });
+      shotTextPositions.push({ globalOrder: shot.globalOrder, localOrder: shot.localOrder, position: pos, text: frag.text.trim() });
     }
     const byLocalOrder = [...shotTextPositions].sort((a, b) => a.localOrder - b.localOrder);
     for (let i = 1; i < byLocalOrder.length; i++) {
@@ -131,6 +131,8 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           category: "structure",
           sceneOrder: scene.sceneOrder,
           message: `Scène ${scene.sceneOrder} : shots ${byLocalOrder[i - 1].globalOrder} et ${byLocalOrder[i].globalOrder} inversés par rapport au texte source.`,
+          expectedText: `Shot ${byLocalOrder[i - 1].globalOrder} devrait précéder Shot ${byLocalOrder[i].globalOrder} dans le texte source`,
+          actualText: `Shot ${byLocalOrder[i - 1].globalOrder}: « ${byLocalOrder[i - 1].text.slice(0, 80)} »\nShot ${byLocalOrder[i].globalOrder}: « ${byLocalOrder[i].text.slice(0, 80)} »`,
         });
         break;
       }
@@ -154,6 +156,7 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
               sceneOrder: scene.sceneOrder,
               shotOrder: shot?.globalOrder,
               message: `Phrase répétée dans le shot ${shot?.globalOrder ?? "?"} : « ${ns.slice(0, 60)}… »`,
+              actualText: fragText.slice(0, 200),
             });
             break;
           }
