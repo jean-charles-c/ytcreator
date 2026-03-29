@@ -249,10 +249,9 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     const storageUrl = await uploadToStorage(obj.nom || "unknown", url, existing.length + 1);
     if (storageUrl) {
       updateObject(id, { reference_images: [...existing, storageUrl] });
-      toast.success("Image de référence uploadée");
+      toast.success("Image de référence uploadée sur le serveur");
     } else {
-      // Fallback: use raw URL
-      updateObject(id, { reference_images: [...existing, url] });
+      toast.error("Impossible d'uploader l'image sur le serveur. Vérifiez l'URL et réessayez.");
     }
   }, [objects, updateObject]);
 
