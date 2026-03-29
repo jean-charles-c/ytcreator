@@ -179,16 +179,16 @@ The prompt must illustrate ONLY what the given text fragment describes.
 Do not illustrate the entire scene — focus on the specific fragment's visual content.
 The prompt must describe what the FRAGMENT says, not what the scene says in general.
 
-PROMPT STRUCTURE (prompt_export, in ENGLISH):
+PROMPT STRUCTURE (prompt_export, in FRENCH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
-2. Camera framing (MUST differ from neighbors) — use descriptive English framing: "Wide establishing shot of...", "Close-up on...", "Medium shot capturing..."
+2. Camera framing (MUST differ from neighbors)
 3. Fragment-specific visual content with hyper-specific materials, textures, colors
 4. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color — culturally accurate to the era and place
 5. Environment grounded in the scene's lieu and époque: period-accurate background elements
 6. Foreground depth elements relevant to the fragment adding visual depth
-7. Lighting: source, direction, quality, shadows — physically motivated (candlelight, firelight, sunrise, etc.)
-8. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
-9. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
+7. Lighting: source, direction, quality, shadows — physically motivated
+8. Atmosphere and mood from the fragment's narrative tone
+9. End with: "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9"
 
 PHOTOREALISM ENFORCEMENT:
 All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
