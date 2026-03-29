@@ -461,10 +461,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             {shot.prompt_export && (
               <details className="group/details">
                 <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
-                  Prompt visuel (EN)
+                  Prompt complet envoyé à l'IA
                 </summary>
                 <pre className="mt-1 rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
-                  {shot.prompt_export}
+                  {buildFullPromptPreview(shot.prompt_export)}
                 </pre>
               </details>
             )}
