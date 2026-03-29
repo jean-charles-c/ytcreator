@@ -822,6 +822,38 @@ export default function Editor() {
     }
   }, [projectId]);
 
+  // --- Object linking to shots ---
+  const allRecurringObjects = useMemo(() => 
+    (globalContext?.objets_recurrents as RecurringObject[]) || [], 
+    [globalContext]
+  );
+
+  const getLinkedObjectsForShot = useCallback((sceneOrder: number): RecurringObject[] => {
+    return allRecurringObjects.filter(obj => obj.mentions_scenes.includes(sceneOrder));
+  }, [allRecurringObjects]);
+
+  const handleLinkObjectToScene = useCallback(async (sceneOrder: number, objectId: string) => {
+    const objects = [...allRecurringObjects];
+    const idx = objects.findIndex(o => o.id === objectId);
+    if (idx === -1) return;
+    const obj = { ...objects[idx] };
+    if (!obj.mentions_scenes.includes(sceneOrder)) {
+      obj.mentions_scenes = [...obj.mentions_scenes, sceneOrder].sort((a, b) => a - b);
+      objects[idx] = obj;
+      handleObjectRegistryChange(objects);
+    }
+  }, [allRecurringObjects, handleObjectRegistryChange]);
+
+  const handleUnlinkObjectFromScene = useCallback(async (sceneOrder: number, objectId: string) => {
+    const objects = [...allRecurringObjects];
+    const idx = objects.findIndex(o => o.id === objectId);
+    if (idx === -1) return;
+    const obj = { ...objects[idx] };
+    obj.mentions_scenes = obj.mentions_scenes.filter(s => s !== sceneOrder);
+    objects[idx] = obj;
+    handleObjectRegistryChange(objects);
+  }, [allRecurringObjects, handleObjectRegistryChange]);
+
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
     setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
