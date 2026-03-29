@@ -199,14 +199,29 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
         )}
       </div>
 
-      {/* CRITICAL ISSUES — always visible, open, detailed */}
       {criticalIssues.length > 0 && (
-        <div className="rounded border-2 border-destructive/40 bg-destructive/5 overflow-hidden">
-          <div className="px-3 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
-            <ShieldX className="h-4 w-4 text-destructive" />
-            <span className="text-xs font-bold text-destructive">
-              {criticalIssues.length} erreur{criticalIssues.length > 1 ? "s" : ""} bloquante{criticalIssues.length > 1 ? "s" : ""} — Export impossible
-            </span>
+        <div className={`rounded border-2 overflow-hidden ${effectiveBlocked > 0 ? "border-destructive/40 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+          <div className={`px-3 py-2 border-b flex items-center gap-2 justify-between ${effectiveBlocked > 0 ? "bg-destructive/10 border-destructive/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+            <div className="flex items-center gap-2">
+              {effectiveBlocked > 0 ? <ShieldX className="h-4 w-4 text-destructive" /> : <ShieldOff className="h-4 w-4 text-amber-500" />}
+              <span className={`text-xs font-bold ${effectiveBlocked > 0 ? "text-destructive" : "text-amber-600"}`}>
+                {effectiveBlocked > 0
+                  ? `${effectiveBlocked} erreur${effectiveBlocked > 1 ? "s" : ""} bloquante${effectiveBlocked > 1 ? "s" : ""} — Export impossible`
+                  : `${forcedCount} erreur${forcedCount > 1 ? "s" : ""} forcée${forcedCount > 1 ? "s" : ""} — Export autorisé`
+                }
+              </span>
+            </div>
+            {effectiveBlocked > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[9px] gap-1 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                onClick={() => forceAll(criticalIssues.map(i => issueKey(i)))}
+              >
+                <ShieldOff className="h-3 w-3" />
+                Tout forcer
+              </Button>
+            )}
           </div>
           <div className="p-2 space-y-3 max-h-80 overflow-y-auto">
             {Object.entries(criticalsByScene).map(([sceneLabel, issues]) => (
@@ -215,22 +230,55 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
                   <span className="w-1.5 h-1.5 rounded-full bg-destructive inline-block" />
                   {sceneLabel} — {issues.length} erreur{issues.length > 1 ? "s" : ""}
                 </div>
-                {issues.map((issue, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[11px] pl-3 border-l-2 border-l-destructive/40 py-1.5 bg-destructive/5 rounded-r"
-                  >
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="inline-flex items-center rounded px-1.5 py-0.5 font-semibold border text-[9px] bg-destructive/20 text-destructive border-destructive/30">
-                        {categoryLabels[issue.category as QaCategory] ?? issue.category}
-                      </span>
-                      {issue.shotOrder != null && issue.shotOrder > 0 && (
-                        <span className="text-[9px] font-mono text-destructive/70">Shot {issue.shotOrder}</span>
-                      )}
+                {issues.map((issue, i) => {
+                  const key = issueKey(issue);
+                  const isForced = forcedKeys.has(key);
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-2 text-[11px] pl-3 border-l-2 py-1.5 rounded-r ${
+                        isForced
+                          ? "border-l-amber-500/40 bg-amber-500/5 opacity-70"
+                          : "border-l-destructive/40 bg-destructive/5"
+                      }`}
+                    >
+                      <div className="flex-1 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 min-w-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-semibold border text-[9px] ${
+                            isForced
+                              ? "bg-amber-500/20 text-amber-600 border-amber-500/30 line-through"
+                              : "bg-destructive/20 text-destructive border-destructive/30"
+                          }`}>
+                            {categoryLabels[issue.category as QaCategory] ?? issue.category}
+                          </span>
+                          {issue.shotOrder != null && issue.shotOrder > 0 && (
+                            <span className={`text-[9px] font-mono ${isForced ? "text-amber-600/70" : "text-destructive/70"}`}>Shot {issue.shotOrder}</span>
+                          )}
+                        </div>
+                        <span className={`break-words leading-relaxed ${isForced ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                          {issue.message}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-6 text-[9px] gap-1 px-1.5 shrink-0 ${
+                          isForced
+                            ? "text-amber-600 hover:bg-amber-500/10"
+                            : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        }`}
+                        onClick={() => toggleForce(key)}
+                        title={isForced ? "Rétablir le blocage" : "Forcer — ignorer cette erreur"}
+                      >
+                        {isForced ? (
+                          <><ShieldX className="h-3 w-3" /> Rebloquer</>
+                        ) : (
+                          <><ShieldOff className="h-3 w-3" /> Forcer</>
+                        )}
+                      </Button>
                     </div>
-                    <span className="text-foreground break-words leading-relaxed">{issue.message}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ))}
           </div>
