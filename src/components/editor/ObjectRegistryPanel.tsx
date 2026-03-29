@@ -155,7 +155,51 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     updateObject(id, { mentions_scenes: scenes });
   }, [objects, updateObject]);
 
-  if (objects.length === 0) {
+  const searchReferenceImages = useCallback(async (id: string) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj || !obj.nom) {
+      toast.error("Renseignez le nom de l'objet avant de chercher des images.");
+      return;
+    }
+    setSearchingImages(prev => ({ ...prev, [id]: true }));
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const searchQuery = `${obj.nom} ${obj.epoque || ""}`.trim();
+      const res = await supabase.functions.invoke("search-reference-images", {
+        body: { query: searchQuery, limit: 3 },
+      });
+      if (res.error) throw res.error;
+      const data = res.data as { images: { url: string; thumb: string }[] };
+      const urls = data.images.map((img) => img.thumb || img.url);
+      if (urls.length === 0) {
+        toast.info("Aucune image trouvée pour cette recherche.");
+        return;
+      }
+      const existing = obj.reference_images || [];
+      updateObject(id, { reference_images: [...existing, ...urls] });
+      toast.success(`${urls.length} image(s) de référence ajoutée(s)`);
+    } catch (e: any) {
+      toast.error("Erreur recherche images : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setSearchingImages(prev => ({ ...prev, [id]: false }));
+    }
+  }, [objects, updateObject]);
+
+  const removeReferenceImage = useCallback((id: string, imgIndex: number) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const imgs = [...(obj.reference_images || [])];
+    imgs.splice(imgIndex, 1);
+    updateObject(id, { reference_images: imgs });
+  }, [objects, updateObject]);
+
+  const addReferenceImageUrl = useCallback((id: string, url: string) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const imgs = [...(obj.reference_images || []), url];
+    updateObject(id, { reference_images: imgs });
+  }, [objects, updateObject]);
+
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
         <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[44px]">
