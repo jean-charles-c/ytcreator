@@ -123,6 +123,7 @@ interface ObjectRegistryPanelProps {
 export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
