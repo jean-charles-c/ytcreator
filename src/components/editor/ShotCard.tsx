@@ -96,6 +96,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
   const [splitting, setSplitting] = useState(false);
   const [retranslating, setRetranslating] = useState(false);
+  const [editingFullPrompt, setEditingFullPrompt] = useState(false);
+  const [fullPromptDraft, setFullPromptDraft] = useState("");
+  const [customFullPrompt, setCustomFullPrompt] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
