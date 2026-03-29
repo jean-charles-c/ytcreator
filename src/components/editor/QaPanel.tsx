@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, ChevronDown, Unlock, Lock } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, ChevronDown, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { VisualPromptManifest } from "./visualPromptTypes";
