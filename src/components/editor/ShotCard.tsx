@@ -65,7 +65,7 @@ interface ShotCardProps {
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
-  onGenerateImage?: (shotId: string) => Promise<void>;
+  onGenerateImage?: (shotId: string, customPrompt?: string) => Promise<void>;
   onMergeWithNext?: (shotId: string) => Promise<void>;
   onSplit?: (shotId: string, splitIndex: number) => Promise<void>;
   onRetranslate?: (shotId: string) => Promise<void>;
@@ -96,6 +96,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
   const [splitting, setSplitting] = useState(false);
   const [retranslating, setRetranslating] = useState(false);
+  const [editingFullPrompt, setEditingFullPrompt] = useState(false);
+  const [fullPromptDraft, setFullPromptDraft] = useState("");
+  const [customFullPrompt, setCustomFullPrompt] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const imageUrl = shot.image_url;
@@ -106,6 +109,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:\n\nUse the provided reference image(s) only to preserve the exact identity, proportions, structure, materials, distinctive features, and period-specific visual traits of the subject.\n\nIf the subject is a person, use the reference only to preserve the exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, and distinctive traits of that specific period.\n\nIf the subject is a place, use the reference only to preserve the exact architecture, layout, structural condition, materials, surrounding context, landmark features, and historical state.\n\nIf the subject is an object, use the reference only to preserve the exact shape, proportions, construction, surface treatment, materials, and defining details of that exact version.\n\nTreat the reference image(s) as a fidelity anchor, not as a composition to copy literally unless explicitly requested.\n\nDo not import unwanted background elements, text, framing, lighting, or scene details from the reference.\n\nDo not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
 
   const buildFullPromptPreview = (basePrompt: string) => {
+    // If user has a custom edited version, use that
+    if (customFullPrompt !== null) return customFullPrompt;
+
     const parts: string[] = [];
 
     // 1. Reference image rule if any linked object has reference images
@@ -113,7 +119,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (hasRefImages) {
       parts.push(REFERENCE_IMAGE_RULE);
       const refImgList = linkedObjects?.flatMap(obj =>
-        (obj.reference_images || []).map((url, i) => `  📷 ${obj.nom} ref ${i + 1}: ${url}`)
+        (obj.reference_images || []).map((url, i) => {
+          const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
+          return `  📷 ${obj.nom} — ${fileName}`;
+        })
       ).join("\n");
       if (refImgList) parts.push(`[Images de référence transmises]\n${refImgList}`);
     }
@@ -136,6 +145,24 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     parts.push(ANTI_TEXT_LEAK);
 
     return parts.join("\n\n");
+  };
+
+  const startEditFullPrompt = () => {
+    const preview = buildFullPromptPreview(shot.prompt_export || shot.description);
+    setFullPromptDraft(preview);
+    setEditingFullPrompt(true);
+  };
+
+  const saveFullPrompt = () => {
+    setCustomFullPrompt(fullPromptDraft);
+    setEditingFullPrompt(false);
+    toast.success("Prompt personnalisé sauvegardé — sera utilisé pour la prochaine génération");
+  };
+
+  const resetFullPrompt = () => {
+    setCustomFullPrompt(null);
+    setEditingFullPrompt(false);
+    toast.info("Prompt réinitialisé au format automatique");
   };
 
   const startEdit = () => {
@@ -181,7 +208,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (!onGenerateImage) return;
     setGeneratingImage(true);
     try {
-      await onGenerateImage(shot.id);
+      await onGenerateImage(shot.id, customFullPrompt ?? undefined);
     } finally {
       setGeneratingImage(false);
     }
@@ -495,14 +522,47 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               </div>
             )}
             <p className="text-xs text-muted-foreground leading-relaxed break-words">{shot.description}</p>
-            {shot.prompt_export && (
+        {shot.prompt_export && (
               <details className="group/details">
-                <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">
                   Prompt complet envoyé à l'IA
+                  {customFullPrompt !== null && <span className="text-[9px] text-primary font-normal normal-case">(personnalisé)</span>}
                 </summary>
-                <pre className="mt-1 rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
-                  {buildFullPromptPreview(shot.prompt_export)}
-                </pre>
+                {editingFullPrompt ? (
+                  <div className="mt-1 space-y-1.5">
+                    <textarea
+                      value={fullPromptDraft}
+                      onChange={(e) => setFullPromptDraft(e.target.value)}
+                      className="w-full rounded border border-primary/30 bg-background p-2 sm:p-3 text-[11px] text-foreground leading-relaxed whitespace-pre-wrap font-mono break-words resize-y min-h-[200px] focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <div className="flex gap-1.5">
+                      <Button size="sm" onClick={saveFullPrompt} className="h-7 text-[11px] px-2">
+                        <Check className="h-3 w-3 mr-1" /> Sauvegarder
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingFullPrompt(false)} className="h-7 text-[11px] px-2">
+                        <X className="h-3 w-3" /> Annuler
+                      </Button>
+                      {customFullPrompt !== null && (
+                        <Button size="sm" variant="ghost" onClick={resetFullPrompt} className="h-7 text-[11px] px-2 text-destructive">
+                          Réinitialiser
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-1 relative group/prompt">
+                    <pre className="rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
+                      {buildFullPromptPreview(shot.prompt_export)}
+                    </pre>
+                    <button
+                      onClick={startEditFullPrompt}
+                      className="absolute top-1 right-1 p-1.5 rounded bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors opacity-0 group-hover/prompt:opacity-100"
+                      title="Modifier le prompt complet"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </details>
             )}
           </div>

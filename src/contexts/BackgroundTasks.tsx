@@ -62,6 +62,8 @@ export interface ImageGenParams {
   sensitiveLevels?: Record<string, number>;
   /** Maps shotId → visual style id. Omitted shots have no style constraint. */
   visualStyles?: Record<string, string>;
+  /** Maps shotId → custom full prompt (user-edited). Omitted shots use server-built prompt. */
+  customPrompts?: Record<string, string>;
 }
 
 interface BackgroundTasksContextValue {
@@ -852,6 +854,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                             : {}),
                           ...(params.visualStyles?.[remainingShotIds[i]] != null
                             ? { visual_style: params.visualStyles[remainingShotIds[i]] }
+                            : {}),
+                          ...(params.customPrompts?.[remainingShotIds[i]]
+                            ? { custom_prompt: params.customPrompts[remainingShotIds[i]] }
                             : {}),
                         }),
                         signal: shotAc.signal,
