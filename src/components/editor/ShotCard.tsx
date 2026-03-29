@@ -208,7 +208,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (!onGenerateImage) return;
     setGeneratingImage(true);
     try {
-      await onGenerateImage(shot.id);
+      await onGenerateImage(shot.id, customFullPrompt ?? undefined);
     } finally {
       setGeneratingImage(false);
     }
