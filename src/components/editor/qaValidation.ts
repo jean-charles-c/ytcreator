@@ -94,6 +94,8 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           sceneOrder: scene.sceneOrder,
           shotOrder: shot.globalOrder,
           message: `Shot ${shot.globalOrder} (scène ${scene.sceneOrder}) n'a aucun fragment de texte associé.`,
+          expectedText: `(fragment attendu du texte source de la scène)`,
+          actualText: `(aucun fragment rattaché au shot)`,
         });
       }
     }
