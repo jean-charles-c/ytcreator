@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Plus, Package, User, MapPin, Car, Building2, Landmark, Box } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 
 type Shot = Tables<"shots">;
 
@@ -28,6 +29,26 @@ const SHOT_TYPES = [
   "Plan de détail scientifique",
 ];
 
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  character: <User className="h-3 w-3" />,
+  location: <MapPin className="h-3 w-3" />,
+  vehicle: <Car className="h-3 w-3" />,
+  building: <Building2 className="h-3 w-3" />,
+  artifact: <Landmark className="h-3 w-3" />,
+  weapon: <Box className="h-3 w-3" />,
+  object: <Package className="h-3 w-3" />,
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  character: "bg-pink-500/10 text-pink-600 border-pink-500/20",
+  location: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+  vehicle: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  building: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  artifact: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  weapon: "bg-red-500/10 text-red-600 border-red-500/20",
+  object: "bg-green-500/10 text-green-600 border-green-500/20",
+};
+
 interface ShotCardProps {
   shot: Shot;
   globalIndex?: number;
@@ -36,6 +57,11 @@ interface ShotCardProps {
   imageExpanded?: boolean;
   onToggleImageExpanded?: () => void;
   scriptLanguage?: string;
+  linkedObjects?: RecurringObject[];
+  allObjects?: RecurringObject[];
+  onLinkObject?: (shotSceneOrder: number, objectId: string) => void;
+  onUnlinkObject?: (shotSceneOrder: number, objectId: string) => void;
+  sceneOrder?: number;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
