@@ -2768,10 +2768,10 @@ export default function Editor() {
                                             isLastInScene={isLast}
                                             imageExpanded={imageOpenShots.has(shot.id)}
                                             scriptLanguage={scriptLanguage}
-                                            linkedObjects={getLinkedObjectsForShot(scene.scene_order)}
+                                            linkedObjects={getLinkedObjectsForShot(scene.scene_order, shot.id)}
                                             allObjects={allRecurringObjects}
-                                            onLinkObject={handleLinkObjectToScene}
-                                            onUnlinkObject={handleUnlinkObjectFromScene}
+                                            onLinkObject={(_sceneOrder, objId) => handleLinkObjectToShot(shot.id, objId)}
+                                            onUnlinkObject={(_sceneOrder, objId) => handleUnlinkObjectFromShot(shot.id, objId)}
                                             sceneOrder={scene.scene_order}
                                             onToggleImageExpanded={() => setImageOpenShots(prev => {
                                               const next = new Set(prev);
