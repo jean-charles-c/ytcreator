@@ -28,6 +28,7 @@ export interface RecurringObject {
   epoque: string;
   mentions_scenes: number[];
   identity_prompt: string;
+  reference_images?: string[];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
