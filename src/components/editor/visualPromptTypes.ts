@@ -136,19 +136,12 @@ export function buildManifest(
   let globalOrder = 0;
 
   const scenes: NormalisedScene[] = sortedScenes.map((scene) => {
-    const sceneShots = (shotsByScene.get(scene.id) ?? []).sort((a, b) => {
-      // Primary: text position in scene source_text (normalize whitespace for multi-line texts)
-      const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
-      const textA = (a.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
-      const textB = (b.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
-      if (textA && textB) {
-        const posA = sceneTextLower.indexOf(textA);
-        const posB = sceneTextLower.indexOf(textB);
-        if (posA >= 0 && posB >= 0 && posA !== posB) return posA - posB;
-      }
-      // Fallback: shot_order
-      return a.shot_order - b.shot_order;
-    });
+    // CRITICAL: sort by shot_order only — this must match the order used by TTS
+    // generation (which produces timepoints in shot_order sequence). Text-position
+    // sorting caused misalignment when sentences were edited.
+    const sceneShots = (shotsByScene.get(scene.id) ?? []).sort(
+      (a, b) => a.shot_order - b.shot_order
+    );
 
     const isSingle = sceneShots.length <= 1;
 
