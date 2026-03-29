@@ -606,6 +606,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
         // Build manifest timing from scenes/shots + the exact audio currently selected in the timeline
         try {
+          let exportTimeline = params.timeline;
           const [{ data: dbScenes }, { data: dbShots }, { data: selectedAudio }] = await Promise.all([
             supabase.from("scenes").select("*").eq("project_id", params.projectId),
             supabase.from("shots").select("*").eq("project_id", params.projectId),
@@ -623,8 +624,6 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             manifestEntries = timing.entries;
 
             // ── Pre-export order consistency guard ──
-            // Verify that manifest order matches timeline segment order.
-            // If they diverge, clipFrames[i] would pair with the wrong segment.
             const timelineSegmentIds = params.timeline.videoTrack.segments.map((s) => s.id);
             const manifestShotIds = manifestEntries.map((e) => e.shotId);
             const timelineFiltered = timelineSegmentIds.filter((id) => new Set(manifestShotIds).has(id));
@@ -657,6 +656,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               shotSentenceFrMap.set(shot.id, shot.source_sentence_fr);
               shotTypeMap.set(shot.id, shot.shot_type);
             }
+
             // ── Cross-project guard: build a clean copy for export only ──
             // Do NOT mutate the original timeline — just create a scoped copy
             const validShotIds = new Set(dbShots.map((s) => s.id));
@@ -672,8 +672,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                 return copy;
               });
 
-            // Build a shallow copy of the timeline with scoped segments for the export
-            const exportTimeline: typeof params.timeline = {
+            exportTimeline = {
               ...params.timeline,
               videoTrack: {
                 ...params.timeline.videoTrack,
