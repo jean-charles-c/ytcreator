@@ -2618,42 +2618,26 @@ export default function Editor() {
                                     </Button>
                                     <button
                                       onClick={async () => {
-                                        // Build multiple text references to try matching against
-                                        const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
-                                        const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
-
-                                        const positions = sceneShots.map(sh => {
-                                          const sentEn = (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
-                                          const sentFr = (sh.source_sentence_fr || "").toLowerCase().replace(/\s+/g, " ").trim();
-
-                                          // Try all combinations: EN→EN, FR→FR, EN→FR, FR→EN
-                                          let bestPos = -1;
-                                          if (sceneTextEn && sentEn) bestPos = findBestPosition(sceneTextEn, sentEn);
-                                          if (bestPos < 0 && sceneTextFr && sentFr) bestPos = findBestPosition(sceneTextFr, sentFr);
-                                          if (bestPos < 0 && sceneTextFr && sentEn) bestPos = findBestPosition(sceneTextFr, sentEn);
-                                          if (bestPos < 0 && sceneTextEn && sentFr) bestPos = findBestPosition(sceneTextEn, sentFr);
-
-                                          return { id: sh.id, order: sh.shot_order, pos: bestPos };
-                                        }).filter(p => p.pos >= 0);
-
-                                        if (positions.length === 0) {
-                                          toast.error("Impossible de réaligner : aucun shot n'a pu être localisé dans le texte source.");
+                                        if (scene.validated) {
+                                          toast.error("Scène validée — déverrouillez-la d'abord pour réaligner.");
                                           return;
                                         }
-
-                                        const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
-                                        const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
+                                        const ordered = sortShotsBySceneText(scene, sceneShots);
+                                        const updates: { id: string; shot_order: number }[] = [];
+                                        ordered.forEach((shot, idx) => {
+                                          const correctOrder = idx + 1;
+                                          if (shot.shot_order !== correctOrder) {
+                                            updates.push({ id: shot.id, shot_order: correctOrder });
+                                          }
+                                        });
+                                        if (updates.length === 0) {
+                                          toast.info("L'ordre est déjà correct.");
+                                          return;
+                                        }
                                         for (const u of updates) {
                                           await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
                                         }
-                                        const fixedIds = new Set(updates.map(u => u.id));
-                                        let nextOrder = updates.length + 1;
-                                        for (const sh of sceneShots) {
-                                          if (!fixedIds.has(sh.id)) {
-                                            await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
-                                          }
-                                        }
-                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte (${positions.length}/${sceneShots.length} localisés)`);
+                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés (${updates.length} déplacés)`);
                                         const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
                                         if (freshShots) {
                                           const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
