@@ -313,7 +313,62 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     />
                   </div>
 
-                  {/* Scènes concernées */}
+                  {/* Images de référence */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" /> Images de référence
+                        {(obj.reference_images?.length || 0) > 0 && (
+                          <span className="text-primary font-bold">({obj.reference_images!.length})</span>
+                        )}
+                      </label>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => searchReferenceImages(obj.id)}
+                          disabled={searchingImages[obj.id] || !obj.nom}
+                          className="h-7 text-xs px-2"
+                        >
+                          {searchingImages[obj.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Search className="h-3 w-3 mr-1" />}
+                          Chercher sur le web
+                        </Button>
+                      </div>
+                    </div>
+                    {(obj.reference_images?.length || 0) > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {obj.reference_images!.map((imgUrl, imgIdx) => (
+                          <div key={imgIdx} className="relative group/img w-24 h-24 rounded border border-border overflow-hidden bg-secondary">
+                            <img src={imgUrl} alt={`Ref ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                            <button
+                              onClick={() => removeReferenceImage(obj.id, imgIdx)}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/img:opacity-100 transition-opacity"
+                              title="Supprimer cette image"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-1">
+                      <Input
+                        placeholder="Coller une URL d'image et appuyer Entrée"
+                        className="h-7 text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const input = e.currentTarget;
+                            const url = input.value.trim();
+                            if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+                              addReferenceImageUrl(obj.id, url);
+                              input.value = "";
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Scènes où l'objet apparaît</label>
                     <div className="flex flex-wrap gap-1 mt-1">
