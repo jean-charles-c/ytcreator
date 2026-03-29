@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, ImageIcon, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 
 type Shot = Tables<"shots">;
 
@@ -28,6 +29,26 @@ const SHOT_TYPES = [
   "Plan de détail scientifique",
 ];
 
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  character: <User className="h-3 w-3" />,
+  location: <MapPin className="h-3 w-3" />,
+  vehicle: <Car className="h-3 w-3" />,
+  building: <Building2 className="h-3 w-3" />,
+  artifact: <Landmark className="h-3 w-3" />,
+  weapon: <Box className="h-3 w-3" />,
+  object: <Package className="h-3 w-3" />,
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  character: "bg-pink-500/10 text-pink-600 border-pink-500/20",
+  location: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+  vehicle: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  building: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  artifact: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  weapon: "bg-red-500/10 text-red-600 border-red-500/20",
+  object: "bg-green-500/10 text-green-600 border-green-500/20",
+};
+
 interface ShotCardProps {
   shot: Shot;
   globalIndex?: number;
@@ -36,6 +57,11 @@ interface ShotCardProps {
   imageExpanded?: boolean;
   onToggleImageExpanded?: () => void;
   scriptLanguage?: string;
+  linkedObjects?: RecurringObject[];
+  allObjects?: RecurringObject[];
+  onLinkObject?: (shotSceneOrder: number, objectId: string) => void;
+  onUnlinkObject?: (shotSceneOrder: number, objectId: string) => void;
+  sceneOrder?: number;
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
@@ -50,8 +76,9 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, linkedObjects, allObjects, onLinkObject, onUnlinkObject, sceneOrder, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
+  const [showObjectPicker, setShowObjectPicker] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
   const [editDesc, setEditDesc] = useState(shot.description);
   const [editPrompt, setEditPrompt] = useState(shot.prompt_export ?? "");
@@ -313,6 +340,67 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             </span>
           )}
         </div>
+        {/* Linked recurring objects */}
+        {(linkedObjects && linkedObjects.length > 0 || (allObjects && allObjects.length > 0 && onLinkObject)) && (
+          <div className="flex flex-wrap items-center gap-1 mb-2">
+            {linkedObjects?.map((obj) => (
+              <span
+                key={obj.id}
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${TYPE_COLORS[obj.type] || TYPE_COLORS.object}`}
+              >
+                {TYPE_ICONS[obj.type] || TYPE_ICONS.object}
+                {obj.nom}
+                {onUnlinkObject && sceneOrder !== undefined && (
+                  <button
+                    onClick={() => onUnlinkObject(sceneOrder, obj.id)}
+                    className="ml-0.5 hover:opacity-70"
+                    title={`Retirer ${obj.nom} de ce shot`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                )}
+                {obj.reference_images && obj.reference_images.length > 0 && (
+                  <span className="text-[9px] opacity-60">📷{obj.reference_images.length}</span>
+                )}
+              </span>
+            ))}
+            {onLinkObject && allObjects && sceneOrder !== undefined && (() => {
+              const linkedIds = new Set(linkedObjects?.map(o => o.id) || []);
+              const available = allObjects.filter(o => !linkedIds.has(o.id));
+              if (available.length === 0) return null;
+              return (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowObjectPicker(!showObjectPicker)}
+                    className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-muted-foreground/30 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    title="Ajouter un objet/personnage/lieu"
+                  >
+                    <Package className="h-2.5 w-2.5" /> +
+                  </button>
+                  {showObjectPicker && (
+                    <div className="absolute top-full left-0 z-50 mt-1 rounded border border-border bg-popover shadow-md p-1 min-w-[180px] max-h-[200px] overflow-y-auto">
+                      {available.map(obj => (
+                        <button
+                          key={obj.id}
+                          onClick={() => {
+                            onLinkObject(sceneOrder, obj.id);
+                            setShowObjectPicker(false);
+                          }}
+                          className={`w-full flex items-center gap-1.5 rounded px-2 py-1.5 text-xs text-left hover:bg-secondary transition-colors`}
+                        >
+                          <span className={`flex items-center gap-1 text-[10px] px-1 py-0.5 rounded border ${TYPE_COLORS[obj.type] || TYPE_COLORS.object}`}>
+                            {TYPE_ICONS[obj.type] || TYPE_ICONS.object}
+                          </span>
+                          {obj.nom || "(sans nom)"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
         <details className="group/shot-details">
           <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
             Phrase illustrée / Prompt

@@ -16,7 +16,11 @@ import {
   MapPin,
   X,
   Search,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -28,6 +32,7 @@ export interface RecurringObject {
   epoque: string;
   mentions_scenes: number[];
   identity_prompt: string;
+  reference_images?: string[];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -102,6 +107,7 @@ interface ObjectRegistryPanelProps {
 
 export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
 
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
@@ -147,6 +153,51 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
       ? obj.mentions_scenes.filter((s) => s !== sceneOrder)
       : [...obj.mentions_scenes, sceneOrder].sort((a, b) => a - b);
     updateObject(id, { mentions_scenes: scenes });
+  }, [objects, updateObject]);
+
+  const searchReferenceImages = useCallback(async (id: string) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj || !obj.nom) {
+      toast.error("Renseignez le nom de l'objet avant de chercher des images.");
+      return;
+    }
+    setSearchingImages(prev => ({ ...prev, [id]: true }));
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const searchQuery = `${obj.nom} ${obj.epoque || ""}`.trim();
+      const res = await supabase.functions.invoke("search-reference-images", {
+        body: { query: searchQuery, limit: 3 },
+      });
+      if (res.error) throw res.error;
+      const data = res.data as { images: { url: string; thumb: string }[] };
+      const urls = data.images.map((img) => img.thumb || img.url);
+      if (urls.length === 0) {
+        toast.info("Aucune image trouvée pour cette recherche.");
+        return;
+      }
+      const existing = obj.reference_images || [];
+      updateObject(id, { reference_images: [...existing, ...urls] });
+      toast.success(`${urls.length} image(s) de référence ajoutée(s)`);
+    } catch (e: any) {
+      toast.error("Erreur recherche images : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setSearchingImages(prev => ({ ...prev, [id]: false }));
+    }
+  }, [objects, updateObject]);
+
+  const removeReferenceImage = useCallback((id: string, imgIndex: number) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const imgs = [...(obj.reference_images || [])];
+    imgs.splice(imgIndex, 1);
+    updateObject(id, { reference_images: imgs });
+  }, [objects, updateObject]);
+
+  const addReferenceImageUrl = useCallback((id: string, url: string) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const imgs = [...(obj.reference_images || []), url];
+    updateObject(id, { reference_images: imgs });
   }, [objects, updateObject]);
 
   if (objects.length === 0) {
@@ -262,7 +313,62 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     />
                   </div>
 
-                  {/* Scènes concernées */}
+                  {/* Images de référence */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" /> Images de référence
+                        {(obj.reference_images?.length || 0) > 0 && (
+                          <span className="text-primary font-bold">({obj.reference_images!.length})</span>
+                        )}
+                      </label>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => searchReferenceImages(obj.id)}
+                          disabled={searchingImages[obj.id] || !obj.nom}
+                          className="h-7 text-xs px-2"
+                        >
+                          {searchingImages[obj.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Search className="h-3 w-3 mr-1" />}
+                          Chercher sur le web
+                        </Button>
+                      </div>
+                    </div>
+                    {(obj.reference_images?.length || 0) > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {obj.reference_images!.map((imgUrl, imgIdx) => (
+                          <div key={imgIdx} className="relative group/img w-24 h-24 rounded border border-border overflow-hidden bg-secondary">
+                            <img src={imgUrl} alt={`Ref ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                            <button
+                              onClick={() => removeReferenceImage(obj.id, imgIdx)}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/img:opacity-100 transition-opacity"
+                              title="Supprimer cette image"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-1">
+                      <Input
+                        placeholder="Coller une URL d'image et appuyer Entrée"
+                        className="h-7 text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const input = e.currentTarget;
+                            const url = input.value.trim();
+                            if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+                              addReferenceImageUrl(obj.id, url);
+                              input.value = "";
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Scènes où l'objet apparaît</label>
                     <div className="flex flex-wrap gap-1 mt-1">
