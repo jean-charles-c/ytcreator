@@ -463,6 +463,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                     {generating ? "Génération..." : "Générer la voix off"}
                   </Button>
                 </div>
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={freeMode}
+                    onChange={(e) => setFreeMode(e.target.checked)}
+                    className="rounded border-border accent-primary"
+                  />
+                  <span className="text-[11px] text-muted-foreground">Mode libre (générer l'audio sans synchronisation avec les shots)</span>
+                </label>
                 {/* Desync warning banner */}
                 {desyncWarning && (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
