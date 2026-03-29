@@ -343,7 +343,7 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   }
 
   // 8. Build the prompt — fragment is the core subject
-  return `${anchor}, ${cameraFraming.toLowerCase()} illustrating: "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Historical documentary frame with photorealistic reconstruction, realistic materials and textures, archaeologically plausible architecture and period-accurate clothing. Include foreground depth elements, atmospheric particles, and physically motivated lighting with natural shadows. Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9`;
+  return `${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles. Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9`;
 };
 
 // Keep legacy name for compatibility
