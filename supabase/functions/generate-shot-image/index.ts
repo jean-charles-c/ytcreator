@@ -377,7 +377,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
 
     for (let variantIdx = 0; variantIdx < promptVariants.length && !imageData; variantIdx++) {
       const currentPromptText = promptVariants[variantIdx];
-      const currentContent = variantIdx === 0 ? buildMessageContent(currentPromptText) : currentPromptText;
+      const currentContent = buildMessageContent(currentPromptText);
       const retries = variantIdx === 0 ? 1 : MAX_RETRIES; // Only 1 try for original, 3 for sanitized
 
       for (let attempt = 1; attempt <= retries; attempt++) {
