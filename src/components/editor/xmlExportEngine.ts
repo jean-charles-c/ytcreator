@@ -190,7 +190,7 @@ function generateXml(
   markersXml: string = "",
   musicTracks: { fileName: string; localPath: string }[] = [],
    chapterTitles: { name: string; startFrame: number; endFrame: number }[] = [],
-   subtitleTracks: { name: string; pathurl: string; durationFrames: number; clips: { name: string; startFrame: number; endFrame: number; text: string }[] }[] = []
+   _subtitleTracks?: unknown
 ): string {
   const HANDLE_FRAMES = Math.round(fps * 2);
 
