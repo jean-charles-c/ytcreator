@@ -200,6 +200,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     updateObject(id, { reference_images: imgs });
   }, [objects, updateObject]);
 
+  if (objects.length === 0) {
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
         <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[44px]">
