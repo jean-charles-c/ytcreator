@@ -174,9 +174,9 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
           <span className="text-xs font-semibold">{statusLabel}</span>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          {report.exportAllowed ? (
+          {effectiveBlocked === 0 ? (
             <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
-              Export autorisé
+              Export autorisé{forcedCount > 0 ? ` (${forcedCount} forcée${forcedCount > 1 ? "s" : ""})` : ""}
             </span>
           ) : (
             <span className="text-[10px] font-medium text-destructive bg-destructive/10 border border-destructive/20 rounded-full px-2 py-0.5">
