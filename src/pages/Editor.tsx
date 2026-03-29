@@ -2966,6 +2966,10 @@ export default function Editor() {
                     manifest={storyboardManifest!}
                     onExportAllowedChange={setQaExportAllowed}
                     onReportChange={handleQaReportChange}
+                    onScenesUpdated={async () => {
+                      const { data } = await supabase.from("scenes").select("*").eq("project_id", projectId!).order("scene_order", { ascending: true });
+                      if (data) setScenes(data);
+                    }}
                   />
                 </div>
               </details>
