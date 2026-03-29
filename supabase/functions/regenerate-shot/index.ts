@@ -232,7 +232,7 @@ Images must be photorealistic historical documentary style. Never illustration o
 
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
 Scene: "${scene.title}"
-${contextBlock}${visualIntentionNote}${continuityNote}
+${contextBlock}${visualIntentionNote}${continuityNote}${identityLockBlock}
 
 MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with: "${opValidation.contextAnchor}".
 ${opValidation.relevantCharacters ? `Characters relevant to this fragment: ${opValidation.relevantCharacters}` : ""}
