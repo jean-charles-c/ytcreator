@@ -20,7 +20,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { BookOpen } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { assembleTimeline, type Timeline } from "./timelineAssembly";
 import TimelineView from "./TimelineView";
