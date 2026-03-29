@@ -161,18 +161,21 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         return;
       }
 
-      // If user manually edited the textarea, force standard mode (no shot sync)
+      // Determine sync mode
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
       let useMarkedSync = false;
       let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
-      if (forceStandardMode) {
+      if (freeMode) {
+        // Free mode: no sync at all, just generate audio from the text as-is
+        console.info("Free mode enabled — generating audio without shot synchronization.");
+      } else if (forceStandardMode) {
         // Force mode: still build shotSentences for markers, but skip text/order validation
         console.info("Force sync mode enabled — building shotSentences but skipping validation.");
         shotSentences = buildShotSentences();
         useMarkedSync = shotSentences != null && shotSentences.length > 0;
       } else if (expectedShotIds.length > 0 && userEditedScript) {
-        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération. Ou activez « Forcer la synchronisation ».");
+        toast.error("Pour un calage exact, le script VO doit être reconstruit depuis les shots actuels avant génération. Activez « Mode libre » pour générer sans synchronisation.");
         return;
       } else if (!userEditedScript) {
         shotSentences = buildShotSentences();
@@ -181,7 +184,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         const voMatchesShots = normalizeExactSyncText(voScript) === normalizeExactSyncText(exactShotScript);
 
         if (expectedShotIds.length > 0 && !voMatchesShots) {
-          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Recollez-le ou activez « Forcer la synchronisation ».");
+          toast.error("Le script VO doit correspondre exactement aux fragments actuels des shots. Activez « Mode libre » pour générer sans synchronisation.");
           return;
         }
 
