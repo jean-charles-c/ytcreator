@@ -124,14 +124,28 @@ function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reorde
   for (const [sceneId, sceneShots] of byScene) {
     const scene = sceneMap.get(sceneId);
     if (!scene) continue;
-    const sceneTextLower = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
+    const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
+    const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
 
-    // Sort by position of source_sentence in scene text using fuzzy match
+    // Sort by position of source_sentence in scene text using fuzzy match (try both languages)
     sceneShots.sort((a, b) => {
-      const sentA = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const sentB = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const posA = findBestPosition(sceneTextLower, sentA);
-      const posB = findBestPosition(sceneTextLower, sentB);
+      const sentAen = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentAfr = (a.source_sentence_fr || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentBen = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentBfr = (b.source_sentence_fr || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+      let posA = -1;
+      if (sceneTextEn && sentAen) posA = findBestPosition(sceneTextEn, sentAen);
+      if (posA < 0 && sceneTextFr && sentAfr) posA = findBestPosition(sceneTextFr, sentAfr);
+      if (posA < 0 && sceneTextFr && sentAen) posA = findBestPosition(sceneTextFr, sentAen);
+      if (posA < 0 && sceneTextEn && sentAfr) posA = findBestPosition(sceneTextEn, sentAfr);
+
+      let posB = -1;
+      if (sceneTextEn && sentBen) posB = findBestPosition(sceneTextEn, sentBen);
+      if (posB < 0 && sceneTextFr && sentBfr) posB = findBestPosition(sceneTextFr, sentBfr);
+      if (posB < 0 && sceneTextFr && sentBen) posB = findBestPosition(sceneTextFr, sentBen);
+      if (posB < 0 && sceneTextEn && sentBfr) posB = findBestPosition(sceneTextEn, sentBfr);
+
       return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
     });
 
