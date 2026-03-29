@@ -442,6 +442,30 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const shotsWithImage = shots.filter((s) => s.image_url);
   const shotsWithSentence = shots.filter((s) => s.source_sentence || s.source_sentence_fr);
 
+  // ── Shot alignment check per scene ──
+  const alignmentIssues: { sceneOrder: number; sceneTitle: string; detail: string }[] = [];
+  if (scenes.length > 0 && shots.length > 0) {
+    for (const scene of scenes) {
+      const sceneShots = shots
+        .filter((s) => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      if (sceneShots.length === 0 || !scene.source_text) continue;
+
+      const fragments = sceneShots.map((s) => s.source_sentence || s.source_sentence_fr || "");
+      const report = validateAllocation(scene.source_text, fragments);
+      if (!report.valid) {
+        const orphans = report.issues.filter((i) => i.type === "orphan" || i.type === "order_violation");
+        if (orphans.length > 0) {
+          alignmentIssues.push({
+            sceneOrder: scene.scene_order,
+            sceneTitle: scene.title,
+            detail: `${orphans.length} shot(s) mal aligné(s)`,
+          });
+        }
+      }
+    }
+  }
+
   const chapterCheckStatus: AssetCheck["status"] = loadingChapters
     ? "loading"
     : totalChapters === 0
