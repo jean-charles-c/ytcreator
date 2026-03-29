@@ -2853,6 +2853,26 @@ export default function Editor() {
                                       )}
                                     />
                                   )}
+
+                                  {/* Close scene button at bottom */}
+                                  <div className="mt-4 flex justify-center">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1 text-muted-foreground"
+                                      onClick={() => {
+                                        setOpenSceneIds((prev) => prev.filter((id) => id !== scene.id));
+                                        // Scroll back to scene header
+                                        setTimeout(() => {
+                                          const el = document.getElementById(`scene-header-${scene.id}`);
+                                          el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                        }, 100);
+                                      }}
+                                    >
+                                      <ChevronUp className="h-3 w-3" />
+                                      Fermer la scène {scene.scene_order}
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>
