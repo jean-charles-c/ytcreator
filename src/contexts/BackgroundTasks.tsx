@@ -605,6 +605,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         } catch { /* no chapters — export without markers */ }
 
         // Build manifest timing from scenes/shots + the exact audio currently selected in the timeline
+        let exportTimeline = params.timeline;
         try {
           const [{ data: dbScenes }, { data: dbShots }, { data: selectedAudio }] = await Promise.all([
             supabase.from("scenes").select("*").eq("project_id", params.projectId),
@@ -623,8 +624,6 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             manifestEntries = timing.entries;
 
             // ── Pre-export order consistency guard ──
-            // Verify that manifest order matches timeline segment order.
-            // If they diverge, clipFrames[i] would pair with the wrong segment.
             const timelineSegmentIds = params.timeline.videoTrack.segments.map((s) => s.id);
             const manifestShotIds = manifestEntries.map((e) => e.shotId);
             const timelineFiltered = timelineSegmentIds.filter((id) => new Set(manifestShotIds).has(id));
@@ -657,38 +656,30 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               shotSentenceFrMap.set(shot.id, shot.source_sentence_fr);
               shotTypeMap.set(shot.id, shot.shot_type);
             }
-            // ── Cross-project contamination guard ──
-            // Only keep segments whose shot ID exists in the current project's DB shots.
-            const validShotIds = new Set(dbShots.map((s) => s.id));
-            const originalCount = params.timeline.videoTrack.segments.length;
-            params.timeline.videoTrack.segments = params.timeline.videoTrack.segments.filter(
-              (seg) => validShotIds.has(seg.id)
-            );
-            const removedCount = originalCount - params.timeline.videoTrack.segments.length;
-            if (removedCount > 0) {
-              console.warn(
-                `[Export Guard] Removed ${removedCount} segment(s) not belonging to project ${params.projectId}.`
-              );
-            }
 
-            // Update timeline segments with fresh DB data
-            for (const seg of params.timeline.videoTrack.segments) {
-              if (shotImageMap.has(seg.id)) {
-                seg.imageUrl = shotImageMap.get(seg.id) ?? null;
-              }
-              if (shotDescMap.has(seg.id)) {
-                seg.description = shotDescMap.get(seg.id)!;
-              }
-              if (shotSentenceMap.has(seg.id)) {
-                seg.sentence = shotSentenceMap.get(seg.id) ?? "";
-              }
-              if (shotSentenceFrMap.has(seg.id)) {
-                seg.sentenceFr = shotSentenceFrMap.get(seg.id) ?? null;
-              }
-              if (shotTypeMap.has(seg.id)) {
-                seg.shotType = shotTypeMap.get(seg.id)!;
-              }
-            }
+            // ── Cross-project guard: build a clean copy for export only ──
+            // Do NOT mutate the original timeline — just create a scoped copy
+            const validShotIds = new Set(dbShots.map((s) => s.id));
+            const scopedSegments = params.timeline.videoTrack.segments
+              .filter((seg) => validShotIds.has(seg.id))
+              .map((seg) => {
+                const copy = { ...seg };
+                if (shotImageMap.has(copy.id)) copy.imageUrl = shotImageMap.get(copy.id) ?? null;
+                if (shotDescMap.has(copy.id)) copy.description = shotDescMap.get(copy.id)!;
+                if (shotSentenceMap.has(copy.id)) copy.sentence = shotSentenceMap.get(copy.id) ?? "";
+                if (shotSentenceFrMap.has(copy.id)) copy.sentenceFr = shotSentenceFrMap.get(copy.id) ?? null;
+                if (shotTypeMap.has(copy.id)) copy.shotType = shotTypeMap.get(copy.id)!;
+                return copy;
+              });
+
+            exportTimeline = {
+              ...params.timeline,
+              videoTrack: {
+                ...params.timeline.videoTrack,
+                segments: scopedSegments,
+              },
+              segmentCount: scopedSegments.length,
+            };
           } else {
             throw new Error("Export XML bloqué — audio sélectionné introuvable pour construire le manifest timing exact.");
           }
@@ -696,7 +687,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           throw error instanceof Error ? error : new Error("Export XML bloqué — impossible de valider le manifest timing exact.");
         }
 
-        const blob = await exportTimelineToXmlZip(params.timeline, params.fps, (p) => {
+        const blob = await exportTimelineToXmlZip(exportTimeline, params.fps, (p) => {
           if (ac.signal.aborted) return;
           updateTask(key, {
             exportProgress: {
