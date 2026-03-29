@@ -30,6 +30,10 @@ export interface QaIssue {
   expectedText?: string;
   /** Actual text found in the shot */
   actualText?: string;
+  /** Exact expected fragment before any truncation — used to patch canonical scene text on force */
+  expectedFullText?: string;
+  /** Exact shot fragment before any truncation */
+  actualFullText?: string;
 }
 
 export interface QaReport {
