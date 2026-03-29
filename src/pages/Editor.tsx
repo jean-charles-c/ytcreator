@@ -2598,8 +2598,8 @@ export default function Editor() {
                                       size="sm"
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
-                                      disabled={isRegenerating}
-                                      onClick={() => runStoryboard(scene.id, { segmentOnly: true })}
+                                      disabled={isRegenerating || scene.validated}
+                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { segmentOnly: true }); }}
                                       title="Refaire tout le découpage des shots de cette scène"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
