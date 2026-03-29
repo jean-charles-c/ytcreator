@@ -828,31 +828,54 @@ export default function Editor() {
     [globalContext]
   );
 
-  const getLinkedObjectsForShot = useCallback((sceneOrder: number): RecurringObject[] => {
-    return allRecurringObjects.filter(obj => obj.mentions_scenes.includes(sceneOrder));
-  }, [allRecurringObjects]);
+  // Per-shot object overrides: { shotId: { added: [objId], removed: [objId] } }
+  const [shotObjectOverrides, setShotObjectOverrides] = useState<Record<string, { added: string[]; removed: string[] }>>({});
 
-  const handleLinkObjectToScene = useCallback(async (sceneOrder: number, objectId: string) => {
-    const objects = [...allRecurringObjects];
-    const idx = objects.findIndex(o => o.id === objectId);
-    if (idx === -1) return;
-    const obj = { ...objects[idx] };
-    if (!obj.mentions_scenes.includes(sceneOrder)) {
-      obj.mentions_scenes = [...obj.mentions_scenes, sceneOrder].sort((a, b) => a - b);
-      objects[idx] = obj;
-      handleObjectRegistryChange(objects);
-    }
-  }, [allRecurringObjects, handleObjectRegistryChange]);
+  const getLinkedObjectsForShot = useCallback((sceneOrder: number, shotId?: string): RecurringObject[] => {
+    // Start with scene-level linked objects
+    const sceneLinked = allRecurringObjects.filter(obj => obj.mentions_scenes.includes(sceneOrder));
+    if (!shotId) return sceneLinked;
+    
+    const overrides = shotObjectOverrides[shotId];
+    if (!overrides) return sceneLinked;
+    
+    // Apply per-shot removals
+    let result = sceneLinked.filter(obj => !overrides.removed.includes(obj.id));
+    // Apply per-shot additions (objects not already in scene)
+    const addedObjects = allRecurringObjects.filter(obj => overrides.added.includes(obj.id) && !sceneLinked.some(s => s.id === obj.id));
+    result = [...result, ...addedObjects];
+    return result;
+  }, [allRecurringObjects, shotObjectOverrides]);
 
-  const handleUnlinkObjectFromScene = useCallback(async (sceneOrder: number, objectId: string) => {
-    const objects = [...allRecurringObjects];
-    const idx = objects.findIndex(o => o.id === objectId);
-    if (idx === -1) return;
-    const obj = { ...objects[idx] };
-    obj.mentions_scenes = obj.mentions_scenes.filter(s => s !== sceneOrder);
-    objects[idx] = obj;
-    handleObjectRegistryChange(objects);
-  }, [allRecurringObjects, handleObjectRegistryChange]);
+  const handleLinkObjectToShot = useCallback((shotId: string, objectId: string) => {
+    setShotObjectOverrides(prev => {
+      const current = prev[shotId] || { added: [], removed: [] };
+      // If it was previously removed, just un-remove it
+      if (current.removed.includes(objectId)) {
+        return { ...prev, [shotId]: { ...current, removed: current.removed.filter(id => id !== objectId) } };
+      }
+      // Otherwise add it
+      if (!current.added.includes(objectId)) {
+        return { ...prev, [shotId]: { ...current, added: [...current.added, objectId] } };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleUnlinkObjectFromShot = useCallback((shotId: string, objectId: string) => {
+    setShotObjectOverrides(prev => {
+      const current = prev[shotId] || { added: [], removed: [] };
+      // If it was a per-shot addition, just remove from added
+      if (current.added.includes(objectId)) {
+        return { ...prev, [shotId]: { ...current, added: current.added.filter(id => id !== objectId) } };
+      }
+      // Otherwise it's a scene-level object, mark as removed for this shot
+      if (!current.removed.includes(objectId)) {
+        return { ...prev, [shotId]: { ...current, removed: [...current.removed, objectId] } };
+      }
+      return prev;
+    });
+  }, []);
 
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
@@ -2745,10 +2768,10 @@ export default function Editor() {
                                             isLastInScene={isLast}
                                             imageExpanded={imageOpenShots.has(shot.id)}
                                             scriptLanguage={scriptLanguage}
-                                            linkedObjects={getLinkedObjectsForShot(scene.scene_order)}
+                                            linkedObjects={getLinkedObjectsForShot(scene.scene_order, shot.id)}
                                             allObjects={allRecurringObjects}
-                                            onLinkObject={handleLinkObjectToScene}
-                                            onUnlinkObject={handleUnlinkObjectFromScene}
+                                            onLinkObject={(_sceneOrder, objId) => handleLinkObjectToShot(shot.id, objId)}
+                                            onUnlinkObject={(_sceneOrder, objId) => handleUnlinkObjectFromShot(shot.id, objId)}
                                             sceneOrder={scene.scene_order}
                                             onToggleImageExpanded={() => setImageOpenShots(prev => {
                                               const next = new Set(prev);
