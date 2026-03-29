@@ -22,6 +22,7 @@ import {
   Search,
   ImageIcon,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   ShieldCheck,
   RefreshCw,
@@ -2514,6 +2515,7 @@ export default function Editor() {
                                   )
                                 }
                                 className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-left hover:bg-secondary/50 transition-colors min-h-[48px]"
+                                id={`scene-header-${scene.id}`}
                               >
                                 <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
                                 <span className="text-xs font-display font-medium text-primary whitespace-nowrap">S{scene.scene_order}</span>
@@ -2853,6 +2855,26 @@ export default function Editor() {
                                       )}
                                     />
                                   )}
+
+                                  {/* Close scene button at bottom */}
+                                  <div className="mt-4 flex justify-center">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1 text-muted-foreground"
+                                      onClick={() => {
+                                        setOpenSceneIds((prev) => prev.filter((id) => id !== scene.id));
+                                        // Scroll back to scene header
+                                        setTimeout(() => {
+                                          const el = document.getElementById(`scene-header-${scene.id}`);
+                                          el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                        }, 100);
+                                      }}
+                                    >
+                                      <ChevronUp className="h-3 w-3" />
+                                      Fermer la scène {scene.scene_order}
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>
