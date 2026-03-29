@@ -124,14 +124,28 @@ function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reorde
   for (const [sceneId, sceneShots] of byScene) {
     const scene = sceneMap.get(sceneId);
     if (!scene) continue;
-    const sceneTextLower = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
+    const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
+    const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
 
-    // Sort by position of source_sentence in scene text using fuzzy match
+    // Sort by position of source_sentence in scene text using fuzzy match (try both languages)
     sceneShots.sort((a, b) => {
-      const sentA = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const sentB = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const posA = findBestPosition(sceneTextLower, sentA);
-      const posB = findBestPosition(sceneTextLower, sentB);
+      const sentAen = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentAfr = (a.source_sentence_fr || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentBen = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const sentBfr = (b.source_sentence_fr || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+      let posA = -1;
+      if (sceneTextEn && sentAen) posA = findBestPosition(sceneTextEn, sentAen);
+      if (posA < 0 && sceneTextFr && sentAfr) posA = findBestPosition(sceneTextFr, sentAfr);
+      if (posA < 0 && sceneTextFr && sentAen) posA = findBestPosition(sceneTextFr, sentAen);
+      if (posA < 0 && sceneTextEn && sentAfr) posA = findBestPosition(sceneTextEn, sentAfr);
+
+      let posB = -1;
+      if (sceneTextEn && sentBen) posB = findBestPosition(sceneTextEn, sentBen);
+      if (posB < 0 && sceneTextFr && sentBfr) posB = findBestPosition(sceneTextFr, sentBfr);
+      if (posB < 0 && sceneTextFr && sentBen) posB = findBestPosition(sceneTextFr, sentBen);
+      if (posB < 0 && sceneTextEn && sentBfr) posB = findBestPosition(sceneTextEn, sentBfr);
+
       return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
     });
 
@@ -2705,14 +2719,29 @@ export default function Editor() {
                                     </Button>
                                     <button
                                       onClick={async () => {
-                                        const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
-                                        const positions = sceneShots
-                                          .map(sh => ({
-                                            id: sh.id,
-                                            order: sh.shot_order,
-                                            pos: findBestPosition(sceneTextLower, (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim()),
-                                          }))
-                                          .filter(p => p.pos >= 0);
+                                        // Build multiple text references to try matching against
+                                        const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
+                                        const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
+
+                                        const positions = sceneShots.map(sh => {
+                                          const sentEn = (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
+                                          const sentFr = (sh.source_sentence_fr || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+                                          // Try all combinations: EN→EN, FR→FR, EN→FR, FR→EN
+                                          let bestPos = -1;
+                                          if (sceneTextEn && sentEn) bestPos = findBestPosition(sceneTextEn, sentEn);
+                                          if (bestPos < 0 && sceneTextFr && sentFr) bestPos = findBestPosition(sceneTextFr, sentFr);
+                                          if (bestPos < 0 && sceneTextFr && sentEn) bestPos = findBestPosition(sceneTextFr, sentEn);
+                                          if (bestPos < 0 && sceneTextEn && sentFr) bestPos = findBestPosition(sceneTextEn, sentFr);
+
+                                          return { id: sh.id, order: sh.shot_order, pos: bestPos };
+                                        }).filter(p => p.pos >= 0);
+
+                                        if (positions.length === 0) {
+                                          toast.error("Impossible de réaligner : aucun shot n'a pu être localisé dans le texte source.");
+                                          return;
+                                        }
+
                                         const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
                                         const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
                                         for (const u of updates) {
@@ -2725,7 +2754,7 @@ export default function Editor() {
                                             await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
                                           }
                                         }
-                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte`);
+                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte (${positions.length}/${sceneShots.length} localisés)`);
                                         const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
                                         if (freshShots) {
                                           const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
