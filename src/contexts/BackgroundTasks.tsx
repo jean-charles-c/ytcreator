@@ -688,7 +688,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           throw error instanceof Error ? error : new Error("Export XML bloqué — impossible de valider le manifest timing exact.");
         }
 
-        const blob = await exportTimelineToXmlZip(params.timeline, params.fps, (p) => {
+        const blob = await exportTimelineToXmlZip(exportTimeline, params.fps, (p) => {
           if (ac.signal.aborted) return;
           updateTask(key, {
             exportProgress: {
