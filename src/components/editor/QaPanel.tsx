@@ -12,6 +12,8 @@ interface QaPanelProps {
   manifest: VisualPromptManifest;
   onExportAllowedChange?: (allowed: boolean) => void;
   onReportChange?: (counts: { errors: number; warnings: number; issues: { level: string; sceneOrder?: number; shotOrder?: number }[] }) => void;
+  /** Called when force-override syncs scene source_text in DB — parent should refresh scenes state */
+  onScenesUpdated?: () => void;
 }
 
 const categoryLabels: Record<QaCategory, string> = {
@@ -42,7 +44,7 @@ function issueKey(issue: { category: string; sceneOrder?: number; shotOrder?: nu
   return `${issue.category}:${issue.sceneOrder ?? "g"}:${issue.shotOrder ?? ""}:${issue.message.slice(0, 80)}`;
 }
 
-export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange }: QaPanelProps) {
+export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange, onScenesUpdated }: QaPanelProps) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
@@ -113,6 +115,9 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       .from("scenes")
       .update({ source_text: newSourceText, updated_at: new Date().toISOString() })
       .eq("id", issue.sceneId);
+
+    // Notify parent to refresh scenes state
+    onScenesUpdated?.();
   };
 
   const toggleForce = async (key: string, issue?: QaIssue) => {
