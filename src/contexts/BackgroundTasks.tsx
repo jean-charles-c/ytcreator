@@ -605,8 +605,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         } catch { /* no chapters — export without markers */ }
 
         // Build manifest timing from scenes/shots + the exact audio currently selected in the timeline
+        let exportTimeline = params.timeline;
         try {
-          let exportTimeline = params.timeline;
           const [{ data: dbScenes }, { data: dbShots }, { data: selectedAudio }] = await Promise.all([
             supabase.from("scenes").select("*").eq("project_id", params.projectId),
             supabase.from("shots").select("*").eq("project_id", params.projectId),
