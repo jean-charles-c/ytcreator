@@ -60,6 +60,31 @@ serve(async (req) => {
       .single();
     if (!scene) throw new Error("Scene not found");
 
+    // Fetch recurring objects from global_context
+    const { data: scriptState } = await supabase
+      .from("project_scriptcreator_state")
+      .select("global_context")
+      .eq("project_id", shot.project_id)
+      .maybeSingle();
+    const globalContext = scriptState?.global_context as Record<string, any> | null;
+    const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
+
+    // Find objects linked to this shot's scene and mentioned in the fragment
+    const sceneOrder = scene.scene_order;
+    const shotText = (shot.source_sentence || shot.description || "").toLowerCase();
+    const linkedObjects = recurringObjects.filter((obj: any) => {
+      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+        if (!obj.mentions_scenes.includes(sceneOrder)) return false;
+      }
+      const objName = (obj.nom || "").toLowerCase();
+      return objName && shotText.includes(objName.split(" ")[0].toLowerCase());
+    });
+
+    const identityLockBlock = linkedObjects.length > 0
+      ? "\n\nRECURRING OBJECTS IN THIS SHOT (APPLY IDENTITY LOCKS):\n" +
+        linkedObjects.map((obj: any) => `- ${obj.nom}: ${obj.identity_prompt || ""}`).join("\n")
+      : "";
+
     // Fetch ALL sibling shots for neighbor comparison
     const { data: siblingShots } = await supabase
       .from("shots")
