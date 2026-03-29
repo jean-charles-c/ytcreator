@@ -657,6 +657,20 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               shotSentenceFrMap.set(shot.id, shot.source_sentence_fr);
               shotTypeMap.set(shot.id, shot.shot_type);
             }
+            // ── Cross-project contamination guard ──
+            // Only keep segments whose shot ID exists in the current project's DB shots.
+            const validShotIds = new Set(dbShots.map((s) => s.id));
+            const originalCount = params.timeline.videoTrack.segments.length;
+            params.timeline.videoTrack.segments = params.timeline.videoTrack.segments.filter(
+              (seg) => validShotIds.has(seg.id)
+            );
+            const removedCount = originalCount - params.timeline.videoTrack.segments.length;
+            if (removedCount > 0) {
+              console.warn(
+                `[Export Guard] Removed ${removedCount} segment(s) not belonging to project ${params.projectId}.`
+              );
+            }
+
             // Update timeline segments with fresh DB data
             for (const seg of params.timeline.videoTrack.segments) {
               if (shotImageMap.has(seg.id)) {
