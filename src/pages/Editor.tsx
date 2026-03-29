@@ -371,7 +371,25 @@ export default function Editor() {
         setPdfDocStructure(Array.isArray(scriptCreatorState.doc_structure) ? scriptCreatorState.doc_structure : null);
         setGeneratedScript(typeof scriptCreatorState.generated_script === "string" ? scriptCreatorState.generated_script : null);
         setSeoResults(normalizeSeoResults(scriptCreatorState.seo_results));
-        setGlobalContext(scriptCreatorState.global_context ?? null);
+
+        let nextGlobalContext = scriptCreatorState.global_context ?? null;
+        if (nextGlobalContext?.objets_recurrents) {
+          const upgradedObjects = applyIdentityTemplates(nextGlobalContext.objets_recurrents as RecurringObject[]);
+          nextGlobalContext = { ...nextGlobalContext, objets_recurrents: upgradedObjects };
+
+          const previousSerialized = JSON.stringify(scriptCreatorState.global_context?.objets_recurrents ?? []);
+          const nextSerialized = JSON.stringify(upgradedObjects);
+          if (projectRes.data.id && previousSerialized !== nextSerialized) {
+            await (supabase as any).from("project_scriptcreator_state").upsert(
+              {
+                project_id: projectRes.data.id,
+                global_context: nextGlobalContext,
+              },
+              { onConflict: "project_id" }
+            );
+          }
+        }
+        setGlobalContext(nextGlobalContext);
 
         // Restore script versions
         if (Array.isArray(scriptCreatorState.script_versions) && scriptCreatorState.script_versions.length > 0) {
