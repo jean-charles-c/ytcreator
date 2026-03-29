@@ -65,7 +65,7 @@ interface ShotCardProps {
   onUpdate: (shot: Shot) => void;
   onDelete?: (shotId: string) => Promise<void> | void;
   onRegenerate?: (shotId: string) => Promise<void>;
-  onGenerateImage?: (shotId: string) => Promise<void>;
+  onGenerateImage?: (shotId: string, customPrompt?: string) => Promise<void>;
   onMergeWithNext?: (shotId: string) => Promise<void>;
   onSplit?: (shotId: string, splitIndex: number) => Promise<void>;
   onRetranslate?: (shotId: string) => Promise<void>;
