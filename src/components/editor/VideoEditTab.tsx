@@ -306,24 +306,11 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
         .single();
       const tl = data?.timeline_state as any;
       if (tl?.videoTrack?.segments && tl?.audioTrack) {
-        // Cross-project contamination guard: filter segments to only those
-        // whose shot ID exists in the current project's shots
-        const currentShotIds = new Set(shots.map((s) => s.id));
-        if (currentShotIds.size > 0) {
-          const originalCount = tl.videoTrack.segments.length;
-          tl.videoTrack.segments = tl.videoTrack.segments.filter(
-            (seg: any) => currentShotIds.has(seg.id)
-          );
-          const removed = originalCount - tl.videoTrack.segments.length;
-          if (removed > 0) {
-            console.warn(`[Timeline Restore] Removed ${removed} segment(s) not belonging to project ${projectId}`);
-          }
-        }
         setTimeline(tl as unknown as Timeline);
       }
     };
     restore();
-  }, [projectId, shots]);
+  }, [projectId]);
 
   const handleTimelineChange = useCallback((tl: Timeline) => {
     setTimeline(tl);
