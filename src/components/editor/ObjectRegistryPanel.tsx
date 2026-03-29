@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,11 +60,16 @@ const locationIdentityBlock = (nom: string, period: string) =>
 const vehicleIdentityBlock = (nom: string, version: string) =>
   `VEHICLE IDENTITY LOCK:\n\nThe vehicle must remain strictly and unmistakably identifiable as a ${nom} ${version} in every image.\n\nPreserve its exact signature silhouette, proportions, front-end design, roofline, side profile, rear shape, wheel stance, and all defining design cues.\n\nDo not redesign, modernize, stylize, or merge it with any other car.\n\n`;
 
+export const buildRefFileName = (nom: string, index: number, url?: string): string => {
+  const safeName = (nom || "ref").replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
+  const ext = url ? (url.split("/").pop()?.split("?")[0]?.split(".").pop() || "jpg") : "jpg";
+  return `${safeName}_ref_${index}.${ext}`;
+};
+
 const buildRefImageList = (nom: string, refImages?: string[]) => {
   if (!refImages || refImages.length === 0) return `REFERENCE IMAGES: None provided yet.`;
   const items = refImages.map((url, i) => {
-    const fileName = url.split("/").pop()?.split("?")[0] || `${nom.replace(/\s+/g, "_")}_ref_${i + 1}`;
-    return `- ${fileName}`;
+    return `- ${buildRefFileName(nom, i + 1, url)}`;
   }).join("\n");
   return `REFERENCE IMAGES PROVIDED:\n${items}\nUse these reference images as fidelity anchors to preserve exact visual identity.`;
 };
@@ -117,6 +123,7 @@ interface ObjectRegistryPanelProps {
 export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
@@ -386,18 +393,36 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     </div>
                     {(obj.reference_images?.length || 0) > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1">
-                        {obj.reference_images!.map((imgUrl, imgIdx) => (
-                          <div key={imgIdx} className="relative group/img w-24 h-24 rounded border border-border overflow-hidden bg-secondary">
-                            <img src={imgUrl} alt={`Ref ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                            <button
-                              onClick={() => removeReferenceImage(obj.id, imgIdx)}
-                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/img:opacity-100 transition-opacity"
-                              title="Supprimer cette image"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
+                        {obj.reference_images!.map((imgUrl, imgIdx) => {
+                          const cleanUrl = imgUrl.split("?")[0];
+                          return (
+                            <div key={imgIdx} className="relative group/img flex flex-col items-center">
+                              <div
+                                className="w-24 h-24 rounded border border-border overflow-hidden bg-secondary cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                                onClick={() => setLightboxUrl(imgUrl)}
+                                title="Cliquer pour agrandir"
+                              >
+                                <img src={imgUrl} alt={`Ref ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); removeReferenceImage(obj.id, imgIdx); }}
+                                  className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                  title="Supprimer cette image"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <a
+                                href={cleanUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[8px] text-muted-foreground hover:text-primary truncate max-w-[96px] mt-0.5 underline"
+                                title={cleanUrl}
+                              >
+                                {buildRefFileName(obj.nom, imgIdx + 1, imgUrl)}
+                              </a>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     <div className="mt-1">
@@ -492,6 +517,19 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
           </Button>
         </div>
       </div>
+
+      {/* Lightbox dialog */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 flex items-center justify-center bg-black/95 border-none">
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Image de référence agrandie"
+              className="max-w-full max-h-[85vh] object-contain rounded"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </details>
   );
 }
