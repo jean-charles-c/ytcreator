@@ -44,7 +44,7 @@ function issueKey(issue: { category: string; sceneOrder?: number; shotOrder?: nu
   return `${issue.category}:${issue.sceneOrder ?? "g"}:${issue.shotOrder ?? ""}:${issue.message.slice(0, 80)}`;
 }
 
-export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange }: QaPanelProps) {
+export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange, onScenesUpdated }: QaPanelProps) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
