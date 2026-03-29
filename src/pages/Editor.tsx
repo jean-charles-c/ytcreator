@@ -738,7 +738,14 @@ export default function Editor() {
         obj.identity_prompt.includes("NO TEMPORAL DRIFT") ||
         obj.identity_prompt.includes("NO OBJECT DRIFT")
       );
-      if (hasLockClause) return obj;
+      // Force regeneration if identity prompt still has old placeholders
+      const hasOldPlaceholders = obj.identity_prompt && (
+        obj.identity_prompt.includes("[period feature 1]") ||
+        obj.identity_prompt.includes("[feature 1]") ||
+        obj.identity_prompt.includes("MANDATORY PERIOD-SPECIFIC FEATURES") ||
+        obj.identity_prompt.includes("MANDATORY VISUAL FEATURES")
+      );
+      if (hasLockClause && !hasOldPlaceholders) return obj;
       const templateFn = IDENTITY_TEMPLATES[obj.type] || IDENTITY_TEMPLATES.object;
       return { ...obj, identity_prompt: templateFn(obj.nom, obj.epoque, obj.reference_images) };
     });
