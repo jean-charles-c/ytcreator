@@ -12,6 +12,8 @@ interface QaPanelProps {
   manifest: VisualPromptManifest;
   onExportAllowedChange?: (allowed: boolean) => void;
   onReportChange?: (counts: { errors: number; warnings: number; issues: { level: string; sceneOrder?: number; shotOrder?: number }[] }) => void;
+  /** Called when force-override syncs scene source_text in DB — parent should refresh scenes state */
+  onScenesUpdated?: () => void;
 }
 
 const categoryLabels: Record<QaCategory, string> = {
