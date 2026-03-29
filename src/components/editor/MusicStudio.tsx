@@ -354,7 +354,12 @@ export default function MusicStudio({ projectId, onMusicSelected }: MusicStudioP
 
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       const timeStr = new Date().toISOString().slice(11, 16).replace(":", "h");
-      const storagePath = `${userId}/imports/${dateStr}_${timeStr}_${file.name}`;
+      const safeName = file.name
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .replace(/_+/g, "_")
+        .substring(0, 120);
+      const storagePath = `${userId}/imports/${dateStr}_${timeStr}_${safeName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("music-audio")
