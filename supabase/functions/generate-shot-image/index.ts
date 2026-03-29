@@ -377,10 +377,11 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
 
     for (let variantIdx = 0; variantIdx < promptVariants.length && !imageData; variantIdx++) {
       const currentPromptText = promptVariants[variantIdx];
-      const currentContent = buildMessageContent(currentPromptText);
-      const retries = variantIdx === 0 ? 1 : MAX_RETRIES; // Only 1 try for original, 3 for sanitized
+      const retries = variantIdx === 0 ? 1 : MAX_RETRIES;
 
       for (let attempt = 1; attempt <= retries; attempt++) {
+        // Rebuild content each attempt (ref images may have been cleared on previous attempt)
+        const currentContent = buildMessageContent(currentPromptText);
         console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageUrls.length}`);
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
