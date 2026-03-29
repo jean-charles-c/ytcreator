@@ -252,9 +252,10 @@ serve(async (req) => {
               const refImages = Array.isArray(obj.reference_images) ? obj.reference_images : [];
               let replacement: string;
               if (refImages.length > 0) {
+                const safeName = (obj.nom || "ref").replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
                 const items = refImages.map((url: string, i: number) => {
-                  const fileName = url.split("/").pop()?.split("?")[0] || `${(obj.nom || "ref").replace(/\s+/g, "_")}_ref_${i + 1}`;
-                  return `- ${fileName}`;
+                  const ext = url.split("/").pop()?.split("?")[0]?.split(".").pop() || "jpg";
+                  return `- ${safeName}_ref_${i + 1}.${ext}`;
                 }).join("\n");
                 replacement = `REFERENCE IMAGES PROVIDED:\n${items}\nUse these reference images as fidelity anchors to preserve exact visual identity.`;
               } else {

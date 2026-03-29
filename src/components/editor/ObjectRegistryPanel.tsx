@@ -59,11 +59,16 @@ const locationIdentityBlock = (nom: string, period: string) =>
 const vehicleIdentityBlock = (nom: string, version: string) =>
   `VEHICLE IDENTITY LOCK:\n\nThe vehicle must remain strictly and unmistakably identifiable as a ${nom} ${version} in every image.\n\nPreserve its exact signature silhouette, proportions, front-end design, roofline, side profile, rear shape, wheel stance, and all defining design cues.\n\nDo not redesign, modernize, stylize, or merge it with any other car.\n\n`;
 
+export const buildRefFileName = (nom: string, index: number, url?: string): string => {
+  const safeName = (nom || "ref").replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
+  const ext = url ? (url.split("/").pop()?.split("?")[0]?.split(".").pop() || "jpg") : "jpg";
+  return `${safeName}_ref_${index}.${ext}`;
+};
+
 const buildRefImageList = (nom: string, refImages?: string[]) => {
   if (!refImages || refImages.length === 0) return `REFERENCE IMAGES: None provided yet.`;
   const items = refImages.map((url, i) => {
-    const fileName = url.split("/").pop()?.split("?")[0] || `${nom.replace(/\s+/g, "_")}_ref_${i + 1}`;
-    return `- ${fileName}`;
+    return `- ${buildRefFileName(nom, i + 1, url)}`;
   }).join("\n");
   return `REFERENCE IMAGES PROVIDED:\n${items}\nUse these reference images as fidelity anchors to preserve exact visual identity.`;
 };
