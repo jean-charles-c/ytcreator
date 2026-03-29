@@ -241,17 +241,18 @@ serve(async (req) => {
       // Apply sensitive mode transformation with structured scene context
       const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
-    // Inject identity lock prompts for linked objects
-    let enrichedPrompt = prompt;
-    if (shotLinkedObjects.length > 0) {
-      const identityLocks = shotLinkedObjects
-        .map((obj: any) => obj.identity_prompt || "")
-        .filter(Boolean);
-      if (identityLocks.length > 0) {
-        const lockPrefix = identityLocks.join("\n\n") + "\n\n";
-        const firstSnippet = identityLocks[0].slice(0, 40).toLowerCase();
-        if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
-          enrichedPrompt = lockPrefix + enrichedPrompt;
+      // Inject identity lock prompts for linked objects
+      enrichedPrompt = prompt;
+      if (shotLinkedObjects.length > 0) {
+        const identityLocks = shotLinkedObjects
+          .map((obj: any) => obj.identity_prompt || "")
+          .filter(Boolean);
+        if (identityLocks.length > 0) {
+          const lockPrefix = identityLocks.join("\n\n") + "\n\n";
+          const firstSnippet = identityLocks[0].slice(0, 40).toLowerCase();
+          if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
+            enrichedPrompt = lockPrefix + enrichedPrompt;
+          }
         }
       }
     }
