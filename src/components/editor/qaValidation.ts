@@ -81,6 +81,7 @@ function checkStructure(manifest: VisualPromptManifest): QaIssue[] {
           category: "structure",
           sceneOrder: scene.sceneOrder,
           message: `Un fragment orphelin référence un shot supprimé ou fusionné. Régénérez les shots de la scène ${scene.sceneOrder} pour corriger le mapping.`,
+          actualText: frag.text.trim().slice(0, 150),
         });
       }
     }
