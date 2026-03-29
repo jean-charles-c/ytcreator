@@ -740,7 +740,7 @@ export default function Editor() {
       );
       if (hasLockClause) return obj;
       const templateFn = IDENTITY_TEMPLATES[obj.type] || IDENTITY_TEMPLATES.object;
-      return { ...obj, identity_prompt: templateFn(obj.nom, obj.epoque) };
+      return { ...obj, identity_prompt: templateFn(obj.nom, obj.epoque, obj.reference_images) };
     });
   }, []);
 

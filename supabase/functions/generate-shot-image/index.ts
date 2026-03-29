@@ -229,11 +229,17 @@ serve(async (req) => {
       return objName && shotText.includes(objName.split(" ")[0].toLowerCase());
     });
 
-    const rawPrompt = shot.prompt_export || shot.description;
-    if (!rawPrompt) throw new Error("No prompt available for this shot");
+    // If a custom_prompt is provided (user edited the full prompt in UI), use it directly
+    let enrichedPrompt: string;
+    if (typeof custom_prompt === "string" && custom_prompt.trim().length > 0) {
+      enrichedPrompt = custom_prompt.trim();
+      console.log("Using custom_prompt from client (user-edited full prompt)");
+    } else {
+      const rawPrompt = shot.prompt_export || shot.description;
+      if (!rawPrompt) throw new Error("No prompt available for this shot");
 
-    // Apply sensitive mode transformation with structured scene context
-    const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
+      // Apply sensitive mode transformation with structured scene context
+      const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
     // Inject identity lock prompts for linked objects
     let enrichedPrompt = prompt;
