@@ -401,11 +401,12 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
           console.error(`AI error (variant ${variantIdx}, attempt ${attempt}):`, aiResponse.status, errText);
           if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
           if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
-          // If 400 due to image fetch failure, retry without reference images
+          // If 400 due to image fetch failure, clear ref images and retry same variant
           if (aiResponse.status === 400 && errText.includes("fetching image from URL") && referenceImageUrls.length > 0) {
             console.warn("Reference images inaccessible, retrying without them...");
-            referenceImageUrls.length = 0; // clear ref images
-            break; // break inner loop to retry variant without images
+            referenceImageUrls.length = 0;
+            variantIdx--; // will be incremented by outer loop, staying on same variant
+            break;
           }
           if (aiResponse.status >= 500 && attempt < retries) {
             await new Promise((r) => setTimeout(r, attempt * 3000));
