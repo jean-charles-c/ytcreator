@@ -426,7 +426,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       for (let attempt = 1; attempt <= retries; attempt++) {
         // Rebuild content each attempt (ref images may have been cleared on previous attempt)
         const currentContent = buildMessageContent(currentPromptText);
-        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageUrls.length}`);
+        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageDataUris.length}`);
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
