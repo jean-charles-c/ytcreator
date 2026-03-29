@@ -26,6 +26,7 @@ import TimelineView from "./TimelineView";
 import ExportManager from "./ExportManager";
 import { resolveSelectedAudioId } from "./audioSelection";
 import { validateExactShotTimepoints } from "./exactShotSync";
+import { validateAllocation } from "./shotAllocationValidator";
 import type { ChapterListState } from "./chapterTypes";
 
 type Scene = Tables<"scenes">;

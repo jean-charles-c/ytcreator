@@ -47,7 +47,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
   const [forcedKeys, setForcedKeys] = useState<Set<string>>(new Set());
-  const [forcedKeysLoaded, setForcedKeysLoaded] = useState(false);
+  const [_forcedKeysLoaded, setForcedKeysLoaded] = useState(false);
 
   // ── Load persisted forced keys from DB ──
   useEffect(() => {
