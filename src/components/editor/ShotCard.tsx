@@ -340,6 +340,67 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
             </span>
           )}
         </div>
+        {/* Linked recurring objects */}
+        {(linkedObjects && linkedObjects.length > 0 || (allObjects && allObjects.length > 0 && onLinkObject)) && (
+          <div className="flex flex-wrap items-center gap-1 mb-2">
+            {linkedObjects?.map((obj) => (
+              <span
+                key={obj.id}
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${TYPE_COLORS[obj.type] || TYPE_COLORS.object}`}
+              >
+                {TYPE_ICONS[obj.type] || TYPE_ICONS.object}
+                {obj.nom}
+                {onUnlinkObject && sceneOrder !== undefined && (
+                  <button
+                    onClick={() => onUnlinkObject(sceneOrder, obj.id)}
+                    className="ml-0.5 hover:opacity-70"
+                    title={`Retirer ${obj.nom} de ce shot`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                )}
+                {obj.reference_images && obj.reference_images.length > 0 && (
+                  <span className="text-[9px] opacity-60">📷{obj.reference_images.length}</span>
+                )}
+              </span>
+            ))}
+            {onLinkObject && allObjects && sceneOrder !== undefined && (() => {
+              const linkedIds = new Set(linkedObjects?.map(o => o.id) || []);
+              const available = allObjects.filter(o => !linkedIds.has(o.id));
+              if (available.length === 0) return null;
+              return (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowObjectPicker(!showObjectPicker)}
+                    className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-muted-foreground/30 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    title="Ajouter un objet/personnage/lieu"
+                  >
+                    <Package className="h-2.5 w-2.5" /> +
+                  </button>
+                  {showObjectPicker && (
+                    <div className="absolute top-full left-0 z-50 mt-1 rounded border border-border bg-popover shadow-md p-1 min-w-[180px] max-h-[200px] overflow-y-auto">
+                      {available.map(obj => (
+                        <button
+                          key={obj.id}
+                          onClick={() => {
+                            onLinkObject(sceneOrder, obj.id);
+                            setShowObjectPicker(false);
+                          }}
+                          className={`w-full flex items-center gap-1.5 rounded px-2 py-1.5 text-xs text-left hover:bg-secondary transition-colors`}
+                        >
+                          <span className={`flex items-center gap-1 text-[10px] px-1 py-0.5 rounded border ${TYPE_COLORS[obj.type] || TYPE_COLORS.object}`}>
+                            {TYPE_ICONS[obj.type] || TYPE_ICONS.object}
+                          </span>
+                          {obj.nom || "(sans nom)"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
         <details className="group/shot-details">
           <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
             Phrase illustrée / Prompt
