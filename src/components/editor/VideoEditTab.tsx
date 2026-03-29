@@ -389,6 +389,26 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     fetchAudio();
   }, [projectId]);
 
+  // ── Load chapter validation state ──
+  useEffect(() => {
+    if (!projectId) {
+      setLoadingChapters(false);
+      return;
+    }
+    const fetchChapters = async () => {
+      setLoadingChapters(true);
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const saved = (data?.timeline_state as any)?.chapterState as ChapterListState | null;
+      setChapterState(saved);
+      setLoadingChapters(false);
+    };
+    fetchChapters();
+  }, [projectId]);
+
   // ── Audio/shot sync check ──
   const selectedAudio = audioFiles.find((a) => a.id === selectedAudioId);
   const audioDesync = (() => {
@@ -410,9 +430,32 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     return validation.ok ? null : validation.errors[0] ?? "Audio désynchronisé avec les shots actuels";
   })();
 
+  // ── Chapter validation check ──
+  const chapters = chapterState?.chapters ?? [];
+  const totalChapters = chapters.length;
+  const validatedChapters = chapters.filter((c) => c.validated).length;
+  const chapterMinThreshold = Math.ceil(totalChapters * 0.9); // 90% required
+  const chaptersOk = totalChapters > 0 && validatedChapters >= chapterMinThreshold;
+
   // Compute asset checks
   const shotsWithImage = shots.filter((s) => s.image_url);
   const shotsWithSentence = shots.filter((s) => s.source_sentence || s.source_sentence_fr);
+
+  const chapterCheckStatus: AssetCheck["status"] = loadingChapters
+    ? "loading"
+    : totalChapters === 0
+      ? "warning"
+      : chaptersOk
+        ? "valid"
+        : "missing";
+
+  const chapterCheckDetail = loadingChapters
+    ? "Vérification…"
+    : totalChapters === 0
+      ? "Aucun chapitre détecté — générez les titres dans le tab Documentaire"
+      : chaptersOk
+        ? `${validatedChapters}/${totalChapters} titres validés ✓`
+        : `${validatedChapters}/${totalChapters} titres validés — minimum ${chapterMinThreshold}/${totalChapters} requis (90%)`;
 
   const checks: AssetCheck[] = [
     {
@@ -460,12 +503,21 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
             : "Aucun audio généré",
       count: audioFiles.length,
     },
+    {
+      label: "Titres de chapitres validés",
+      icon: CheckCircle2,
+      status: chapterCheckStatus,
+      detail: chapterCheckDetail,
+      count: validatedChapters,
+      total: totalChapters,
+    },
   ];
 
   const allValid = checks.every((c) => c.status === "valid");
   const hasBlocking = checks.some((c) => c.status === "missing");
   const validCount = checks.filter((c) => c.status === "valid").length;
   const isExportBlocked = exportBlocked || !!audioDesync;
+  const isTimelineBlocked = hasBlocking;
 
   return (
     <div className="container max-w-4xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
