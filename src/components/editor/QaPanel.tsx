@@ -294,7 +294,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
                 variant="outline"
                 size="sm"
                 className="h-6 text-[9px] gap-1 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
-                onClick={() => forceAll(criticalIssues.map(i => issueKey(i)))}
+                onClick={() => forceAll(criticalIssues)}
               >
                 <ShieldOff className="h-3 w-3" />
                 Tout forcer
