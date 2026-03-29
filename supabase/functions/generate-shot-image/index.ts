@@ -245,7 +245,26 @@ serve(async (req) => {
       enrichedPrompt = prompt;
       if (shotLinkedObjects.length > 0) {
         const identityLocks = shotLinkedObjects
-          .map((obj: any) => obj.identity_prompt || "")
+          .map((obj: any) => {
+            let lock = obj.identity_prompt || "";
+            // Replace old placeholder features with reference image list
+            if (lock && (lock.includes("[period feature 1]") || lock.includes("[feature 1]") || lock.includes("MANDATORY PERIOD-SPECIFIC FEATURES") || lock.includes("MANDATORY VISUAL FEATURES"))) {
+              const refImages = Array.isArray(obj.reference_images) ? obj.reference_images : [];
+              let replacement: string;
+              if (refImages.length > 0) {
+                const items = refImages.map((url: string, i: number) => {
+                  const fileName = url.split("/").pop()?.split("?")[0] || `${(obj.nom || "ref").replace(/\s+/g, "_")}_ref_${i + 1}`;
+                  return `- ${fileName}`;
+                }).join("\n");
+                replacement = `REFERENCE IMAGES PROVIDED:\n${items}\nUse these reference images as fidelity anchors to preserve exact visual identity.`;
+              } else {
+                replacement = `REFERENCE IMAGES: None provided yet.`;
+              }
+              // Replace the placeholder block
+              lock = lock.replace(/MANDATORY (?:PERIOD-SPECIFIC|VISUAL) FEATURES:\n(?:- \[(?:period )?feature \d+\]\n?)+/g, replacement);
+            }
+            return lock;
+          })
           .filter(Boolean);
         if (identityLocks.length > 0) {
           const lockPrefix = identityLocks.join("\n\n") + "\n\n";
