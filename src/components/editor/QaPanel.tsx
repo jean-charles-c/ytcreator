@@ -91,13 +91,6 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       ? `${report.warningCount} avertissement(s)`
       : "Aucun problème détecté";
 
-  // Group issues by category
-  const groupedIssues = report.issues.reduce((acc, issue) => {
-    if (!acc[issue.category]) acc[issue.category] = [];
-    acc[issue.category].push(issue);
-    return acc;
-  }, {} as Record<string, typeof report.issues>);
-
   // Separate critical vs warning
   const criticalIssues = report.issues.filter(i => i.level === "critical");
   const warningIssues = report.issues.filter(i => i.level === "warning");
