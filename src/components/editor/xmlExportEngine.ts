@@ -396,7 +396,7 @@ ${clipItems}
               </clipitem>
             </track>`;
             }).join("")}
-          </audio>${buildSubtitleTracks(subtitleTracks, fps, exportUid)}
+          </audio>
         </media>
       </sequence>
     </children>
