@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { VisualPromptManifest } from "./visualPromptTypes";
 import type { ShotTimepoint } from "./timelineAssembly";
 import { buildManifestTiming, type ManifestTiming } from "./manifestTiming";
-import { runQaValidation, type QaReport, type QaCategory } from "./qaValidation";
+import { runQaValidation, type QaReport, type QaCategory, type QaIssue } from "./qaValidation";
 
 interface QaPanelProps {
   projectId: string;
