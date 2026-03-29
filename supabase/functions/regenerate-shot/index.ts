@@ -234,7 +234,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
                   properties: {
                     shot_type: { type: "string", description: "Camera type in FRENCH" },
                     description: { type: "string", description: "Visual description in FRENCH" },
-                    prompt_export: { type: "string", description: "Full Grok Image prompt in ENGLISH, 100+ words" },
+                    prompt_export: { type: "string", description: "Full visual prompt in FRENCH, 100+ words" },
                     ...(needsTranslation ? { source_sentence_fr: { type: "string", description: "French translation of the source sentence" } } : {}),
                   },
                   required: ["shot_type", "description", "prompt_export", ...(needsTranslation ? ["source_sentence_fr"] : [])],
