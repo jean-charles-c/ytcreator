@@ -214,11 +214,19 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
 
     for (const issue of report.issues) {
       if (issue.type === "overlap" || issue.type === "duplicate" || issue.type === "orphan") {
+        // Find the fragment text for this shot
+        const shotFrag = fragments[issue.shotIndex] ?? "";
+        // Find the corresponding scene source text (extract a relevant excerpt around the expected position)
+        const sceneExcerpt = scene.sceneText.trim().slice(0, 300);
+        
         issues.push({
           level: "critical",
           category: "allocation",
           sceneOrder: scene.sceneOrder,
+          shotOrder: issue.shotIndex + 1,
           message: `Allocation — ${issue.detail}`,
+          expectedText: sceneExcerpt.length > 200 ? sceneExcerpt.slice(0, 200) + "…" : sceneExcerpt,
+          actualText: shotFrag.trim().slice(0, 200) || "(vide)",
         });
       } else if (issue.type === "gap") {
         issues.push({
