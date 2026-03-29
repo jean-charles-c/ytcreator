@@ -536,6 +536,14 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
       count: validatedChapters,
       total: totalChapters,
     },
+    {
+      label: "Alignement shots / texte source",
+      icon: Layers,
+      status: alignmentIssues.length === 0 ? "valid" : "warning",
+      detail: alignmentIssues.length === 0
+        ? "Tous les shots sont alignés avec le texte source"
+        : `⚠ ${alignmentIssues.length} scène(s) mal alignée(s) : ${alignmentIssues.map((a) => `S${a.sceneOrder}`).join(", ")}`,
+    },
   ];
 
   const allValid = checks.every((c) => c.status === "valid");
