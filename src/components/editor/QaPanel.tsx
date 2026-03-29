@@ -85,7 +85,38 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       .eq("project_id", projectId);
   };
 
-  const toggleForce = (key: string) => {
+  /**
+   * When forcing an allocation issue, update the scene's source_text
+   * to match the current shot fragments — making the shot text the new reference.
+   */
+  const syncSceneTextForIssue = async (issue: QaIssue) => {
+    if (issue.category !== "allocation" || !issue.sceneId) return;
+    
+    // Find the scene in the manifest
+    const scene = manifest.scenes.find(s => s.sceneId === issue.sceneId);
+    if (!scene) return;
+
+    // Rebuild scene source_text from current shot fragments (in reading order)
+    const activeShots = scene.shots.filter(s => s.status === "active");
+    const orderedFragments = scene.fragments
+      .filter(f => activeShots.some(s => s.shotId === f.shotId))
+      .sort((a, b) => a.order - b.order)
+      .map(f => f.text.trim())
+      .filter(Boolean);
+
+    if (orderedFragments.length === 0) return;
+
+    const newSourceText = orderedFragments.join("\n");
+
+    // Update scene source_text in DB
+    await supabase
+      .from("scenes")
+      .update({ source_text: newSourceText, updated_at: new Date().toISOString() })
+      .eq("id", issue.sceneId);
+  };
+
+  const toggleForce = async (key: string, issue?: QaIssue) => {
+    const isAdding = !forcedKeys.has(key);
     setForcedKeys(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -93,15 +124,24 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       persistForcedKeys(next);
       return next;
     });
+    // When forcing (not unforcing) an allocation issue, sync scene text
+    if (isAdding && issue) {
+      await syncSceneTextForIssue(issue);
+    }
   };
 
-  const forceAll = (keys: string[]) => {
+  const forceAll = async (issues: QaIssue[]) => {
+    const keys = issues.map(i => issueKey(i));
     setForcedKeys(prev => {
       const next = new Set(prev);
       keys.forEach(k => next.add(k));
       persistForcedKeys(next);
       return next;
     });
+    // Sync scene text for all allocation issues
+    for (const issue of issues) {
+      await syncSceneTextForIssue(issue);
+    }
   };
 
   // Recalculate export allowed when forcedKeys changes
