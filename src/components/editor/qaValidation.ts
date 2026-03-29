@@ -21,6 +21,10 @@ export interface QaIssue {
   category: QaCategory;
   sceneOrder?: number;
   shotOrder?: number;
+  /** DB shot id — used for force-override to update source_sentence */
+  shotId?: string;
+  /** DB scene id — used for force-override context */
+  sceneId?: string;
   message: string;
   /** Expected text (from source script) for comparison */
   expectedText?: string;
