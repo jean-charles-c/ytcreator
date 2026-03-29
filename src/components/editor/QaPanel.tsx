@@ -98,6 +98,39 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
     return acc;
   }, {} as Record<string, typeof report.issues>);
 
+  // Separate critical vs warning
+  const criticalIssues = report.issues.filter(i => i.level === "critical");
+  const warningIssues = report.issues.filter(i => i.level === "warning");
+
+  // Group criticals by scene for clarity
+  const criticalsByScene = criticalIssues.reduce((acc, issue) => {
+    const key = issue.sceneOrder != null ? `Scène ${issue.sceneOrder}` : "Général";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(issue);
+    return acc;
+  }, {} as Record<string, typeof criticalIssues>);
+
+  const renderIssueRow = (issue: typeof report.issues[0], i: number) => {
+    const cfg = levelConfig[issue.level];
+    return (
+      <div
+        key={i}
+        className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1.5 sm:py-1 ${cfg.row}`}
+      >
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
+            {cfg.label}
+          </span>
+          <span className="text-muted-foreground font-medium">
+            {issue.sceneOrder != null && `S${issue.sceneOrder}`}
+            {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
+          </span>
+        </div>
+        <span className="text-foreground break-words">{issue.message}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
       {/* Summary bar */}
@@ -132,6 +165,44 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
         )}
       </div>
 
+      {/* CRITICAL ISSUES — always visible, open, detailed */}
+      {criticalIssues.length > 0 && (
+        <div className="rounded border-2 border-destructive/40 bg-destructive/5 overflow-hidden">
+          <div className="px-3 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
+            <ShieldX className="h-4 w-4 text-destructive" />
+            <span className="text-xs font-bold text-destructive">
+              {criticalIssues.length} erreur{criticalIssues.length > 1 ? "s" : ""} bloquante{criticalIssues.length > 1 ? "s" : ""} — Export impossible
+            </span>
+          </div>
+          <div className="p-2 space-y-3 max-h-80 overflow-y-auto">
+            {Object.entries(criticalsByScene).map(([sceneLabel, issues]) => (
+              <div key={sceneLabel} className="space-y-1">
+                <div className="text-[10px] font-bold text-destructive/80 uppercase tracking-wider px-1 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-destructive inline-block" />
+                  {sceneLabel} — {issues.length} erreur{issues.length > 1 ? "s" : ""}
+                </div>
+                {issues.map((issue, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[11px] pl-3 border-l-2 border-l-destructive/40 py-1.5 bg-destructive/5 rounded-r"
+                  >
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="inline-flex items-center rounded px-1.5 py-0.5 font-semibold border text-[9px] bg-destructive/20 text-destructive border-destructive/30">
+                        {categoryLabels[issue.category as QaCategory] ?? issue.category}
+                      </span>
+                      {issue.shotOrder != null && issue.shotOrder > 0 && (
+                        <span className="text-[9px] font-mono text-destructive/70">Shot {issue.shotOrder}</span>
+                      )}
+                    </div>
+                    <span className="text-foreground break-words leading-relaxed">{issue.message}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Allocation summaries */}
       {report.allocationSummaries.length > 0 && (
         <details className="rounded border border-border bg-card">
@@ -156,83 +227,33 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
         </details>
       )}
 
-      {/* Issues grouped by category */}
-      {report.issues.length > 0 && (() => {
-        // Separate "length" and "timing" issues into their own collapsibles
-        const lengthIssues = groupedIssues["length"] || [];
-        const timingIssues = groupedIssues["timing"] || [];
-        const otherGroups = Object.entries(groupedIssues).filter(([cat]) => cat !== "length" && cat !== "timing");
-
-        const renderIssueRows = (catIssues: typeof report.issues) =>
-          catIssues.map((issue, i) => {
-            const cfg = levelConfig[issue.level];
-            return (
-              <div
-                key={i}
-                className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-[10px] pl-2 border-l-2 py-1 sm:py-0.5 ${cfg.row}`}
-              >
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium border text-[9px] ${cfg.badge}`}>
-                    {cfg.label}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {issue.sceneOrder != null && `S${issue.sceneOrder}`}
-                    {issue.shotOrder != null && issue.shotOrder > 0 && ` • Shot ${issue.shotOrder}`}
-                  </span>
-                </div>
-                <span className="text-foreground break-words">{issue.message}</span>
-              </div>
-            );
-          });
+      {/* WARNINGS — collapsible */}
+      {warningIssues.length > 0 && (() => {
+        const warningsByCategory = warningIssues.reduce((acc, issue) => {
+          if (!acc[issue.category]) acc[issue.category] = [];
+          acc[issue.category].push(issue);
+          return acc;
+        }, {} as Record<string, typeof warningIssues>);
 
         return (
-          <>
-            {otherGroups.length > 0 && (
-              <details className="rounded border border-border bg-card">
-                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
-                  <ChevronDown className="h-3 w-3" />
-                  Structure ({otherGroups.reduce((sum, [, issues]) => sum + issues.length, 0)} alerte{otherGroups.reduce((sum, [, issues]) => sum + issues.length, 0) > 1 ? "s" : ""})
-                </summary>
-                <div className="p-2 space-y-2 max-h-64 overflow-y-auto">
-                  {otherGroups.map(([cat, catIssues]) => (
-                    <div key={cat} className="space-y-1">
-                      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-                        {categoryLabels[cat as QaCategory] ?? cat}
-                      </span>
-                      {renderIssueRows(catIssues)}
-                    </div>
-                  ))}
+          <details className="rounded border border-amber-500/30 bg-card">
+            <summary className="text-[10px] font-medium text-amber-600 cursor-pointer hover:text-amber-500 transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
+              <ChevronDown className="h-3 w-3" />
+              {warningIssues.length} avertissement{warningIssues.length > 1 ? "s" : ""} (non bloquant{warningIssues.length > 1 ? "s" : ""})
+            </summary>
+            <div className="p-2 space-y-2 max-h-64 overflow-y-auto">
+              {Object.entries(warningsByCategory).map(([cat, catIssues]) => (
+                <div key={cat} className="space-y-1">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                    {categoryLabels[cat as QaCategory] ?? cat}
+                  </span>
+                  {catIssues.map((issue, i) => renderIssueRow(issue, i))}
                 </div>
-              </details>
-            )}
-
-            {timingIssues.length > 0 && (
-              <details className="rounded border border-border bg-card">
-                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
-                  <ChevronDown className="h-3 w-3" />
-                  Timing ({timingIssues.length} alerte{timingIssues.length > 1 ? "s" : ""})
-                </summary>
-                <div className="p-2 space-y-1">
-                  {renderIssueRows(timingIssues)}
-                </div>
-              </details>
-            )}
-
-            {lengthIssues.length > 0 && (
-              <details className="rounded border border-border bg-card">
-                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
-                  <ChevronDown className="h-3 w-3" />
-                  Longueur ({lengthIssues.length} avertissement{lengthIssues.length > 1 ? "s" : ""})
-                </summary>
-                <div className="p-2 space-y-1">
-                  {renderIssueRows(lengthIssues)}
-                </div>
-              </details>
-            )}
-          </>
+              ))}
+            </div>
+          </details>
         );
       })()}
-
       {/* Debug timing table */}
       {timing && timing.entries.length > 0 && (
         <details className="rounded border border-border bg-card">
