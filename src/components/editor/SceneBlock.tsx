@@ -78,6 +78,10 @@ export default function SceneBlock({
   const [splitPos, setSplitPos] = useState(Math.floor(scene.source_text.length / 2));
 
   const startEdit = () => {
+    if (scene.validated) {
+      toast.error("Scène validée — déverrouillez-la pour modifier.");
+      return;
+    }
     setEditTitle(scene.title);
     setEditText(scene.source_text);
     setEditVisual(scene.visual_intention ?? "");
