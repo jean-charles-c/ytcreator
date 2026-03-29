@@ -109,6 +109,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:\n\nUse the provided reference image(s) only to preserve the exact identity, proportions, structure, materials, distinctive features, and period-specific visual traits of the subject.\n\nIf the subject is a person, use the reference only to preserve the exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, and distinctive traits of that specific period.\n\nIf the subject is a place, use the reference only to preserve the exact architecture, layout, structural condition, materials, surrounding context, landmark features, and historical state.\n\nIf the subject is an object, use the reference only to preserve the exact shape, proportions, construction, surface treatment, materials, and defining details of that exact version.\n\nTreat the reference image(s) as a fidelity anchor, not as a composition to copy literally unless explicitly requested.\n\nDo not import unwanted background elements, text, framing, lighting, or scene details from the reference.\n\nDo not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
 
   const buildFullPromptPreview = (basePrompt: string) => {
+    // If user has a custom edited version, use that
+    if (customFullPrompt !== null) return customFullPrompt;
+
     const parts: string[] = [];
 
     // 1. Reference image rule if any linked object has reference images
@@ -116,7 +119,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (hasRefImages) {
       parts.push(REFERENCE_IMAGE_RULE);
       const refImgList = linkedObjects?.flatMap(obj =>
-        (obj.reference_images || []).map((url, i) => `  📷 ${obj.nom} ref ${i + 1}: ${url}`)
+        (obj.reference_images || []).map((url, i) => {
+          const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
+          return `  📷 ${obj.nom} — ${fileName}`;
+        })
       ).join("\n");
       if (refImgList) parts.push(`[Images de référence transmises]\n${refImgList}`);
     }
@@ -139,6 +145,24 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     parts.push(ANTI_TEXT_LEAK);
 
     return parts.join("\n\n");
+  };
+
+  const startEditFullPrompt = () => {
+    const preview = buildFullPromptPreview(shot.prompt_export || shot.description);
+    setFullPromptDraft(preview);
+    setEditingFullPrompt(true);
+  };
+
+  const saveFullPrompt = () => {
+    setCustomFullPrompt(fullPromptDraft);
+    setEditingFullPrompt(false);
+    toast.success("Prompt personnalisé sauvegardé — sera utilisé pour la prochaine génération");
+  };
+
+  const resetFullPrompt = () => {
+    setCustomFullPrompt(null);
+    setEditingFullPrompt(false);
+    toast.info("Prompt réinitialisé au format automatique");
   };
 
   const startEdit = () => {
