@@ -185,27 +185,103 @@ serve(async (req) => {
 
     // Fetch parent scene context for sensitive mode anchoring
     let sceneContextAnchors = null;
-    if (sensitive_level && sensitive_level >= 1) {
+    let sceneOrder: number | null = null;
+    if (true) {
       const { data: scene } = await supabase
         .from("scenes")
-        .select("scene_context, location, visual_intention")
+        .select("scene_context, location, visual_intention, scene_order")
         .eq("id", shot.scene_id)
         .single();
 
       if (scene) {
-        sceneContextAnchors = extractAnchorsFromScene(
-          scene.scene_context as Record<string, any> | null,
-          { location: scene.location ?? undefined, visual_intention: scene.visual_intention ?? undefined },
-        );
-        console.log("Scene context anchors:", JSON.stringify(sceneContextAnchors));
+        sceneOrder = scene.scene_order;
+        if (sensitive_level && sensitive_level >= 1) {
+          sceneContextAnchors = extractAnchorsFromScene(
+            scene.scene_context as Record<string, any> | null,
+            { location: scene.location ?? undefined, visual_intention: scene.visual_intention ?? undefined },
+          );
+          console.log("Scene context anchors:", JSON.stringify(sceneContextAnchors));
+        }
       }
     }
+
+    // Fetch recurring objects from global_context for identity locks & reference images
+    const { data: scriptState } = await supabase
+      .from("project_scriptcreator_state")
+      .select("global_context")
+      .eq("project_id", shot.project_id)
+      .maybeSingle();
+    const globalContext = scriptState?.global_context as Record<string, any> | null;
+    const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
+
+    // Find objects linked to this shot's scene
+    const linkedObjects = recurringObjects.filter((obj: any) => {
+      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0 && sceneOrder !== null) {
+        return obj.mentions_scenes.includes(sceneOrder);
+      }
+      return false;
+    });
+
+    // Further filter: only objects whose name appears in the shot's source_sentence
+    const shotText = (shot.source_sentence || shot.description || "").toLowerCase();
+    const shotLinkedObjects = linkedObjects.filter((obj: any) => {
+      const objName = (obj.nom || "").toLowerCase();
+      return objName && shotText.includes(objName.split(" ")[0].toLowerCase());
+    });
 
     const rawPrompt = shot.prompt_export || shot.description;
     if (!rawPrompt) throw new Error("No prompt available for this shot");
 
     // Apply sensitive mode transformation with structured scene context
     const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
+
+    // Inject identity lock prompts for linked objects
+    let enrichedPrompt = prompt;
+    if (shotLinkedObjects.length > 0) {
+      const identityLocks = shotLinkedObjects
+        .map((obj: any) => obj.identity_prompt || "")
+        .filter(Boolean);
+      if (identityLocks.length > 0) {
+        const lockPrefix = identityLocks.join("\n\n") + "\n\n";
+        const firstSnippet = identityLocks[0].slice(0, 40).toLowerCase();
+        if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
+          enrichedPrompt = lockPrefix + enrichedPrompt;
+        }
+      }
+    }
+
+    // Collect reference images from linked objects
+    const referenceImageUrls: string[] = [];
+    for (const obj of shotLinkedObjects) {
+      if (Array.isArray(obj.reference_images)) {
+        for (const url of obj.reference_images) {
+          if (typeof url === "string" && url.startsWith("http")) {
+            referenceImageUrls.push(url);
+          }
+        }
+      }
+    }
+
+    // Add REFERENCE IMAGE RULE if there are reference images
+    const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:
+
+Use the provided reference image(s) only to preserve the exact identity, proportions, structure, materials, distinctive features, and period-specific visual traits of the subject.
+
+If the subject is a person, use the reference only to preserve the exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, and distinctive traits of that specific period.
+
+If the subject is a place, use the reference only to preserve the exact architecture, layout, structural condition, materials, surrounding context, landmark features, and historical state.
+
+If the subject is an object, use the reference only to preserve the exact shape, proportions, construction, surface treatment, materials, and defining details of that exact version.
+
+Treat the reference image(s) as a fidelity anchor, not as a composition to copy literally unless explicitly requested.
+
+Do not import unwanted background elements, text, framing, lighting, or scene details from the reference.
+
+Do not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
+
+    if (referenceImageUrls.length > 0) {
+      enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
+    }
 
     // Visual style suffix map
     const STYLE_SUFFIXES: Record<string, string> = {
@@ -234,6 +310,22 @@ serve(async (req) => {
       text,
       ...(styleSuffix ? [`Visual style: ${styleSuffix}`] : []),
     ].join("\n");
+
+    // Build multimodal content array with reference images
+    const buildMessageContent = (promptText: string): any => {
+      if (referenceImageUrls.length === 0) {
+        return promptText;
+      }
+      // Multimodal: text + reference images
+      const parts: any[] = [{ type: "text", text: promptText }];
+      for (const imgUrl of referenceImageUrls) {
+        parts.push({
+          type: "image_url",
+          image_url: { url: imgUrl },
+        });
+      }
+      return parts;
+    };
 
     // Sanitize prompt for safety-filter retry: remove potentially sensitive words
     const sanitizePrompt = (text: string) => {
