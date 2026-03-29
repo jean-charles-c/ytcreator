@@ -22,6 +22,10 @@ export interface QaIssue {
   sceneOrder?: number;
   shotOrder?: number;
   message: string;
+  /** Expected text (from source script) for comparison */
+  expectedText?: string;
+  /** Actual text found in the shot */
+  actualText?: string;
 }
 
 export interface QaReport {
