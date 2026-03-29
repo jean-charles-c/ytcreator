@@ -377,10 +377,11 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
 
     for (let variantIdx = 0; variantIdx < promptVariants.length && !imageData; variantIdx++) {
       const currentPromptText = promptVariants[variantIdx];
-      const currentContent = buildMessageContent(currentPromptText);
-      const retries = variantIdx === 0 ? 1 : MAX_RETRIES; // Only 1 try for original, 3 for sanitized
+      const retries = variantIdx === 0 ? 1 : MAX_RETRIES;
 
       for (let attempt = 1; attempt <= retries; attempt++) {
+        // Rebuild content each attempt (ref images may have been cleared on previous attempt)
+        const currentContent = buildMessageContent(currentPromptText);
         console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageUrls.length}`);
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -400,11 +401,12 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
           console.error(`AI error (variant ${variantIdx}, attempt ${attempt}):`, aiResponse.status, errText);
           if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
           if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
-          // If 400 due to image fetch failure, retry without reference images
+          // If 400 due to image fetch failure, clear ref images and retry same variant
           if (aiResponse.status === 400 && errText.includes("fetching image from URL") && referenceImageUrls.length > 0) {
             console.warn("Reference images inaccessible, retrying without them...");
-            referenceImageUrls.length = 0; // clear ref images
-            break; // break inner loop to retry variant without images
+            referenceImageUrls.length = 0;
+            variantIdx--; // will be incremented by outer loop, staying on same variant
+            break;
           }
           if (aiResponse.status >= 500 && attempt < retries) {
             await new Promise((r) => setTimeout(r, attempt * 3000));
