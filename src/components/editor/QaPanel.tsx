@@ -116,8 +116,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
 
   const runCheck = async () => {
     setLoading(true);
-    // Reset forced keys on re-check since issues may have changed
-    setForcedKeys(new Set());
+    // Keep forced keys — they are persisted and should survive re-checks
 
     const { data: audioFiles } = await supabase
       .from("vo_audio_history")
