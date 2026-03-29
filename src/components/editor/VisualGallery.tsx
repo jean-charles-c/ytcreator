@@ -21,7 +21,7 @@ interface VisualGalleryProps {
   imageModel: string;
   onImageModelChange: (model: string) => void;
   onRegenerateShot: (shotId: string) => Promise<void>;
-  onGenerateImage: (shotId: string) => Promise<void>;
+  onGenerateImage: (shotId: string, customPrompt?: string) => Promise<void>;
   totalCost: number;
 }
 
