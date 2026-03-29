@@ -145,7 +145,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const handleTypeChange = useCallback((id: string, type: RecurringObject["type"]) => {
     const obj = objects.find((o) => o.id === id);
     if (!obj) return;
-    const newPrompt = obj.identity_prompt.trim() ? obj.identity_prompt : IDENTITY_TEMPLATES[type](obj.nom || "[NOM]", obj.epoque || undefined);
+    const newPrompt = obj.identity_prompt.trim() ? obj.identity_prompt : IDENTITY_TEMPLATES[type](obj.nom || "[NOM]", obj.epoque || undefined, obj.reference_images);
     updateObject(id, { type, identity_prompt: newPrompt });
   }, [objects, updateObject]);
 
