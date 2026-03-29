@@ -252,6 +252,8 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
           message: `Le texte du shot ne correspond pas au texte source de la scène.`,
           expectedText: expectedAtPosition ? expectedAtPosition.slice(0, 200) : "(position non déterminée dans le texte source)",
           actualText: shotFrag.trim().slice(0, 200) || "(vide)",
+          expectedFullText: expectedAtPosition || "",
+          actualFullText: shotFrag.trim(),
         });
       } else if (issue.type === "gap") {
         issues.push({

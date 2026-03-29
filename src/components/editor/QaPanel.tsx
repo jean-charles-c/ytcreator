@@ -89,36 +89,45 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
   };
 
   /**
-   * When forcing an allocation issue, update the scene's source_text
-   * to match the current shot fragments — making the shot text the new reference.
+   * When forcing an allocation issue, update only the expected fragment inside
+   * the canonical scene source_text — never rebuild the whole scene from shot order.
    */
   const syncSceneTextForIssue = async (issue: QaIssue) => {
-    if (issue.category !== "allocation" || !issue.sceneId) return;
-    
-    // Find the scene in the manifest
-    const scene = manifest.scenes.find(s => s.sceneId === issue.sceneId);
-    if (!scene) return;
+    if (issue.category !== "allocation" || !issue.sceneId || !issue.actualFullText) return;
 
-    // Rebuild scene source_text from current shot fragments (in reading order)
-    const activeShots = scene.shots.filter(s => s.status === "active");
-    const orderedFragments = scene.fragments
-      .filter(f => activeShots.some(s => s.shotId === f.shotId))
-      .sort((a, b) => a.order - b.order)
-      .map(f => f.text.trim())
-      .filter(Boolean);
+    const { data: sceneRow } = await supabase
+      .from("scenes")
+      .select("source_text")
+      .eq("id", issue.sceneId)
+      .single();
 
-    if (orderedFragments.length === 0) return;
+    const currentSourceText = sceneRow?.source_text?.trim();
+    if (!currentSourceText) return;
 
-    const newSourceText = orderedFragments.join("\n");
+    let newSourceText = currentSourceText;
+    const expected = issue.expectedFullText?.trim();
+    const actual = issue.actualFullText.trim();
 
-    // Update scene source_text in DB
+    if (expected && currentSourceText.includes(expected)) {
+      newSourceText = currentSourceText.replace(expected, actual);
+    } else {
+      const canonicalSegments = getNarrativeSegments(currentSourceText);
+      if (issue.shotOrder && canonicalSegments[issue.shotOrder - 1]) {
+        canonicalSegments[issue.shotOrder - 1] = actual;
+        newSourceText = canonicalSegments.join("\n");
+      } else {
+        return;
+      }
+    }
+
     await supabase
       .from("scenes")
       .update({ source_text: newSourceText, updated_at: new Date().toISOString() })
       .eq("id", issue.sceneId);
 
-    // Notify parent to refresh scenes state
     onScenesUpdated?.();
+    const qa = runQaValidation(manifest, timing ?? buildManifestTiming(manifest, null));
+    setReport(qa);
   };
 
   const toggleForce = async (key: string, issue?: QaIssue) => {
