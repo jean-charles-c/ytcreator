@@ -347,13 +347,15 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
     let usedSanitized = false;
 
     // Try original prompt first, then sanitized fallback on IMAGE_SAFETY
-    const promptVariants = [buildPrompt(prompt), buildPrompt(sanitizePrompt(prompt))];
+    const promptVariants = [buildPrompt(enrichedPrompt), buildPrompt(sanitizePrompt(enrichedPrompt))];
 
     for (let variantIdx = 0; variantIdx < promptVariants.length && !imageData; variantIdx++) {
-      const currentPrompt = promptVariants[variantIdx];
+      const currentPromptText = promptVariants[variantIdx];
+      const currentContent = variantIdx === 0 ? buildMessageContent(currentPromptText) : currentPromptText;
       const retries = variantIdx === 0 ? 1 : MAX_RETRIES; // Only 1 try for original, 3 for sanitized
 
       for (let attempt = 1; attempt <= retries; attempt++) {
+        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageUrls.length}`);
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -362,7 +364,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
           },
           body: JSON.stringify({
             model: selectedModel,
-            messages: [{ role: "user", content: currentPrompt }],
+            messages: [{ role: "user", content: currentContent }],
             modalities: ["image", "text"],
           }),
         });
