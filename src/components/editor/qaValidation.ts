@@ -201,10 +201,10 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
     const activeShots = scene.shots.filter((s) => s.status === "active");
     if (activeShots.length === 0) continue;
 
-    const fragments = scene.fragments
+    const sortedFragments = scene.fragments
       .filter(f => activeShots.some(s => s.shotId === f.shotId))
-      .sort((a, b) => a.order - b.order)
-      .map(f => f.text);
+      .sort((a, b) => a.order - b.order);
+    const fragments = sortedFragments.map(f => f.text);
 
     const report = validateAllocation(scene.sceneText, fragments);
 
@@ -219,15 +219,15 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
     for (const issue of report.issues) {
       if (issue.type === "overlap" || issue.type === "duplicate" || issue.type === "orphan") {
         const shotFrag = fragments[issue.shotIndex] ?? "";
+        const linkedFragment = sortedFragments[issue.shotIndex];
+        const linkedShotId = linkedFragment?.shotId;
         
         // Find what text the scene expects at this shot's position
-        // by looking at surrounding covered ranges to extract the uncovered portion
         let expectedAtPosition = "";
         if (issue.type === "orphan" && report.coveredRanges.length > 0) {
           const normalizedScene = scene.sceneText.trim().replace(/\s+/g, " ").toLowerCase();
           const sorted = [...report.coveredRanges].sort((a, b) => a.start - b.start);
           
-          // Find gap before/after this shot index
           const prevRange = sorted.filter(r => r.shotIndex < issue.shotIndex).pop();
           const nextRange = sorted.find(r => r.shotIndex > issue.shotIndex);
           const gapStart = prevRange ? prevRange.end : 0;
@@ -243,6 +243,8 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
           category: "allocation",
           sceneOrder: scene.sceneOrder,
           shotOrder: issue.shotIndex + 1,
+          shotId: linkedShotId,
+          sceneId: scene.sceneId,
           message: `Le texte du shot ne correspond pas au texte source de la scène.`,
           expectedText: expectedAtPosition ? expectedAtPosition.slice(0, 200) : "(position non déterminée dans le texte source)",
           actualText: shotFrag.trim().slice(0, 200) || "(vide)",
