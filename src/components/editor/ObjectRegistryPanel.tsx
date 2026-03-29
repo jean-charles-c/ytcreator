@@ -393,18 +393,36 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     </div>
                     {(obj.reference_images?.length || 0) > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1">
-                        {obj.reference_images!.map((imgUrl, imgIdx) => (
-                          <div key={imgIdx} className="relative group/img w-24 h-24 rounded border border-border overflow-hidden bg-secondary">
-                            <img src={imgUrl} alt={`Ref ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                            <button
-                              onClick={() => removeReferenceImage(obj.id, imgIdx)}
-                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/img:opacity-100 transition-opacity"
-                              title="Supprimer cette image"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
+                        {obj.reference_images!.map((imgUrl, imgIdx) => {
+                          const cleanUrl = imgUrl.split("?")[0];
+                          return (
+                            <div key={imgIdx} className="relative group/img flex flex-col items-center">
+                              <div
+                                className="w-24 h-24 rounded border border-border overflow-hidden bg-secondary cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                                onClick={() => setLightboxUrl(imgUrl)}
+                                title="Cliquer pour agrandir"
+                              >
+                                <img src={imgUrl} alt={`Ref ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); removeReferenceImage(obj.id, imgIdx); }}
+                                  className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                  title="Supprimer cette image"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <a
+                                href={cleanUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[8px] text-muted-foreground hover:text-primary truncate max-w-[96px] mt-0.5 underline"
+                                title={cleanUrl}
+                              >
+                                {buildRefFileName(obj.nom, imgIdx + 1, imgUrl)}
+                              </a>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     <div className="mt-1">
