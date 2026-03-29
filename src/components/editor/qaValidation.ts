@@ -214,18 +214,33 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
 
     for (const issue of report.issues) {
       if (issue.type === "overlap" || issue.type === "duplicate" || issue.type === "orphan") {
-        // Find the fragment text for this shot
         const shotFrag = fragments[issue.shotIndex] ?? "";
-        // Find the corresponding scene source text (extract a relevant excerpt around the expected position)
-        const sceneExcerpt = scene.sceneText.trim().slice(0, 300);
+        
+        // Find what text the scene expects at this shot's position
+        // by looking at surrounding covered ranges to extract the uncovered portion
+        let expectedAtPosition = "";
+        if (issue.type === "orphan" && report.coveredRanges.length > 0) {
+          const normalizedScene = scene.sceneText.trim().replace(/\s+/g, " ").toLowerCase();
+          const sorted = [...report.coveredRanges].sort((a, b) => a.start - b.start);
+          
+          // Find gap before/after this shot index
+          const prevRange = sorted.filter(r => r.shotIndex < issue.shotIndex).pop();
+          const nextRange = sorted.find(r => r.shotIndex > issue.shotIndex);
+          const gapStart = prevRange ? prevRange.end : 0;
+          const gapEnd = nextRange ? nextRange.start : normalizedScene.length;
+          
+          if (gapEnd > gapStart) {
+            expectedAtPosition = normalizedScene.slice(gapStart, Math.min(gapEnd, gapStart + 200)).trim();
+          }
+        }
         
         issues.push({
           level: "critical",
           category: "allocation",
           sceneOrder: scene.sceneOrder,
           shotOrder: issue.shotIndex + 1,
-          message: `Allocation — ${issue.detail}`,
-          expectedText: sceneExcerpt.length > 200 ? sceneExcerpt.slice(0, 200) + "…" : sceneExcerpt,
+          message: `Le texte du shot ne correspond pas au texte source de la scène.`,
+          expectedText: expectedAtPosition ? expectedAtPosition.slice(0, 200) : "(position non déterminée dans le texte source)",
           actualText: shotFrag.trim().slice(0, 200) || "(vide)",
         });
       } else if (issue.type === "gap") {
