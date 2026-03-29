@@ -60,6 +60,31 @@ serve(async (req) => {
       .single();
     if (!scene) throw new Error("Scene not found");
 
+    // Fetch recurring objects from global_context
+    const { data: scriptState } = await supabase
+      .from("project_scriptcreator_state")
+      .select("global_context")
+      .eq("project_id", shot.project_id)
+      .maybeSingle();
+    const globalContext = scriptState?.global_context as Record<string, any> | null;
+    const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
+
+    // Find objects linked to this shot's scene and mentioned in the fragment
+    const sceneOrder = scene.scene_order;
+    const shotText = (shot.source_sentence || shot.description || "").toLowerCase();
+    const linkedObjects = recurringObjects.filter((obj: any) => {
+      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
+        if (!obj.mentions_scenes.includes(sceneOrder)) return false;
+      }
+      const objName = (obj.nom || "").toLowerCase();
+      return objName && shotText.includes(objName.split(" ")[0].toLowerCase());
+    });
+
+    const identityLockBlock = linkedObjects.length > 0
+      ? "\n\nRECURRING OBJECTS IN THIS SHOT (APPLY IDENTITY LOCKS):\n" +
+        linkedObjects.map((obj: any) => `- ${obj.nom}: ${obj.identity_prompt || ""}`).join("\n")
+      : "";
+
     // Fetch ALL sibling shots for neighbor comparison
     const { data: siblingShots } = await supabase
       .from("shots")
@@ -152,12 +177,12 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.${sensitiveModeBlock}
+              content: `You regenerate a single cinematic documentary shot prompt.${sensitiveModeBlock}
 
 LANGUAGE RULES:
 - shot_type MUST be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
 - description MUST be in FRENCH (2-3 sentences)
-- prompt_export MUST be in ENGLISH, at least 100 words, one continuous paragraph${translationRule}
+- prompt_export MUST be in FRENCH, at least 100 words, one continuous paragraph${translationRule}
 
 CONTEXTUAL ANCHORING RULE — CRITICAL:
 Every prompt_export MUST begin by explicitly stating the historical period/era and geographic location.
@@ -179,16 +204,16 @@ The prompt must illustrate ONLY what the given text fragment describes.
 Do not illustrate the entire scene — focus on the specific fragment's visual content.
 The prompt must describe what the FRAGMENT says, not what the scene says in general.
 
-PROMPT STRUCTURE (prompt_export, in ENGLISH):
+PROMPT STRUCTURE (prompt_export, in FRENCH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
-2. Camera framing (MUST differ from neighbors) — use descriptive English framing: "Wide establishing shot of...", "Close-up on...", "Medium shot capturing..."
+2. Camera framing (MUST differ from neighbors)
 3. Fragment-specific visual content with hyper-specific materials, textures, colors
 4. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color — culturally accurate to the era and place
 5. Environment grounded in the scene's lieu and époque: period-accurate background elements
 6. Foreground depth elements relevant to the fragment adding visual depth
-7. Lighting: source, direction, quality, shadows — physically motivated (candlelight, firelight, sunrise, etc.)
-8. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
-9. End with: "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism. Visual quality: cinematic film still, 8k detail, natural textures, real-world physics. Aspect ratio: 16:9"
+7. Lighting: source, direction, quality, shadows — physically motivated
+8. Atmosphere and mood from the fragment's narrative tone
+9. End with: "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9"
 
 PHOTOREALISM ENFORCEMENT:
 All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
@@ -207,7 +232,7 @@ Images must be photorealistic historical documentary style. Never illustration o
 
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
 Scene: "${scene.title}"
-${contextBlock}${visualIntentionNote}${continuityNote}
+${contextBlock}${visualIntentionNote}${continuityNote}${identityLockBlock}
 
 MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with: "${opValidation.contextAnchor}".
 ${opValidation.relevantCharacters ? `Characters relevant to this fragment: ${opValidation.relevantCharacters}` : ""}
@@ -234,7 +259,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
                   properties: {
                     shot_type: { type: "string", description: "Camera type in FRENCH" },
                     description: { type: "string", description: "Visual description in FRENCH" },
-                    prompt_export: { type: "string", description: "Full Grok Image prompt in ENGLISH, 100+ words" },
+                    prompt_export: { type: "string", description: "Full visual prompt in FRENCH, 100+ words" },
                     ...(needsTranslation ? { source_sentence_fr: { type: "string", description: "French translation of the source sentence" } } : {}),
                   },
                   required: ["shot_type", "description", "prompt_export", ...(needsTranslation ? ["source_sentence_fr"] : [])],

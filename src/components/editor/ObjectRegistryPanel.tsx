@@ -155,6 +155,30 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     updateObject(id, { mentions_scenes: scenes });
   }, [objects, updateObject]);
 
+  const uploadToStorage = useCallback(async (objectName: string, imageUrl: string, refIndex: number): Promise<string | null> => {
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+      const safeName = objectName.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
+      const filePath = `${safeName}_ref_${refIndex}.${ext}`;
+      const { error } = await supabase.storage.from("reference-images").upload(filePath, blob, {
+        contentType: blob.type,
+        upsert: true,
+      });
+      if (error) {
+        console.error("Upload error:", error);
+        return null;
+      }
+      const { data: publicUrlData } = supabase.storage.from("reference-images").getPublicUrl(filePath);
+      return `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    } catch (e) {
+      console.error("Upload failed:", e);
+      return null;
+    }
+  }, []);
+
   const searchReferenceImages = useCallback(async (id: string) => {
     const obj = objects.find((o) => o.id === id);
     if (!obj || !obj.nom) {
@@ -163,27 +187,36 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
     setSearchingImages(prev => ({ ...prev, [id]: true }));
     try {
-      const session = (await supabase.auth.getSession()).data.session;
       const searchQuery = `${obj.nom} ${obj.epoque || ""}`.trim();
       const res = await supabase.functions.invoke("search-reference-images", {
         body: { query: searchQuery, limit: 3 },
       });
       if (res.error) throw res.error;
       const data = res.data as { images: { url: string; thumb: string }[] };
-      const urls = data.images.map((img) => img.thumb || img.url);
-      if (urls.length === 0) {
+      if (data.images.length === 0) {
         toast.info("Aucune image trouvée pour cette recherche.");
         return;
       }
       const existing = obj.reference_images || [];
-      updateObject(id, { reference_images: [...existing, ...urls] });
-      toast.success(`${urls.length} image(s) de référence ajoutée(s)`);
+      const startIdx = existing.length + 1;
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < data.images.length; i++) {
+        const sourceUrl = data.images[i].url || data.images[i].thumb;
+        const storageUrl = await uploadToStorage(obj.nom, sourceUrl, startIdx + i);
+        if (storageUrl) uploadedUrls.push(storageUrl);
+      }
+      if (uploadedUrls.length === 0) {
+        toast.info("Impossible d'uploader les images trouvées.");
+        return;
+      }
+      updateObject(id, { reference_images: [...existing, ...uploadedUrls] });
+      toast.success(`${uploadedUrls.length} image(s) de référence uploadée(s)`);
     } catch (e: any) {
       toast.error("Erreur recherche images : " + (e.message || "Erreur inconnue"));
     } finally {
       setSearchingImages(prev => ({ ...prev, [id]: false }));
     }
-  }, [objects, updateObject]);
+  }, [objects, updateObject, uploadToStorage]);
 
   const removeReferenceImage = useCallback((id: string, imgIndex: number) => {
     const obj = objects.find((o) => o.id === id);
@@ -193,11 +226,18 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     updateObject(id, { reference_images: imgs });
   }, [objects, updateObject]);
 
-  const addReferenceImageUrl = useCallback((id: string, url: string) => {
+  const addReferenceImageUrl = useCallback(async (id: string, url: string) => {
     const obj = objects.find((o) => o.id === id);
     if (!obj) return;
-    const imgs = [...(obj.reference_images || []), url];
-    updateObject(id, { reference_images: imgs });
+    const existing = obj.reference_images || [];
+    const storageUrl = await uploadToStorage(obj.nom || "unknown", url, existing.length + 1);
+    if (storageUrl) {
+      updateObject(id, { reference_images: [...existing, storageUrl] });
+      toast.success("Image de référence uploadée");
+    } else {
+      // Fallback: use raw URL
+      updateObject(id, { reference_images: [...existing, url] });
+    }
   }, [objects, updateObject]);
 
   if (objects.length === 0) {
