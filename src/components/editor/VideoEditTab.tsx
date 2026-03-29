@@ -26,6 +26,7 @@ import TimelineView from "./TimelineView";
 import ExportManager from "./ExportManager";
 import { resolveSelectedAudioId } from "./audioSelection";
 import { validateExactShotTimepoints } from "./exactShotSync";
+import type { ChapterListState } from "./chapterTypes";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -264,6 +265,8 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const [savingTimeline, setSavingTimeline] = useState(false);
   const [imageOffsetMs, setImageOffsetMs] = useState(0);
   const previousAudioFilesRef = useRef<AudioFile[]>([]);
+  const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
+  const [loadingChapters, setLoadingChapters] = useState(true);
 
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
     if (!projectId) return;
@@ -386,6 +389,26 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     fetchAudio();
   }, [projectId]);
 
+  // ── Load chapter validation state ──
+  useEffect(() => {
+    if (!projectId) {
+      setLoadingChapters(false);
+      return;
+    }
+    const fetchChapters = async () => {
+      setLoadingChapters(true);
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const saved = (data?.timeline_state as any)?.chapterState as ChapterListState | null;
+      setChapterState(saved);
+      setLoadingChapters(false);
+    };
+    fetchChapters();
+  }, [projectId]);
+
   // ── Audio/shot sync check ──
   const selectedAudio = audioFiles.find((a) => a.id === selectedAudioId);
   const audioDesync = (() => {
@@ -407,9 +430,32 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     return validation.ok ? null : validation.errors[0] ?? "Audio désynchronisé avec les shots actuels";
   })();
 
+  // ── Chapter validation check ──
+  const chapters = chapterState?.chapters ?? [];
+  const totalChapters = chapters.length;
+  const validatedChapters = chapters.filter((c) => c.validated).length;
+  const chapterMinThreshold = Math.ceil(totalChapters * 0.9); // 90% required
+  const chaptersOk = totalChapters > 0 && validatedChapters >= chapterMinThreshold;
+
   // Compute asset checks
   const shotsWithImage = shots.filter((s) => s.image_url);
   const shotsWithSentence = shots.filter((s) => s.source_sentence || s.source_sentence_fr);
+
+  const chapterCheckStatus: AssetCheck["status"] = loadingChapters
+    ? "loading"
+    : totalChapters === 0
+      ? "warning"
+      : chaptersOk
+        ? "valid"
+        : "missing";
+
+  const chapterCheckDetail = loadingChapters
+    ? "Vérification…"
+    : totalChapters === 0
+      ? "Aucun chapitre détecté — générez les titres dans le tab Documentaire"
+      : chaptersOk
+        ? `${validatedChapters}/${totalChapters} titres validés ✓`
+        : `${validatedChapters}/${totalChapters} titres validés — minimum ${chapterMinThreshold}/${totalChapters} requis (90%)`;
 
   const checks: AssetCheck[] = [
     {
@@ -457,12 +503,21 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
             : "Aucun audio généré",
       count: audioFiles.length,
     },
+    {
+      label: "Titres de chapitres validés",
+      icon: CheckCircle2,
+      status: chapterCheckStatus,
+      detail: chapterCheckDetail,
+      count: validatedChapters,
+      total: totalChapters,
+    },
   ];
 
   const allValid = checks.every((c) => c.status === "valid");
   const hasBlocking = checks.some((c) => c.status === "missing");
   const validCount = checks.filter((c) => c.status === "valid").length;
   const isExportBlocked = exportBlocked || !!audioDesync;
+  
 
   return (
     <div className="container max-w-4xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
@@ -573,9 +628,26 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
                 </div>
               </div>
             )}
+            {/* Timeline blocked warning */}
+            {hasBlocking && !timeline && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-400/5 p-3">
+                <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-red-300">Génération de timeline bloquée</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Tous les assets doivent être prêts avant d'assembler la timeline. Vérifiez les éléments manquants ci-dessus.
+                  </p>
+                </div>
+              </div>
+            )}
             {!timeline && (
               <div className="flex justify-center">
-                <Button variant="hero" onClick={handleAssembleTimeline} className="min-h-[48px] gap-2">
+                <Button
+                  variant="hero"
+                  onClick={handleAssembleTimeline}
+                  disabled={hasBlocking}
+                  className="min-h-[48px] gap-2"
+                >
                   <Wand2 className="h-4 w-4" />
                   Assembler la timeline
                 </Button>
