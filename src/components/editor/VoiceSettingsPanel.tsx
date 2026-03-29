@@ -536,10 +536,10 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-muted-foreground">Vitesse</Label>
-          <span className="text-xs font-mono text-muted-foreground">{settings.speakingRate.toFixed(1)}x</span>
+          <span className="text-xs font-mono text-muted-foreground">{settings.speakingRate.toFixed(2)}x</span>
         </div>
         <Slider
-          min={0.5} max={2.0} step={0.1}
+          min={0.5} max={2.0} step={0.05}
           value={[settings.speakingRate]}
           onValueChange={([v]) => update({ speakingRate: v })}
           aria-label="Vitesse de la voix"
