@@ -265,6 +265,8 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const [savingTimeline, setSavingTimeline] = useState(false);
   const [imageOffsetMs, setImageOffsetMs] = useState(0);
   const previousAudioFilesRef = useRef<AudioFile[]>([]);
+  const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
+  const [loadingChapters, setLoadingChapters] = useState(true);
 
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
     if (!projectId) return;
