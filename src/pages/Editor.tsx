@@ -2705,14 +2705,29 @@ export default function Editor() {
                                     </Button>
                                     <button
                                       onClick={async () => {
-                                        const sceneTextLower = scene.source_text.toLowerCase().replace(/\s+/g, " ");
-                                        const positions = sceneShots
-                                          .map(sh => ({
-                                            id: sh.id,
-                                            order: sh.shot_order,
-                                            pos: findBestPosition(sceneTextLower, (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim()),
-                                          }))
-                                          .filter(p => p.pos >= 0);
+                                        // Build multiple text references to try matching against
+                                        const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
+                                        const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
+
+                                        const positions = sceneShots.map(sh => {
+                                          const sentEn = (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
+                                          const sentFr = (sh.source_sentence_fr || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+                                          // Try all combinations: EN→EN, FR→FR, EN→FR, FR→EN
+                                          let bestPos = -1;
+                                          if (sceneTextEn && sentEn) bestPos = findBestPosition(sceneTextEn, sentEn);
+                                          if (bestPos < 0 && sceneTextFr && sentFr) bestPos = findBestPosition(sceneTextFr, sentFr);
+                                          if (bestPos < 0 && sceneTextFr && sentEn) bestPos = findBestPosition(sceneTextFr, sentEn);
+                                          if (bestPos < 0 && sceneTextEn && sentFr) bestPos = findBestPosition(sceneTextEn, sentFr);
+
+                                          return { id: sh.id, order: sh.shot_order, pos: bestPos };
+                                        }).filter(p => p.pos >= 0);
+
+                                        if (positions.length === 0) {
+                                          toast.error("Impossible de réaligner : aucun shot n'a pu être localisé dans le texte source.");
+                                          return;
+                                        }
+
                                         const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
                                         const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
                                         for (const u of updates) {
@@ -2725,7 +2740,7 @@ export default function Editor() {
                                             await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
                                           }
                                         }
-                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte`);
+                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte (${positions.length}/${sceneShots.length} localisés)`);
                                         const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
                                         if (freshShots) {
                                           const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
