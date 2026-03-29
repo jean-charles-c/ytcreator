@@ -69,16 +69,6 @@ const buildRefImageList = (nom: string, refImages?: string[]) => {
 };
 
 export const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string, refImages?: string[]) => string> = {
-const buildRefImageList = (nom: string, refImages?: string[]) => {
-  if (!refImages || refImages.length === 0) return `REFERENCE IMAGES: None provided yet.`;
-  const items = refImages.map((url, i) => {
-    const fileName = url.split("/").pop()?.split("?")[0] || `${nom.replace(/\s+/g, "_")}_ref_${i + 1}`;
-    return `- ${fileName}`;
-  }).join("\n");
-  return `REFERENCE IMAGES PROVIDED:\n${items}\nUse these reference images as fidelity anchors to preserve exact visual identity.`;
-};
-
-export const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string, refImages?: string[]) => string> = {
   character: (nom, epoque, refImages) => {
     const period = epoque || "[exact period]";
     return `${characterIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD LOCK:\nThe character must be shown strictly as they appeared during ${period}.\nPreserve the age appearance, hairstyle, facial traits, clothing logic, accessories, and visual markers specific to that period.\nDo not mix features from earlier or later periods.\n\n${buildRefImageList(nom, refImages)}\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different eras of the same character/person.`;
