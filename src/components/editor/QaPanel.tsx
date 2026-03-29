@@ -47,12 +47,50 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
   const [forcedKeys, setForcedKeys] = useState<Set<string>>(new Set());
+  const [forcedKeysLoaded, setForcedKeysLoaded] = useState(false);
+
+  // ── Load persisted forced keys from DB ──
+  useEffect(() => {
+    const loadForcedKeys = async () => {
+      const { data } = await supabase
+        .from("project_scriptcreator_state")
+        .select("timeline_state")
+        .eq("project_id", projectId)
+        .single();
+      const saved = (data?.timeline_state as any)?.qaForcedKeys as string[] | null;
+      if (saved && Array.isArray(saved)) {
+        setForcedKeys(new Set(saved));
+      }
+      setForcedKeysLoaded(true);
+    };
+    loadForcedKeys();
+  }, [projectId]);
+
+  // ── Persist forced keys to DB ──
+  const persistForcedKeys = async (keys: Set<string>) => {
+    const { data } = await supabase
+      .from("project_scriptcreator_state")
+      .select("timeline_state")
+      .eq("project_id", projectId)
+      .single();
+    const currentState = (data?.timeline_state as any) ?? {};
+    await supabase
+      .from("project_scriptcreator_state")
+      .update({
+        timeline_state: {
+          ...currentState,
+          qaForcedKeys: [...keys],
+        } as any,
+      })
+      .eq("project_id", projectId);
+  };
 
   const toggleForce = (key: string) => {
     setForcedKeys(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      persistForcedKeys(next);
       return next;
     });
   };
@@ -61,6 +99,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
     setForcedKeys(prev => {
       const next = new Set(prev);
       keys.forEach(k => next.add(k));
+      persistForcedKeys(next);
       return next;
     });
   };
