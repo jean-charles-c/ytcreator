@@ -37,13 +37,48 @@ const levelConfig = {
   },
 };
 
+/** Generate a stable key for a QA issue to track force-overrides */
+function issueKey(issue: { category: string; sceneOrder?: number; shotOrder?: number; message: string }): string {
+  return `${issue.category}:${issue.sceneOrder ?? "g"}:${issue.shotOrder ?? ""}:${issue.message.slice(0, 80)}`;
+}
+
 export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange }: QaPanelProps) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<QaReport | null>(null);
   const [timing, setTiming] = useState<ManifestTiming | null>(null);
+  const [forcedKeys, setForcedKeys] = useState<Set<string>>(new Set());
+
+  const toggleForce = (key: string) => {
+    setForcedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const forceAll = (keys: string[]) => {
+    setForcedKeys(prev => {
+      const next = new Set(prev);
+      keys.forEach(k => next.add(k));
+      return next;
+    });
+  };
+
+  // Recalculate export allowed when forcedKeys changes
+  useEffect(() => {
+    if (!report) return;
+    const criticals = report.issues.filter(i => i.level === "critical");
+    const unblockedCount = criticals.filter(i => !forcedKeys.has(issueKey(i))).length;
+    const allowed = unblockedCount === 0;
+    onExportAllowedChange?.(allowed);
+    onReportChange?.({ errors: unblockedCount, warnings: report.warningCount, issues: report.issues });
+  }, [forcedKeys, report]);
 
   const runCheck = async () => {
     setLoading(true);
+    // Reset forced keys on re-check since issues may have changed
+    setForcedKeys(new Set());
 
     const { data: audioFiles } = await supabase
       .from("vo_audio_history")
