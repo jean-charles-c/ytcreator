@@ -628,9 +628,26 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
                 </div>
               </div>
             )}
+            {/* Timeline blocked warning */}
+            {hasBlocking && !timeline && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-400/5 p-3">
+                <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-red-300">Génération de timeline bloquée</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Tous les assets doivent être prêts avant d'assembler la timeline. Vérifiez les éléments manquants ci-dessus.
+                  </p>
+                </div>
+              </div>
+            )}
             {!timeline && (
               <div className="flex justify-center">
-                <Button variant="hero" onClick={handleAssembleTimeline} className="min-h-[48px] gap-2">
+                <Button
+                  variant="hero"
+                  onClick={handleAssembleTimeline}
+                  disabled={hasBlocking}
+                  className="min-h-[48px] gap-2"
+                >
                   <Wand2 className="h-4 w-4" />
                   Assembler la timeline
                 </Button>
