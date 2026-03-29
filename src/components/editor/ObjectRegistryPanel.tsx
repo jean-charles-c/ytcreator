@@ -517,6 +517,19 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
           </Button>
         </div>
       </div>
+
+      {/* Lightbox dialog */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 flex items-center justify-center bg-black/95 border-none">
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Image de référence agrandie"
+              className="max-w-full max-h-[85vh] object-contain rounded"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </details>
   );
 }
