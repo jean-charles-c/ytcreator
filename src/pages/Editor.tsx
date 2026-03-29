@@ -55,112 +55,11 @@ import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
 import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sensitiveMode";
 import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
 import { applyFrenchTypography } from "@/components/editor/frenchTypography";
+import { reorderShotsByReadingPosition, sortShotsBySceneText } from "@/components/editor/shotAlignment";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
-
-/**
- * Find best position of a fragment in scene text.
- * Tries exact indexOf first, then falls back to word-overlap sliding window.
- */
-function findBestPosition(sceneTextLower: string, fragmentLower: string): number {
-  if (!fragmentLower) return -1;
-  // Exact match
-  const exact = sceneTextLower.indexOf(fragmentLower);
-  if (exact >= 0) return exact;
-  
-  // Try trimmed first 40 chars (handles truncated fragments)
-  const shortFrag = fragmentLower.slice(0, 40);
-  if (shortFrag.length >= 10) {
-    const shortPos = sceneTextLower.indexOf(shortFrag);
-    if (shortPos >= 0) return shortPos;
-  }
-  
-  // Word overlap sliding window
-  const fragWords = fragmentLower.split(/\s+/).filter(w => w.length > 2);
-  if (fragWords.length < 2) return -1;
-  
-  const sceneParts = sceneTextLower.split(/(?<=[.!?])\s+/);
-  let bestPos = -1;
-  let bestScore = 0;
-  let charOffset = 0;
-  
-  for (const part of sceneParts) {
-    const partWords = new Set(part.toLowerCase().split(/\s+/).filter(w => w.length > 2));
-    let overlap = 0;
-    for (const w of fragWords) { if (partWords.has(w)) overlap++; }
-    const score = overlap / Math.max(fragWords.length, partWords.size);
-    if (score > bestScore && score >= 0.4) {
-      bestScore = score;
-      bestPos = charOffset;
-    }
-    charOffset += part.length + 1;
-  }
-  
-  return bestPos;
-}
-
-/**
- * Reorder shots within each scene so shot_order follows
- * the reading order of source_sentence in the scene's source_text.
- * Returns shots with corrected shot_order + list of DB updates needed.
- */
-function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reordered: Shot[]; updates: { id: string; shot_order: number }[] } {
-  const sceneMap = new Map<string, Scene>();
-  scenes.forEach((s) => sceneMap.set(s.id, s));
-
-  const updates: { id: string; shot_order: number }[] = [];
-  const reordered: Shot[] = [...shots];
-
-  // Group shots by scene
-  const byScene = new Map<string, Shot[]>();
-  for (const shot of reordered) {
-    const arr = byScene.get(shot.scene_id) || [];
-    arr.push(shot);
-    byScene.set(shot.scene_id, arr);
-  }
-
-  for (const [sceneId, sceneShots] of byScene) {
-    const scene = sceneMap.get(sceneId);
-    if (!scene) continue;
-    const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
-    const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
-
-    // Sort by position of source_sentence in scene text using fuzzy match (try both languages)
-    sceneShots.sort((a, b) => {
-      const sentAen = (a.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const sentAfr = (a.source_sentence_fr || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const sentBen = (b.source_sentence || "").trim().toLowerCase().replace(/\s+/g, " ");
-      const sentBfr = (b.source_sentence_fr || "").trim().toLowerCase().replace(/\s+/g, " ");
-
-      let posA = -1;
-      if (sceneTextEn && sentAen) posA = findBestPosition(sceneTextEn, sentAen);
-      if (posA < 0 && sceneTextFr && sentAfr) posA = findBestPosition(sceneTextFr, sentAfr);
-      if (posA < 0 && sceneTextFr && sentAen) posA = findBestPosition(sceneTextFr, sentAen);
-      if (posA < 0 && sceneTextEn && sentAfr) posA = findBestPosition(sceneTextEn, sentAfr);
-
-      let posB = -1;
-      if (sceneTextEn && sentBen) posB = findBestPosition(sceneTextEn, sentBen);
-      if (posB < 0 && sceneTextFr && sentBfr) posB = findBestPosition(sceneTextFr, sentBfr);
-      if (posB < 0 && sceneTextFr && sentBen) posB = findBestPosition(sceneTextFr, sentBen);
-      if (posB < 0 && sceneTextEn && sentBfr) posB = findBestPosition(sceneTextEn, sentBfr);
-
-      return (posA === -1 ? 9999 : posA) - (posB === -1 ? 9999 : posB);
-    });
-
-    // Assign correct shot_order
-    sceneShots.forEach((shot, idx) => {
-      const correctOrder = idx + 1;
-      if (shot.shot_order !== correctOrder) {
-        shot.shot_order = correctOrder;
-        updates.push({ id: shot.id, shot_order: correctOrder });
-      }
-    });
-  }
-
-  return { reordered, updates };
-}
 
 const tabItems: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "rsearch", label: "RsearchEngine", icon: Search },
@@ -2699,8 +2598,8 @@ export default function Editor() {
                                       size="sm"
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
-                                      disabled={isRegenerating}
-                                      onClick={() => runStoryboard(scene.id, { segmentOnly: true })}
+                                      disabled={isRegenerating || scene.validated}
+                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { segmentOnly: true }); }}
                                       title="Refaire tout le découpage des shots de cette scène"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
@@ -2710,8 +2609,8 @@ export default function Editor() {
                                       size="sm"
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
-                                      disabled={isRegenerating}
-                                      onClick={() => runStoryboard(scene.id)}
+                                      disabled={isRegenerating || scene.validated}
+                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id); }}
                                       title="Régénérer les prompts visuels de cette scène via IA"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
@@ -2719,42 +2618,26 @@ export default function Editor() {
                                     </Button>
                                     <button
                                       onClick={async () => {
-                                        // Build multiple text references to try matching against
-                                        const sceneTextEn = (scene.source_text || "").toLowerCase().replace(/\s+/g, " ");
-                                        const sceneTextFr = ((scene as any).source_text_fr || "").toLowerCase().replace(/\s+/g, " ");
-
-                                        const positions = sceneShots.map(sh => {
-                                          const sentEn = (sh.source_sentence || "").toLowerCase().replace(/\s+/g, " ").trim();
-                                          const sentFr = (sh.source_sentence_fr || "").toLowerCase().replace(/\s+/g, " ").trim();
-
-                                          // Try all combinations: EN→EN, FR→FR, EN→FR, FR→EN
-                                          let bestPos = -1;
-                                          if (sceneTextEn && sentEn) bestPos = findBestPosition(sceneTextEn, sentEn);
-                                          if (bestPos < 0 && sceneTextFr && sentFr) bestPos = findBestPosition(sceneTextFr, sentFr);
-                                          if (bestPos < 0 && sceneTextFr && sentEn) bestPos = findBestPosition(sceneTextFr, sentEn);
-                                          if (bestPos < 0 && sceneTextEn && sentFr) bestPos = findBestPosition(sceneTextEn, sentFr);
-
-                                          return { id: sh.id, order: sh.shot_order, pos: bestPos };
-                                        }).filter(p => p.pos >= 0);
-
-                                        if (positions.length === 0) {
-                                          toast.error("Impossible de réaligner : aucun shot n'a pu être localisé dans le texte source.");
+                                        if (scene.validated) {
+                                          toast.error("Scène validée — déverrouillez-la d'abord pour réaligner.");
                                           return;
                                         }
-
-                                        const byTextPos = [...positions].sort((a, b) => a.pos - b.pos);
-                                        const updates = byTextPos.map((p, i) => ({ id: p.id, shot_order: i + 1 }));
+                                        const ordered = sortShotsBySceneText(scene, sceneShots);
+                                        const updates: { id: string; shot_order: number }[] = [];
+                                        ordered.forEach((shot, idx) => {
+                                          const correctOrder = idx + 1;
+                                          if (shot.shot_order !== correctOrder) {
+                                            updates.push({ id: shot.id, shot_order: correctOrder });
+                                          }
+                                        });
+                                        if (updates.length === 0) {
+                                          toast.info("L'ordre est déjà correct.");
+                                          return;
+                                        }
                                         for (const u of updates) {
                                           await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
                                         }
-                                        const fixedIds = new Set(updates.map(u => u.id));
-                                        let nextOrder = updates.length + 1;
-                                        for (const sh of sceneShots) {
-                                          if (!fixedIds.has(sh.id)) {
-                                            await supabase.from("shots").update({ shot_order: nextOrder++ }).eq("id", sh.id);
-                                          }
-                                        }
-                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés sur l'ordre du texte (${positions.length}/${sceneShots.length} localisés)`);
+                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés (${updates.length} déplacés)`);
                                         const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
                                         if (freshShots) {
                                           const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);

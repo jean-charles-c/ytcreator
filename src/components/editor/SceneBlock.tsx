@@ -78,6 +78,10 @@ export default function SceneBlock({
   const [splitPos, setSplitPos] = useState(Math.floor(scene.source_text.length / 2));
 
   const startEdit = () => {
+    if (scene.validated) {
+      toast.error("Scène validée — déverrouillez-la pour modifier.");
+      return;
+    }
     setEditTitle(scene.title);
     setEditText(scene.source_text);
     setEditVisual(scene.visual_intention ?? "");
@@ -161,11 +165,11 @@ export default function SceneBlock({
               <button onClick={startEdit} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Éditer">
                 <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
-              <button onClick={() => setShowSplit(!showSplit)} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Scinder">
+              <button onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour scinder."); return; } setShowSplit(!showSplit); }} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Scinder">
                 <Scissors className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
               {!isLast && (
-                <button onClick={() => onMergeWithNext(scene.id)} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Fusionner avec la suivante">
+                <button onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour fusionner."); return; } onMergeWithNext(scene.id); }} className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary active:bg-secondary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" title="Fusionner avec la suivante">
                   <Merge className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                 </button>
               )}
