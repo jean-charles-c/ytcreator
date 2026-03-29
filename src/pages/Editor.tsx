@@ -22,6 +22,7 @@ import {
   Search,
   ImageIcon,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   ShieldCheck,
   RefreshCw,
