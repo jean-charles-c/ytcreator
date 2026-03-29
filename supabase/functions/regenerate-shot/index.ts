@@ -152,12 +152,12 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You regenerate a single cinematic documentary shot prompt optimized for Grok Image.${sensitiveModeBlock}
+              content: `You regenerate a single cinematic documentary shot prompt.${sensitiveModeBlock}
 
 LANGUAGE RULES:
 - shot_type MUST be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
 - description MUST be in FRENCH (2-3 sentences)
-- prompt_export MUST be in ENGLISH, at least 100 words, one continuous paragraph${translationRule}
+- prompt_export MUST be in FRENCH, at least 100 words, one continuous paragraph${translationRule}
 
 CONTEXTUAL ANCHORING RULE — CRITICAL:
 Every prompt_export MUST begin by explicitly stating the historical period/era and geographic location.
