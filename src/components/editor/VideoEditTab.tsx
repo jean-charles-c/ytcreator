@@ -517,7 +517,7 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const hasBlocking = checks.some((c) => c.status === "missing");
   const validCount = checks.filter((c) => c.status === "valid").length;
   const isExportBlocked = exportBlocked || !!audioDesync;
-  const isTimelineBlocked = hasBlocking;
+  
 
   return (
     <div className="container max-w-4xl py-4 sm:py-6 lg:py-10 px-3 sm:px-4 animate-fade-in">
