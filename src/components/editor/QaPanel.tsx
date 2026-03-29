@@ -115,6 +115,9 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       .from("scenes")
       .update({ source_text: newSourceText, updated_at: new Date().toISOString() })
       .eq("id", issue.sceneId);
+
+    // Notify parent to refresh scenes state
+    onScenesUpdated?.();
   };
 
   const toggleForce = async (key: string, issue?: QaIssue) => {
