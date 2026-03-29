@@ -145,8 +145,8 @@ The prompt must describe what the FRAGMENT says, not what the scene says in gene
 If a fragment describes "stone walls built without mortar", the prompt must focus on stone walls and masonry techniques — NOT on the broader city or its trade routes.
 
 ## PROMPT STRUCTURE
-Each prompt_export must be in ENGLISH and contain ALL of these woven into one continuous paragraph:
-1. Camera framing: "Wide shot of...", "Close-up on...", "Low-angle view of...", "Medium shot of..."
+Each prompt_export must be in FRENCH and contain ALL of these woven into one continuous paragraph:
+1. Camera framing: "Plan large de...", "Gros plan sur...", "Vue en contre-plongée de...", "Plan moyen de..."
 2. Fragment-specific visual content: what the fragment describes, with hyper-specific materials, textures, colors
 3. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color, facial expression, body language
 4. Environment grounded in the scene's lieu and époque: what surrounds the subject, period-accurate background elements
@@ -154,11 +154,11 @@ Each prompt_export must be in ENGLISH and contain ALL of these woven into one co
 6. Lighting: describe light source, direction, quality, shadows — motivated by the scene's ambiance when available
 7. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
 8. End with these three mandatory lines in the same paragraph:
-   "Style: ultra realistic documentary photography, cinematic lighting, historical reconstruction realism."
-   "Visual quality: cinematic film still, 8k detail, natural textures, real-world physics."
-   "Aspect ratio: 16:9"
+   "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique."
+   "Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste."
+   "Ratio d'aspect : 16:9"
 
-The prompt_export MUST be at least 100 words. Be extremely descriptive and specific — Grok Image performs best with rich, concrete visual details rather than abstract concepts.
+The prompt_export MUST be at least 100 words. Be extremely descriptive and specific — the image generation AI performs best with rich, concrete visual details rather than abstract concepts.
 
 The entire prompt must be one continuous paragraph. No bullet points, no numbered lists.`;
 
