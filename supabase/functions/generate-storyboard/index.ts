@@ -761,7 +761,7 @@ serve(async (req) => {
                                 description: { type: "string", description: "2-3 sentence vivid visual description IN FRENCH" },
                                 source_sentence: { type: "string", description: "The EXACT original sentence from the narration text, copied verbatim in its original language" },
                                 ...(needsTranslation ? { source_sentence_fr: { type: "string", description: "French translation of the source_sentence" } } : {}),
-                                prompt_export: { type: "string", description: "Full Grok Image prompt IN ENGLISH, one continuous paragraph, at least 100 words, ending with Style/Visual quality/Aspect ratio lines" },
+                                prompt_export: { type: "string", description: "Full visual prompt IN FRENCH, one continuous paragraph, at least 100 words, ending with Style/Qualité visuelle/Ratio d'aspect lines" },
                                 guardrails: { type: "string", description: "Comma-separated list of historical constraints applied" },
                               },
                               required: ["shot_type", "description", "source_sentence", "prompt_export", "guardrails", ...(needsTranslation ? ["source_sentence_fr"] : [])],
