@@ -126,7 +126,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       .eq("id", issue.sceneId);
 
     onScenesUpdated?.();
-    const qa = runQaValidation(manifest, timing ?? buildManifestTiming(manifest, null));
+    const qa = runQaValidation(manifest, timing ?? buildManifestTiming(manifest, null, 0));
     setReport(qa);
   };
 
