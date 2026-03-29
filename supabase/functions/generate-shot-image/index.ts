@@ -154,7 +154,7 @@ serve(async (req) => {
       throw claimsException;
     }
 
-    const { shot_id, model, aspect_ratio, sensitive_level, visual_style } = await req.json();
+    const { shot_id, model, aspect_ratio, sensitive_level, visual_style, custom_prompt } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
 
     const selectedModel = ALLOWED_MODELS.includes(model)

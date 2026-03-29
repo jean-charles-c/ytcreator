@@ -522,14 +522,47 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               </div>
             )}
             <p className="text-xs text-muted-foreground leading-relaxed break-words">{shot.description}</p>
-            {shot.prompt_export && (
+        {shot.prompt_export && (
               <details className="group/details">
-                <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center">
+                <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">
                   Prompt complet envoyé à l'IA
+                  {customFullPrompt !== null && <span className="text-[9px] text-primary font-normal normal-case">(personnalisé)</span>}
                 </summary>
-                <pre className="mt-1 rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
-                  {buildFullPromptPreview(shot.prompt_export)}
-                </pre>
+                {editingFullPrompt ? (
+                  <div className="mt-1 space-y-1.5">
+                    <textarea
+                      value={fullPromptDraft}
+                      onChange={(e) => setFullPromptDraft(e.target.value)}
+                      className="w-full rounded border border-primary/30 bg-background p-2 sm:p-3 text-[11px] text-foreground leading-relaxed whitespace-pre-wrap font-mono break-words resize-y min-h-[200px] focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <div className="flex gap-1.5">
+                      <Button size="sm" onClick={saveFullPrompt} className="h-7 text-[11px] px-2">
+                        <Check className="h-3 w-3 mr-1" /> Sauvegarder
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingFullPrompt(false)} className="h-7 text-[11px] px-2">
+                        <X className="h-3 w-3" /> Annuler
+                      </Button>
+                      {customFullPrompt !== null && (
+                        <Button size="sm" variant="ghost" onClick={resetFullPrompt} className="h-7 text-[11px] px-2 text-destructive">
+                          Réinitialiser
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-1 relative group/prompt">
+                    <pre className="rounded bg-background border border-border p-2 sm:p-3 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono select-all cursor-text break-words overflow-x-auto">
+                      {buildFullPromptPreview(shot.prompt_export)}
+                    </pre>
+                    <button
+                      onClick={startEditFullPrompt}
+                      className="absolute top-1 right-1 p-1.5 rounded bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors opacity-0 group-hover/prompt:opacity-100"
+                      title="Modifier le prompt complet"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </details>
             )}
           </div>

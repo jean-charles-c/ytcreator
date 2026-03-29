@@ -60,33 +60,43 @@ const vehicleIdentityBlock = (nom: string, version: string) =>
   `VEHICLE IDENTITY LOCK:\n\nThe vehicle must remain strictly and unmistakably identifiable as a ${nom} ${version} in every image.\n\nPreserve its exact signature silhouette, proportions, front-end design, roofline, side profile, rear shape, wheel stance, and all defining design cues.\n\nDo not redesign, modernize, stylize, or merge it with any other car.\n\n`;
 
 export const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string) => string> = {
-  character: (nom, epoque) => {
+const buildRefImageList = (nom: string, refImages?: string[]) => {
+  if (!refImages || refImages.length === 0) return `REFERENCE IMAGES: None provided yet.`;
+  const items = refImages.map((url, i) => {
+    const fileName = url.split("/").pop()?.split("?")[0] || `${nom.replace(/\s+/g, "_")}_ref_${i + 1}`;
+    return `- ${fileName}`;
+  }).join("\n");
+  return `REFERENCE IMAGES PROVIDED:\n${items}\nUse these reference images as fidelity anchors to preserve exact visual identity.`;
+};
+
+export const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, epoque?: string, refImages?: string[]) => string> = {
+  character: (nom, epoque, refImages) => {
     const period = epoque || "[exact period]";
-    return `${characterIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD LOCK:\nThe character must be shown strictly as they appeared during ${period}.\nPreserve the age appearance, hairstyle, facial traits, clothing logic, accessories, and visual markers specific to that period.\nDo not mix features from earlier or later periods.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [period feature 1]\n- [period feature 2]\n- [period feature 3]\n- [period feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different eras of the same character/person.`;
+    return `${characterIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD LOCK:\nThe character must be shown strictly as they appeared during ${period}.\nPreserve the age appearance, hairstyle, facial traits, clothing logic, accessories, and visual markers specific to that period.\nDo not mix features from earlier or later periods.\n\n${buildRefImageList(nom, refImages)}\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different eras of the same character/person.`;
   },
-  location: (nom, epoque) => {
+  location: (nom, epoque, refImages) => {
     const period = epoque || "[exact period / state]";
-    return `${locationIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD / HISTORICAL STATE LOCK:\nThe location must be shown strictly as it appeared during ${period}.\nPreserve the structural condition, materials, architectural features, surrounding layout, and environmental context specific to that period.\nDo not mix features from earlier or later versions of the same place.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different historical states of the same location.`;
+    return `${locationIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD / HISTORICAL STATE LOCK:\nThe location must be shown strictly as it appeared during ${period}.\nPreserve the structural condition, materials, architectural features, surrounding layout, and environmental context specific to that period.\nDo not mix features from earlier or later versions of the same place.\n\n${buildRefImageList(nom, refImages)}\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different historical states of the same location.`;
   },
-  vehicle: (nom, epoque) => {
+  vehicle: (nom, epoque, refImages) => {
     const version = epoque || "[year / version]";
-    return `${vehicleIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the vehicle strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe vehicle must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+    return `${vehicleIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the vehicle strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\n${buildRefImageList(nom, refImages)}\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe vehicle must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
   },
-  building: (nom, epoque) => {
+  building: (nom, epoque, refImages) => {
     const period = epoque || "[exact period / state]";
-    return `${locationIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD / HISTORICAL STATE LOCK:\nThe location must be shown strictly as it appeared during ${period}.\nPreserve the structural condition, materials, architectural features, surrounding layout, and environmental context specific to that period.\nDo not mix features from earlier or later versions of the same place.\n\nMANDATORY PERIOD-SPECIFIC FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different historical states of the same location.`;
+    return `${locationIdentityBlock(nom, period)}Subject: ${nom} during ${period}\n\nTIME PERIOD / HISTORICAL STATE LOCK:\nThe location must be shown strictly as it appeared during ${period}.\nPreserve the structural condition, materials, architectural features, surrounding layout, and environmental context specific to that period.\nDo not mix features from earlier or later versions of the same place.\n\n${buildRefImageList(nom, refImages)}\n\nNO TEMPORAL DRIFT:\nDo not combine visual traits from different historical states of the same location.`;
   },
-  artifact: (nom, epoque) => {
+  artifact: (nom, epoque, refImages) => {
     const version = epoque || "[year / version]";
-    return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+    return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\n${buildRefImageList(nom, refImages)}\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
   },
-  weapon: (nom, epoque) => {
+  weapon: (nom, epoque, refImages) => {
     const version = epoque || "[year / version]";
-    return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+    return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\n${buildRefImageList(nom, refImages)}\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
   },
-  object: (nom, epoque) => {
+  object: (nom, epoque, refImages) => {
     const version = epoque || "[year / version]";
-    return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\nMANDATORY VISUAL FEATURES:\n- [feature 1]\n- [feature 2]\n- [feature 3]\n- [feature 4]\n- [feature 5]\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+    return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\n${buildRefImageList(nom, refImages)}\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
   },
 };
 
