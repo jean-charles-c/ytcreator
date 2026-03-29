@@ -136,9 +136,17 @@ export function buildManifest(
   let globalOrder = 0;
 
   const scenes: NormalisedScene[] = sortedScenes.map((scene) => {
-    // CRITICAL: sort by shot_order only — this must match the order used by TTS
-    // generation (which produces timepoints in shot_order sequence). Text-position
-    // sorting caused misalignment when sentences were edited.
+    // ╔══════════════════════════════════════════════════════════════════╗
+    // ║  🔒 LOCKED — DO NOT MODIFY WITHOUT EXPLICIT USER APPROVAL 🔒   ║
+    // ║                                                                  ║
+    // ║  Sort by shot_order ONLY. This MUST match the order used by:     ║
+    // ║    1. assembleTimeline (timelineAssembly.ts)                     ║
+    // ║    2. TTS generation (which produces timepoints in shot_order)   ║
+    // ║                                                                  ║
+    // ║  Text-position sorting was removed because edited sentences      ║
+    // ║  broke alignment between visual duration and audio phrases.      ║
+    // ║  Any change here will desynchronise the entire export pipeline.  ║
+    // ╚══════════════════════════════════════════════════════════════════╝
     const sceneShots = (shotsByScene.get(scene.id) ?? []).sort(
       (a, b) => a.shot_order - b.shot_order
     );

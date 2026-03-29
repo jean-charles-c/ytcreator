@@ -75,6 +75,13 @@ export function assembleTimeline(
   const sceneMap = new Map<string, Scene>();
   scenes.forEach((scene) => sceneMap.set(scene.id, scene));
 
+  // ╔══════════════════════════════════════════════════════════════════╗
+  // ║  🔒 LOCKED — DO NOT MODIFY WITHOUT EXPLICIT USER APPROVAL 🔒   ║
+  // ║                                                                  ║
+  // ║  Sort by scene_order then shot_order. This MUST match the order  ║
+  // ║  used by buildManifest (visualPromptTypes.ts) and TTS generation ║
+  // ║  (which produces timepoints in this exact sequence).             ║
+  // ╚══════════════════════════════════════════════════════════════════╝
   const sortedShots = [...shots].sort((a, b) => {
     const sceneA = sceneMap.get(a.scene_id);
     const sceneB = sceneMap.get(b.scene_id);
