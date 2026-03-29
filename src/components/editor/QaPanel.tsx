@@ -361,7 +361,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
                             ? "text-amber-600 hover:bg-amber-500/10"
                             : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         }`}
-                        onClick={() => toggleForce(key)}
+                        onClick={() => toggleForce(key, issue)}
                         title={isForced ? "Rétablir le blocage" : "Forcer — ignorer cette erreur"}
                       >
                         {isForced ? (
