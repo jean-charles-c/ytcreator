@@ -118,13 +118,19 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
 
   if (!report) return null;
 
-  const StatusIcon = report.criticalCount > 0 ? ShieldX : report.warningCount > 0 ? ShieldAlert : ShieldCheck;
-  const statusColor = report.criticalCount > 0 ? "text-destructive" : report.warningCount > 0 ? "text-amber-500" : "text-emerald-500";
-  const statusLabel = report.criticalCount > 0
-    ? `${report.criticalCount} erreur(s) bloquante(s)`
-    : report.warningCount > 0
-      ? `${report.warningCount} avertissement(s)`
-      : "Aucun problème détecté";
+  const unblockedCriticals = report.issues.filter(i => i.level === "critical" && !forcedKeys.has(issueKey(i)));
+  const forcedCount = report.issues.filter(i => i.level === "critical" && forcedKeys.has(issueKey(i))).length;
+  const effectiveBlocked = unblockedCriticals.length;
+
+  const StatusIcon = effectiveBlocked > 0 ? ShieldX : report.warningCount > 0 ? ShieldAlert : ShieldCheck;
+  const statusColor = effectiveBlocked > 0 ? "text-destructive" : report.warningCount > 0 ? "text-amber-500" : "text-emerald-500";
+  const statusLabel = effectiveBlocked > 0
+    ? `${effectiveBlocked} erreur(s) bloquante(s)${forcedCount > 0 ? ` (${forcedCount} forcée${forcedCount > 1 ? "s" : ""})` : ""}`
+    : forcedCount > 0
+      ? `${forcedCount} erreur(s) forcée(s) — export autorisé`
+      : report.warningCount > 0
+        ? `${report.warningCount} avertissement(s)`
+        : "Aucun problème détecté";
 
   // Separate critical vs warning
   const criticalIssues = report.issues.filter(i => i.level === "critical");
