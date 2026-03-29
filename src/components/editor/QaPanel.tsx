@@ -258,6 +258,22 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
                         <span className={`break-words leading-relaxed ${isForced ? "text-muted-foreground line-through" : "text-foreground"}`}>
                           {issue.message}
                         </span>
+                        {(issue.expectedText || issue.actualText) && !isForced && (
+                          <div className="w-full mt-1 space-y-1 text-[10px]">
+                            {issue.expectedText && (
+                              <div className="flex gap-1.5 items-start">
+                                <span className="shrink-0 font-semibold text-emerald-500">Attendu :</span>
+                                <span className="text-muted-foreground break-words whitespace-pre-wrap">« {issue.expectedText} »</span>
+                              </div>
+                            )}
+                            {issue.actualText && (
+                              <div className="flex gap-1.5 items-start">
+                                <span className="shrink-0 font-semibold text-destructive">Shot :</span>
+                                <span className="text-muted-foreground break-words whitespace-pre-wrap">« {issue.actualText} »</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
