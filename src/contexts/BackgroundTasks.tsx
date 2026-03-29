@@ -855,6 +855,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           ...(params.visualStyles?.[remainingShotIds[i]] != null
                             ? { visual_style: params.visualStyles[remainingShotIds[i]] }
                             : {}),
+                          ...(params.customPrompts?.[remainingShotIds[i]]
+                            ? { custom_prompt: params.customPrompts[remainingShotIds[i]] }
+                            : {}),
                         }),
                         signal: shotAc.signal,
                       }
