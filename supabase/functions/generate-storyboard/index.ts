@@ -27,7 +27,7 @@ Scenes must produce enough visual material to sustain cinematic rhythm in a docu
 - shot_type MUST always be in FRENCH (e.g. "Plan d'ensemble", "Plan d'activité", "Plan de détail", "Plan portrait", "Plan subjectif", "Plan d'interaction", "Plan environnemental", "Plan de détail d'artefact", "Plan de détail scientifique")
 - description MUST always be in FRENCH, regardless of the script language
 - source_sentence MUST be the EXACT original sentence OR exact sentence segment from the narration text (in its original language, copied verbatim)
-- prompt_export MUST always be in ENGLISH, regardless of the script language
+- prompt_export MUST always be in FRENCH, regardless of the script language. Write rich, detailed visual prompts in French.
 
 ## VISUAL BEAT RULE
 A visual scene corresponds to one coherent visual moment.
