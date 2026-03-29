@@ -288,6 +288,50 @@ serve(async (req) => {
       }
     }
 
+    // Download reference images and convert to base64 data URIs
+    // This avoids 403 errors when the AI gateway tries to fetch external URLs
+    const referenceImageDataUris: string[] = [];
+    if (referenceImageUrls.length > 0) {
+      console.log(`Downloading ${referenceImageUrls.length} reference images...`);
+      const downloadResults = await Promise.allSettled(
+        referenceImageUrls.map(async (url) => {
+          try {
+            const resp = await fetch(url, { 
+              headers: { "User-Agent": "Mozilla/5.0" },
+              redirect: "follow",
+            });
+            if (!resp.ok) {
+              console.warn(`Failed to download ref image ${url}: HTTP ${resp.status}`);
+              return null;
+            }
+            const contentType = resp.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+            if (!contentType.startsWith("image/")) {
+              console.warn(`Ref image ${url} is not an image: ${contentType}`);
+              return null;
+            }
+            const buffer = await resp.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            // Convert to base64
+            let binary = "";
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            const base64 = btoa(binary);
+            return `data:${contentType};base64,${base64}`;
+          } catch (err) {
+            console.warn(`Error downloading ref image ${url}:`, err);
+            return null;
+          }
+        })
+      );
+      for (const result of downloadResults) {
+        if (result.status === "fulfilled" && result.value) {
+          referenceImageDataUris.push(result.value);
+        }
+      }
+      console.log(`Successfully downloaded ${referenceImageDataUris.length}/${referenceImageUrls.length} reference images`);
+    }
+
     // Add REFERENCE IMAGE RULE if there are reference images
     const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:
 
@@ -305,7 +349,7 @@ Do not import unwanted background elements, text, framing, lighting, or scene de
 
 Do not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
 
-    if (referenceImageUrls.length > 0) {
+    if (referenceImageDataUris.length > 0) {
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
 
@@ -337,17 +381,17 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       ...(styleSuffix ? [`Visual style: ${styleSuffix}`] : []),
     ].join("\n");
 
-    // Build multimodal content array with reference images
+    // Build multimodal content array with reference images as base64
     const buildMessageContent = (promptText: string): any => {
-      if (referenceImageUrls.length === 0) {
+      if (referenceImageDataUris.length === 0) {
         return promptText;
       }
-      // Multimodal: text + reference images
+      // Multimodal: text + reference images as base64 data URIs
       const parts: any[] = [{ type: "text", text: promptText }];
-      for (const imgUrl of referenceImageUrls) {
+      for (const dataUri of referenceImageDataUris) {
         parts.push({
           type: "image_url",
-          image_url: { url: imgUrl },
+          image_url: { url: dataUri },
         });
       }
       return parts;
@@ -382,7 +426,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       for (let attempt = 1; attempt <= retries; attempt++) {
         // Rebuild content each attempt (ref images may have been cleared on previous attempt)
         const currentContent = buildMessageContent(currentPromptText);
-        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageUrls.length}`);
+        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageDataUris.length}`);
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -401,11 +445,11 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
           console.error(`AI error (variant ${variantIdx}, attempt ${attempt}):`, aiResponse.status, errText);
           if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
           if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
-          // If 400 due to image fetch failure, clear ref images and retry same variant
-          if (aiResponse.status === 400 && errText.includes("fetching image from URL") && referenceImageUrls.length > 0) {
-            console.warn("Reference images inaccessible, retrying without them...");
-            referenceImageUrls.length = 0;
-            variantIdx--; // will be incremented by outer loop, staying on same variant
+          // If 400 due to image fetch failure, retry without ref images
+          if (aiResponse.status === 400 && errText.includes("fetching image from URL") && referenceImageDataUris.length > 0) {
+            console.warn("Reference images inaccessible via gateway, retrying without them...");
+            referenceImageDataUris.length = 0;
+            variantIdx--;
             break;
           }
           if (aiResponse.status >= 500 && attempt < retries) {
