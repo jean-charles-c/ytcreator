@@ -411,15 +411,20 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                                   <X className="h-3 w-3" />
                                 </button>
                               </div>
-                              <a
-                                href={cleanUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[8px] text-muted-foreground hover:text-primary truncate max-w-[96px] mt-0.5 underline"
-                                title={cleanUrl}
-                              >
-                                {buildRefFileName(obj.nom, imgIdx + 1, imgUrl)}
-                              </a>
+                              <div className="flex flex-col items-center mt-0.5 max-w-[96px]">
+                                <span className="text-[9px] font-medium text-foreground truncate w-full text-center" title={buildRefFileName(obj.nom, imgIdx + 1, imgUrl)}>
+                                  {buildRefFileName(obj.nom, imgIdx + 1, imgUrl)}
+                                </span>
+                                <a
+                                  href={cleanUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[7px] text-muted-foreground hover:text-primary truncate w-full text-center underline"
+                                  title={cleanUrl}
+                                >
+                                  {cleanUrl.includes("reference-images") ? "📦 Serveur OVH" : "🌐 URL externe"}
+                                </a>
+                              </div>
                             </div>
                           );
                         })}
