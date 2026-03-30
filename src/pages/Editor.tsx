@@ -2616,40 +2616,6 @@ export default function Editor() {
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
                                       Générer les prompts
                                     </Button>
-                                    <button
-                                      onClick={async () => {
-                                        if (scene.validated) {
-                                          toast.error("Scène validée — déverrouillez-la d'abord pour réaligner.");
-                                          return;
-                                        }
-                                        const ordered = sortShotsBySceneText(scene, sceneShots);
-                                        const updates: { id: string; shot_order: number }[] = [];
-                                        ordered.forEach((shot, idx) => {
-                                          const correctOrder = idx + 1;
-                                          if (shot.shot_order !== correctOrder) {
-                                            updates.push({ id: shot.id, shot_order: correctOrder });
-                                          }
-                                        });
-                                        if (updates.length === 0) {
-                                          toast.info("L'ordre est déjà correct.");
-                                          return;
-                                        }
-                                        for (const u of updates) {
-                                          await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
-                                        }
-                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés (${updates.length} déplacés)`);
-                                        const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
-                                        if (freshShots) {
-                                          const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
-                                          setShots(reordered);
-                                        }
-                                      }}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] sm:min-h-[36px] border border-border"
-                                      title="Réordonner les shots selon leur position dans le texte source"
-                                    >
-                                      <ArrowUpDown className="h-3.5 w-3.5" />
-                                      <span>Réaligner l'ordre</span>
-                                    </button>
                                   </div>
 
                                   {/* Scene source text */}
