@@ -329,6 +329,14 @@ export default function Editor() {
           setCurrentShotVersionId(maxId);
         }
 
+        // Restore shot object overrides
+        if (scriptCreatorState.timeline_state && typeof scriptCreatorState.timeline_state === 'object') {
+          const ts = scriptCreatorState.timeline_state as any;
+          if (ts.shotObjectOverrides && typeof ts.shotObjectOverrides === 'object') {
+            setShotObjectOverrides(ts.shotObjectOverrides);
+          }
+        }
+
         lastSavedScriptCreatorSnapshotRef.current = JSON.stringify({
           file_name: scriptCreatorState.file_name ?? null,
           page_count: Number(scriptCreatorState.page_count) || 0,
