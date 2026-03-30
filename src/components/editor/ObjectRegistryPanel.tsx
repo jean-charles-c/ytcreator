@@ -464,10 +464,10 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                         })}
                       </div>
                     )}
-                    <div className="mt-1">
+                    <div className="mt-1 flex gap-1.5">
                       <Input
                         placeholder="Coller une URL d'image et appuyer Entrée"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs flex-1"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             const input = e.currentTarget;
@@ -477,6 +477,26 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                               input.value = "";
                             }
                           }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs gap-1 shrink-0"
+                        onClick={() => fileInputRefs.current[obj.id]?.click()}
+                      >
+                        <Upload className="h-3 w-3" />
+                        Fichier
+                      </Button>
+                      <input
+                        ref={(el) => { fileInputRefs.current[obj.id] = el; }}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(obj.id, file);
+                          e.target.value = "";
                         }}
                       />
                     </div>
