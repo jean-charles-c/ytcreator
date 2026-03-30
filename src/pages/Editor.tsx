@@ -2641,8 +2641,44 @@ export default function Editor() {
                                       onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
-                                          {/* Regen buttons row */}
-                                          <div className="mb-1 flex items-center justify-end gap-1.5">
+                                          {/* Regen + move buttons row */}
+                                          <div className="mb-1 flex items-center gap-1.5">
+                                                {/* Move up/down */}
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 w-6 p-0"
+                                                  disabled={shot.shot_order <= 1 || scene.validated}
+                                                  title="Monter"
+                                                  onClick={async () => {
+                                                    const prev = sceneShots.find(s => s.shot_order === shot.shot_order - 1);
+                                                    if (!prev) return;
+                                                    await supabase.from("shots").update({ shot_order: shot.shot_order }).eq("id", prev.id);
+                                                    await supabase.from("shots").update({ shot_order: prev.shot_order }).eq("id", shot.id);
+                                                    const { data: fresh } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+                                                    if (fresh) setShots(fresh as Shot[]);
+                                                  }}
+                                                >
+                                                  <ChevronUp className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 w-6 p-0"
+                                                  disabled={isLast || scene.validated}
+                                                  title="Descendre"
+                                                  onClick={async () => {
+                                                    const next = sceneShots.find(s => s.shot_order === shot.shot_order + 1);
+                                                    if (!next) return;
+                                                    await supabase.from("shots").update({ shot_order: shot.shot_order }).eq("id", next.id);
+                                                    await supabase.from("shots").update({ shot_order: next.shot_order }).eq("id", shot.id);
+                                                    const { data: fresh } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+                                                    if (fresh) setShots(fresh as Shot[]);
+                                                  }}
+                                                >
+                                                  <ChevronDown className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <div className="ml-auto flex items-center gap-1.5">
                                                 <Button
                                                   size="sm"
                                                   variant="outline"
@@ -2663,6 +2699,7 @@ export default function Editor() {
                                                   {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
                                                   Régénérer le visuel
                                                 </Button>
+                                                </div>
                                           </div>
                                           {/* ShotCard with action buttons right below regen */}
                                           <ShotCard
