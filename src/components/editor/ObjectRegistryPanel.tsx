@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   X,
   Search,
   ImageIcon,
+  Upload,
   Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -255,6 +256,40 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
   }, [objects, updateObject]);
 
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleFileUpload = useCallback(async (id: string, file: File) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const accepted = ["image/jpeg", "image/png", "image/webp"];
+    if (!accepted.includes(file.type)) {
+      toast.error("Format non supporté. Utilisez JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux (max 10 Mo).");
+      return;
+    }
+    const existing = obj.reference_images || [];
+    const refIndex = existing.length + 1;
+    const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+    const safeName = (obj.nom || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
+    const filePath = `${safeName}_ref_${refIndex}.${ext}`;
+    try {
+      const { error } = await supabase.storage.from("reference-images").upload(filePath, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+      if (error) throw error;
+      const { data: publicUrlData } = supabase.storage.from("reference-images").getPublicUrl(filePath);
+      const storageUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+      updateObject(id, { reference_images: [...existing, storageUrl] });
+      toast.success("Image de référence uploadée");
+    } catch (e: any) {
+      toast.error("Erreur upload : " + (e.message || "Erreur inconnue"));
+    }
+  }, [objects, updateObject]);
+
   if (objects.length === 0) {
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
@@ -429,10 +464,10 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                         })}
                       </div>
                     )}
-                    <div className="mt-1">
+                    <div className="mt-1 flex gap-1.5">
                       <Input
                         placeholder="Coller une URL d'image et appuyer Entrée"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs flex-1"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             const input = e.currentTarget;
@@ -442,6 +477,26 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                               input.value = "";
                             }
                           }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs gap-1 shrink-0"
+                        onClick={() => fileInputRefs.current[obj.id]?.click()}
+                      >
+                        <Upload className="h-3 w-3" />
+                        Fichier
+                      </Button>
+                      <input
+                        ref={(el) => { fileInputRefs.current[obj.id] = el; }}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(obj.id, file);
+                          e.target.value = "";
                         }}
                       />
                     </div>
