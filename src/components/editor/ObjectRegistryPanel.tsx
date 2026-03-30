@@ -256,6 +256,40 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
   }, [objects, updateObject]);
 
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleFileUpload = useCallback(async (id: string, file: File) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const accepted = ["image/jpeg", "image/png", "image/webp"];
+    if (!accepted.includes(file.type)) {
+      toast.error("Format non supporté. Utilisez JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux (max 10 Mo).");
+      return;
+    }
+    const existing = obj.reference_images || [];
+    const refIndex = existing.length + 1;
+    const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+    const safeName = (obj.nom || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
+    const filePath = `${safeName}_ref_${refIndex}.${ext}`;
+    try {
+      const { error } = await supabase.storage.from("reference-images").upload(filePath, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+      if (error) throw error;
+      const { data: publicUrlData } = supabase.storage.from("reference-images").getPublicUrl(filePath);
+      const storageUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+      updateObject(id, { reference_images: [...existing, storageUrl] });
+      toast.success("Image de référence uploadée");
+    } catch (e: any) {
+      toast.error("Erreur upload : " + (e.message || "Erreur inconnue"));
+    }
+  }, [objects, updateObject]);
+
   if (objects.length === 0) {
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
