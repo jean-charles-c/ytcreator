@@ -329,6 +329,14 @@ export default function Editor() {
           setCurrentShotVersionId(maxId);
         }
 
+        // Restore shot object overrides
+        if (scriptCreatorState.timeline_state && typeof scriptCreatorState.timeline_state === 'object') {
+          const ts = scriptCreatorState.timeline_state as any;
+          if (ts.shotObjectOverrides && typeof ts.shotObjectOverrides === 'object') {
+            setShotObjectOverrides(ts.shotObjectOverrides);
+          }
+        }
+
         lastSavedScriptCreatorSnapshotRef.current = JSON.stringify({
           file_name: scriptCreatorState.file_name ?? null,
           page_count: Number(scriptCreatorState.page_count) || 0,
@@ -786,35 +794,46 @@ export default function Editor() {
     return result;
   }, [allRecurringObjects, shotObjectOverrides]);
 
+  // Persist shot object overrides to DB
+  const persistShotObjectOverrides = useCallback(async (overrides: Record<string, { added: string[]; removed: string[] }>) => {
+    if (!projectId) return;
+    const { error } = await (supabase as any)
+      .from("project_scriptcreator_state")
+      .upsert({ project_id: projectId, timeline_state: { shotObjectOverrides: overrides } }, { onConflict: "project_id" });
+    if (error) console.error("Failed to persist shot object overrides:", error);
+  }, [projectId]);
+
   const handleLinkObjectToShot = useCallback((shotId: string, objectId: string) => {
     setShotObjectOverrides(prev => {
       const current = prev[shotId] || { added: [], removed: [] };
-      // If it was previously removed, just un-remove it
+      let next: typeof prev;
       if (current.removed.includes(objectId)) {
-        return { ...prev, [shotId]: { ...current, removed: current.removed.filter(id => id !== objectId) } };
+        next = { ...prev, [shotId]: { ...current, removed: current.removed.filter(id => id !== objectId) } };
+      } else if (!current.added.includes(objectId)) {
+        next = { ...prev, [shotId]: { ...current, added: [...current.added, objectId] } };
+      } else {
+        return prev;
       }
-      // Otherwise add it
-      if (!current.added.includes(objectId)) {
-        return { ...prev, [shotId]: { ...current, added: [...current.added, objectId] } };
-      }
-      return prev;
+      persistShotObjectOverrides(next);
+      return next;
     });
-  }, []);
+  }, [persistShotObjectOverrides]);
 
   const handleUnlinkObjectFromShot = useCallback((shotId: string, objectId: string) => {
     setShotObjectOverrides(prev => {
       const current = prev[shotId] || { added: [], removed: [] };
-      // If it was a per-shot addition, just remove from added
+      let next: typeof prev;
       if (current.added.includes(objectId)) {
-        return { ...prev, [shotId]: { ...current, added: current.added.filter(id => id !== objectId) } };
+        next = { ...prev, [shotId]: { ...current, added: current.added.filter(id => id !== objectId) } };
+      } else if (!current.removed.includes(objectId)) {
+        next = { ...prev, [shotId]: { ...current, removed: [...current.removed, objectId] } };
+      } else {
+        return prev;
       }
-      // Otherwise it's a scene-level object, mark as removed for this shot
-      if (!current.removed.includes(objectId)) {
-        return { ...prev, [shotId]: { ...current, removed: [...current.removed, objectId] } };
-      }
-      return prev;
+      persistShotObjectOverrides(next);
+      return next;
     });
-  }, []);
+  }, [persistShotObjectOverrides]);
 
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
