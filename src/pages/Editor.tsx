@@ -55,7 +55,7 @@ import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
 import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sensitiveMode";
 import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
 import { applyFrenchTypography } from "@/components/editor/frenchTypography";
-import { reorderShotsByReadingPosition, sortShotsBySceneText } from "@/components/editor/shotAlignment";
+import { reorderShotsByReadingPosition } from "@/components/editor/shotAlignment";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
