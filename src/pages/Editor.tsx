@@ -55,7 +55,7 @@ import VideoPromptsTab from "@/components/editor/VideoPromptsTab";
 import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sensitiveMode";
 import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
 import { applyFrenchTypography } from "@/components/editor/frenchTypography";
-import { reorderShotsByReadingPosition, sortShotsBySceneText } from "@/components/editor/shotAlignment";
+import { reorderShotsByReadingPosition } from "@/components/editor/shotAlignment";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
@@ -2616,40 +2616,6 @@ export default function Editor() {
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
                                       Générer les prompts
                                     </Button>
-                                    <button
-                                      onClick={async () => {
-                                        if (scene.validated) {
-                                          toast.error("Scène validée — déverrouillez-la d'abord pour réaligner.");
-                                          return;
-                                        }
-                                        const ordered = sortShotsBySceneText(scene, sceneShots);
-                                        const updates: { id: string; shot_order: number }[] = [];
-                                        ordered.forEach((shot, idx) => {
-                                          const correctOrder = idx + 1;
-                                          if (shot.shot_order !== correctOrder) {
-                                            updates.push({ id: shot.id, shot_order: correctOrder });
-                                          }
-                                        });
-                                        if (updates.length === 0) {
-                                          toast.info("L'ordre est déjà correct.");
-                                          return;
-                                        }
-                                        for (const u of updates) {
-                                          await supabase.from("shots").update({ shot_order: u.shot_order }).eq("id", u.id);
-                                        }
-                                        toast.success(`Shots de la scène ${scene.scene_order} réalignés (${updates.length} déplacés)`);
-                                        const { data: freshShots } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
-                                        if (freshShots) {
-                                          const { reordered } = reorderShotsByReadingPosition(freshShots as Shot[], scenes);
-                                          setShots(reordered);
-                                        }
-                                      }}
-                                      className="flex items-center gap-1 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors min-h-[44px] sm:min-h-[36px] border border-border"
-                                      title="Réordonner les shots selon leur position dans le texte source"
-                                    >
-                                      <ArrowUpDown className="h-3.5 w-3.5" />
-                                      <span>Réaligner l'ordre</span>
-                                    </button>
                                   </div>
 
                                   {/* Scene source text */}
@@ -2675,8 +2641,44 @@ export default function Editor() {
                                       onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
-                                          {/* Regen buttons row */}
-                                          <div className="mb-1 flex items-center justify-end gap-1.5">
+                                          {/* Regen + move buttons row */}
+                                          <div className="mb-1 flex items-center gap-1.5">
+                                                {/* Move up/down */}
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 w-6 p-0"
+                                                  disabled={shot.shot_order <= 1 || scene.validated}
+                                                  title="Monter"
+                                                  onClick={async () => {
+                                                    const prev = sceneShots.find(s => s.shot_order === shot.shot_order - 1);
+                                                    if (!prev) return;
+                                                    await supabase.from("shots").update({ shot_order: shot.shot_order }).eq("id", prev.id);
+                                                    await supabase.from("shots").update({ shot_order: prev.shot_order }).eq("id", shot.id);
+                                                    const { data: fresh } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+                                                    if (fresh) setShots(fresh as Shot[]);
+                                                  }}
+                                                >
+                                                  <ChevronUp className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 w-6 p-0"
+                                                  disabled={isLast || scene.validated}
+                                                  title="Descendre"
+                                                  onClick={async () => {
+                                                    const next = sceneShots.find(s => s.shot_order === shot.shot_order + 1);
+                                                    if (!next) return;
+                                                    await supabase.from("shots").update({ shot_order: shot.shot_order }).eq("id", next.id);
+                                                    await supabase.from("shots").update({ shot_order: next.shot_order }).eq("id", shot.id);
+                                                    const { data: fresh } = await supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true });
+                                                    if (fresh) setShots(fresh as Shot[]);
+                                                  }}
+                                                >
+                                                  <ChevronDown className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <div className="ml-auto flex items-center gap-1.5">
                                                 <Button
                                                   size="sm"
                                                   variant="outline"
@@ -2697,6 +2699,7 @@ export default function Editor() {
                                                   {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
                                                   Régénérer le visuel
                                                 </Button>
+                                                </div>
                                           </div>
                                           {/* ShotCard with action buttons right below regen */}
                                           <ShotCard
