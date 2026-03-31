@@ -660,13 +660,59 @@ export default function Editor() {
   const handleObjectRegistryChange = useCallback(async (objects: RecurringObject[]) => {
     const updated = { ...globalContext, objets_recurrents: objects };
     setGlobalContext(updated);
+
+    // Sync mentions_shots → shotObjectOverrides so VisualPrompts entity badges stay in sync
+    setShotObjectOverrides(prev => {
+      const next = { ...prev };
+      let changed = false;
+      for (const obj of objects) {
+        if (!obj.mentions_shots) continue;
+        for (const shotId of obj.mentions_shots) {
+          // Find which scene this shot belongs to
+          const shot = shots.find(s => s.id === shotId);
+          if (!shot) continue;
+          const scene = scenes.find(sc => sc.id === shot.scene_id);
+          if (!scene) continue;
+          // Check if this object is already inherited from scene level
+          const isSceneLinked = obj.mentions_scenes.includes(scene.scene_order);
+          if (isSceneLinked) continue; // Already inherited, no override needed
+          // Add override if not already present
+          const current = next[shotId] || { added: [], removed: [] };
+          if (!current.added.includes(obj.id)) {
+            next[shotId] = { ...current, added: [...current.added, obj.id], removed: current.removed.filter(id => id !== obj.id) };
+            changed = true;
+          }
+        }
+      }
+      // Also remove overrides for objects no longer in mentions_shots
+      for (const obj of objects) {
+        const shotIds = obj.mentions_shots || [];
+        for (const [shotId, overrides] of Object.entries(next)) {
+          if (overrides.added.includes(obj.id) && !shotIds.includes(shotId)) {
+            // Check if scene-level covers it
+            const shot = shots.find(s => s.id === shotId);
+            const scene = shot ? scenes.find(sc => sc.id === shot.scene_id) : null;
+            const isSceneLinked = scene ? obj.mentions_scenes.includes(scene.scene_order) : false;
+            if (!isSceneLinked) {
+              next[shotId] = { ...overrides, added: overrides.added.filter(id => id !== obj.id) };
+              changed = true;
+            }
+          }
+        }
+      }
+      if (changed) {
+        persistShotObjectOverrides(next);
+      }
+      return changed ? next : prev;
+    });
+
     if (projectId) {
       await (supabase as any).from("project_scriptcreator_state").upsert(
         { project_id: projectId, global_context: updated },
         { onConflict: "project_id" }
       );
     }
-  }, [globalContext, projectId]);
+  }, [globalContext, projectId, shots, scenes, persistShotObjectOverrides]);
 
   const [isContextAnalyzing, setIsContextAnalyzing] = useState(false);
   // Apply identity templates to objects that lack proper lock clauses
