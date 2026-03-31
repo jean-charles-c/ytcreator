@@ -33,6 +33,7 @@ export interface RecurringObject {
   description_visuelle: string;
   epoque: string;
   mentions_scenes: number[];
+  mentions_shots?: string[];
   identity_prompt: string;
   reference_images?: string[];
 }
