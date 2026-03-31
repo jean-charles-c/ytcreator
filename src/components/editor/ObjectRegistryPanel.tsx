@@ -678,7 +678,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                                           : "bg-background text-muted-foreground border-border hover:bg-secondary"
                                       }`}
                                     >
-                                      {shot.shot_order}
+                                      {globalShotIndexMap.get(shot.id) ?? shot.shot_order}
                                     </button>
                                   );
                                 })}
