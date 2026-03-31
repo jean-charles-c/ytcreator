@@ -666,7 +666,11 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                               <button
                                 key={shot.id}
                                 onClick={() => toggleShot(obj.id, shot.id)}
-                                title={`Shot ${globalNum} — ${shot.source_sentence_fr?.slice(0, 120) || shot.source_sentence?.slice(0, 120) || shot.description?.slice(0, 120) || ""}`}
+                                title={`Shot ${globalNum} — ${(
+                                  scriptLanguage === "fr"
+                                    ? shot.source_sentence
+                                    : shot.source_sentence_fr || shot.source_sentence
+                                )?.slice(0, 120) || shot.description?.slice(0, 120) || ""}`}
                                 className={`text-[10px] w-7 h-7 rounded border transition-colors ${
                                   isActive
                                     ? "bg-primary text-primary-foreground border-primary"
