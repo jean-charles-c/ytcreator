@@ -150,7 +150,19 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   }, [objects, onChange]);
 
   const updateObject = useCallback((id: string, patch: Partial<RecurringObject>) => {
-    onChange(objects.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+    onChange(objects.map((o) => {
+      if (o.id !== id) return o;
+      const updated = { ...o, ...patch };
+      // Auto-regenerate identity_prompt when reference_images change
+      if ('reference_images' in patch && !('identity_prompt' in patch)) {
+        updated.identity_prompt = IDENTITY_TEMPLATES[updated.type](
+          updated.nom || "[NOM]",
+          updated.epoque || undefined,
+          updated.reference_images
+        );
+      }
+      return updated;
+    }));
   }, [objects, onChange]);
 
   const removeObject = useCallback((id: string) => {
