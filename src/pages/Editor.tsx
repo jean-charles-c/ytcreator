@@ -835,6 +835,35 @@ export default function Editor() {
     });
   }, [persistShotObjectOverrides]);
 
+  // Sync mentions_shots from recurring objects → shotObjectOverrides for VisualPrompts
+  useEffect(() => {
+    if (!allRecurringObjects.length || !shots.length || !scenes.length) return;
+    setShotObjectOverrides(prev => {
+      const next = { ...prev };
+      let changed = false;
+      for (const obj of allRecurringObjects) {
+        if (!obj.mentions_shots) continue;
+        for (const shotId of obj.mentions_shots) {
+          const shot = shots.find(s => s.id === shotId);
+          if (!shot) continue;
+          const scene = scenes.find(sc => sc.id === shot.scene_id);
+          if (!scene) continue;
+          const isSceneLinked = obj.mentions_scenes.includes(scene.scene_order);
+          if (isSceneLinked) continue;
+          const current = next[shotId] || { added: [], removed: [] };
+          if (!current.added.includes(obj.id)) {
+            next[shotId] = { ...current, added: [...current.added, obj.id], removed: current.removed.filter(id => id !== obj.id) };
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        persistShotObjectOverrides(next);
+      }
+      return changed ? next : prev;
+    });
+  }, [allRecurringObjects, shots, scenes, persistShotObjectOverrides]);
+
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
     setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
