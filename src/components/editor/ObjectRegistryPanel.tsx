@@ -127,9 +127,10 @@ interface ObjectRegistryPanelProps {
   isAnalyzing?: boolean;
   shots?: Shot[];
   scenes?: Scene[];
+  scriptLanguage?: string;
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes, scriptLanguage = "fr" }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -665,7 +666,11 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                               <button
                                 key={shot.id}
                                 onClick={() => toggleShot(obj.id, shot.id)}
-                                title={`Shot ${globalNum} — ${shot.source_sentence_fr?.slice(0, 120) || shot.source_sentence?.slice(0, 120) || shot.description?.slice(0, 120) || ""}`}
+                                title={`Shot ${globalNum} — ${(
+                                  scriptLanguage === "fr"
+                                    ? shot.source_sentence
+                                    : shot.source_sentence_fr || shot.source_sentence
+                                )?.slice(0, 120) || shot.description?.slice(0, 120) || ""}`}
                                 className={`text-[10px] w-7 h-7 rounded border transition-colors ${
                                   isActive
                                     ? "bg-primary text-primary-foreground border-primary"
