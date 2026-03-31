@@ -95,33 +95,16 @@ export function sortShotsBySceneText(scene: Scene, sceneShots: Shot[]): Shot[] {
   });
 }
 
-export function reorderShotsByReadingPosition(shots: Shot[], scenes: Scene[]): { reordered: Shot[]; updates: { id: string; shot_order: number }[] } {
-  const sceneMap = new Map<string, Scene>();
-  scenes.forEach((scene) => sceneMap.set(scene.id, scene));
-
-  const updates: { id: string; shot_order: number }[] = [];
-  const reordered = [...shots];
-  const shotsByScene = new Map<string, Shot[]>();
-
-  for (const shot of reordered) {
-    const bucket = shotsByScene.get(shot.scene_id) ?? [];
-    bucket.push(shot);
-    shotsByScene.set(shot.scene_id, bucket);
-  }
-
-  for (const [sceneId, sceneShots] of shotsByScene) {
-    const scene = sceneMap.get(sceneId);
-    if (!scene) continue;
-
-    const orderedShots = sortShotsBySceneText(scene, sceneShots);
-    orderedShots.forEach((shot, index) => {
-      const correctOrder = index + 1;
-      if (shot.shot_order !== correctOrder) {
-        shot.shot_order = correctOrder;
-        updates.push({ id: shot.id, shot_order: correctOrder });
-      }
-    });
-  }
-
-  return { reordered, updates };
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  🔒 LOCKED — shot_order is the SOLE source of truth.           ║
+// ║  Manual reordering (⬆/⬇) persists to DB; this function MUST   ║
+// ║  NOT override it with text-position sorting.                    ║
+// ╚══════════════════════════════════════════════════════════════════╝
+export function reorderShotsByReadingPosition(shots: Shot[], _scenes: Scene[]): { reordered: Shot[]; updates: { id: string; shot_order: number }[] } {
+  // Simply return shots sorted by shot_order — never re-sort by text position
+  const reordered = [...shots].sort((a, b) => {
+    if (a.scene_id !== b.scene_id) return 0; // preserve inter-scene ordering from query
+    return a.shot_order - b.shot_order;
+  });
+  return { reordered, updates: [] };
 }
