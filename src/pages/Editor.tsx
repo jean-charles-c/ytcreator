@@ -2037,6 +2037,8 @@ export default function Editor() {
                   onReanalyze={handleReanalyzeContext}
                   onSearchMore={handleSearchMoreRecurrences}
                   isAnalyzing={isContextAnalyzing}
+                  shots={shots}
+                  scenes={scenes}
                 />
 
                 {/* Segmentation QA Panel */}

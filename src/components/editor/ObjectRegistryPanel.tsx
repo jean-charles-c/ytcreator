@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ export interface RecurringObject {
   description_visuelle: string;
   epoque: string;
   mentions_scenes: number[];
+  mentions_shots?: string[];
   identity_prompt: string;
   reference_images?: string[];
 }
@@ -112,6 +113,10 @@ function generateId() {
 
 // ── Component ──────────────────────────────────────────────────────
 
+import type { Tables } from "@/integrations/supabase/types";
+type Shot = Tables<"shots">;
+type Scene = Tables<"scenes">;
+
 interface ObjectRegistryPanelProps {
   objects: RecurringObject[];
   onChange: (objects: RecurringObject[]) => void;
@@ -119,9 +124,11 @@ interface ObjectRegistryPanelProps {
   onReanalyze?: () => void;
   onSearchMore?: (excludeNames: string[]) => void;
   isAnalyzing?: boolean;
+  shots?: Shot[];
+  scenes?: Scene[];
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -171,6 +178,33 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
       : [...obj.mentions_scenes, sceneOrder].sort((a, b) => a - b);
     updateObject(id, { mentions_scenes: scenes });
   }, [objects, updateObject]);
+
+  const toggleShot = useCallback((id: string, shotId: string) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const current = obj.mentions_shots || [];
+    const updated = current.includes(shotId)
+      ? current.filter((s) => s !== shotId)
+      : [...current, shotId];
+    updateObject(id, { mentions_shots: updated });
+  }, [objects, updateObject]);
+
+  // Group shots by scene for display
+  const shotsBySceneMap = useMemo(() => {
+    if (!allShots || !allScenes) return new Map<string, { sceneTitle: string; sceneOrder: number; shots: Shot[] }>();
+    const map = new Map<string, { sceneTitle: string; sceneOrder: number; shots: Shot[] }>();
+    for (const scene of allScenes) {
+      const sceneShots = allShots
+        .filter(s => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      if (sceneShots.length > 0) {
+        map.set(scene.id, { sceneTitle: scene.title, sceneOrder: scene.scene_order, shots: sceneShots });
+      }
+    }
+    return map;
+  }, [allShots, allScenes]);
+
+  const hasShots = allShots && allShots.length > 0;
 
   const uploadToStorage = useCallback(async (objectName: string, imageUrl: string, refIndex: number): Promise<string | null> => {
     try {
@@ -524,7 +558,49 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     </div>
                   </div>
 
-                  {/* Identity prompt */}
+                  {/* Shots où l'objet apparaît */}
+                  {hasShots && (
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Shots où l'objet apparaît
+                        {(obj.mentions_shots?.length || 0) > 0 && (
+                          <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
+                        )}
+                      </label>
+                      <div className="mt-1 space-y-1.5 max-h-[200px] overflow-y-auto">
+                        {Array.from(shotsBySceneMap.entries())
+                          .sort(([, a], [, b]) => a.sceneOrder - b.sceneOrder)
+                          .map(([sceneId, { sceneTitle, sceneOrder, shots: sceneShots }]) => (
+                            <div key={sceneId}>
+                              <div className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                                S{sceneOrder} — {sceneTitle}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {sceneShots.map((shot) => {
+                                  const isActive = (obj.mentions_shots || []).includes(shot.id);
+                                  return (
+                                    <button
+                                      key={shot.id}
+                                      onClick={() => toggleShot(obj.id, shot.id)}
+                                      title={shot.source_sentence?.slice(0, 80) || shot.description.slice(0, 80)}
+                                      className={`text-[10px] min-w-[28px] h-6 px-1 rounded border transition-colors ${
+                                        isActive
+                                          ? "bg-primary text-primary-foreground border-primary"
+                                          : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                                      }`}
+                                    >
+                                      {shot.shot_order}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Prompt d'identité visuelle (injecté dans chaque shot concerné)</label>
