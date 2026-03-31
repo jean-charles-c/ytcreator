@@ -128,7 +128,7 @@ interface ObjectRegistryPanelProps {
   scenes?: Scene[];
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
