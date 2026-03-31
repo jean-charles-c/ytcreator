@@ -179,6 +179,33 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     updateObject(id, { mentions_scenes: scenes });
   }, [objects, updateObject]);
 
+  const toggleShot = useCallback((id: string, shotId: string) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const current = obj.mentions_shots || [];
+    const updated = current.includes(shotId)
+      ? current.filter((s) => s !== shotId)
+      : [...current, shotId];
+    updateObject(id, { mentions_shots: updated });
+  }, [objects, updateObject]);
+
+  // Group shots by scene for display
+  const shotsBySceneMap = useMemo(() => {
+    if (!allShots || !allScenes) return new Map<string, { sceneTitle: string; sceneOrder: number; shots: Shot[] }>();
+    const map = new Map<string, { sceneTitle: string; sceneOrder: number; shots: Shot[] }>();
+    for (const scene of allScenes) {
+      const sceneShots = allShots
+        .filter(s => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      if (sceneShots.length > 0) {
+        map.set(scene.id, { sceneTitle: scene.title, sceneOrder: scene.scene_order, shots: sceneShots });
+      }
+    }
+    return map;
+  }, [allShots, allScenes]);
+
+  const hasShots = allShots && allShots.length > 0;
+
   const uploadToStorage = useCallback(async (objectName: string, imageUrl: string, refIndex: number): Promise<string | null> => {
     try {
       const response = await fetch(imageUrl);
