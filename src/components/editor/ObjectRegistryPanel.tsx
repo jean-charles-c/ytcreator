@@ -558,7 +558,49 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     </div>
                   </div>
 
-                  {/* Identity prompt */}
+                  {/* Shots où l'objet apparaît */}
+                  {hasShots && (
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Shots où l'objet apparaît
+                        {(obj.mentions_shots?.length || 0) > 0 && (
+                          <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
+                        )}
+                      </label>
+                      <div className="mt-1 space-y-1.5 max-h-[200px] overflow-y-auto">
+                        {Array.from(shotsBySceneMap.entries())
+                          .sort(([, a], [, b]) => a.sceneOrder - b.sceneOrder)
+                          .map(([sceneId, { sceneTitle, sceneOrder, shots: sceneShots }]) => (
+                            <div key={sceneId}>
+                              <div className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                                S{sceneOrder} — {sceneTitle}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {sceneShots.map((shot) => {
+                                  const isActive = (obj.mentions_shots || []).includes(shot.id);
+                                  return (
+                                    <button
+                                      key={shot.id}
+                                      onClick={() => toggleShot(obj.id, shot.id)}
+                                      title={shot.source_sentence?.slice(0, 80) || shot.description.slice(0, 80)}
+                                      className={`text-[10px] min-w-[28px] h-6 px-1 rounded border transition-colors ${
+                                        isActive
+                                          ? "bg-primary text-primary-foreground border-primary"
+                                          : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                                      }`}
+                                    >
+                                      {shot.shot_order}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Prompt d'identité visuelle (injecté dans chaque shot concerné)</label>
