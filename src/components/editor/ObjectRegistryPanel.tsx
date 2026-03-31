@@ -202,6 +202,23 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     updateObject(id, { mentions_shots: updated });
   }, [objects, updateObject]);
 
+  // Compute global shot index map (shot.id → global sequential number)
+  const globalShotIndexMap = useMemo(() => {
+    if (!allShots || !allScenes) return new Map<string, number>();
+    const map = new Map<string, number>();
+    const sortedScenes = [...allScenes].sort((a, b) => a.scene_order - b.scene_order);
+    let idx = 1;
+    for (const scene of sortedScenes) {
+      const sceneShots = allShots
+        .filter(s => s.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      for (const shot of sceneShots) {
+        map.set(shot.id, idx++);
+      }
+    }
+    return map;
+  }, [allShots, allScenes]);
+
   // Group shots by scene for display
   const shotsBySceneMap = useMemo(() => {
     if (!allShots || !allScenes) return new Map<string, { sceneTitle: string; sceneOrder: number; shots: Shot[] }>();
@@ -661,7 +678,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                                           : "bg-background text-muted-foreground border-border hover:bg-secondary"
                                       }`}
                                     >
-                                      {shot.shot_order}
+                                      {globalShotIndexMap.get(shot.id) ?? shot.shot_order}
                                     </button>
                                   );
                                 })}
