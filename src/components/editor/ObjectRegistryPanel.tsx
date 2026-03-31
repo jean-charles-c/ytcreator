@@ -619,12 +619,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   {/* Shots où l'objet apparaît */}
                   {hasShots && (
                     <div>
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                        Shots où l'objet apparaît
-                        {(obj.mentions_shots?.length || 0) > 0 && (
-                          <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
-                        )}
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                          Shots où l'objet apparaît
+                          {(obj.mentions_shots?.length || 0) > 0 && (
+                            <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
+                          )}
+                        </label>
+                      </div>
                       <div className="mt-1 space-y-1.5 max-h-[200px] overflow-y-auto">
                         {Array.from(shotsBySceneMap.entries())
                           .sort(([, a], [, b]) => a.sceneOrder - b.sceneOrder)
