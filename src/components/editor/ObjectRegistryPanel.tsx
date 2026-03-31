@@ -20,6 +20,7 @@ import {
   ImageIcon,
   Upload,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -205,6 +206,63 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   }, [allShots, allScenes]);
 
   const hasShots = allShots && allShots.length > 0;
+  const [detectingShots, setDetectingShots] = useState(false);
+
+  const autoDetectShots = useCallback(async () => {
+    if (!allShots || allShots.length === 0 || objects.length === 0) {
+      toast.info("Aucun shot ou objet à analyser.");
+      return;
+    }
+    setDetectingShots(true);
+    try {
+      const objectsPayload = objects.map(o => ({
+        id: o.id,
+        nom: o.nom,
+        type: o.type,
+        description_visuelle: o.description_visuelle,
+      }));
+      const shotsPayload = allShots.map(s => ({
+        id: s.id,
+        scene_id: s.scene_id,
+        source_sentence: s.source_sentence,
+        source_sentence_fr: s.source_sentence_fr,
+        description: s.description,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("detect-object-shots", {
+        body: { objects: objectsPayload, shots: shotsPayload },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      const results = data?.results as Record<string, string[]> | undefined;
+      if (!results) {
+        toast.info("Aucun résultat de détection.");
+        return;
+      }
+
+      // Merge AI results with existing manual selections (union)
+      const updated = objects.map(obj => {
+        const aiShotIds = results[obj.id] || [];
+        const existing = obj.mentions_shots || [];
+        const merged = Array.from(new Set([...existing, ...aiShotIds]));
+        return { ...obj, mentions_shots: merged };
+      });
+
+      onChange(updated);
+      const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+      toast.success(`Auto-détection terminée : ${totalDetected} association(s) trouvée(s)`);
+    } catch (e: any) {
+      console.error("Auto-detect error:", e);
+      toast.error("Erreur auto-détection : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setDetectingShots(false);
+    }
+  }, [objects, allShots, onChange]);
 
   const uploadToStorage = useCallback(async (objectName: string, imageUrl: string, refIndex: number): Promise<string | null> => {
     try {
@@ -561,12 +619,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   {/* Shots où l'objet apparaît */}
                   {hasShots && (
                     <div>
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                        Shots où l'objet apparaît
-                        {(obj.mentions_shots?.length || 0) > 0 && (
-                          <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
-                        )}
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                          Shots où l'objet apparaît
+                          {(obj.mentions_shots?.length || 0) > 0 && (
+                            <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
+                          )}
+                        </label>
+                      </div>
                       <div className="mt-1 space-y-1.5 max-h-[200px] overflow-y-auto">
                         {Array.from(shotsBySceneMap.entries())
                           .sort(([, a], [, b]) => a.sceneOrder - b.sceneOrder)
@@ -645,6 +705,18 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             >
               <Search className="h-3.5 w-3.5" />
               {isAnalyzing ? "Recherche…" : "Chercher d'autres récurrences"}
+            </Button>
+          )}
+          {hasShots && objects.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={autoDetectShots}
+              disabled={detectingShots}
+              className="flex-1 min-h-[40px] text-xs"
+            >
+              {detectingShots ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {detectingShots ? "Détection IA…" : "Auto-détecter les shots"}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
