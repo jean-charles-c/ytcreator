@@ -2068,6 +2068,7 @@ export default function Editor() {
                   isAnalyzing={isContextAnalyzing}
                   shots={shots}
                   scenes={scenes}
+                  scriptLanguage={scriptLanguage}
                 />
 
                 {/* Segmentation QA Panel */}
