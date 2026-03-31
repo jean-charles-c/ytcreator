@@ -707,6 +707,18 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               {isAnalyzing ? "Recherche…" : "Chercher d'autres récurrences"}
             </Button>
           )}
+          {hasShots && objects.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={autoDetectShots}
+              disabled={detectingShots}
+              className="flex-1 min-h-[40px] text-xs"
+            >
+              {detectingShots ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {detectingShots ? "Détection IA…" : "Auto-détecter les shots"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
             <Plus className="h-3.5 w-3.5" /> Ajouter un objet
           </Button>
