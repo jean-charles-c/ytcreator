@@ -113,6 +113,10 @@ function generateId() {
 
 // ── Component ──────────────────────────────────────────────────────
 
+import type { Tables } from "@/integrations/supabase/types";
+type Shot = Tables<"shots">;
+type Scene = Tables<"scenes">;
+
 interface ObjectRegistryPanelProps {
   objects: RecurringObject[];
   onChange: (objects: RecurringObject[]) => void;
@@ -120,6 +124,8 @@ interface ObjectRegistryPanelProps {
   onReanalyze?: () => void;
   onSearchMore?: (excludeNames: string[]) => void;
   isAnalyzing?: boolean;
+  shots?: Shot[];
+  scenes?: Scene[];
 }
 
 export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing }: ObjectRegistryPanelProps) {
