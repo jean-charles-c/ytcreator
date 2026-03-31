@@ -20,6 +20,7 @@ import {
   ImageIcon,
   Upload,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
