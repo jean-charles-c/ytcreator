@@ -648,43 +648,34 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   {/* Shots où l'objet apparaît */}
                   {hasShots && (
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                          Shots où l'objet apparaît
-                          {(obj.mentions_shots?.length || 0) > 0 && (
-                            <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
-                          )}
-                        </label>
-                      </div>
-                      <div className="mt-1 space-y-1.5 max-h-[200px] overflow-y-auto">
-                        {Array.from(shotsBySceneMap.entries())
-                          .sort(([, a], [, b]) => a.sceneOrder - b.sceneOrder)
-                          .map(([sceneId, { sceneTitle, sceneOrder, shots: sceneShots }]) => (
-                            <div key={sceneId}>
-                              <div className="text-[9px] font-medium text-muted-foreground mb-0.5">
-                                S{sceneOrder} — {sceneTitle}
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {sceneShots.map((shot) => {
-                                  const isActive = (obj.mentions_shots || []).includes(shot.id);
-                                  return (
-                                    <button
-                                      key={shot.id}
-                                      onClick={() => toggleShot(obj.id, shot.id)}
-                                      title={shot.source_sentence?.slice(0, 80) || shot.description.slice(0, 80)}
-                                      className={`text-[10px] min-w-[28px] h-6 px-1 rounded border transition-colors ${
-                                        isActive
-                                          ? "bg-primary text-primary-foreground border-primary"
-                                          : "bg-background text-muted-foreground border-border hover:bg-secondary"
-                                      }`}
-                                    >
-                                      {globalShotIndexMap.get(shot.id) ?? shot.shot_order}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Shots où l'objet apparaît
+                        {(obj.mentions_shots?.length || 0) > 0 && (
+                          <span className="ml-1 text-primary font-bold">({obj.mentions_shots!.length})</span>
+                        )}
+                      </label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {allShots!
+                          .slice()
+                          .sort((a, b) => (globalShotIndexMap.get(a.id) ?? 0) - (globalShotIndexMap.get(b.id) ?? 0))
+                          .map((shot) => {
+                            const isActive = (obj.mentions_shots || []).includes(shot.id);
+                            const globalNum = globalShotIndexMap.get(shot.id) ?? shot.shot_order;
+                            return (
+                              <button
+                                key={shot.id}
+                                onClick={() => toggleShot(obj.id, shot.id)}
+                                title={`Shot ${globalNum} — ${shot.source_sentence_fr?.slice(0, 80) || shot.source_sentence?.slice(0, 80) || shot.description.slice(0, 80)}`}
+                                className={`text-[10px] w-7 h-7 rounded border transition-colors ${
+                                  isActive
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                                }`}
+                              >
+                                {globalNum}
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
