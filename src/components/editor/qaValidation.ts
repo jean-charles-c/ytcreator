@@ -53,6 +53,12 @@ export interface AllocationSummary {
   coveragePercent: number;
   gapCount: number;
   valid: boolean;
+  /** Full expected scene text */
+  expectedText?: string;
+  /** Concatenated shot fragments */
+  actualText?: string;
+  /** Gap strings found */
+  gaps?: string[];
 }
 
 // ── Constants ─────────────────────────────────────────────────────
