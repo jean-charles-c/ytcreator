@@ -6,7 +6,7 @@ import type { VisualPromptManifest } from "./visualPromptTypes";
 import type { ShotTimepoint } from "./timelineAssembly";
 import { getNarrativeSegments } from "./narrativeSegmentation";
 import { buildManifestTiming, type ManifestTiming } from "./manifestTiming";
-import { runQaValidation, type QaReport, type QaCategory, type QaIssue } from "./qaValidation";
+import { runQaValidation, type QaReport, type QaCategory, type QaIssue, type AllocationSummary } from "./qaValidation";
 
 interface QaPanelProps {
   projectId: string;
