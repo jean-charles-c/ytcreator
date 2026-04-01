@@ -1363,10 +1363,16 @@ serve(async (req) => {
       voice.ssmlGender = voiceGender;
     }
 
-    // Chirp-HD, Studio and Polyglot voices do not support pitch, volumeGainDb, effectsProfileId, or <emphasis> tags
+    // Chirp-HD, Chirp3-HD voices only support plain text + audioEncoding (no SSML, speakingRate, pitch, etc.)
+    // Studio and Polyglot don't support pitch/volumeGainDb/effectsProfileId but do support speakingRate & SSML
+    const isChirpVoice = resolvedVoiceName && /Chirp/i.test(resolvedVoiceName);
     const isRestrictedVoice = resolvedVoiceName && /Chirp|Studio|Polyglot/i.test(resolvedVoiceName);
     const stripEmphasisTags = (ssml: string) => ssml.replace(/<\/?emphasis[^>]*>/g, "");
-    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3", speakingRate };
+
+    const audioConfig: Record<string, unknown> = { audioEncoding: "MP3" };
+    if (!isChirpVoice) {
+      audioConfig.speakingRate = speakingRate;
+    }
     if (!isRestrictedVoice) {
       if (pitch !== 0) audioConfig.pitch = pitch;
       if (volumeGainDb !== 0) audioConfig.volumeGainDb = volumeGainDb;
@@ -1374,6 +1380,14 @@ serve(async (req) => {
     }
 
     if (mode === "preview") {
+      if (isChirpVoice) {
+        // Chirp voices: plain text only, no SSML
+        const result = await callGoogleTTS(text, GOOGLE_TTS_API_KEY, voice, audioConfig, false);
+        return new Response(
+          JSON.stringify({ audioContent: result.audioContent, usedVoiceName: resolvedVoiceName ?? null }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       let ssmlText = textToSsml(text, pauseBetweenParagraphs, pauseAfterSentences, sentenceStartBoost, sentenceEndSlow, pauseAfterComma, dynamicPauseEnabled, dynamicPauseVariation, mod.emphasisBoost);
       if (isRestrictedVoice) ssmlText = stripEmphasisTags(ssmlText);
       const isSsml = ssmlText.startsWith("<speak>");
