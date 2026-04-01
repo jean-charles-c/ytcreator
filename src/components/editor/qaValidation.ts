@@ -53,6 +53,12 @@ export interface AllocationSummary {
   coveragePercent: number;
   gapCount: number;
   valid: boolean;
+  /** Full expected scene text */
+  expectedText?: string;
+  /** Concatenated shot fragments */
+  actualText?: string;
+  /** Gap strings found */
+  gaps?: string[];
 }
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -218,6 +224,9 @@ function checkAllocation(manifest: VisualPromptManifest): { issues: QaIssue[]; s
       coveragePercent: report.coveragePercent,
       gapCount: report.gaps.length,
       valid: report.valid,
+      expectedText: scene.sceneText,
+      actualText: fragments.join("\n"),
+      gaps: report.gaps,
     });
 
     for (const issue of report.issues) {

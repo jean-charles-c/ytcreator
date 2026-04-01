@@ -6,7 +6,7 @@ import type { VisualPromptManifest } from "./visualPromptTypes";
 import type { ShotTimepoint } from "./timelineAssembly";
 import { getNarrativeSegments } from "./narrativeSegmentation";
 import { buildManifestTiming, type ManifestTiming } from "./manifestTiming";
-import { runQaValidation, type QaReport, type QaCategory, type QaIssue } from "./qaValidation";
+import { runQaValidation, type QaReport, type QaCategory, type QaIssue, type AllocationSummary } from "./qaValidation";
 
 interface QaPanelProps {
   projectId: string;
@@ -43,6 +43,101 @@ const levelConfig = {
 /** Generate a stable key for a QA issue to track force-overrides */
 function issueKey(issue: { category: string; sceneOrder?: number; shotOrder?: number; message: string }): string {
   return `${issue.category}:${issue.sceneOrder ?? "g"}:${issue.shotOrder ?? ""}:${issue.message.slice(0, 80)}`;
+}
+
+/** Highlight differences between expected and actual text */
+function DiffHighlight({ expected, actual }: { expected: string; actual: string }) {
+  const expectedWords = expected.trim().replace(/\s+/g, " ").split(" ");
+  const actualWords = actual.trim().replace(/\s+/g, " ").split(" ");
+  const actualSet = new Set(actualWords.map(w => w.toLowerCase()));
+  const expectedSet = new Set(expectedWords.map(w => w.toLowerCase()));
+
+  return (
+    <div className="space-y-2 text-[10px] mt-2">
+      <div>
+        <span className="font-semibold text-emerald-500 block mb-0.5">Texte attendu (scène) :</span>
+        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+          {expectedWords.map((word, i) => {
+            const isGap = !actualSet.has(word.toLowerCase());
+            return (
+              <span key={i} className={isGap ? "bg-destructive/20 text-destructive rounded px-0.5" : ""}>
+                {word}{" "}
+              </span>
+            );
+          })}
+        </p>
+      </div>
+      <div>
+        <span className="font-semibold text-primary block mb-0.5">Texte réel (shots concaténés) :</span>
+        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+          {actualWords.map((word, i) => {
+            const isExtra = !expectedSet.has(word.toLowerCase());
+            return (
+              <span key={i} className={isExtra ? "bg-destructive/20 text-destructive rounded px-0.5" : ""}>
+                {word}{" "}
+              </span>
+            );
+          })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AllocationCoverageSection({ summaries }: { summaries: AllocationSummary[] }) {
+  const [expandedScene, setExpandedScene] = useState<number | null>(null);
+
+  return (
+    <details className="rounded border border-border bg-card">
+      <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
+        <ChevronDown className="h-3 w-3" />
+        Couverture textuelle par scène
+      </summary>
+      <div className="p-2 space-y-1">
+        {summaries.map((s) => {
+          const hasIssue = s.gapCount > 0 || !s.valid;
+          const isExpanded = expandedScene === s.sceneOrder;
+          return (
+            <div key={s.sceneOrder}>
+              <button
+                onClick={() => hasIssue ? setExpandedScene(isExpanded ? null : s.sceneOrder) : undefined}
+                className={`w-full flex items-center gap-2 text-[10px] px-2 py-1.5 rounded text-left transition-colors ${
+                  s.valid ? "bg-emerald-500/5" : "bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer"
+                } ${!hasIssue ? "cursor-default" : ""}`}
+              >
+                <span className={`font-mono font-medium ${s.valid ? "text-emerald-600" : "text-amber-600"}`}>
+                  {s.coveragePercent}%
+                </span>
+                <span className="text-muted-foreground">Scène {s.sceneOrder}</span>
+                <span className="text-foreground truncate flex-1 min-w-0">« {s.sceneTitle} »</span>
+                {s.gapCount > 0 && (
+                  <span className="text-amber-600 text-[9px] shrink-0">({s.gapCount} trou{s.gapCount > 1 ? "s" : ""})</span>
+                )}
+                {hasIssue && (
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                )}
+              </button>
+              {isExpanded && hasIssue && s.expectedText && s.actualText && (
+                <div className="mx-2 mb-2 p-2 rounded border border-border bg-secondary/30">
+                  <DiffHighlight expected={s.expectedText} actual={s.actualText} />
+                  {s.gaps && s.gaps.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <span className="text-[9px] font-semibold text-amber-600 block mb-1">Trous détectés :</span>
+                      {s.gaps.map((gap, i) => (
+                        <div key={i} className="text-[10px] text-destructive bg-destructive/10 rounded px-2 py-1 mb-1 break-words">
+                          « {gap.slice(0, 200)} »
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
 }
 
 export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange, onScenesUpdated }: QaPanelProps) {
@@ -394,28 +489,8 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
         </div>
       )}
 
-      {/* Allocation summaries */}
       {report.allocationSummaries.length > 0 && (
-        <details className="rounded border border-border bg-card">
-          <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
-            <ChevronDown className="h-3 w-3" />
-            Couverture textuelle par scène
-          </summary>
-          <div className="p-2 space-y-1">
-            {report.allocationSummaries.map((s) => (
-              <div key={s.sceneOrder} className={`flex items-center gap-2 text-[10px] px-2 py-1 rounded ${s.valid ? "bg-emerald-500/5" : "bg-amber-500/5"}`}>
-                <span className={`font-mono font-medium ${s.valid ? "text-emerald-600" : "text-amber-600"}`}>
-                  {s.coveragePercent}%
-                </span>
-                <span className="text-muted-foreground">Scène {s.sceneOrder}</span>
-                <span className="text-foreground truncate">« {s.sceneTitle} »</span>
-                {s.gapCount > 0 && (
-                  <span className="text-amber-600 text-[9px]">({s.gapCount} trou{s.gapCount > 1 ? "s" : ""})</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
+        <AllocationCoverageSection summaries={report.allocationSummaries} />
       )}
 
       {/* WARNINGS — collapsible */}
