@@ -394,28 +394,8 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
         </div>
       )}
 
-      {/* Allocation summaries */}
       {report.allocationSummaries.length > 0 && (
-        <details className="rounded border border-border bg-card">
-          <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
-            <ChevronDown className="h-3 w-3" />
-            Couverture textuelle par scène
-          </summary>
-          <div className="p-2 space-y-1">
-            {report.allocationSummaries.map((s) => (
-              <div key={s.sceneOrder} className={`flex items-center gap-2 text-[10px] px-2 py-1 rounded ${s.valid ? "bg-emerald-500/5" : "bg-amber-500/5"}`}>
-                <span className={`font-mono font-medium ${s.valid ? "text-emerald-600" : "text-amber-600"}`}>
-                  {s.coveragePercent}%
-                </span>
-                <span className="text-muted-foreground">Scène {s.sceneOrder}</span>
-                <span className="text-foreground truncate">« {s.sceneTitle} »</span>
-                {s.gapCount > 0 && (
-                  <span className="text-amber-600 text-[9px]">({s.gapCount} trou{s.gapCount > 1 ? "s" : ""})</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
+        <AllocationCoverageSection summaries={report.allocationSummaries} />
       )}
 
       {/* WARNINGS — collapsible */}
