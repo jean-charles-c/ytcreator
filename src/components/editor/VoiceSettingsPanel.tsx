@@ -56,6 +56,7 @@ const VOICE_TYPES = [
   { value: "Neural2", label: "Neural2", desc: "Très naturelle — premium" },
   { value: "Studio", label: "Studio", desc: "Voix studio — très réaliste" },
   { value: "Chirp-HD", label: "Chirp HD", desc: "Haute définition — expressif" },
+  { value: "Chirp3-HD", label: "Chirp3 HD", desc: "Dernière génération — ultra naturel" },
   { value: "Polyglot", label: "Polyglot", desc: "Multilingue" },
 ];
 
