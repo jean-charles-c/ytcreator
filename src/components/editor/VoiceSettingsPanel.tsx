@@ -481,7 +481,10 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
                   <span className="text-[10px] text-muted-foreground">
                     {GENDER_LABELS[v.gender] || v.gender}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60 truncate max-w-[140px]">
+                  <span className="rounded bg-muted px-1 text-[9px] font-medium text-muted-foreground">
+                    {v.type}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60 truncate max-w-[120px]">
                     {v.name}
                   </span>
                 </span>
