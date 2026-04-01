@@ -398,16 +398,10 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
     }
   };
 
-  // Filter voices for current type + gender
-  const filteredVoices = availableVoices.filter((v) => {
-    const matchType = (v.type || "").toLowerCase() === settings.voiceType.toLowerCase();
-    const matchGender = v.gender === settings.voiceGender;
-    return matchType && matchGender;
-  });
-
-  const voicesForDropdown = filteredVoices.length > 0
-    ? filteredVoices
-    : availableVoices.filter((v) => (v.type || "").toLowerCase() === settings.voiceType.toLowerCase());
+  // Filter voices for current type (show all genders so user sees full list)
+  const voicesForDropdown = availableVoices.filter((v) =>
+    (v.type || "").toLowerCase() === settings.voiceType.toLowerCase()
+  );
 
   return (
     <div className={hideHeader ? "space-y-4" : "rounded-lg border border-border bg-card p-4 space-y-4"}>
