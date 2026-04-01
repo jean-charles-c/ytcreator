@@ -398,9 +398,10 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
     }
   };
 
-  // Filter voices for current type (show all genders so user sees full list)
+  // Filter voices for current type AND gender
   const voicesForDropdown = availableVoices.filter((v) =>
-    (v.type || "").toLowerCase() === settings.voiceType.toLowerCase()
+    (v.type || "").toLowerCase() === settings.voiceType.toLowerCase() &&
+    (v.gender || "").toLowerCase() === settings.voiceGender.toLowerCase()
   );
 
   return (
