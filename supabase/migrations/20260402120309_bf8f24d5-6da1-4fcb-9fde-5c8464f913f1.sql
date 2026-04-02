@@ -1,0 +1,1 @@
+ALTER TABLE public.vo_audio_history ADD COLUMN whisper_words jsonb DEFAULT NULL;
