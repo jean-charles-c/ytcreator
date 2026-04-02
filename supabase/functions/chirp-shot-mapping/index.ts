@@ -142,7 +142,7 @@ function normalizeWord(w: string): string {
 }
 
 function tokenize(text: string): string[] {
-  const raw = text
+  return text
     // Normalize all apostrophe variants to simple quote then split on it
     .replace(/[\u2019\u2018\u0060\u00B4]/g, "'")
     // Split hyphenated words into separate tokens (Et-surtout → Et surtout)
@@ -152,23 +152,59 @@ function tokenize(text: string): string[] {
     .split(/\s+/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
-
-  // Expand numbers to French words for matching with Whisper transcription
-  const expanded: string[] = [];
-  for (const t of raw) {
-    if (/\d/.test(t)) {
-      expanded.push(...expandNumberToken(t));
-    } else {
-      expanded.push(t);
-    }
-  }
-  return expanded;
+  // NOTE: We no longer expand numbers here because Whisper keeps digits as-is.
+  // Bidirectional matching is handled in wordsMatch() instead.
 }
+
+// ── French number word → digit mapping ──
+
+const FRENCH_WORD_TO_DIGIT: Record<string, number> = {
+  zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5,
+  six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12,
+  treize: 13, quatorze: 14, quinze: 15, seize: 16,
+  vingt: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60,
+  cent: 100, mille: 1000, million: 1000000,
+};
 
 // ── Fuzzy matching ──
 
 function wordsMatch(source: string, whisper: string): boolean {
-  return normalizeWord(source) === normalizeWord(whisper);
+  const ns = normalizeWord(source);
+  const nw = normalizeWord(whisper);
+  if (ns === nw) return true;
+
+  // Bidirectional number matching:
+  // Case 1: Whisper has "40", source has "quarante"
+  if (/^\d+$/.test(nw)) {
+    const n = parseInt(nw, 10);
+    if (n <= 999999) {
+      const expanded = numberToFrench(n).split(/[\s-]+/).map(normalizeWord);
+      if (expanded.length === 1 && expanded[0] === ns) return true;
+      // Also check if source matches the raw digit string
+    }
+  }
+
+  // Case 2: Source has "40", whisper has "quarante"
+  if (/^\d+$/.test(ns)) {
+    const n = parseInt(ns, 10);
+    if (n <= 999999) {
+      const expanded = numberToFrench(n).split(/[\s-]+/).map(normalizeWord);
+      if (expanded.length === 1 && expanded[0] === nw) return true;
+    }
+  }
+
+  // Case 3: Source has "quarante" (text), whisper has "40" (digit)
+  // Use reverse lookup
+  if (FRENCH_WORD_TO_DIGIT[ns] !== undefined) {
+    const digitStr = String(FRENCH_WORD_TO_DIGIT[ns]);
+    if (digitStr === nw) return true;
+  }
+  if (FRENCH_WORD_TO_DIGIT[nw] !== undefined) {
+    const digitStr = String(FRENCH_WORD_TO_DIGIT[nw]);
+    if (digitStr === ns) return true;
+  }
+
+  return false;
 }
 
 /**

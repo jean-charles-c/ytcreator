@@ -503,6 +503,43 @@ export default function WhisperAlignmentEditor({
                           )}
                         </div>
 
+                        {/* Diagnostic: tokenized source vs nearby whisper */}
+                        {shot.status === "missing" && (
+                          <div className="rounded bg-muted/50 border border-border p-2 space-y-1">
+                            <span className="font-semibold text-orange-500 block text-[9px]">
+                              🔍 Diagnostic de matching
+                            </span>
+                            <div>
+                              <span className="text-muted-foreground text-[9px]">Tokens source (premiers 8) : </span>
+                              <span className="font-mono text-[9px] text-foreground">
+                                {shot.shotText.split(/\s+/).slice(0, 8).map(w => 
+                                  `"${w}"`
+                                ).join(" ")}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground text-[9px]">Whisper autour pos attendue : </span>
+                              <span className="font-mono text-[9px] text-foreground">
+                                {(() => {
+                                  // Estimate expected position based on surrounding shots
+                                  const idx = alignedShots.indexOf(shot);
+                                  let nearbyStart = 0;
+                                  for (let i = idx - 1; i >= 0; i--) {
+                                    if (alignedShots[i].whisperEndIdx !== null) {
+                                      nearbyStart = alignedShots[i].whisperEndIdx! + 1;
+                                      break;
+                                    }
+                                  }
+                                  return whisperWords
+                                    .slice(nearbyStart, nearbyStart + 12)
+                                    .map(w => `"${w.word}"`)
+                                    .join(" ");
+                                })()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Timing info */}
                         {shot.startTime !== null && shot.endTime !== null && (
                           <div className="flex gap-3 font-mono text-muted-foreground">
