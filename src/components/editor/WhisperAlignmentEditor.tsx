@@ -274,7 +274,7 @@ export default function WhisperAlignmentEditor({
     setSaving(true);
     try {
       const timepoints = alignedShots
-        .filter((s) => s.status === "ok" && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
