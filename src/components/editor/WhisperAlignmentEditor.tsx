@@ -226,25 +226,46 @@ export default function WhisperAlignmentEditor({
     const endTime = whisperWords[selectionEnd].end;
 
     // Update local state
-    setAlignedShots((prev) =>
-      prev.map((s) =>
-        s.shotId === editingShotId
-          ? {
-              ...s,
-              whisperStartIdx: selectionStart,
-              whisperEndIdx: selectionEnd,
-              startTime,
-              endTime,
-              status: "ok" as const,
-            }
-          : s
-      )
+    const updatedShots = alignedShots.map((s) =>
+      s.shotId === editingShotId
+        ? {
+            ...s,
+            whisperStartIdx: selectionStart,
+            whisperEndIdx: selectionEnd,
+            startTime,
+            endTime,
+            status: "ok" as const,
+          }
+        : s
     );
+    setAlignedShots(updatedShots);
+
+    // Auto-save to DB immediately
+    try {
+      const timepoints = updatedShots
+        .filter((s) => s.status === "ok" && s.startTime !== null)
+        .map((s, idx) => ({
+          shotId: s.shotId,
+          shotIndex: idx,
+          timeSeconds: s.startTime,
+        }));
+
+      const { error } = await supabase
+        .from("vo_audio_history")
+        .update({ shot_timepoints: timepoints as any })
+        .eq("id", audioEntryId);
+
+      if (error) throw error;
+      toast.success(`Shot calé — ${timepoints.length} timepoints sauvegardés`);
+    } catch (e: any) {
+      console.error("[WhisperAlignmentEditor] auto-save error:", e);
+      toast.error("Calage appliqué localement mais erreur de sauvegarde");
+    }
 
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {

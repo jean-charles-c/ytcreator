@@ -388,8 +388,8 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       </div>
 
       {criticalIssues.length > 0 && (
-        <div className={`rounded border-2 overflow-hidden ${effectiveBlocked > 0 ? "border-destructive/40 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"}`}>
-          <div className={`px-3 py-2 border-b flex items-center gap-2 justify-between ${effectiveBlocked > 0 ? "bg-destructive/10 border-destructive/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+        <details className={`rounded border-2 overflow-hidden ${effectiveBlocked > 0 ? "border-destructive/40 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+          <summary className={`px-3 py-2 border-b flex items-center gap-2 justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden ${effectiveBlocked > 0 ? "bg-destructive/10 border-destructive/20" : "bg-amber-500/10 border-amber-500/20"}`}>
             <div className="flex items-center gap-2">
               {effectiveBlocked > 0 ? <ShieldX className="h-4 w-4 text-destructive" /> : <ShieldOff className="h-4 w-4 text-amber-500" />}
               <span className={`text-xs font-bold ${effectiveBlocked > 0 ? "text-destructive" : "text-amber-600"}`}>
@@ -398,19 +398,20 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
                   : `${forcedCount} erreur${forcedCount > 1 ? "s" : ""} forcée${forcedCount > 1 ? "s" : ""} — Export autorisé`
                 }
               </span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground transition-transform [[open]>&]:rotate-180" />
             </div>
             {effectiveBlocked > 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-6 text-[9px] gap-1 px-2 border-destructive/30 text-destructive hover:bg-destructive/10"
-                onClick={() => forceAll(criticalIssues)}
+                onClick={(e) => { e.preventDefault(); forceAll(criticalIssues); }}
               >
                 <ShieldOff className="h-3 w-3" />
                 Tout forcer
               </Button>
             )}
-          </div>
+          </summary>
           <div className="p-2 space-y-3 max-h-80 overflow-y-auto">
             {Object.entries(criticalsByScene).map(([sceneLabel, issues]) => (
               <div key={sceneLabel} className="space-y-1">
