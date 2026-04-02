@@ -13,6 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
+import { recalculateWhisperShotEndTimes } from "./whisperAlignmentTiming";
 
 // ── Types ──
 
@@ -80,6 +81,7 @@ export default function WhisperAlignmentEditor({
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
   const [globalOffset, setGlobalOffset] = useState(0); // seconds to ADD to Whisper timecodes
+  const [audioDuration, setAudioDuration] = useState(0);
 
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
@@ -111,6 +113,7 @@ export default function WhisperAlignmentEditor({
           setWhisperWords([]);
           setAlignedShots([]);
           setAudioEntryId(null);
+          setAudioDuration(0);
           setLoading(false);
           return;
         }
@@ -129,7 +132,8 @@ export default function WhisperAlignmentEditor({
         const tpMap = new Map(timepoints.map((tp) => [tp.shotId, tp.timeSeconds as number]));
 
         const sorted = getSortedShots();
-        const audioDuration = entry.duration_estimate ?? 0;
+        const resolvedAudioDuration = entry.duration_estimate ?? 0;
+        setAudioDuration(resolvedAudioDuration);
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
@@ -161,7 +165,7 @@ export default function WhisperAlignmentEditor({
               break;
             }
           }
-          if (endTime === null) endTime = audioDuration;
+          if (endTime === null) endTime = resolvedAudioDuration;
 
           let wEndIdx: number | null = null;
           if (endTime !== null) {
@@ -186,7 +190,7 @@ export default function WhisperAlignmentEditor({
           };
         });
 
-        setAlignedShots(aligned);
+        setAlignedShots(recalculateWhisperShotEndTimes(aligned, resolvedAudioDuration));
       } catch (e) {
         console.error("[WhisperAlignmentEditor] load error:", e);
       } finally {
@@ -227,26 +231,27 @@ export default function WhisperAlignmentEditor({
     if (!editingShotId || selectionStart === null || selectionEnd === null || !audioEntryId) return;
 
     const startTime = whisperWords[selectionStart].start + globalOffset;
-    const endTime = whisperWords[selectionEnd].end + globalOffset;
 
     // Update local state
-    const updatedShots = alignedShots.map((s) =>
-      s.shotId === editingShotId
-        ? {
-            ...s,
-            whisperStartIdx: selectionStart,
-            whisperEndIdx: selectionEnd,
-            startTime,
-            endTime,
-            status: "manual" as const,
-          }
-        : s
+    const recalculatedShots = recalculateWhisperShotEndTimes(
+      alignedShots.map((s) =>
+        s.shotId === editingShotId
+          ? {
+              ...s,
+              whisperStartIdx: selectionStart,
+              whisperEndIdx: selectionEnd,
+              startTime,
+              status: "manual" as const,
+            }
+          : s
+      ),
+      audioDuration
     );
-    setAlignedShots(updatedShots);
+    setAlignedShots(recalculatedShots);
 
     // Auto-save to DB immediately
     try {
-      const timepoints = updatedShots
+      const timepoints = recalculatedShots
         .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
@@ -269,7 +274,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
@@ -373,15 +378,14 @@ export default function WhisperAlignmentEditor({
                     setSaving(true);
                     try {
                       // Recalculate all shot start times with offset applied
-                      const updated = alignedShots.map((s) => {
+                      const recalculated = recalculateWhisperShotEndTimes(alignedShots.map((s) => {
                         if (s.status === "missing" || s.startTime === null) return s;
                         const newStart = Math.max(0, s.startTime + globalOffset);
-                        const newEnd = s.endTime !== null ? Math.max(0, s.endTime + globalOffset) : null;
-                        return { ...s, startTime: newStart, endTime: newEnd };
-                      });
-                      setAlignedShots(updated);
+                        return { ...s, startTime: newStart };
+                      }), audioDuration);
+                      setAlignedShots(recalculated);
 
-                      const timepoints = updated
+                      const timepoints = recalculated
                         .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
                         .map((s, idx) => ({
                           shotId: s.shotId,
