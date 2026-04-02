@@ -810,6 +810,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               </div>
             </div>
           </div>
+        {/* ─── Chirp Alignment Review ─── */}
+        {pipelineMode === "chirp3hd" && (
+          <div className="mt-4">
+            <ChirpAlignmentReview
+              projectId={projectId}
+              shots={shots}
+              scenesForSort={scenesForSort}
+              refreshKey={historyRefreshKey}
+            />
+          </div>
+        )}
         </CollapsibleContent>
       </Collapsible>
 
