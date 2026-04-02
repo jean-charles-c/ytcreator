@@ -13,6 +13,7 @@ import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
+import ChirpAlignmentReview from "./ChirpAlignmentReview";
 
 interface VoiceOverStudioProps {
   narration: string;
@@ -809,6 +810,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               </div>
             </div>
           </div>
+        {/* ─── Chirp Alignment Review ─── */}
+        {pipelineMode === "chirp3hd" && (
+          <div className="mt-4">
+            <ChirpAlignmentReview
+              projectId={projectId}
+              shots={shots}
+              scenesForSort={scenesForSort}
+              refreshKey={historyRefreshKey}
+            />
+          </div>
+        )}
         </CollapsibleContent>
       </Collapsible>
 
