@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, AlertTriangle, XCircle, Clock, BarChart3, FlaskConical } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Clock, FlaskConical } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 

@@ -13,6 +13,7 @@ import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
+import ChirpAlignmentReview from "./ChirpAlignmentReview";
 
 interface VoiceOverStudioProps {
   narration: string;
