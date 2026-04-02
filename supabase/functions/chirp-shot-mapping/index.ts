@@ -383,10 +383,7 @@ Deno.serve(async (req) => {
           expectedWordCount: sourceTokens.length,
           status: "missing",
         });
-        // NON-BLOCKING cursor: advance by estimated position to avoid cascade failures
-        // Estimate: each word ~0.4s, find approximate whisper position
-        const estimatedWordsPerShot = sourceTokens.length;
-        searchCursor = Math.min(searchCursor + Math.max(estimatedWordsPerShot, 3), whisperWords.length);
+        // Do NOT advance cursor on miss — let next shot search from same position
         continue;
       }
 
