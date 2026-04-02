@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { useState } from "react";
 import type { ManifestTiming, ManifestTimingEntry } from "./manifestTiming";
 import type { ShotTimepoint } from "./timelineAssembly";
 
@@ -51,13 +51,13 @@ function simulateXmlFrames(entries: ManifestTimingEntry[], fps: number): XmlClip
   return frames;
 }
 
-const ManifestTimingTable = forwardRef<HTMLDivElement, ManifestTimingTableProps>(function ManifestTimingTable({ timing, fps = 24, rawTimepoints }, ref) {
+export default function ManifestTimingTable({ timing, fps = 24, rawTimepoints }: ManifestTimingTableProps) {
   const { entries, issues, totalDuration } = timing;
   const [showComparison, setShowComparison] = useState(false);
 
   if (entries.length === 0) {
     return (
-      <div ref={ref} className="space-y-2 py-4">
+      <div className="space-y-2 py-4">
         {issues.length > 0 ? (
           <div className="rounded border border-destructive/30 bg-destructive/5 p-3 space-y-1">
             <p className="text-xs font-medium text-destructive">
@@ -106,7 +106,7 @@ const ManifestTimingTable = forwardRef<HTMLDivElement, ManifestTimingTableProps>
   }, 0);
 
   return (
-    <div ref={ref} className="space-y-3">
+    <div className="space-y-3">
       {/* Summary */}
       <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs text-muted-foreground">
         <span>{entries.length} segments</span>
@@ -325,8 +325,4 @@ const ManifestTimingTable = forwardRef<HTMLDivElement, ManifestTimingTableProps>
       </div>
     </div>
   );
-});
-
-ManifestTimingTable.displayName = "ManifestTimingTable";
-
-export default ManifestTimingTable;
+}
