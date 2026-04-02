@@ -115,103 +115,19 @@ Deno.serve(async (req) => {
       return chunks;
     }
 
-    function parseWav(bytes: Uint8Array): {
-      sampleRate: number;
-      numChannels: number;
-      bitsPerSample: number;
-      data: Uint8Array;
-    } {
-      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-      const readAscii = (offset: number, length: number) =>
-        String.fromCharCode(...bytes.slice(offset, offset + length));
-
-      if (readAscii(0, 4) !== "RIFF" || readAscii(8, 4) !== "WAVE") {
-        throw new Error("Le chunk audio retourné par Google n'est pas un WAV valide.");
-      }
-
-      let offset = 12;
-      let fmtOffset = -1;
-      let dataOffset = -1;
-      let dataSize = 0;
-
-      while (offset + 8 <= bytes.length) {
-        const chunkId = readAscii(offset, 4);
-        const chunkSize = view.getUint32(offset + 4, true);
-
-        if (chunkId === "fmt ") fmtOffset = offset;
-        if (chunkId === "data") {
-          dataOffset = offset + 8;
-          dataSize = chunkSize;
-          break;
-        }
-
-        offset += 8 + chunkSize + (chunkSize % 2);
-      }
-
-      if (fmtOffset < 0 || dataOffset < 0) {
-        throw new Error("Impossible de parser l'en-tête WAV retourné par Google.");
-      }
-
-      return {
-        numChannels: view.getUint16(fmtOffset + 10, true),
-        sampleRate: view.getUint32(fmtOffset + 12, true),
-        bitsPerSample: view.getUint16(fmtOffset + 22, true),
-        data: bytes.slice(dataOffset, dataOffset + dataSize),
-      };
-    }
-
-    function buildWavFile(
-      pcmChunks: Uint8Array[],
-      sampleRate: number,
-      numChannels: number,
-      bitsPerSample: number
-    ): Uint8Array {
-      const totalDataSize = pcmChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-      const wav = new Uint8Array(44 + totalDataSize);
-      const view = new DataView(wav.buffer);
-      const encoder = new TextEncoder();
-      const blockAlign = (numChannels * bitsPerSample) / 8;
-      const byteRate = sampleRate * blockAlign;
-
-      wav.set(encoder.encode("RIFF"), 0);
-      view.setUint32(4, 36 + totalDataSize, true);
-      wav.set(encoder.encode("WAVE"), 8);
-      wav.set(encoder.encode("fmt "), 12);
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM
-      view.setUint16(22, numChannels, true);
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, byteRate, true);
-      view.setUint16(32, blockAlign, true);
-      view.setUint16(34, bitsPerSample, true);
-      wav.set(encoder.encode("data"), 36);
-      view.setUint32(40, totalDataSize, true);
-
-      let cursor = 44;
-      for (const chunk of pcmChunks) {
-        wav.set(chunk, cursor);
-        cursor += chunk.length;
-      }
-
-      return wav;
-    }
-
     const textChunks = splitTextIntoChunks(text.trim());
     console.log(
       `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}`
     );
 
-    const pcmChunks: Uint8Array[] = [];
-    let sampleRate: number | null = null;
-    let numChannels: number | null = null;
-    let bitsPerSample: number | null = null;
+    const audioPartsBytes: Uint8Array[] = [];
 
     for (let i = 0; i < textChunks.length; i++) {
       const chunk = textChunks[i];
       const ttsPayload = {
         input: { text: chunk },
         voice: { languageCode, name: resolvedVoice },
-        audioConfig: { audioEncoding: "LINEAR16" },
+        audioConfig: { audioEncoding: "MP3" },
       };
 
       const ttsResponse = await fetch(ttsUrl, {
@@ -224,28 +140,31 @@ Deno.serve(async (req) => {
         const errBody = await ttsResponse.text();
         console.error(
           `[chirp3hd] Google TTS error chunk ${i + 1}/${textChunks.length} [${ttsResponse.status}]:`,
-          errBody
+          errBody.slice(0, 500)
         );
         return jsonResponse(
           {
             error: `Google TTS API Chirp3-HD a échoué sur le chunk ${i + 1}/${textChunks.length} [${ttsResponse.status}]`,
-            details: errBody,
+            details: errBody.slice(0, 500),
           },
           502
         );
       }
 
+      // Safely parse response — guard against HTML error pages
       const responseContentType = ttsResponse.headers.get("content-type") || "";
-      if (!responseContentType.includes("application/json")) {
+      let ttsData: any;
+      if (responseContentType.includes("application/json")) {
+        ttsData = await ttsResponse.json();
+      } else {
         const bodyText = await ttsResponse.text();
-        console.error(`[chirp3hd] Google TTS returned non-JSON (${responseContentType}):`, bodyText.slice(0, 300));
+        console.error(`[chirp3hd] Non-JSON response (${responseContentType}):`, bodyText.slice(0, 300));
         return jsonResponse(
-          { error: `Google TTS a retourné un format inattendu (${responseContentType}) pour le chunk ${i + 1}.` },
+          { error: `Google TTS a retourné un format inattendu pour le chunk ${i + 1}.` },
           502
         );
       }
 
-      const ttsData = await ttsResponse.json();
       if (!ttsData.audioContent) {
         return jsonResponse(
           { error: `Aucun contenu audio retourné pour le chunk ${i + 1}.` },
@@ -256,36 +175,24 @@ Deno.serve(async (req) => {
       const bin = atob(ttsData.audioContent as string);
       const bytes = new Uint8Array(bin.length);
       for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
-
-      const parsed = parseWav(bytes);
-      if (sampleRate === null) {
-        sampleRate = parsed.sampleRate;
-        numChannels = parsed.numChannels;
-        bitsPerSample = parsed.bitsPerSample;
-      } else if (
-        parsed.sampleRate !== sampleRate ||
-        parsed.numChannels !== numChannels ||
-        parsed.bitsPerSample !== bitsPerSample
-      ) {
-        return jsonResponse(
-          { error: "Les chunks audio Google n'ont pas un format WAV homogène." },
-          502
-        );
-      }
-
-      pcmChunks.push(parsed.data);
-      console.log(`[chirp3hd] Chunk ${i + 1}/${textChunks.length} OK`);
+      audioPartsBytes.push(bytes);
+      console.log(`[chirp3hd] Chunk ${i + 1}/${textChunks.length} OK (${bytes.length} bytes)`);
     }
 
-    const audioBytes = buildWavFile(
-      pcmChunks,
-      sampleRate ?? 24000,
-      numChannels ?? 1,
-      bitsPerSample ?? 16
-    );
+    // ── Concatenate MP3 chunks ──
+    // Google TTS MP3 chunks are self-contained MPEG frames without ID3 headers,
+    // so simple byte concatenation produces a valid MP3 stream.
+    const totalSize = audioPartsBytes.reduce((sum, part) => sum + part.length, 0);
+    const audioBytes = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const part of audioPartsBytes) {
+      audioBytes.set(part, offset);
+      offset += part.length;
+    }
     const fileSize = audioBytes.length;
-    const byteRate = (sampleRate ?? 24000) * ((numChannels ?? 1) * (bitsPerSample ?? 16) / 8);
-    const durationEstimate = Math.round((fileSize - 44) / byteRate);
+
+    // Google TTS MP3 is at 32kbps per docs
+    const durationEstimate = Math.round((fileSize * 8) / 32000);
 
     // ── Upload to storage ──
     const timestamp = new Date()
