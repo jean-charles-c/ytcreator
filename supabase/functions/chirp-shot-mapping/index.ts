@@ -88,9 +88,10 @@ function findBestWindow(
   if (sourceWords.length === 0) return null;
 
   const windowSize = sourceWords.length;
+  // Wider search window: scale with shot length + generous buffer
   const searchEnd = Math.min(
     whisperWords.length,
-    searchStart + windowSize * 4 + 20
+    searchStart + windowSize * 6 + 40
   );
 
   let bestStart = -1;
@@ -103,7 +104,7 @@ function findBestWindow(
     let wIdx = i; // whisper index
     let matchCount = 0;
     let skips = 0;
-    const MAX_SKIPS = 2;
+    const MAX_SKIPS = 3;
 
     while (sIdx < sourceWords.length && wIdx < whisperWords.length && wIdx < searchEnd) {
       if (wordsMatch(sourceWords[sIdx], whisperWords[wIdx].word)) {
@@ -134,7 +135,7 @@ function findBestWindow(
       }
     }
 
-    if (matchCount > bestMatchCount && matchCount >= Math.max(1, Math.floor(sourceWords.length * 0.4))) {
+    if (matchCount > bestMatchCount && matchCount >= Math.max(1, Math.floor(sourceWords.length * 0.3))) {
       bestMatchCount = matchCount;
       bestStart = i;
       bestEndIdx = wIdx - 1;
@@ -147,6 +148,50 @@ function findBestWindow(
   if (bestStart < 0 || bestMatchCount === 0) return null;
 
   return { startIdx: bestStart, endIdx: bestEndIdx, matchCount: bestMatchCount };
+}
+
+/**
+ * Fallback: anchor search using first + last word of the source.
+ * Scans a wider range to find the shot when sequential matching fails.
+ */
+function anchorFallbackSearch(
+  sourceWords: string[],
+  whisperWords: WordTimestamp[],
+  searchStart: number
+): { startIdx: number; endIdx: number; matchCount: number } | null {
+  if (sourceWords.length < 2) return null;
+
+  const firstWord = sourceWords[0];
+  const lastWord = sourceWords[sourceWords.length - 1];
+  const maxSearch = Math.min(whisperWords.length, searchStart + sourceWords.length * 10 + 60);
+
+  for (let i = searchStart; i < maxSearch; i++) {
+    if (!wordsMatch(firstWord, whisperWords[i].word)) continue;
+
+    // Found first word anchor — now look for last word within expected range
+    const expectedEnd = i + sourceWords.length;
+    const scanEnd = Math.min(whisperWords.length, expectedEnd + Math.max(10, sourceWords.length));
+
+    for (let j = Math.max(i + 1, expectedEnd - Math.max(5, sourceWords.length)); j < scanEnd; j++) {
+      if (!wordsMatch(lastWord, whisperWords[j].word)) continue;
+
+      // Count actual matches in this range
+      let matchCount = 0;
+      let sIdx = 0;
+      for (let wIdx = i; wIdx <= j && sIdx < sourceWords.length; wIdx++) {
+        if (wordsMatch(sourceWords[sIdx], whisperWords[wIdx].word)) {
+          matchCount++;
+          sIdx++;
+        }
+      }
+
+      if (matchCount >= Math.max(2, Math.floor(sourceWords.length * 0.3))) {
+        return { startIdx: i, endIdx: j, matchCount };
+      }
+    }
+  }
+
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -219,9 +264,18 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const window = findBestWindow(sourceTokens, whisperWords, searchCursor);
+      let window = findBestWindow(sourceTokens, whisperWords, searchCursor);
+
+      // Fallback: anchor-based search if sequential matching failed
+      if (!window || window.matchCount === 0) {
+        window = anchorFallbackSearch(sourceTokens, whisperWords, searchCursor);
+        if (window) {
+          console.log(`[shot-mapping] Fallback anchor matched shot ${shot.shotId.slice(0, 8)} with ${window.matchCount}/${sourceTokens.length} words`);
+        }
+      }
 
       if (!window || window.matchCount === 0) {
+        console.warn(`[shot-mapping] MISS shot ${shot.shotId.slice(0, 8)}: "${sourceTokens.slice(0, 3).join(" ")}…" (${sourceTokens.length} words)`);
         shotTimelines.push({
           shotId: shot.shotId,
           startTime: 0,
@@ -310,9 +364,9 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Persist shots with exact OR high-confidence partial match (≥50%)
+      // Persist shots with exact OR partial match (≥30% confidence)
       const shotTimepoints = shotTimelines
-        .filter((s) => s.status === "exact" || (s.status === "partial" && s.alignmentConfidence >= 0.5))
+        .filter((s) => s.status === "exact" || (s.status === "partial" && s.alignmentConfidence >= 0.3))
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
