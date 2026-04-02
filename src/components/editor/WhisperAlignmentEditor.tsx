@@ -7,7 +7,9 @@ import {
   Save,
   Search,
   Loader2,
+  Clock,
 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
@@ -77,6 +79,7 @@ export default function WhisperAlignmentEditor({
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
+  const [globalOffset, setGlobalOffset] = useState(0); // seconds to ADD to Whisper timecodes
 
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
@@ -223,8 +226,8 @@ export default function WhisperAlignmentEditor({
   const applyManualAlignment = useCallback(async () => {
     if (!editingShotId || selectionStart === null || selectionEnd === null || !audioEntryId) return;
 
-    const startTime = whisperWords[selectionStart].start;
-    const endTime = whisperWords[selectionEnd].end;
+    const startTime = whisperWords[selectionStart].start + globalOffset;
+    const endTime = whisperWords[selectionEnd].end + globalOffset;
 
     // Update local state
     const updatedShots = alignedShots.map((s) =>
@@ -266,7 +269,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
@@ -329,6 +332,86 @@ export default function WhisperAlignmentEditor({
       </summary>
 
       <div className="p-2 space-y-2">
+        {/* Global offset control */}
+        {!loading && whisperWords.length > 0 && (
+          <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
+            <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">Offset global :</span>
+            <Slider
+              min={-5}
+              max={10}
+              step={0.01}
+              value={[globalOffset]}
+              onValueChange={(v) => setGlobalOffset(v[0])}
+              className="flex-1 max-w-[180px]"
+            />
+            <input
+              type="number"
+              step="0.01"
+              value={globalOffset}
+              onChange={(e) => setGlobalOffset(parseFloat(e.target.value) || 0)}
+              className="w-16 text-[10px] font-mono text-center bg-background border border-border rounded px-1 py-0.5"
+            />
+            <span className="text-[10px] text-muted-foreground">s</span>
+            {globalOffset !== 0 && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[9px] px-1.5"
+                  onClick={() => setGlobalOffset(0)}
+                >
+                  Reset
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-6 text-[9px] px-2"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!audioEntryId) return;
+                    setSaving(true);
+                    try {
+                      // Recalculate all shot start times with offset applied
+                      const updated = alignedShots.map((s) => {
+                        if (s.status === "missing" || s.startTime === null) return s;
+                        const newStart = Math.max(0, s.startTime + globalOffset);
+                        const newEnd = s.endTime !== null ? Math.max(0, s.endTime + globalOffset) : null;
+                        return { ...s, startTime: newStart, endTime: newEnd };
+                      });
+                      setAlignedShots(updated);
+
+                      const timepoints = updated
+                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                        .map((s, idx) => ({
+                          shotId: s.shotId,
+                          shotIndex: idx,
+                          timeSeconds: s.startTime,
+                        }));
+
+                      const { error } = await supabase
+                        .from("vo_audio_history")
+                        .update({ shot_timepoints: timepoints as any })
+                        .eq("id", audioEntryId);
+
+                      if (error) throw error;
+                      toast.success(`Offset de ${globalOffset.toFixed(2)}s appliqué à ${timepoints.length} shots`);
+                      setGlobalOffset(0); // reset after applying
+                    } catch (e: any) {
+                      console.error("[WhisperAlignmentEditor] offset apply error:", e);
+                      toast.error("Erreur lors de l'application de l'offset");
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  Appliquer à tous
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
         {loading && (
           <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" /> Chargement…
@@ -482,12 +565,17 @@ export default function WhisperAlignmentEditor({
                             {selectionStart !== null && selectionEnd !== null && (
                               <div className="flex items-center gap-2 text-[10px]">
                                 <span className="font-mono text-muted-foreground">
-                                  {formatTime(whisperWords[selectionStart].start)} →{" "}
-                                  {formatTime(whisperWords[selectionEnd].end)}
+                                  {formatTime(whisperWords[selectionStart].start + globalOffset)} →{" "}
+                                  {formatTime(whisperWords[selectionEnd].end + globalOffset)}
                                 </span>
                                 <span className="text-muted-foreground">
                                   ({selectionEnd - selectionStart + 1} mots)
                                 </span>
+                                {globalOffset !== 0 && (
+                                  <span className="text-orange-500 text-[9px]">
+                                    (offset {globalOffset > 0 ? "+" : ""}{globalOffset.toFixed(2)}s)
+                                  </span>
+                                )}
                               </div>
                             )}
 
