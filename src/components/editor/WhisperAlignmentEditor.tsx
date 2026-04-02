@@ -44,7 +44,7 @@ interface AlignedShot {
   whisperEndIdx: number | null;
   startTime: number | null;
   endTime: number | null;
-  status: "ok" | "missing";
+  status: "ok" | "missing" | "manual";
   /** Is user currently editing this? */
   editing: boolean;
 }
