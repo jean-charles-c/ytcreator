@@ -234,7 +234,7 @@ export default function WhisperAlignmentEditor({
             whisperEndIdx: selectionEnd,
             startTime,
             endTime,
-            status: "ok" as const,
+            status: "manual" as const,
           }
         : s
     );
