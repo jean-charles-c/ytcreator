@@ -43,6 +43,7 @@ import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
 import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, computeSplit, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
+import WhisperAlignmentEditor from "@/components/editor/WhisperAlignmentEditor";
 import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
 import ObjectRegistryPanel, { type RecurringObject, IDENTITY_TEMPLATES } from "@/components/editor/ObjectRegistryPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
