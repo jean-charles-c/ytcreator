@@ -323,6 +323,7 @@ export default function WhisperAlignmentEditor({
             }`}
           >
             {okCount}/{totalCount}
+            {manualCount > 0 && <span className="text-orange-500 ml-1">({manualCount} manuels)</span>}
           </span>
         )}
       </summary>
