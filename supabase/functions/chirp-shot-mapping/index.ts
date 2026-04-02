@@ -135,7 +135,7 @@ function findBestWindow(
       }
     }
 
-    if (matchCount > bestMatchCount && matchCount >= Math.max(1, Math.floor(sourceWords.length * 0.4))) {
+    if (matchCount > bestMatchCount && matchCount >= Math.max(1, Math.floor(sourceWords.length * 0.3))) {
       bestMatchCount = matchCount;
       bestStart = i;
       bestEndIdx = wIdx - 1;
