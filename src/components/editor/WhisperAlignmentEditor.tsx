@@ -226,8 +226,8 @@ export default function WhisperAlignmentEditor({
   const applyManualAlignment = useCallback(async () => {
     if (!editingShotId || selectionStart === null || selectionEnd === null || !audioEntryId) return;
 
-    const startTime = whisperWords[selectionStart].start;
-    const endTime = whisperWords[selectionEnd].end;
+    const startTime = whisperWords[selectionStart].start + globalOffset;
+    const endTime = whisperWords[selectionEnd].end + globalOffset;
 
     // Update local state
     const updatedShots = alignedShots.map((s) =>
