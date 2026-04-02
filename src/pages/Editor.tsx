@@ -56,6 +56,7 @@ import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sens
 import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
 import { applyFrenchTypography } from "@/components/editor/frenchTypography";
 import { reorderShotsByReadingPosition } from "@/components/editor/shotAlignment";
+import { convertNumbersToFrench, hasDigits } from "@/components/editor/numberToFrenchText";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
