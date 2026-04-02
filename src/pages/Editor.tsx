@@ -1975,10 +1975,22 @@ export default function Editor() {
                 </Button>
               )}
               {!segmenting && scenes.length > 0 && (
-                <div className="flex gap-2 shrink-0">
+                <div className="flex gap-2 shrink-0 flex-wrap">
                   <Button variant="outline" size="sm" onClick={runSegmentation} disabled={segmenting} className="min-h-[40px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
+                  {scenes.some(s => hasDigits(s.source_text || "") || hasDigits(s.source_text_fr || "")) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={convertAllNumbersToFrench}
+                      disabled={convertingNumbers}
+                      className="min-h-[40px] text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                    >
+                      {convertingNumbers ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                      Chiffres → Lettres
+                    </Button>
+                  )}
                   <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     Créer les SHOTS
