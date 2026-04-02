@@ -16,6 +16,9 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const isChirpVoice = (name?: string) =>
+    !!name && /chirp/i.test(name);
+
   const handlePreview = async () => {
     const text = testText.trim();
     if (!text) {
@@ -23,21 +26,20 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
       return;
     }
 
-    // Limit preview to 200 chars
     const previewText = text.slice(0, 1000);
+    const useChirp = isChirpVoice(settings.voiceName);
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
+      const endpoint = useChirp ? "generate-tts-chirp3hd" : "generate-tts";
+      const body = useChirp
+        ? {
+            text: previewText,
+            projectId: "preview",
+            voiceName: settings.voiceName,
+            customFileName: "preview",
+          }
+        : {
             text: previewText,
             languageCode: settings.languageCode,
             voiceGender: settings.voiceGender,
@@ -56,7 +58,18 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             sentenceEndSlow: settings.sentenceEndSlow,
             narrationProfile: settings.narrationProfile,
             style: settings.style,
-          }),
+          };
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify(body),
         }
       );
 
@@ -66,8 +79,10 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
       }
 
       const data = await response.json();
-      const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
-      toast.success(`Voix appliquée: ${data.usedVoiceName ?? "automatique"}`);
+      const audioUrl = useChirp
+        ? data.audioUrl
+        : `data:audio/mpeg;base64,${data.audioContent}`;
+      toast.success(`Voix appliquée: ${useChirp ? data.voiceName : (data.usedVoiceName ?? "automatique")}`);
 
       // Stop any currently playing audio
       if (audioRef.current) {
