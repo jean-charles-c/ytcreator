@@ -104,7 +104,7 @@ function findBestWindow(
     let wIdx = i; // whisper index
     let matchCount = 0;
     let skips = 0;
-    const MAX_SKIPS = 2;
+    const MAX_SKIPS = 3;
 
     while (sIdx < sourceWords.length && wIdx < whisperWords.length && wIdx < searchEnd) {
       if (wordsMatch(sourceWords[sIdx], whisperWords[wIdx].word)) {
