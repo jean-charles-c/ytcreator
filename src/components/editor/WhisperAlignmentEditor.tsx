@@ -7,7 +7,9 @@ import {
   Save,
   Search,
   Loader2,
+  Clock,
 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
