@@ -398,7 +398,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             mode: "full",
             projectId,
             customFileName: customFileName.trim() || undefined,
-            ...(useMarkedSync
+            // Chirp voices don't support <mark> SSML tags — force standard sync mode
+            ...((useMarkedSync && !/Chirp/i.test(settings.voiceName || ""))
               ? { shotSentences, syncMode: "shot_marked", ...(forceStandardMode ? { forceSync: true } : {}) }
               : { syncMode: "standard" }),
           }),
