@@ -519,12 +519,17 @@ export default function WhisperAlignmentEditor({
                             {selectionStart !== null && selectionEnd !== null && (
                               <div className="flex items-center gap-2 text-[10px]">
                                 <span className="font-mono text-muted-foreground">
-                                  {formatTime(whisperWords[selectionStart].start)} →{" "}
-                                  {formatTime(whisperWords[selectionEnd].end)}
+                                  {formatTime(whisperWords[selectionStart].start + globalOffset)} →{" "}
+                                  {formatTime(whisperWords[selectionEnd].end + globalOffset)}
                                 </span>
                                 <span className="text-muted-foreground">
                                   ({selectionEnd - selectionStart + 1} mots)
                                 </span>
+                                {globalOffset !== 0 && (
+                                  <span className="text-orange-500 text-[9px]">
+                                    (offset {globalOffset > 0 ? "+" : ""}{globalOffset.toFixed(2)}s)
+                                  </span>
+                                )}
                               </div>
                             )}
 
