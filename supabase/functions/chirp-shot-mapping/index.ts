@@ -70,7 +70,7 @@ function wordsMatch(source: string, whisper: string): boolean {
 
 /**
  * Find the best starting position in whisperWords for a sequence of sourceWords.
- * Uses a sliding window with fuzzy matching.
+ * Strict sequential matching — no word skipping, no fuzzy tolerance.
  * Returns { startIdx, endIdx, matchCount } or null.
  */
 function findBestWindow(
@@ -83,7 +83,7 @@ function findBestWindow(
   const windowSize = sourceWords.length;
   const searchEnd = Math.min(
     whisperWords.length,
-    searchStart + windowSize * 3 + 10 // generous search range
+    searchStart + windowSize * 3 + 10
   );
 
   let bestStart = -1;
@@ -91,24 +91,12 @@ function findBestWindow(
 
   for (let i = searchStart; i <= searchEnd - 1; i++) {
     let matchCount = 0;
-    let whisperIdx = i;
 
-    for (let s = 0; s < sourceWords.length && whisperIdx < whisperWords.length; s++) {
-      if (wordsMatch(sourceWords[s], whisperWords[whisperIdx].word)) {
+    for (let s = 0; s < sourceWords.length && (i + s) < whisperWords.length; s++) {
+      if (wordsMatch(sourceWords[s], whisperWords[i + s].word)) {
         matchCount++;
-        whisperIdx++;
       } else {
-        // Try skipping one whisper word (insertion by Whisper)
-        if (
-          whisperIdx + 1 < whisperWords.length &&
-          wordsMatch(sourceWords[s], whisperWords[whisperIdx + 1].word)
-        ) {
-          matchCount++;
-          whisperIdx += 2;
-        } else {
-          // Skip source word (deletion by Whisper)
-          whisperIdx++;
-        }
+        break; // strict: stop at first mismatch
       }
     }
 
@@ -118,28 +106,12 @@ function findBestWindow(
     }
 
     // Perfect match — stop early
-    if (bestMatchCount >= sourceWords.length * 0.9) break;
+    if (bestMatchCount === sourceWords.length) break;
   }
 
   if (bestStart < 0 || bestMatchCount === 0) return null;
 
-  // Determine endIdx by replaying the best match
-  let endIdx = bestStart;
-  let whisperIdx = bestStart;
-  for (let s = 0; s < sourceWords.length && whisperIdx < whisperWords.length; s++) {
-    if (wordsMatch(sourceWords[s], whisperWords[whisperIdx].word)) {
-      endIdx = whisperIdx;
-      whisperIdx++;
-    } else if (
-      whisperIdx + 1 < whisperWords.length &&
-      wordsMatch(sourceWords[s], whisperWords[whisperIdx + 1].word)
-    ) {
-      endIdx = whisperIdx + 1;
-      whisperIdx += 2;
-    } else {
-      whisperIdx++;
-    }
-  }
+  const endIdx = bestStart + bestMatchCount - 1;
 
   return { startIdx: bestStart, endIdx, matchCount: bestMatchCount };
 }
