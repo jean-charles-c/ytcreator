@@ -446,6 +446,48 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
               {/* Script block */}
               <div className="space-y-3">
+                {/* Pipeline mode selector */}
+                <div className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30">
+                  <button
+                    onClick={() => setPipelineMode("ssml")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                      pipelineMode === "ssml"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Mic className="h-3.5 w-3.5" />
+                    Mode SSML historique
+                  </button>
+                  <button
+                    onClick={() => setPipelineMode("chirp3hd")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                      pipelineMode === "chirp3hd"
+                        ? "bg-background text-foreground shadow-sm border border-primary/30"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <FlaskConical className="h-3.5 w-3.5" />
+                    Chirp 3 HD
+                    <span className="text-[9px] font-semibold uppercase tracking-wider bg-primary/15 text-primary px-1.5 py-0.5 rounded">
+                      Test
+                    </span>
+                  </button>
+                </div>
+
+                {/* Chirp 3 HD info banner */}
+                {pipelineMode === "chirp3hd" && (
+                  <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <FlaskConical className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Mode expérimental Chirp 3 HD</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Pipeline parallèle — l'audio sera généré via Chirp 3 HD puis aligné par transcription automatique. Le pipeline SSML historique n'est pas affecté.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-3">
                   <Input
                     value={customFileName}
@@ -461,7 +503,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                     onClick={handleGenerate}
                   >
                     {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                    {generating ? "Génération..." : "Générer la voix off"}
+                    {generating
+                      ? "Génération..."
+                      : pipelineMode === "chirp3hd"
+                        ? "Générer (Chirp 3 HD)"
+                        : "Générer la voix off"}
                   </Button>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer mb-2">
