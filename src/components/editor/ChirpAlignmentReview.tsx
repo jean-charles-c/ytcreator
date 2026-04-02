@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, AlertTriangle, XCircle, Clock, FlaskConical } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { getShotFragmentText } from "./voiceOverShotSync";
 
 interface ShotTimepointRow {
   shotId: string;
@@ -92,7 +93,7 @@ export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, 
         const audioDuration = entry.duration_estimate ?? 0;
 
         const shotRows: ShotRow[] = sorted.map((shot, idx) => {
-          const text = (shot.source_sentence_fr || shot.source_sentence || shot.description || "").trim();
+          const text = getShotFragmentText(shot);
           const startTime = timepointMap.get(shot.id) ?? null;
 
           if (startTime === null) {

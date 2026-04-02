@@ -12,7 +12,7 @@ import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
-import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
+import { buildExactShotScript, buildExactShotSentences, getShotFragmentText, normalizeExactSyncText } from "./voiceOverShotSync";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
 
 interface VoiceOverStudioProps {
@@ -247,10 +247,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             try {
               // Build sorted shot text list
               const sortedShots = getSortedShots();
-              const shotSources = sortedShots.map((s) => ({
-                shotId: s.id,
-                text: (s.source_sentence_fr || s.source_sentence || s.description || "").trim(),
-              })).filter((s) => s.text.length > 0);
+               const shotSources = sortedShots.map((s) => ({
+                 shotId: s.id,
+                 text: getShotFragmentText(s),
+               })).filter((s) => s.text.length > 0);
 
               // Get the audio history ID for this chirp3hd entry
               const { data: latestAudio } = await supabase
