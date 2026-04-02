@@ -363,11 +363,24 @@ Deno.serve(async (req) => {
 
       let window = findBestWindow(sourceTokens, whisperWords, searchCursor);
 
-      // Fallback: anchor-based search if sequential matching failed
+      // Fallback 1: anchor-based search from cursor
       if (!window || window.matchCount === 0) {
         window = anchorFallbackSearch(sourceTokens, whisperWords, searchCursor);
         if (window) {
           console.log(`[shot-mapping] Fallback anchor matched shot ${shot.shotId.slice(0, 8)} with ${window.matchCount}/${sourceTokens.length} words`);
+        }
+      }
+
+      // Fallback 2: GLOBAL search from position 0 (handles cursor drift)
+      if (!window || window.matchCount === 0) {
+        if (searchCursor > 0) {
+          window = findBestWindow(sourceTokens, whisperWords, 0);
+          if (!window || window.matchCount === 0) {
+            window = anchorFallbackSearch(sourceTokens, whisperWords, 0);
+          }
+          if (window) {
+            console.log(`[shot-mapping] GLOBAL fallback matched shot ${shot.shotId.slice(0, 8)} at pos ${window.startIdx} with ${window.matchCount}/${sourceTokens.length} words`);
+          }
         }
       }
 
@@ -383,7 +396,6 @@ Deno.serve(async (req) => {
           expectedWordCount: sourceTokens.length,
           status: "missing",
         });
-        // Do NOT advance cursor on miss — let next shot search from same position
         continue;
       }
 
