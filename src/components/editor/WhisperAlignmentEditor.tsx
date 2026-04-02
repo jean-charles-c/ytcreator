@@ -160,10 +160,15 @@ export default function WhisperAlignmentEditor({
           }
           if (endTime === null) endTime = audioDuration;
 
-          const wEndIdx =
-            endTime !== null
-              ? words.findLastIndex((w) => w.end <= endTime! + 0.05)
-              : null;
+          let wEndIdx: number | null = null;
+          if (endTime !== null) {
+            for (let wi = words.length - 1; wi >= 0; wi--) {
+              if (words[wi].end <= endTime + 0.05) {
+                wEndIdx = wi;
+                break;
+              }
+            }
+          }
 
           return {
             shotId: shot.id,
