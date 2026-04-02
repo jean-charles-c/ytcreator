@@ -354,14 +354,60 @@ export default function WhisperAlignmentEditor({
             />
             <span className="text-[10px] text-muted-foreground">s</span>
             {globalOffset !== 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 text-[9px] px-1.5"
-                onClick={() => setGlobalOffset(0)}
-              >
-                Reset
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[9px] px-1.5"
+                  onClick={() => setGlobalOffset(0)}
+                >
+                  Reset
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-6 text-[9px] px-2"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!audioEntryId) return;
+                    setSaving(true);
+                    try {
+                      // Recalculate all shot start times with offset applied
+                      const updated = alignedShots.map((s) => {
+                        if (s.status === "missing" || s.startTime === null) return s;
+                        const newStart = Math.max(0, s.startTime + globalOffset);
+                        const newEnd = s.endTime !== null ? Math.max(0, s.endTime + globalOffset) : null;
+                        return { ...s, startTime: newStart, endTime: newEnd };
+                      });
+                      setAlignedShots(updated);
+
+                      const timepoints = updated
+                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                        .map((s, idx) => ({
+                          shotId: s.shotId,
+                          shotIndex: idx,
+                          timeSeconds: s.startTime,
+                        }));
+
+                      const { error } = await supabase
+                        .from("vo_audio_history")
+                        .update({ shot_timepoints: timepoints as any })
+                        .eq("id", audioEntryId);
+
+                      if (error) throw error;
+                      toast.success(`Offset de ${globalOffset.toFixed(2)}s appliqué à ${timepoints.length} shots`);
+                      setGlobalOffset(0); // reset after applying
+                    } catch (e: any) {
+                      console.error("[WhisperAlignmentEditor] offset apply error:", e);
+                      toast.error("Erreur lors de l'application de l'offset");
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  Appliquer à tous
+                </Button>
+              </>
             )}
           </div>
         )}
