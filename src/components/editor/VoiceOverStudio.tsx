@@ -175,6 +175,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       // Determine sync mode
       const expectedShotIds = getSortedShots().map((shot) => shot.id);
       let useMarkedSync = false;
+      let shotSentences: { id: string; text: string; isNewScene?: boolean }[] | null = null;
 
       if (freeMode) {
         // Free mode: no sync at all, just generate audio from the text as-is
