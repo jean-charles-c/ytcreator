@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.generate-tts-chirp3hd]
 verify_jwt = false
+
+[functions.whisper-align]
+verify_jwt = false
