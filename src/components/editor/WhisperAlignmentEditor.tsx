@@ -332,6 +332,40 @@ export default function WhisperAlignmentEditor({
       </summary>
 
       <div className="p-2 space-y-2">
+        {/* Global offset control */}
+        {!loading && whisperWords.length > 0 && (
+          <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
+            <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">Offset global :</span>
+            <Slider
+              min={-5}
+              max={10}
+              step={0.01}
+              value={[globalOffset]}
+              onValueChange={(v) => setGlobalOffset(v[0])}
+              className="flex-1 max-w-[180px]"
+            />
+            <input
+              type="number"
+              step="0.01"
+              value={globalOffset}
+              onChange={(e) => setGlobalOffset(parseFloat(e.target.value) || 0)}
+              className="w-16 text-[10px] font-mono text-center bg-background border border-border rounded px-1 py-0.5"
+            />
+            <span className="text-[10px] text-muted-foreground">s</span>
+            {globalOffset !== 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[9px] px-1.5"
+                onClick={() => setGlobalOffset(0)}
+              >
+                Reset
+              </Button>
+            )}
+          </div>
+        )}
+
         {loading && (
           <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" /> Chargement…
