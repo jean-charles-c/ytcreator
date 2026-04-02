@@ -185,10 +185,10 @@ function findBestWindow(
   if (sourceWords.length === 0) return null;
 
   const windowSize = sourceWords.length;
-  // Wider search window: scale with shot length + generous buffer
+  // Very wide search window to handle cursor drift
   const searchEnd = Math.min(
     whisperWords.length,
-    searchStart + windowSize * 6 + 40
+    searchStart + windowSize * 8 + 80
   );
 
   let bestStart = -1;
