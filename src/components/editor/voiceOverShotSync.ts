@@ -13,7 +13,7 @@ export interface VoiceOverShotSentence {
   isNewScene?: boolean;
 }
 
-function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
+export function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
   return (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
 }
 
