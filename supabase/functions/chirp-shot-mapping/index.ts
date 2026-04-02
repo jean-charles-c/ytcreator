@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
         alignmentConfidence: Math.round(confidence * 100) / 100,
         matchedWordCount: window.matchCount,
         expectedWordCount: sourceTokens.length,
-        status: confidence >= 0.7 ? "exact" : "partial",
+        status: confidence === 1 ? "exact" : "partial",
       });
 
       // Advance cursor past this match
