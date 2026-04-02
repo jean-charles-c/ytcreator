@@ -164,10 +164,49 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
       // ── Chirp 3 HD pipeline (separate route) ──
       if (pipelineMode === "chirp3hd") {
-        toast.info("Pipeline Chirp 3 HD : génération en cours… (mode expérimental)");
-        // TODO Prompt 3: call dedicated chirp3hd edge function
-        toast.warning("Le pipeline Chirp 3 HD n'est pas encore connecté. Il sera activé à l'étape suivante.");
-        setGenerating(false);
+        try {
+          const chirpResponse = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts-chirp3hd`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                text: voScript,
+                projectId,
+                voiceName: settings.voiceName || undefined,
+                customFileName: customFileName.trim() || undefined,
+              }),
+            }
+          );
+
+          if (!chirpResponse.ok) {
+            const errData = await chirpResponse.json().catch(() => ({}));
+            throw new Error(errData?.error || `Erreur ${chirpResponse.status}`);
+          }
+
+          const chirpData = await chirpResponse.json();
+
+          setPlayerState({
+            audioUrl: chirpData.audioUrl,
+            fileName: chirpData.fileName,
+            durationEstimate: chirpData.durationEstimate,
+            realDuration: null,
+          });
+          setHistoryRefreshKey((k) => k + 1);
+
+          toast.success(
+            `Audio Chirp 3 HD généré — ${chirpData.fileName} • ${formatSize(chirpData.fileSize)} • ~${chirpData.durationEstimate}s`
+          );
+        } catch (e: any) {
+          console.error("[chirp3hd] Generation error:", e);
+          toast.error(e?.message || "Erreur de génération Chirp 3 HD");
+        } finally {
+          setGenerating(false);
+        }
         return;
       }
 
