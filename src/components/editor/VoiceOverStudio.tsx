@@ -201,6 +201,43 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
           toast.success(
             `Audio Chirp 3 HD généré — ${chirpData.fileName} • ${formatSize(chirpData.fileSize)} • ~${chirpData.durationEstimate}s`
           );
+
+          // ── Step 2: Whisper alignment ──
+          toast.info("Alignement audio en cours via Whisper…");
+          try {
+            const alignResponse = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  audioUrl: chirpData.audioUrl,
+                  projectId,
+                }),
+              }
+            );
+
+            if (!alignResponse.ok) {
+              const alignErr = await alignResponse.json().catch(() => ({}));
+              console.error("[chirp3hd] Alignment error:", alignErr);
+              toast.warning(
+                `Audio généré mais alignement échoué : ${alignErr?.error || "erreur inconnue"}`
+              );
+            } else {
+              const alignData = await alignResponse.json();
+              toast.success(
+                `Alignement terminé — ${alignData.wordCount} mots détectés, durée ${alignData.audioDuration?.toFixed(1)}s`
+              );
+              console.log("[chirp3hd] AlignmentRun:", alignData.alignmentRun);
+            }
+          } catch (alignErr: any) {
+            console.error("[chirp3hd] Alignment fetch error:", alignErr);
+            toast.warning("Audio généré mais l'alignement Whisper a échoué.");
+          }
         } catch (e: any) {
           console.error("[chirp3hd] Generation error:", e);
           toast.error(e?.message || "Erreur de génération Chirp 3 HD");
