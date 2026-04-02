@@ -64,42 +64,13 @@ function tokenize(text: string): string[] {
 
 // ── Fuzzy matching ──
 
-/** Simple Levenshtein distance for short strings */
-function levenshtein(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  if (m === 0) return n;
-  if (n === 0) return m;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0)
-  );
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-      );
-    }
-  }
-  return dp[m][n];
-}
-
 function wordsMatch(source: string, whisper: string): boolean {
-  const a = normalizeWord(source);
-  const b = normalizeWord(whisper);
-  if (a === b) return true;
-  if (a.length === 0 || b.length === 0) return false;
-  // Allow minor edit distance relative to word length
-  const maxDist = Math.max(1, Math.floor(Math.max(a.length, b.length) * 0.3));
-  return levenshtein(a, b) <= maxDist;
+  return normalizeWord(source) === normalizeWord(whisper);
 }
 
 /**
  * Find the best starting position in whisperWords for a sequence of sourceWords.
- * Uses a sliding window with fuzzy matching.
+ * Strict sequential matching — no word skipping, no fuzzy tolerance.
  * Returns { startIdx, endIdx, matchCount } or null.
  */
 function findBestWindow(
@@ -112,7 +83,7 @@ function findBestWindow(
   const windowSize = sourceWords.length;
   const searchEnd = Math.min(
     whisperWords.length,
-    searchStart + windowSize * 3 + 10 // generous search range
+    searchStart + windowSize * 3 + 10
   );
 
   let bestStart = -1;
@@ -120,24 +91,12 @@ function findBestWindow(
 
   for (let i = searchStart; i <= searchEnd - 1; i++) {
     let matchCount = 0;
-    let whisperIdx = i;
 
-    for (let s = 0; s < sourceWords.length && whisperIdx < whisperWords.length; s++) {
-      if (wordsMatch(sourceWords[s], whisperWords[whisperIdx].word)) {
+    for (let s = 0; s < sourceWords.length && (i + s) < whisperWords.length; s++) {
+      if (wordsMatch(sourceWords[s], whisperWords[i + s].word)) {
         matchCount++;
-        whisperIdx++;
       } else {
-        // Try skipping one whisper word (insertion by Whisper)
-        if (
-          whisperIdx + 1 < whisperWords.length &&
-          wordsMatch(sourceWords[s], whisperWords[whisperIdx + 1].word)
-        ) {
-          matchCount++;
-          whisperIdx += 2;
-        } else {
-          // Skip source word (deletion by Whisper)
-          whisperIdx++;
-        }
+        break; // strict: stop at first mismatch
       }
     }
 
@@ -147,28 +106,12 @@ function findBestWindow(
     }
 
     // Perfect match — stop early
-    if (bestMatchCount >= sourceWords.length * 0.9) break;
+    if (bestMatchCount === sourceWords.length) break;
   }
 
   if (bestStart < 0 || bestMatchCount === 0) return null;
 
-  // Determine endIdx by replaying the best match
-  let endIdx = bestStart;
-  let whisperIdx = bestStart;
-  for (let s = 0; s < sourceWords.length && whisperIdx < whisperWords.length; s++) {
-    if (wordsMatch(sourceWords[s], whisperWords[whisperIdx].word)) {
-      endIdx = whisperIdx;
-      whisperIdx++;
-    } else if (
-      whisperIdx + 1 < whisperWords.length &&
-      wordsMatch(sourceWords[s], whisperWords[whisperIdx + 1].word)
-    ) {
-      endIdx = whisperIdx + 1;
-      whisperIdx += 2;
-    } else {
-      whisperIdx++;
-    }
-  }
+  const endIdx = bestStart + bestMatchCount - 1;
 
   return { startIdx: bestStart, endIdx, matchCount: bestMatchCount };
 }
@@ -271,7 +214,7 @@ Deno.serve(async (req) => {
         alignmentConfidence: Math.round(confidence * 100) / 100,
         matchedWordCount: window.matchCount,
         expectedWordCount: sourceTokens.length,
-        status: confidence >= 0.7 ? "exact" : "partial",
+        status: confidence === 1 ? "exact" : "partial",
       });
 
       // Advance cursor past this match
