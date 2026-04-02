@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.render-proxy]
 verify_jwt = false
+
+[functions.generate-tts-chirp3hd]
+verify_jwt = false
