@@ -43,4 +43,5 @@ describe("whisperAlignmentTiming", () => {
     expect(recalculated[0].endTime).toBe(10);
     expect(recalculated[1].endTime).toBeNull();
     expect(recalculated[2].endTime).toBe(16);
+  });
 });
