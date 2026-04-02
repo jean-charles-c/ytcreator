@@ -264,9 +264,18 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const window = findBestWindow(sourceTokens, whisperWords, searchCursor);
+      let window = findBestWindow(sourceTokens, whisperWords, searchCursor);
+
+      // Fallback: anchor-based search if sequential matching failed
+      if (!window || window.matchCount === 0) {
+        window = anchorFallbackSearch(sourceTokens, whisperWords, searchCursor);
+        if (window) {
+          console.log(`[shot-mapping] Fallback anchor matched shot ${shot.shotId.slice(0, 8)} with ${window.matchCount}/${sourceTokens.length} words`);
+        }
+      }
 
       if (!window || window.matchCount === 0) {
+        console.warn(`[shot-mapping] MISS shot ${shot.shotId.slice(0, 8)}: "${sourceTokens.slice(0, 3).join(" ")}…" (${sourceTokens.length} words)`);
         shotTimelines.push({
           shotId: shot.shotId,
           startTime: 0,
