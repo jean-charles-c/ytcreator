@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, ChevronDown, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,11 +84,11 @@ function DiffHighlight({ expected, actual }: { expected: string; actual: string 
   );
 }
 
-function AllocationCoverageSection({ summaries }: { summaries: AllocationSummary[] }) {
+const AllocationCoverageSection = forwardRef<HTMLDetailsElement, { summaries: AllocationSummary[] }>(function AllocationCoverageSection({ summaries }, ref) {
   const [expandedScene, setExpandedScene] = useState<number | null>(null);
 
   return (
-    <details className="rounded border border-border bg-card">
+    <details ref={ref} className="rounded border border-border bg-card">
       <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors px-3 py-2 min-h-[44px] sm:min-h-0 flex items-center gap-1">
         <ChevronDown className="h-3 w-3" />
         Couverture textuelle par scène
@@ -138,7 +138,9 @@ function AllocationCoverageSection({ summaries }: { summaries: AllocationSummary
       </div>
     </details>
   );
-}
+});
+
+AllocationCoverageSection.displayName = "AllocationCoverageSection";
 
 export default function QaPanel({ projectId, manifest, onExportAllowedChange, onReportChange, onScenesUpdated }: QaPanelProps) {
   const [loading, setLoading] = useState(true);
