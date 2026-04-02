@@ -151,9 +151,9 @@ export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, 
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors">
-        <FlaskConical className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold font-display text-foreground flex-1 text-left">
+      <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-lg border border-border bg-card px-3 sm:px-4 py-3 hover:bg-muted/50 transition-colors min-h-[48px]">
+        <FlaskConical className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-xs sm:text-sm font-semibold font-display text-foreground flex-1 text-left">
           Contrôle Chirp 3 HD
         </span>
         {totalCount > 0 && (
@@ -191,46 +191,45 @@ export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, 
         {!loading && rows.length > 0 && (
           <>
             {/* Summary bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="rounded-lg border border-border bg-card p-2 text-center">
-                <p className="text-lg font-bold text-foreground">{totalCount}</p>
-                <p className="text-[10px] text-muted-foreground">Shots</p>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+              <div className="rounded-lg border border-border bg-card p-1.5 sm:p-2 text-center">
+                <p className="text-sm sm:text-lg font-bold text-foreground">{totalCount}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Shots</p>
               </div>
-              <div className="rounded-lg border border-border bg-card p-2 text-center">
-                <p className="text-lg font-bold text-emerald-500">{okCount}</p>
-                <p className="text-[10px] text-muted-foreground">Calés</p>
+              <div className="rounded-lg border border-border bg-card p-1.5 sm:p-2 text-center">
+                <p className="text-sm sm:text-lg font-bold text-emerald-500">{okCount}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Calés</p>
               </div>
-              <div className="rounded-lg border border-border bg-card p-2 text-center">
-                <p className="text-lg font-bold text-destructive">{missingCount}</p>
-                <p className="text-[10px] text-muted-foreground">Manquants</p>
+              <div className="rounded-lg border border-border bg-card p-1.5 sm:p-2 text-center">
+                <p className="text-sm sm:text-lg font-bold text-destructive">{missingCount}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Manquants</p>
               </div>
-              <div className="rounded-lg border border-border bg-card p-2 text-center">
-                <p className="text-lg font-bold text-amber-500">{errorCount}</p>
-                <p className="text-[10px] text-muted-foreground">Erreurs</p>
+              <div className="rounded-lg border border-border bg-card p-1.5 sm:p-2 text-center">
+                <p className="text-sm sm:text-lg font-bold text-amber-500">{errorCount}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Erreurs</p>
               </div>
             </div>
 
             {/* XML readiness banner */}
             {xmlReady ? (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5 sm:p-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                <p className="text-xs text-emerald-400 font-medium">
-                  Tous les shots sont calés — l'export XML Chirp 3 HD est disponible.
+                <p className="text-[11px] sm:text-xs text-emerald-400 font-medium">
+                  Tous les shots sont calés — export XML disponible.
                 </p>
               </div>
             ) : (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 sm:p-3">
                 <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-destructive font-medium">
-                    Export XML bloqué — {missingCount} shot(s) sans timepoint exact.
+                  <p className="text-[11px] sm:text-xs text-destructive font-medium">
+                    Export XML bloqué — {missingCount} shot(s) sans timepoint.
                   </p>
                   <ul className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
                     {missingCount > 0 && (
-                      <li>• Vérifiez que le script VO correspond exactement au texte des shots.</li>
+                      <li>• Vérifiez la correspondance script ↔ shots.</li>
                     )}
-                    <li>• Régénérez l'audio après avoir collé le script depuis les shots actuels.</li>
-                    <li>• Les écarts de transcription empêchent le mapping précis.</li>
+                    <li>• Régénérez après avoir collé le script actuel.</li>
                   </ul>
                 </div>
               </div>
@@ -238,24 +237,72 @@ export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, 
 
             {/* Audio info */}
             {audioEntry && (
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {audioEntry.duration_estimate.toFixed(1)}s
                 </span>
-                <span>{audioEntry.file_name}</span>
-                <span>{new Date(audioEntry.created_at).toLocaleString("fr-FR")}</span>
+                <span className="truncate max-w-[150px] sm:max-w-none">{audioEntry.file_name}</span>
+                <span className="hidden sm:inline">{new Date(audioEntry.created_at).toLocaleString("fr-FR")}</span>
               </div>
             )}
 
-            {/* Shot table */}
-            <div className="rounded-lg border border-border overflow-hidden">
+            {/* ── Mobile: card layout (<640px) ── */}
+            <div className="sm:hidden space-y-2">
+              {rows.map((row) => (
+                <div
+                  key={row.shotId}
+                  className={`rounded-lg border p-3 space-y-1.5 ${
+                    row.status === "missing"
+                      ? "border-destructive/30 bg-destructive/5"
+                      : row.status === "error"
+                        ? "border-amber-500/30 bg-amber-500/5"
+                        : "border-border bg-card"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-muted-foreground">#{row.globalIndex}</span>
+                    {row.status === "ok" && (
+                      <span className="inline-flex items-center gap-1 text-emerald-500 text-[11px] font-medium">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> OK
+                      </span>
+                    )}
+                    {row.status === "missing" && (
+                      <span className="inline-flex items-center gap-1 text-destructive text-[11px] font-medium">
+                        <XCircle className="h-3.5 w-3.5" /> Absent
+                      </span>
+                    )}
+                    {row.status === "error" && (
+                      <span className="inline-flex items-center gap-1 text-amber-500 text-[11px] font-medium">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Erreur
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-foreground leading-relaxed line-clamp-2">
+                    {row.text || <span className="text-muted-foreground italic">—</span>}
+                  </p>
+                  <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+                    <span>{row.startTime !== null ? formatTime(row.startTime) : "—"}</span>
+                    <span>→</span>
+                    <span>{row.endTime !== null ? formatTime(row.endTime) : "—"}</span>
+                    <span className={`ml-auto font-semibold ${
+                      row.duration !== null && row.duration > 0 ? "text-foreground" : "text-destructive"
+                    }`}>
+                      {row.duration !== null ? `${row.duration.toFixed(2)}s` : "—"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop: table layout (≥640px) ── */}
+            <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/50 border-b border-border">
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground w-10">#</th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Statut</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground w-20">Statut</th>
                       <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Texte</th>
                       <th className="px-3 py-2 text-right font-semibold text-muted-foreground w-20">Début</th>
                       <th className="px-3 py-2 text-right font-semibold text-muted-foreground w-20">Fin</th>
@@ -300,12 +347,12 @@ export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, 
                               </TooltipTrigger>
                               <TooltipContent side="right" className="max-w-xs">
                                 {row.status === "ok" && <p>Calage exact — correspondance mot-à-mot validée.</p>}
-                                {row.status === "missing" && <p>Aucun timepoint trouvé. Le texte du shot ne correspond pas exactement à la transcription audio. Vérifiez le script VO.</p>}
-                                {row.status === "error" && <p>Timepoint trouvé mais durée invalide ({row.duration?.toFixed(2)}s). Vérifiez l'ordre des shots.</p>}
+                                {row.status === "missing" && <p>Aucun timepoint trouvé. Le texte du shot ne correspond pas à la transcription audio.</p>}
+                                {row.status === "error" && <p>Timepoint trouvé mais durée invalide ({row.duration?.toFixed(2)}s).</p>}
                               </TooltipContent>
                             </Tooltip>
                           </td>
-                          <td className="px-3 py-2 max-w-[250px] truncate text-foreground" title={row.text}>
+                          <td className="px-3 py-2 max-w-[250px] lg:max-w-[400px] truncate text-foreground" title={row.text}>
                             {row.text || <span className="text-muted-foreground italic">—</span>}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-muted-foreground">
