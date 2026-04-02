@@ -44,7 +44,7 @@ interface AlignedShot {
   whisperEndIdx: number | null;
   startTime: number | null;
   endTime: number | null;
-  status: "ok" | "missing";
+  status: "ok" | "missing" | "manual";
   /** Is user currently editing this? */
   editing: boolean;
 }
@@ -194,7 +194,8 @@ export default function WhisperAlignmentEditor({
   }, [projectId, refreshKey, getSortedShots]);
 
   // ── Stats ──
-  const okCount = alignedShots.filter((s) => s.status === "ok").length;
+  const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
+  const manualCount = alignedShots.filter((s) => s.status === "manual").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
   const totalCount = alignedShots.length;
 
@@ -234,7 +235,7 @@ export default function WhisperAlignmentEditor({
             whisperEndIdx: selectionEnd,
             startTime,
             endTime,
-            status: "ok" as const,
+            status: "manual" as const,
           }
         : s
     );
@@ -243,7 +244,7 @@ export default function WhisperAlignmentEditor({
     // Auto-save to DB immediately
     try {
       const timepoints = updatedShots
-        .filter((s) => s.status === "ok" && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -273,7 +274,7 @@ export default function WhisperAlignmentEditor({
     setSaving(true);
     try {
       const timepoints = alignedShots
-        .filter((s) => s.status === "ok" && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -305,7 +306,7 @@ export default function WhisperAlignmentEditor({
   };
 
   const hasChanges = useMemo(() => {
-    return alignedShots.some((s) => s.status === "ok" && s.startTime !== null);
+    return alignedShots.some((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null);
   }, [alignedShots]);
 
   if (totalCount === 0 && !loading) return null;
@@ -322,6 +323,7 @@ export default function WhisperAlignmentEditor({
             }`}
           >
             {okCount}/{totalCount}
+            {manualCount > 0 && <span className="text-orange-500 ml-1">({manualCount} manuels)</span>}
           </span>
         )}
       </summary>
@@ -350,7 +352,9 @@ export default function WhisperAlignmentEditor({
                   <div
                     key={shot.shotId}
                     className={`rounded border text-[10px] ${
-                      shot.status === "ok"
+                      shot.status === "manual"
+                        ? "border-orange-500/30 bg-orange-500/5"
+                        : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
                         : "border-destructive/30 bg-destructive/5"
                     }`}
@@ -363,7 +367,9 @@ export default function WhisperAlignmentEditor({
                       }}
                       className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left min-h-[36px]"
                     >
-                      {shot.status === "ok" ? (
+                      {shot.status === "manual" ? (
+                        <CheckCircle2 className="h-3 w-3 text-orange-500 shrink-0" />
+                      ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       ) : (
                         <XCircle className="h-3 w-3 text-destructive shrink-0" />
