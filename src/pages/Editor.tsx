@@ -56,6 +56,7 @@ import { ScopeOverrideControl, useSensitiveMode } from "@/components/editor/sens
 import { useVisualStyle, VisualStyleSelector } from "@/components/editor/visualStyle";
 import { applyFrenchTypography } from "@/components/editor/frenchTypography";
 import { reorderShotsByReadingPosition } from "@/components/editor/shotAlignment";
+import { convertNumbersToFrench, hasDigits } from "@/components/editor/numberToFrenchText";
 
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
@@ -1358,6 +1359,70 @@ export default function Editor() {
     }
   };
 
+  // ── Convert numbers to French words in scenes + shots ──
+  const [convertingNumbers, setConvertingNumbers] = useState(false);
+
+  const convertAllNumbersToFrench = useCallback(async () => {
+    if (!projectId) return;
+    setConvertingNumbers(true);
+    try {
+      let sceneUpdates = 0;
+      let shotUpdates = 0;
+
+      // 1) Convert scene texts
+      for (const scene of scenes) {
+        const updates: Record<string, string> = {};
+        if (scene.source_text && hasDigits(scene.source_text)) {
+          updates.source_text = convertNumbersToFrench(scene.source_text);
+        }
+        if (scene.source_text_fr && hasDigits(scene.source_text_fr)) {
+          updates.source_text_fr = convertNumbersToFrench(scene.source_text_fr);
+        }
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase.from("scenes").update(updates).eq("id", scene.id);
+          if (!error) sceneUpdates++;
+        }
+      }
+
+      // 2) Convert shot texts
+      for (const shot of shots) {
+        const updates: Record<string, string> = {};
+        if (shot.source_sentence && hasDigits(shot.source_sentence)) {
+          updates.source_sentence = convertNumbersToFrench(shot.source_sentence);
+        }
+        if (shot.source_sentence_fr && hasDigits(shot.source_sentence_fr)) {
+          updates.source_sentence_fr = convertNumbersToFrench(shot.source_sentence_fr);
+        }
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase.from("shots").update(updates).eq("id", shot.id);
+          if (!error) shotUpdates++;
+        }
+      }
+
+      // 3) Reload from DB
+      const { data: freshScenes } = await supabase
+        .from("scenes")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("scene_order");
+      if (freshScenes) setScenes(freshScenes);
+
+      const { data: freshShots } = await supabase
+        .from("shots")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("shot_order");
+      if (freshShots) setShots(freshShots);
+
+      toast.success(`Conversion terminée — ${sceneUpdates} scène(s) et ${shotUpdates} shot(s) mis à jour`);
+    } catch (err) {
+      console.error("convertAllNumbersToFrench error:", err);
+      toast.error("Erreur lors de la conversion");
+    } finally {
+      setConvertingNumbers(false);
+    }
+  }, [projectId, scenes, shots]);
+
 
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
@@ -1910,10 +1975,22 @@ export default function Editor() {
                 </Button>
               )}
               {!segmenting && scenes.length > 0 && (
-                <div className="flex gap-2 shrink-0">
+                <div className="flex gap-2 shrink-0 flex-wrap">
                   <Button variant="outline" size="sm" onClick={runSegmentation} disabled={segmenting} className="min-h-[40px]">
                     <Play className="h-4 w-4" /> Re-segmenter
                   </Button>
+                  {scenes.some(s => hasDigits(s.source_text || "") || hasDigits(s.source_text_fr || "")) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={convertAllNumbersToFrench}
+                      disabled={convertingNumbers}
+                      className="min-h-[40px] text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                    >
+                      {convertingNumbers ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                      Chiffres → Lettres
+                    </Button>
+                  )}
                   <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     Créer les SHOTS
@@ -2337,6 +2414,18 @@ export default function Editor() {
                   const allOpen = openSceneIds.length === sceneIds.length && sceneIds.every((id) => openSceneIds.includes(id));
                   return (
                     <div className="mb-4 flex items-center justify-end gap-2 flex-wrap">
+                      {shots.some(s => hasDigits(s.source_sentence || "") || hasDigits(s.source_sentence_fr || "")) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={convertAllNumbersToFrench}
+                          disabled={convertingNumbers}
+                          className="h-7 text-xs text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                        >
+                          {convertingNumbers ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                          Chiffres → Lettres
+                        </Button>
+                      )}
                       <Button
                         variant={showWarnings ? "default" : "outline"}
                         size="sm"
