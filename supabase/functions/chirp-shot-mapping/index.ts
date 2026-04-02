@@ -150,6 +150,50 @@ function findBestWindow(
   return { startIdx: bestStart, endIdx: bestEndIdx, matchCount: bestMatchCount };
 }
 
+/**
+ * Fallback: anchor search using first + last word of the source.
+ * Scans a wider range to find the shot when sequential matching fails.
+ */
+function anchorFallbackSearch(
+  sourceWords: string[],
+  whisperWords: WordTimestamp[],
+  searchStart: number
+): { startIdx: number; endIdx: number; matchCount: number } | null {
+  if (sourceWords.length < 2) return null;
+
+  const firstWord = sourceWords[0];
+  const lastWord = sourceWords[sourceWords.length - 1];
+  const maxSearch = Math.min(whisperWords.length, searchStart + sourceWords.length * 10 + 60);
+
+  for (let i = searchStart; i < maxSearch; i++) {
+    if (!wordsMatch(firstWord, whisperWords[i].word)) continue;
+
+    // Found first word anchor — now look for last word within expected range
+    const expectedEnd = i + sourceWords.length;
+    const scanEnd = Math.min(whisperWords.length, expectedEnd + Math.max(10, sourceWords.length));
+
+    for (let j = Math.max(i + 1, expectedEnd - Math.max(5, sourceWords.length)); j < scanEnd; j++) {
+      if (!wordsMatch(lastWord, whisperWords[j].word)) continue;
+
+      // Count actual matches in this range
+      let matchCount = 0;
+      let sIdx = 0;
+      for (let wIdx = i; wIdx <= j && sIdx < sourceWords.length; wIdx++) {
+        if (wordsMatch(sourceWords[sIdx], whisperWords[wIdx].word)) {
+          matchCount++;
+          sIdx++;
+        }
+      }
+
+      if (matchCount >= Math.max(2, Math.floor(sourceWords.length * 0.3))) {
+        return { startIdx: i, endIdx: j, matchCount };
+      }
+    }
+  }
+
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
