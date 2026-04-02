@@ -487,7 +487,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
               </div>
             ))}
           </div>
-        </div>
+        </details>
       )}
 
       {report.allocationSummaries.length > 0 && (
