@@ -202,13 +202,13 @@ Deno.serve(async (req) => {
     const safeName = customFileName?.trim()
       ? customFileName.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
       : "chirp3hd";
-    const fileName = `${safeName}_${timestamp}.wav`;
+    const fileName = `${safeName}_${timestamp}.mp3`;
     const storagePath = `${user.id}/${projectId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("vo-audio")
       .upload(storagePath, audioBytes, {
-        contentType: "audio/wav",
+        contentType: "audio/mpeg",
         upsert: false,
       });
 
