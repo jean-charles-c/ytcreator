@@ -269,7 +269,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
