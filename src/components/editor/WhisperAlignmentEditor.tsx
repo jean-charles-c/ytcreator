@@ -194,7 +194,8 @@ export default function WhisperAlignmentEditor({
   }, [projectId, refreshKey, getSortedShots]);
 
   // ── Stats ──
-  const okCount = alignedShots.filter((s) => s.status === "ok").length;
+  const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
+  const manualCount = alignedShots.filter((s) => s.status === "manual").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
   const totalCount = alignedShots.length;
 
