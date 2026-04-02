@@ -311,9 +311,9 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Persist shots with exact OR high-confidence partial match (≥50%)
+      // Persist shots with exact OR partial match (≥30% confidence)
       const shotTimepoints = shotTimelines
-        .filter((s) => s.status === "exact" || (s.status === "partial" && s.alignmentConfidence >= 0.5))
+        .filter((s) => s.status === "exact" || (s.status === "partial" && s.alignmentConfidence >= 0.3))
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
