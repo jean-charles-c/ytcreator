@@ -79,11 +79,19 @@ Deno.serve(async (req) => {
         502
       );
     }
-    const audioBlob = await audioResponse.blob();
-    const audioDurationEstimate = audioBlob.size * 8 / 128000; // rough MP3 estimate
+
+    const contentType = audioResponse.headers.get("content-type") || "audio/mpeg";
+    const audioBuffer = await audioResponse.arrayBuffer();
+    const audioBlob = new Blob([audioBuffer], { type: contentType });
+    const fileExtension = contentType.includes("wav") || audioUrl.toLowerCase().includes(".wav")
+      ? "wav"
+      : contentType.includes("mpeg") || audioUrl.toLowerCase().includes(".mp3")
+        ? "mp3"
+        : "audio";
+    const audioDurationEstimate = audioBlob.size * 8 / 128000; // rough fallback only
 
     console.log(
-      `[whisper-align] Audio downloaded: ${audioBlob.size} bytes, ~${audioDurationEstimate.toFixed(1)}s`
+      `[whisper-align] Audio downloaded: ${audioBlob.size} bytes, ~${audioDurationEstimate.toFixed(1)}s, type=${contentType}`
     );
 
     // ── Call Groq Whisper ──
@@ -96,7 +104,7 @@ Deno.serve(async (req) => {
     }
 
     const formData = new FormData();
-    formData.append("file", audioBlob, "audio.mp3");
+    formData.append("file", audioBlob, `audio.${fileExtension}`);
     formData.append("model", "whisper-large-v3");
     formData.append("language", "fr");
     formData.append("response_format", "verbose_json");
