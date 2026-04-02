@@ -372,7 +372,7 @@ Deno.serve(async (req) => {
       }
 
       if (!window || window.matchCount === 0) {
-        console.warn(`[shot-mapping] MISS shot ${shot.shotId.slice(0, 8)}: "${sourceTokens.slice(0, 3).join(" ")}…" (${sourceTokens.length} words)`);
+        console.warn(`[shot-mapping] MISS shot ${shot.shotId.slice(0, 8)}: "${sourceTokens.slice(0, 5).join(" ")}…" (${sourceTokens.length} words)`);
         shotTimelines.push({
           shotId: shot.shotId,
           startTime: 0,
@@ -383,6 +383,10 @@ Deno.serve(async (req) => {
           expectedWordCount: sourceTokens.length,
           status: "missing",
         });
+        // NON-BLOCKING cursor: advance by estimated position to avoid cascade failures
+        // Estimate: each word ~0.4s, find approximate whisper position
+        const estimatedWordsPerShot = sourceTokens.length;
+        searchCursor = Math.min(searchCursor + Math.max(estimatedWordsPerShot, 3), whisperWords.length);
         continue;
       }
 
