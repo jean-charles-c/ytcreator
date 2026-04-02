@@ -79,6 +79,8 @@ export default function WhisperAlignmentEditor({
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
+  const [globalOffset, setGlobalOffset] = useState(0); // seconds to ADD to Whisper timecodes
+  const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
 
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
