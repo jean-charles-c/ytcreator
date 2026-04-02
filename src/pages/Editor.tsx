@@ -2414,6 +2414,18 @@ export default function Editor() {
                   const allOpen = openSceneIds.length === sceneIds.length && sceneIds.every((id) => openSceneIds.includes(id));
                   return (
                     <div className="mb-4 flex items-center justify-end gap-2 flex-wrap">
+                      {shots.some(s => hasDigits(s.source_sentence || "") || hasDigits(s.source_sentence_fr || "")) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={convertAllNumbersToFrench}
+                          disabled={convertingNumbers}
+                          className="h-7 text-xs text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                        >
+                          {convertingNumbers ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
+                          Chiffres → Lettres
+                        </Button>
+                      )}
                       <Button
                         variant={showWarnings ? "default" : "outline"}
                         size="sm"
