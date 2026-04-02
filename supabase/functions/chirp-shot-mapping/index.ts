@@ -45,6 +45,92 @@ interface ShotMappingResult {
   createdAt: string;
 }
 
+// ── Number-to-French-words converter ──
+
+const UNITS = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf",
+  "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"];
+const TENS = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante", "quatre-vingt", "quatre-vingt"];
+
+function numberToFrench(n: number): string {
+  if (n < 0) return "moins " + numberToFrench(-n);
+  if (n === 0) return "zero";
+  if (n < 20) return UNITS[n];
+  if (n < 70) {
+    const t = Math.floor(n / 10);
+    const u = n % 10;
+    if (u === 1 && t !== 8) return TENS[t] + " et un";
+    return u === 0 ? TENS[t] : TENS[t] + " " + UNITS[u];
+  }
+  if (n < 80) {
+    // 70-79: soixante-dix, soixante et onze, ...
+    const u = n - 60;
+    if (u === 11) return "soixante et onze";
+    return "soixante " + UNITS[u];
+  }
+  if (n < 100) {
+    // 80-99: quatre-vingt, quatre-vingt-un, quatre-vingt-dix, quatre-vingt-onze, ...
+    const u = n - 80;
+    if (u === 0) return "quatre vingts";
+    if (u < 20) return "quatre vingt " + UNITS[u];
+    return "quatre vingt " + UNITS[u]; // shouldn't happen for valid n<100
+  }
+  if (n < 200) {
+    const r = n - 100;
+    return r === 0 ? "cent" : "cent " + numberToFrench(r);
+  }
+  if (n < 1000) {
+    const h = Math.floor(n / 100);
+    const r = n % 100;
+    const prefix = UNITS[h] + " cent";
+    return r === 0 ? prefix + "s" : prefix + " " + numberToFrench(r);
+  }
+  if (n < 2000) {
+    const r = n - 1000;
+    return r === 0 ? "mille" : "mille " + numberToFrench(r);
+  }
+  if (n < 1000000) {
+    const t = Math.floor(n / 1000);
+    const r = n % 1000;
+    const prefix = numberToFrench(t) + " mille";
+    return r === 0 ? prefix : prefix + " " + numberToFrench(r);
+  }
+  // For very large numbers, just return digit-by-digit
+  return String(n).split("").map(d => UNITS[parseInt(d)] || d).join(" ");
+}
+
+/**
+ * Expand a token containing digits into French words.
+ * Handles pure numbers (959 → neuf cent cinquante neuf)
+ * and alphanumeric (F40 → F quarante).
+ */
+function expandNumberToken(token: string): string[] {
+  // Pure number
+  if (/^\d+$/.test(token)) {
+    const n = parseInt(token, 10);
+    if (n <= 999999) {
+      return numberToFrench(n).split(/[\s-]+/);
+    }
+    return [token];
+  }
+  // Mixed alphanumeric: split into letter/digit groups, expand digit groups
+  const parts = token.match(/[a-zA-ZÀ-ÿ]+|\d+/g);
+  if (!parts) return [token];
+  const result: string[] = [];
+  for (const p of parts) {
+    if (/^\d+$/.test(p)) {
+      const n = parseInt(p, 10);
+      if (n <= 999999) {
+        result.push(...numberToFrench(n).split(/[\s-]+/));
+      } else {
+        result.push(p);
+      }
+    } else {
+      result.push(p);
+    }
+  }
+  return result;
+}
+
 // ── Normalisation ──
 
 function normalizeWord(w: string): string {
@@ -56,7 +142,7 @@ function normalizeWord(w: string): string {
 }
 
 function tokenize(text: string): string[] {
-  return text
+  const raw = text
     // Normalize all apostrophe variants to simple quote then split on it
     .replace(/[\u2019\u2018\u0060\u00B4]/g, "'")
     // Split hyphenated words into separate tokens (Et-surtout → Et surtout)
@@ -66,6 +152,17 @@ function tokenize(text: string): string[] {
     .split(/\s+/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
+
+  // Expand numbers to French words for matching with Whisper transcription
+  const expanded: string[] = [];
+  for (const t of raw) {
+    if (/\d/.test(t)) {
+      expanded.push(...expandNumberToken(t));
+    } else {
+      expanded.push(t);
+    }
+  }
+  return expanded;
 }
 
 // ── Fuzzy matching ──
@@ -275,7 +372,7 @@ Deno.serve(async (req) => {
       }
 
       if (!window || window.matchCount === 0) {
-        console.warn(`[shot-mapping] MISS shot ${shot.shotId.slice(0, 8)}: "${sourceTokens.slice(0, 3).join(" ")}…" (${sourceTokens.length} words)`);
+        console.warn(`[shot-mapping] MISS shot ${shot.shotId.slice(0, 8)}: "${sourceTokens.slice(0, 5).join(" ")}…" (${sourceTokens.length} words)`);
         shotTimelines.push({
           shotId: shot.shotId,
           startTime: 0,
@@ -286,6 +383,10 @@ Deno.serve(async (req) => {
           expectedWordCount: sourceTokens.length,
           status: "missing",
         });
+        // NON-BLOCKING cursor: advance by estimated position to avoid cascade failures
+        // Estimate: each word ~0.4s, find approximate whisper position
+        const estimatedWordsPerShot = sourceTokens.length;
+        searchCursor = Math.min(searchCursor + Math.max(estimatedWordsPerShot, 3), whisperWords.length);
         continue;
       }
 
