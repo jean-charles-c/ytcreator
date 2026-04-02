@@ -235,6 +235,16 @@ Deno.serve(async (req) => {
         );
       }
 
+      const responseContentType = ttsResponse.headers.get("content-type") || "";
+      if (!responseContentType.includes("application/json")) {
+        const bodyText = await ttsResponse.text();
+        console.error(`[chirp3hd] Google TTS returned non-JSON (${responseContentType}):`, bodyText.slice(0, 300));
+        return jsonResponse(
+          { error: `Google TTS a retourné un format inattendu (${responseContentType}) pour le chunk ${i + 1}.` },
+          502
+        );
+      }
+
       const ttsData = await ttsResponse.json();
       if (!ttsData.audioContent) {
         return jsonResponse(
