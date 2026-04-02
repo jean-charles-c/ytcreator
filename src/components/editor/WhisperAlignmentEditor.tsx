@@ -59,10 +59,19 @@ interface WhisperAlignmentEditorProps {
   refreshKey?: number;
 }
 
-function formatTime(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+const TIMECODE_FPS = 24;
+
+function formatTimecode(sec: number, fps = TIMECODE_FPS): string {
+  const totalFrames = Math.max(0, Math.round(sec * fps));
+  const ff = totalFrames % fps;
+  const totalSec = Math.floor(totalFrames / fps);
+  const ss = totalSec % 60;
+  const mm = Math.floor(totalSec / 60);
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}:${String(ff).padStart(2, "0")}`;
+}
+
+function formatSeconds(sec: number): string {
+  return `${sec.toFixed(3)}s`;
 }
 
 export default function WhisperAlignmentEditor({
@@ -469,8 +478,11 @@ export default function WhisperAlignmentEditor({
                         {shot.shotText.length > 60 ? "…" : ""}
                       </span>
                       {shot.startTime !== null && (
-                        <span className="font-mono text-muted-foreground shrink-0">
-                          {formatTime(shot.startTime)}
+                        <span
+                          className="font-mono text-muted-foreground shrink-0"
+                          title={formatSeconds(shot.startTime)}
+                        >
+                          {formatTimecode(shot.startTime)}
                         </span>
                       )}
                       <ChevronDown
@@ -547,8 +559,8 @@ export default function WhisperAlignmentEditor({
                         {/* Timing info */}
                         {shot.startTime !== null && shot.endTime !== null && (
                           <div className="flex gap-3 font-mono text-muted-foreground">
-                            <span>Début: {formatTime(shot.startTime)}</span>
-                            <span>Fin: {formatTime(shot.endTime)}</span>
+                            <span>Début: {formatTimecode(shot.startTime)} ({formatSeconds(shot.startTime)})</span>
+                            <span>Fin: {formatTimecode(shot.endTime)} ({formatSeconds(shot.endTime)})</span>
                             <span>
                               Durée: {(shot.endTime - shot.startTime).toFixed(2)}s
                             </span>
@@ -604,19 +616,25 @@ export default function WhisperAlignmentEditor({
                             </div>
 
                             {selectionStart !== null && selectionEnd !== null && (
-                              <div className="flex items-center gap-2 text-[10px]">
-                                <span className="font-mono text-muted-foreground">
-                                  {formatTime(whisperWords[selectionStart].start + globalOffset)} →{" "}
-                                  {formatTime(whisperWords[selectionEnd].end + globalOffset)}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  ({selectionEnd - selectionStart + 1} mots)
-                                </span>
-                                {globalOffset !== 0 && (
-                                  <span className="text-orange-500 text-[9px]">
-                                    (offset {globalOffset > 0 ? "+" : ""}{globalOffset.toFixed(2)}s)
+                              <div className="space-y-1 text-[10px]">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-muted-foreground">
+                                    {formatTimecode(whisperWords[selectionStart].start + globalOffset)} →{" "}
+                                    {formatTimecode(whisperWords[selectionEnd].end + globalOffset)}
                                   </span>
-                                )}
+                                  <span className="text-muted-foreground">
+                                    ({selectionEnd - selectionStart + 1} mots)
+                                  </span>
+                                  {globalOffset !== 0 && (
+                                    <span className="text-orange-500 text-[9px]">
+                                      (offset {globalOffset > 0 ? "+" : ""}{globalOffset.toFixed(2)}s)
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="font-mono text-[9px] text-muted-foreground/80">
+                                  {formatSeconds(whisperWords[selectionStart].start + globalOffset)} →{" "}
+                                  {formatSeconds(whisperWords[selectionEnd].end + globalOffset)}
+                                </div>
                               </div>
                             )}
 
