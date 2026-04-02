@@ -185,10 +185,10 @@ function findBestWindow(
   if (sourceWords.length === 0) return null;
 
   const windowSize = sourceWords.length;
-  // Wider search window: scale with shot length + generous buffer
+  // Very wide search window to handle cursor drift
   const searchEnd = Math.min(
     whisperWords.length,
-    searchStart + windowSize * 6 + 40
+    searchStart + windowSize * 8 + 80
   );
 
   let bestStart = -1;
@@ -201,9 +201,9 @@ function findBestWindow(
     let wIdx = i; // whisper index
     let matchCount = 0;
     let skips = 0;
-    const MAX_SKIPS = 3;
+    const MAX_SKIPS = 5;
 
-    while (sIdx < sourceWords.length && wIdx < whisperWords.length && wIdx < searchEnd) {
+    while (sIdx < sourceWords.length && wIdx < whisperWords.length && wIdx < searchEnd + sourceWords.length) {
       if (wordsMatch(sourceWords[sIdx], whisperWords[wIdx].word)) {
         matchCount++;
         sIdx++;
@@ -260,7 +260,7 @@ function anchorFallbackSearch(
 
   const firstWord = sourceWords[0];
   const lastWord = sourceWords[sourceWords.length - 1];
-  const maxSearch = Math.min(whisperWords.length, searchStart + sourceWords.length * 10 + 60);
+  const maxSearch = Math.min(whisperWords.length, searchStart + sourceWords.length * 12 + 100);
 
   for (let i = searchStart; i < maxSearch; i++) {
     if (!wordsMatch(firstWord, whisperWords[i].word)) continue;
@@ -363,11 +363,24 @@ Deno.serve(async (req) => {
 
       let window = findBestWindow(sourceTokens, whisperWords, searchCursor);
 
-      // Fallback: anchor-based search if sequential matching failed
+      // Fallback 1: anchor-based search from cursor
       if (!window || window.matchCount === 0) {
         window = anchorFallbackSearch(sourceTokens, whisperWords, searchCursor);
         if (window) {
           console.log(`[shot-mapping] Fallback anchor matched shot ${shot.shotId.slice(0, 8)} with ${window.matchCount}/${sourceTokens.length} words`);
+        }
+      }
+
+      // Fallback 2: GLOBAL search from position 0 (handles cursor drift)
+      if (!window || window.matchCount === 0) {
+        if (searchCursor > 0) {
+          window = findBestWindow(sourceTokens, whisperWords, 0);
+          if (!window || window.matchCount === 0) {
+            window = anchorFallbackSearch(sourceTokens, whisperWords, 0);
+          }
+          if (window) {
+            console.log(`[shot-mapping] GLOBAL fallback matched shot ${shot.shotId.slice(0, 8)} at pos ${window.startIdx} with ${window.matchCount}/${sourceTokens.length} words`);
+          }
         }
       }
 
@@ -383,7 +396,6 @@ Deno.serve(async (req) => {
           expectedWordCount: sourceTokens.length,
           status: "missing",
         });
-        // Do NOT advance cursor on miss — let next shot search from same position
         continue;
       }
 
