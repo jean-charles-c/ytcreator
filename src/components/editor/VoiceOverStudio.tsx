@@ -286,12 +286,27 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 toast.warning(`Mapping shots échoué : ${mapErr?.error || "erreur"}`);
               } else {
                 const mapData = await mapResponse.json();
-                const mapped = mapData.shotTimelines?.filter((s: any) => s.status !== "missing").length ?? 0;
+                const exactShots = mapData.shotTimelines?.filter((s: any) => s.status === "exact").length ?? 0;
+                const partialShots = mapData.shotTimelines?.filter((s: any) => s.status === "partial").length ?? 0;
+                const missingShots = mapData.shotTimelines?.filter((s: any) => s.status === "missing").length ?? 0;
                 const total = mapData.shotTimelines?.length ?? 0;
-                toast.success(
-                  `Mapping terminé — ${mapped}/${total} shots calés, confiance moyenne ${(mapData.averageConfidence * 100).toFixed(0)}%`
-                );
+
                 console.log("[chirp3hd] ShotMappingResult:", mapData);
+
+                if (exactShots === total) {
+                  toast.success(
+                    `Mapping parfait — ${exactShots}/${total} shots calés avec précision.`
+                  );
+                } else if (exactShots > 0) {
+                  toast.warning(
+                    `Mapping partiel — ${exactShots}/${total} shots calés précisément. ${partialShots > 0 ? `${partialShots} approximatif(s).` : ""} ${missingShots > 0 ? `${missingShots} manquant(s).` : ""} Le XML ne sera pas généré pour les shots non calés exactement.`
+                  );
+                } else {
+                  toast.error(
+                    `Mapping échoué — aucun shot calé avec précision. L'export XML est bloqué. Vérifiez la cohérence entre le script VO et les textes des shots.`
+                  );
+                }
+
                 // Refresh history to show updated timepoints
                 setHistoryRefreshKey((k) => k + 1);
               }

@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
           mappedShots.length
         : 0;
 
-    const mappedWordIndices = new Set<number>();
+    const _mappedWordIndices = new Set<number>();
     // Count approximate unmapped words
     let unmappedWordCount = 0;
     if (searchCursor < whisperWords.length) {
@@ -277,9 +277,9 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Convert to the shot_timepoints format used by the existing pipeline
+      // Only persist shots with EXACT match (100% confidence) — no tolerance
       const shotTimepoints = shotTimelines
-        .filter((s) => s.status !== "missing")
+        .filter((s) => s.status === "exact")
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
