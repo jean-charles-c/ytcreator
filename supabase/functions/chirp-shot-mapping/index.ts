@@ -260,7 +260,7 @@ function anchorFallbackSearch(
 
   const firstWord = sourceWords[0];
   const lastWord = sourceWords[sourceWords.length - 1];
-  const maxSearch = Math.min(whisperWords.length, searchStart + sourceWords.length * 10 + 60);
+  const maxSearch = Math.min(whisperWords.length, searchStart + sourceWords.length * 12 + 100);
 
   for (let i = searchStart; i < maxSearch; i++) {
     if (!wordsMatch(firstWord, whisperWords[i].word)) continue;
