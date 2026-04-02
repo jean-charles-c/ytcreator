@@ -43,6 +43,7 @@ import FragmentedSceneView from "@/components/editor/FragmentedSceneView";
 import { buildManifest, validateManifest, computeMerge, computeDeleteRedistribution, computeSplit, type ManifestAction } from "@/components/editor/visualPromptTypes";
 import ManifestTimingPanel from "@/components/editor/ManifestTimingPanel";
 import QaPanel from "@/components/editor/QaPanel";
+import WhisperAlignmentEditor from "@/components/editor/WhisperAlignmentEditor";
 import SegmentationQaPanel from "@/components/editor/SegmentationQaPanel";
 import ObjectRegistryPanel, { type RecurringObject, IDENTITY_TEMPLATES } from "@/components/editor/ObjectRegistryPanel";
 import PdfDocumentaryTab from "@/components/editor/PdfDocumentaryTab";
@@ -2997,6 +2998,13 @@ export default function Editor() {
                       if (data) setScenes(data);
                     }}
                   />
+                  <div className="mt-3">
+                    <WhisperAlignmentEditor
+                      projectId={projectId!}
+                      shots={shots}
+                      scenesForSort={scenes.map(s => ({ id: s.id, scene_order: s.scene_order }))}
+                    />
+                  </div>
                 </div>
               </details>
 

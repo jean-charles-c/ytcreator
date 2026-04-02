@@ -827,6 +827,7 @@ export type Database = {
           text_length: number | null
           user_id: string
           voice_gender: string
+          whisper_words: Json | null
         }
         Insert: {
           created_at?: string | null
@@ -843,6 +844,7 @@ export type Database = {
           text_length?: number | null
           user_id: string
           voice_gender?: string
+          whisper_words?: Json | null
         }
         Update: {
           created_at?: string | null
@@ -859,6 +861,7 @@ export type Database = {
           text_length?: number | null
           user_id?: string
           voice_gender?: string
+          whisper_words?: Json | null
         }
         Relationships: [
           {
