@@ -306,7 +306,7 @@ export default function WhisperAlignmentEditor({
   };
 
   const hasChanges = useMemo(() => {
-    return alignedShots.some((s) => s.status === "ok" && s.startTime !== null);
+    return alignedShots.some((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null);
   }, [alignedShots]);
 
   if (totalCount === 0 && !loading) return null;
