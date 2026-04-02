@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
           mappedShots.length
         : 0;
 
-    const mappedWordIndices = new Set<number>();
+    const _mappedWordIndices = new Set<number>();
     // Count approximate unmapped words
     let unmappedWordCount = 0;
     if (searchCursor < whisperWords.length) {
