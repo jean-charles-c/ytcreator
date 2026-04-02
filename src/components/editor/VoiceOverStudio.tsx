@@ -166,8 +166,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       if (pipelineMode === "chirp3hd") {
         toast.info("Pipeline Chirp 3 HD : génération en cours… (mode expérimental)");
         // TODO Prompt 3: call dedicated chirp3hd edge function
-        // For now, show a placeholder message
         toast.warning("Le pipeline Chirp 3 HD n'est pas encore connecté. Il sera activé à l'étape suivante.");
+        setGenerating(false);
         return;
       }
 
