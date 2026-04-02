@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
     const languageCode = "fr-FR";
 
-    // ── Call Google TTS ──
+    // ── Call Google TTS (chunked for texts > 4500 bytes) ──
     const GOOGLE_TTS_API_KEY = Deno.env.get("GOOGLE_TTS_API_KEY");
     if (!GOOGLE_TTS_API_KEY) {
       return jsonResponse(
@@ -76,56 +76,106 @@ Deno.serve(async (req) => {
     }
 
     const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`;
+    const MAX_BYTES = 4500; // safe margin under 5000 byte limit
 
-    // Chirp3-HD: plain text only, no SSML, no speakingRate/pitch
-    const ttsPayload = {
-      input: { text: text.trim() },
-      voice: {
-        languageCode,
-        name: resolvedVoice,
-      },
-      audioConfig: {
-        audioEncoding: "MP3",
-      },
-    };
+    /** Split text into chunks that fit within byte limit, breaking at sentence boundaries */
+    function splitTextIntoChunks(fullText: string): string[] {
+      const encoder = new TextEncoder();
+      if (encoder.encode(fullText).length <= MAX_BYTES) return [fullText];
 
+      const sentences = fullText.split(/(?<=[.!?…])\s+/);
+      const chunks: string[] = [];
+      let current = "";
+
+      for (const sentence of sentences) {
+        const candidate = current ? `${current} ${sentence}` : sentence;
+        if (encoder.encode(candidate).length > MAX_BYTES) {
+          if (current) chunks.push(current);
+          // If a single sentence exceeds the limit, split by words
+          if (encoder.encode(sentence).length > MAX_BYTES) {
+            const words = sentence.split(/\s+/);
+            let wordChunk = "";
+            for (const word of words) {
+              const wordCandidate = wordChunk ? `${wordChunk} ${word}` : word;
+              if (encoder.encode(wordCandidate).length > MAX_BYTES) {
+                if (wordChunk) chunks.push(wordChunk);
+                wordChunk = word;
+              } else {
+                wordChunk = wordCandidate;
+              }
+            }
+            if (wordChunk) current = wordChunk;
+            else current = "";
+          } else {
+            current = sentence;
+          }
+        } else {
+          current = candidate;
+        }
+      }
+      if (current) chunks.push(current);
+      return chunks;
+    }
+
+    const textChunks = splitTextIntoChunks(text.trim());
     console.log(
-      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}`
+      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}`
     );
 
-    const ttsResponse = await fetch(ttsUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(ttsPayload),
+    const audioPartsBase64: string[] = [];
+
+    for (let i = 0; i < textChunks.length; i++) {
+      const chunk = textChunks[i];
+      const ttsPayload = {
+        input: { text: chunk },
+        voice: { languageCode, name: resolvedVoice },
+        audioConfig: { audioEncoding: "MP3" },
+      };
+
+      const ttsResponse = await fetch(ttsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ttsPayload),
+      });
+
+      if (!ttsResponse.ok) {
+        const errBody = await ttsResponse.text();
+        console.error(`[chirp3hd] Google TTS error chunk ${i + 1}/${textChunks.length} [${ttsResponse.status}]:`, errBody);
+        return jsonResponse(
+          {
+            error: `Google TTS API Chirp3-HD a échoué sur le chunk ${i + 1}/${textChunks.length} [${ttsResponse.status}]`,
+            details: errBody,
+          },
+          502
+        );
+      }
+
+      const ttsData = await ttsResponse.json();
+      if (!ttsData.audioContent) {
+        return jsonResponse(
+          { error: `Aucun contenu audio retourné pour le chunk ${i + 1}.` },
+          502
+        );
+      }
+
+      audioPartsBase64.push(ttsData.audioContent);
+      console.log(`[chirp3hd] Chunk ${i + 1}/${textChunks.length} OK`);
+    }
+
+    // ── Concatenate MP3 chunks ──
+    const audioParts = audioPartsBase64.map((b64) => {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes;
     });
 
-    if (!ttsResponse.ok) {
-      const errBody = await ttsResponse.text();
-      console.error(`[chirp3hd] Google TTS error [${ttsResponse.status}]:`, errBody);
-      return jsonResponse(
-        {
-          error: `Google TTS API Chirp3-HD a échoué [${ttsResponse.status}]`,
-          details: errBody,
-        },
-        502
-      );
-    }
-
-    const ttsData = await ttsResponse.json();
-    const audioContent = ttsData.audioContent as string; // base64
-
-    if (!audioContent) {
-      return jsonResponse(
-        { error: "Aucun contenu audio retourné par Google TTS." },
-        502
-      );
-    }
-
-    // ── Decode and measure ──
-    const binaryString = atob(audioContent);
-    const audioBytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      audioBytes[i] = binaryString.charCodeAt(i);
+    const totalSize = audioParts.reduce((sum, part) => sum + part.length, 0);
+    const audioBytes = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const part of audioParts) {
+      audioBytes.set(part, offset);
+      offset += part.length;
     }
     const fileSize = audioBytes.length;
 
