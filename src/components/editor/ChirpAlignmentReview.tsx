@@ -1,0 +1,336 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { CheckCircle2, AlertTriangle, XCircle, Clock, BarChart3, FlaskConical } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+
+interface ShotTimepointRow {
+  shotId: string;
+  shotIndex: number;
+  timeSeconds: number;
+}
+
+interface ChirpAlignmentReviewProps {
+  projectId: string | null;
+  shots?: { id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null; description: string }[];
+  scenesForSort?: { id: string; scene_order: number }[];
+  refreshKey?: number;
+}
+
+interface ShotRow {
+  shotId: string;
+  globalIndex: number;
+  text: string;
+  startTime: number | null;
+  endTime: number | null;
+  duration: number | null;
+  status: "ok" | "missing" | "error";
+}
+
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+}
+
+export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, refreshKey }: ChirpAlignmentReviewProps) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<ShotRow[]>([]);
+  const [audioEntry, setAudioEntry] = useState<{ id: string; duration_estimate: number; created_at: string; file_name: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const getSortedShots = () => {
+    if (!shots || shots.length === 0 || !scenesForSort || scenesForSort.length === 0) return [];
+    const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
+    return [...shots].sort((a, b) => {
+      const oa = sceneOrderMap.get(a.scene_id) ?? 0;
+      const ob = sceneOrderMap.get(b.scene_id) ?? 0;
+      if (oa !== ob) return oa - ob;
+      return a.shot_order - b.shot_order;
+    });
+  };
+
+  useEffect(() => {
+    if (!projectId || !open) return;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        // Get latest chirp3hd audio entry
+        const { data: audioData } = await supabase
+          .from("vo_audio_history")
+          .select("id, shot_timepoints, duration_estimate, created_at, file_name")
+          .eq("project_id", projectId)
+          .eq("style", "chirp3hd")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const entry = audioData?.[0];
+        if (!entry) {
+          setRows([]);
+          setAudioEntry(null);
+          setLoading(false);
+          return;
+        }
+
+        setAudioEntry({
+          id: entry.id,
+          duration_estimate: entry.duration_estimate ?? 0,
+          created_at: entry.created_at ?? "",
+          file_name: entry.file_name,
+        });
+
+        const timepoints: ShotTimepointRow[] = Array.isArray(entry.shot_timepoints)
+          ? (entry.shot_timepoints as any[]).filter((tp) => tp && tp.shotId && typeof tp.timeSeconds === "number")
+          : [];
+
+        const timepointMap = new Map<string, number>(
+          timepoints.map((tp) => [tp.shotId, tp.timeSeconds])
+        );
+
+        const sorted = getSortedShots();
+        const audioDuration = entry.duration_estimate ?? 0;
+
+        const shotRows: ShotRow[] = sorted.map((shot, idx) => {
+          const text = (shot.source_sentence_fr || shot.source_sentence || shot.description || "").trim();
+          const startTime = timepointMap.get(shot.id) ?? null;
+
+          if (startTime === null) {
+            return {
+              shotId: shot.id,
+              globalIndex: idx + 1,
+              text,
+              startTime: null,
+              endTime: null,
+              duration: null,
+              status: "missing" as const,
+            };
+          }
+
+          // Find next mapped shot's start for endTime
+          let endTime: number | null = null;
+          for (let j = idx + 1; j < sorted.length; j++) {
+            const nextStart = timepointMap.get(sorted[j].id);
+            if (nextStart !== undefined) {
+              endTime = nextStart;
+              break;
+            }
+          }
+          if (endTime === null) endTime = audioDuration;
+
+          const duration = endTime - startTime;
+
+          return {
+            shotId: shot.id,
+            globalIndex: idx + 1,
+            text,
+            startTime,
+            endTime,
+            duration,
+            status: duration > 0 ? "ok" as const : "error" as const,
+          };
+        });
+
+        setRows(shotRows);
+      } catch (e) {
+        console.error("[ChirpAlignmentReview] load error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [projectId, open, refreshKey, shots?.length]);
+
+  const okCount = rows.filter((r) => r.status === "ok").length;
+  const missingCount = rows.filter((r) => r.status === "missing").length;
+  const errorCount = rows.filter((r) => r.status === "error").length;
+  const totalCount = rows.length;
+  const allOk = totalCount > 0 && okCount === totalCount;
+  const xmlReady = allOk;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors">
+        <FlaskConical className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold font-display text-foreground flex-1 text-left">
+          Contrôle Chirp 3 HD
+        </span>
+        {totalCount > 0 && (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${
+            allOk
+              ? "bg-emerald-500/15 text-emerald-500"
+              : missingCount > 0
+                ? "bg-destructive/15 text-destructive"
+                : "bg-amber-500/15 text-amber-500"
+          }`}>
+            {allOk ? <CheckCircle2 className="h-3 w-3" /> : missingCount > 0 ? <XCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+            {allOk ? "Prêt" : `${okCount}/${totalCount}`}
+          </span>
+        )}
+      </CollapsibleTrigger>
+
+      <CollapsibleContent className="pt-3 space-y-3">
+        {loading && (
+          <p className="text-xs text-muted-foreground animate-pulse">Chargement…</p>
+        )}
+
+        {!loading && !audioEntry && (
+          <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 text-center">
+            <p className="text-xs text-muted-foreground">Aucun audio Chirp 3 HD généré pour ce projet.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Générez un audio en mode Chirp 3 HD pour voir le contrôle qualité.</p>
+          </div>
+        )}
+
+        {!loading && audioEntry && rows.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border bg-card/50 p-4 text-center">
+            <p className="text-xs text-muted-foreground">Audio trouvé mais aucun shot à mapper.</p>
+          </div>
+        )}
+
+        {!loading && rows.length > 0 && (
+          <>
+            {/* Summary bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-lg border border-border bg-card p-2 text-center">
+                <p className="text-lg font-bold text-foreground">{totalCount}</p>
+                <p className="text-[10px] text-muted-foreground">Shots</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-2 text-center">
+                <p className="text-lg font-bold text-emerald-500">{okCount}</p>
+                <p className="text-[10px] text-muted-foreground">Calés</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-2 text-center">
+                <p className="text-lg font-bold text-destructive">{missingCount}</p>
+                <p className="text-[10px] text-muted-foreground">Manquants</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-2 text-center">
+                <p className="text-lg font-bold text-amber-500">{errorCount}</p>
+                <p className="text-[10px] text-muted-foreground">Erreurs</p>
+              </div>
+            </div>
+
+            {/* XML readiness banner */}
+            {xmlReady ? (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                <p className="text-xs text-emerald-400 font-medium">
+                  Tous les shots sont calés — l'export XML Chirp 3 HD est disponible.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-destructive font-medium">
+                    Export XML bloqué — {missingCount} shot(s) sans timepoint exact.
+                  </p>
+                  <ul className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
+                    {missingCount > 0 && (
+                      <li>• Vérifiez que le script VO correspond exactement au texte des shots.</li>
+                    )}
+                    <li>• Régénérez l'audio après avoir collé le script depuis les shots actuels.</li>
+                    <li>• Les écarts de transcription empêchent le mapping précis.</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Audio info */}
+            {audioEntry && (
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {audioEntry.duration_estimate.toFixed(1)}s
+                </span>
+                <span>{audioEntry.file_name}</span>
+                <span>{new Date(audioEntry.created_at).toLocaleString("fr-FR")}</span>
+              </div>
+            )}
+
+            {/* Shot table */}
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/50 border-b border-border">
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground w-10">#</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Statut</th>
+                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Texte</th>
+                      <th className="px-3 py-2 text-right font-semibold text-muted-foreground w-20">Début</th>
+                      <th className="px-3 py-2 text-right font-semibold text-muted-foreground w-20">Fin</th>
+                      <th className="px-3 py-2 text-right font-semibold text-muted-foreground w-20">Durée</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <TooltipProvider>
+                      {rows.map((row) => (
+                        <tr
+                          key={row.shotId}
+                          className={`border-b border-border last:border-0 ${
+                            row.status === "missing"
+                              ? "bg-destructive/5"
+                              : row.status === "error"
+                                ? "bg-amber-500/5"
+                                : ""
+                          }`}
+                        >
+                          <td className="px-3 py-2 font-mono text-muted-foreground">{row.globalIndex}</td>
+                          <td className="px-3 py-2">
+                            <Tooltip>
+                              <TooltipTrigger>
+                                {row.status === "ok" && (
+                                  <span className="inline-flex items-center gap-1 text-emerald-500">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span className="font-medium">OK</span>
+                                  </span>
+                                )}
+                                {row.status === "missing" && (
+                                  <span className="inline-flex items-center gap-1 text-destructive">
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    <span className="font-medium">Absent</span>
+                                  </span>
+                                )}
+                                {row.status === "error" && (
+                                  <span className="inline-flex items-center gap-1 text-amber-500">
+                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                    <span className="font-medium">Erreur</span>
+                                  </span>
+                                )}
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                {row.status === "ok" && <p>Calage exact — correspondance mot-à-mot validée.</p>}
+                                {row.status === "missing" && <p>Aucun timepoint trouvé. Le texte du shot ne correspond pas exactement à la transcription audio. Vérifiez le script VO.</p>}
+                                {row.status === "error" && <p>Timepoint trouvé mais durée invalide ({row.duration?.toFixed(2)}s). Vérifiez l'ordre des shots.</p>}
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          <td className="px-3 py-2 max-w-[250px] truncate text-foreground" title={row.text}>
+                            {row.text || <span className="text-muted-foreground italic">—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                            {row.startTime !== null ? formatTime(row.startTime) : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                            {row.endTime !== null ? formatTime(row.endTime) : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono">
+                            {row.duration !== null ? (
+                              <span className={row.duration > 0 ? "text-foreground" : "text-destructive"}>
+                                {row.duration.toFixed(2)}s
+                              </span>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </TooltipProvider>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
