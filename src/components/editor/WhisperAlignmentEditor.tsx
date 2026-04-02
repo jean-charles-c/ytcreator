@@ -62,14 +62,6 @@ function formatTime(sec: number): string {
   return `${m}:${s.toFixed(2).padStart(5, "0")}`;
 }
 
-function normalizeWord(w: string): string {
-  return w
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
-
 export default function WhisperAlignmentEditor({
   projectId,
   shots,
