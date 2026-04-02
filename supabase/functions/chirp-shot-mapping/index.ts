@@ -52,11 +52,17 @@ function normalizeWord(w: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // strip accents for comparison
-    .replace(/[^a-z0-9]/g, ""); // strip punctuation
+    .replace(/[^a-z0-9]/g, ""); // strip punctuation & special chars
 }
 
 function tokenize(text: string): string[] {
   return text
+    // Normalize all apostrophe variants to simple quote then split on it
+    .replace(/[\u2019\u2018\u0060\u00B4]/g, "'")
+    // Split hyphenated words into separate tokens (Et-surtout → Et surtout)
+    .replace(/-/g, " ")
+    // Normalize spaces around punctuation
+    .replace(/\s*([,;:!?.])\s*/g, " ")
     .split(/\s+/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
@@ -70,7 +76,8 @@ function wordsMatch(source: string, whisper: string): boolean {
 
 /**
  * Find the best starting position in whisperWords for a sequence of sourceWords.
- * Strict sequential matching — no word skipping, no fuzzy tolerance.
+ * Tolerant sequential matching — allows up to 2 skipped/mismatched words
+ * to handle minor transcription differences from Whisper.
  * Returns { startIdx, endIdx, matchCount } or null.
  */
 function findBestWindow(
@@ -83,26 +90,54 @@ function findBestWindow(
   const windowSize = sourceWords.length;
   const searchEnd = Math.min(
     whisperWords.length,
-    searchStart + windowSize * 3 + 10
+    searchStart + windowSize * 4 + 20
   );
 
   let bestStart = -1;
   let bestMatchCount = 0;
+  let bestEndIdx = -1;
 
   for (let i = searchStart; i <= searchEnd - 1; i++) {
+    // Try matching with tolerance for skips
+    let sIdx = 0; // source index
+    let wIdx = i; // whisper index
     let matchCount = 0;
+    let skips = 0;
+    const MAX_SKIPS = 2;
 
-    for (let s = 0; s < sourceWords.length && (i + s) < whisperWords.length; s++) {
-      if (wordsMatch(sourceWords[s], whisperWords[i + s].word)) {
+    while (sIdx < sourceWords.length && wIdx < whisperWords.length && wIdx < searchEnd) {
+      if (wordsMatch(sourceWords[sIdx], whisperWords[wIdx].word)) {
         matchCount++;
+        sIdx++;
+        wIdx++;
+        skips = 0; // reset skip counter on successful match
       } else {
-        break; // strict: stop at first mismatch
+        skips++;
+        if (skips > MAX_SKIPS) break;
+        // Try advancing whisper index (Whisper has extra word)
+        // or source index (Whisper missed a word)
+        // Peek ahead to decide which to skip
+        const whisperSkipMatch = wIdx + 1 < whisperWords.length &&
+          wordsMatch(sourceWords[sIdx], whisperWords[wIdx + 1].word);
+        const sourceSkipMatch = sIdx + 1 < sourceWords.length &&
+          wordsMatch(sourceWords[sIdx + 1], whisperWords[wIdx].word);
+
+        if (whisperSkipMatch) {
+          wIdx++; // skip extra whisper word
+        } else if (sourceSkipMatch) {
+          sIdx++; // skip missing source word
+        } else {
+          // Skip both
+          sIdx++;
+          wIdx++;
+        }
       }
     }
 
-    if (matchCount > bestMatchCount) {
+    if (matchCount > bestMatchCount && matchCount >= Math.max(1, Math.floor(sourceWords.length * 0.4))) {
       bestMatchCount = matchCount;
       bestStart = i;
+      bestEndIdx = wIdx - 1;
     }
 
     // Perfect match — stop early
@@ -111,9 +146,7 @@ function findBestWindow(
 
   if (bestStart < 0 || bestMatchCount === 0) return null;
 
-  const endIdx = bestStart + bestMatchCount - 1;
-
-  return { startIdx: bestStart, endIdx, matchCount: bestMatchCount };
+  return { startIdx: bestStart, endIdx: bestEndIdx, matchCount: bestMatchCount };
 }
 
 Deno.serve(async (req) => {
