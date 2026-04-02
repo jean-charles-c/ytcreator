@@ -483,11 +483,19 @@ Deno.serve(async (req) => {
           timeSeconds: s.startTime,
         }));
 
+      // Persist whisper words for manual alignment editor
+      const whisperWordsPayload = whisperWords.map((w: WordTimestamp) => ({
+        word: w.word,
+        start: w.start,
+        end: w.end,
+      }));
+
       const { error: updateError } = await supabaseService
         .from("vo_audio_history")
         .update({
           shot_timepoints: shotTimepoints as unknown as Record<string, unknown>[],
           duration_estimate: audioDuration,
+          whisper_words: whisperWordsPayload as unknown as Record<string, unknown>[],
         })
         .eq("id", audioHistoryId);
 
