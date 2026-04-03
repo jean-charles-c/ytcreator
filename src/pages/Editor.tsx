@@ -2027,6 +2027,18 @@ export default function Editor() {
                       Chiffres → Lettres
                     </Button>
                   )}
+                  {numberConversionBackup && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={revertNumberConversion}
+                      disabled={convertingNumbers}
+                      className="min-h-[40px] text-orange-600 border-orange-500/30 hover:bg-orange-500/10"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Annuler conversion
+                    </Button>
+                  )}
                   <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     Créer les SHOTS
