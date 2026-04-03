@@ -599,6 +599,25 @@ export default function WhisperAlignmentEditor({
                     return a.shot_order - b.shot_order;
                   });
 
+                  const shotTexts = sortedShotSources.map((shot) => ({
+                    id: shot.id,
+                    text: getShotFragmentText(shot),
+                  }));
+
+                  const manualAnchors = new Map<string, number>();
+                  for (const s of alignedShots) {
+                    if (s.status === "manual" && s.whisperStartIdx !== null) {
+                      manualAnchors.set(s.shotId, s.whisperStartIdx);
+                    }
+                  }
+
+                  const strictResults = matchShotsStrictSequential(
+                    shotTexts,
+                    whisperWords,
+                    manualAnchors.size > 0 ? manualAnchors : undefined
+                  );
+
+                  const strictMatchMap = new Map(strictResults.map((result) => [result.shotId, result]));
                   const repairedTimepoints = buildRepairedShotTimepoints({
                     shots: sortedShotSources,
                     scenesForSort,
@@ -611,12 +630,50 @@ export default function WhisperAlignmentEditor({
 
                   const repairedMap = new Map(repairedTimepoints.map((tp) => [tp.shotId, tp.timeSeconds]));
                   const recalculated = recalculateWhisperShotEndTimes(
-                    alignedShots.map((s) => ({
-                      ...s,
-                      startTime: repairedMap.get(s.shotId) ?? s.startTime,
-                    })),
+                    alignedShots.map((s) => {
+                      const strictMatch = strictMatchMap.get(s.shotId);
+                      const whisperStartIdx = strictMatch?.whisperStartIdx ?? null;
+                      const isBlocked = strictMatch?.blocked ?? false;
+                      const startTime = whisperStartIdx !== null
+                        ? whisperWords[whisperStartIdx]?.start ?? repairedMap.get(s.shotId) ?? s.startTime
+                        : repairedMap.get(s.shotId) ?? null;
+
+                      let status: AlignedShot["status"];
+                      if (manualAnchors.has(s.shotId)) {
+                        status = "manual";
+                      } else if (isBlocked) {
+                        status = "blocked";
+                      } else if (whisperStartIdx !== null) {
+                        status = "ok";
+                      } else if (startTime !== null) {
+                        status = "estimated";
+                      } else {
+                        status = "missing";
+                      }
+
+                      return {
+                        ...s,
+                        whisperStartIdx,
+                        startTime,
+                        status,
+                      };
+                    }),
                     audioDuration
-                  );
+                  ).map((s) => {
+                    let whisperEndIdx: number | null = null;
+                    if (s.whisperStartIdx !== null && s.endTime !== null) {
+                      for (let wi = whisperWords.length - 1; wi >= 0; wi--) {
+                        if (whisperWords[wi].end <= s.endTime + 0.05) {
+                          whisperEndIdx = wi;
+                          break;
+                        }
+                      }
+                    }
+                    return {
+                      ...s,
+                      whisperEndIdx,
+                    };
+                  });
                   setAlignedShots(recalculated);
 
                   const { error } = await supabase
@@ -626,7 +683,12 @@ export default function WhisperAlignmentEditor({
 
                   if (error) throw error;
 
-                  toast.success(`${repairedTimepoints.length} shots recalés sur Whisper`);
+                  const blockedShot = recalculated.find((s) => s.status === "blocked");
+                  toast.success(
+                    blockedShot
+                      ? `${repairedTimepoints.length} shots recalés — bloqué au shot #${blockedShot.globalIndex}`
+                      : `${repairedTimepoints.length} shots recalés sur Whisper`
+                  );
                 } catch (e: any) {
                   console.error("[WhisperAlignmentEditor] recaler error:", e);
                   toast.error("Erreur lors du recalage Whisper");
