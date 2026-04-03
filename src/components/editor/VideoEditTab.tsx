@@ -389,12 +389,31 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
     if (audioChanged || shotsChanged) {
       const audioFile = audioFiles.find((a) => a.id === selectedAudioId);
       if (!audioFile) return;
-      const timepoints = (audioFile as any).shot_timepoints ?? null;
+      const rawTimepoints = (audioFile as any).shot_timepoints ?? null;
+      const whisperWords = Array.isArray((audioFile as any).whisper_words) ? (audioFile as any).whisper_words : [];
+      const expectedShotIds = [...shots]
+        .sort((a, b) => {
+          const sceneOrderA = scenes.find((scene) => scene.id === a.scene_id)?.scene_order ?? 0;
+          const sceneOrderB = scenes.find((scene) => scene.id === b.scene_id)?.scene_order ?? 0;
+          if (sceneOrderA !== sceneOrderB) return sceneOrderA - sceneOrderB;
+          return a.shot_order - b.shot_order;
+        })
+        .map((shot) => shot.id);
+      const validation = validateExactShotTimepoints(expectedShotIds, rawTimepoints);
+      const timepoints = validation.ok
+        ? rawTimepoints
+        : buildRepairedShotTimepoints({
+            shots,
+            scenesForSort: scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order })),
+            whisperWords,
+            existingTimepoints: rawTimepoints,
+            audioDuration: audioFile.duration_estimate ?? 0,
+          });
       const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
       setTimeline(assembled);
       saveTimelineToDb(assembled);
       const reason = audioChanged ? "nouvel audio détecté" : "shots modifiés";
-      const syncMode = timepoints ? "sync précis" : "sync proportionnel";
+      const syncMode = validation.ok ? "sync précis" : "sync réparé automatiquement";
       toast.info(`Timeline auto-réassemblée (${reason}) — ${syncMode}`);
     }
   }, [selectedAudioId, shots, audioFiles, scenes, timeline, saveTimelineToDb]);
