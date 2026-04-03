@@ -274,6 +274,9 @@ Deno.serve(async (req) => {
     );
 
     // ── Persist alignment in vo_audio_history ──
+    // Only persist whisper_words (raw word timestamps) — NOT shot_timepoints.
+    // shot_timepoints are managed by the client-side "Recaler sur Whisper" button
+    // to avoid overwriting carefully calibrated timepoints with raw Whisper data.
     const supabaseService = createClient(
       supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -293,14 +296,14 @@ Deno.serve(async (req) => {
         .from("vo_audio_history")
         .update({
           duration_estimate: finalDuration,
-          shot_timepoints: { alignmentRun } as unknown as Record<string, unknown>,
+          whisper_words: finalWords as unknown as Record<string, unknown>[],
         })
         .eq("id", latestAudio[0].id);
 
       if (updateError) {
         console.error("[whisper-align] DB update error:", updateError);
       } else {
-        console.log(`[whisper-align] Updated vo_audio_history ${latestAudio[0].id}`);
+        console.log(`[whisper-align] Updated vo_audio_history ${latestAudio[0].id} (whisper_words only, shot_timepoints preserved)`);
       }
     }
 
