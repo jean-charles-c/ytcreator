@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchShotsByText } from "../components/editor/whisperTextMatcher";
+import { matchShotsByText, enforceMonotonicTimestamps } from "../components/editor/whisperTextMatcher";
 
 describe("whisperTextMatcher", () => {
   const whisperWords = [
@@ -50,5 +50,29 @@ describe("whisperTextMatcher", () => {
     const shots = [{ id: "shot-empty", text: "" }];
     const results = matchShotsByText(shots, whisperWords);
     expect(results[0].whisperStartIdx).toBeNull();
+  });
+});
+
+describe("enforceMonotonicTimestamps", () => {
+  it("discards matches that go backwards in time", () => {
+    const words = [
+      { word: "a", start: 1.0, end: 1.5 },
+      { word: "b", start: 5.0, end: 5.5 },
+      { word: "c", start: 900.0, end: 900.5 }, // far away match
+      { word: "d", start: 10.0, end: 10.5 },
+    ];
+
+    const results = [
+      { shotId: "s1", whisperStartIdx: 0, matchedWords: 1 },
+      { shotId: "s2", whisperStartIdx: 1, matchedWords: 1 },
+      { shotId: "s3", whisperStartIdx: 2, matchedWords: 1 }, // 900s — jump
+      { shotId: "s4", whisperStartIdx: 3, matchedWords: 1 }, // 10s — backwards!
+    ];
+
+    const fixed = enforceMonotonicTimestamps(results, words);
+    expect(fixed[0].whisperStartIdx).toBe(0);
+    expect(fixed[1].whisperStartIdx).toBe(1);
+    expect(fixed[2].whisperStartIdx).toBe(2);
+    expect(fixed[3].whisperStartIdx).toBeNull(); // discarded
   });
 });

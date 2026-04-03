@@ -43,6 +43,17 @@ export interface TextMatchResult {
 }
 
 /**
+ * Maximum number of whisper words to look ahead from `searchFrom` before
+ * giving up.  This prevents matching a common word that appears hundreds of
+ * words later in the transcript, which would corrupt monotonicity.
+ *
+ * We use a generous window (300 words ≈ 2-3 minutes of speech) so that
+ * even long gaps between shots are handled, while still preventing
+ * cross-audio matches.
+ */
+const MAX_SEARCH_WINDOW = 300;
+
+/**
  * For each shot (in order), find the whisper word index where the shot's
  * text begins, searching sequentially forward through the transcript.
  *
@@ -67,8 +78,10 @@ export function matchShotsByText(
     let bestIdx: number | null = null;
     let bestMatchCount = 0;
 
-    // Search forward from the last matched position
-    for (let i = searchFrom; i < whisperWords.length; i++) {
+    const searchEnd = Math.min(searchFrom + MAX_SEARCH_WINDOW, whisperWords.length);
+
+    // Search forward from the last matched position within the window
+    for (let i = searchFrom; i < searchEnd; i++) {
       const wNorm = norm(whisperWords[i].word);
 
       // Check if this word matches the first lead word
@@ -98,9 +111,34 @@ export function matchShotsByText(
       results.push({ shotId: shot.id, whisperStartIdx: bestIdx, matchedWords: bestMatchCount });
       searchFrom = bestIdx + 1;
     } else {
+      // No match found within window — skip this shot
       results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0 });
     }
   }
 
   return results;
+}
+
+/**
+ * Post-process matched results to enforce monotonically increasing timestamps.
+ * If a matched shot has a timestamp that would go backwards, discard that match.
+ */
+export function enforceMonotonicTimestamps(
+  results: TextMatchResult[],
+  whisperWords: WhisperWordLike[]
+): TextMatchResult[] {
+  let lastValidTime = -1;
+
+  return results.map((r) => {
+    if (r.whisperStartIdx === null) return r;
+
+    const time = whisperWords[r.whisperStartIdx]?.start ?? -1;
+    if (time < lastValidTime) {
+      // This match would go backwards — discard it
+      return { ...r, whisperStartIdx: null, matchedWords: 0 };
+    }
+
+    lastValidTime = time;
+    return r;
+  });
 }

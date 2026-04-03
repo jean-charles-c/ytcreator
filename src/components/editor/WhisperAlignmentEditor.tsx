@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
 import { recalculateWhisperShotEndTimes } from "./whisperAlignmentTiming";
-import { matchShotsByText } from "./whisperTextMatcher";
+import { matchShotsByText, enforceMonotonicTimestamps } from "./whisperTextMatcher";
 
 // ── Types ──
 
@@ -217,7 +217,8 @@ export default function WhisperAlignmentEditor({
           id: shot.id,
           text: getShotFragmentText(shot),
         }));
-        const textMatches = matchShotsByText(shotTexts, words);
+        const rawMatches = matchShotsByText(shotTexts, words);
+        const textMatches = enforceMonotonicTimestamps(rawMatches, words);
         const textMatchMap = new Map(textMatches.map((m) => [m.shotId, m.whisperStartIdx]));
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
@@ -515,18 +516,26 @@ export default function WhisperAlignmentEditor({
                 if (!audioEntryId) return;
                 setSaving(true);
                 try {
-                  const recalculated = recalculateWhisperShotEndTimes(
-                    alignedShots.map((s) => {
-                      if (s.whisperStartIdx === null || s.whisperStartIdx >= whisperWords.length) return s;
-                      const whisperStart = whisperWords[s.whisperStartIdx].start;
-                      return {
-                        ...s,
-                        startTime: whisperStart,
-                        status: (s.status === "missing" ? "missing" : s.status) as "ok" | "missing" | "manual",
-                      };
-                    }),
-                    audioDuration
-                  );
+                  // Build proposed start times, enforcing monotonicity
+                  let lastValidTime = -1;
+                  const proposed = alignedShots.map((s) => {
+                    if (s.whisperStartIdx === null || s.whisperStartIdx >= whisperWords.length) return s;
+                    const whisperStart = whisperWords[s.whisperStartIdx].start;
+                    
+                    // Skip this match if it would go backwards
+                    if (whisperStart < lastValidTime) {
+                      console.warn(`[Recaler] Shot ${s.globalIndex} skipped — timestamp ${whisperStart.toFixed(3)}s < previous ${lastValidTime.toFixed(3)}s`);
+                      return s;
+                    }
+                    
+                    lastValidTime = whisperStart;
+                    return {
+                      ...s,
+                      startTime: whisperStart,
+                      status: (s.status === "missing" ? "missing" : s.status) as "ok" | "missing" | "manual",
+                    };
+                  });
+                  const recalculated = recalculateWhisperShotEndTimes(proposed, audioDuration);
                   setAlignedShots(recalculated);
 
                   const timepoints = recalculated
