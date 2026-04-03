@@ -203,8 +203,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             `Audio Chirp 3 HD généré — ${chirpData.fileName} • ${formatSize(chirpData.fileSize)} • ~${chirpData.durationEstimate}s`
           );
 
-          // ── Step 2: Whisper alignment ──
-          toast.info("Alignement audio en cours via Whisper…");
+          // ── Step 2: Whisper alignment (dual pass for averaged timestamps) ──
+          toast.info("Alignement audio en cours via Whisper (double passe)…");
           let alignmentRun: any = null;
           try {
             const alignResponse = await fetch(
@@ -219,6 +219,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 body: JSON.stringify({
                   audioUrl: chirpData.audioUrl,
                   projectId,
+                  dualPass: true,
                 }),
               }
             );
@@ -232,9 +233,19 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             } else {
               const alignData = await alignResponse.json();
               alignmentRun = alignData.alignmentRun;
-              toast.success(
-                `Alignement terminé — ${alignData.wordCount} mots détectés, durée ${alignData.audioDuration?.toFixed(1)}s`
-              );
+
+              // Log dual pass comparison if available
+              if (alignData.dualPassComparison) {
+                const cmp = alignData.dualPassComparison;
+                console.log("[chirp3hd] Dual pass comparison:", cmp);
+                toast.success(
+                  `Alignement double passe — ${alignData.wordCount} mots, écart moyen: ${cmp.avgDeltaMs}ms, max: ${cmp.maxDeltaMs}ms, p95: ${cmp.p95DeltaMs}ms`
+                );
+              } else {
+                toast.success(
+                  `Alignement terminé — ${alignData.wordCount} mots détectés, durée ${alignData.audioDuration?.toFixed(1)}s`
+                );
+              }
             }
           } catch (alignErr: any) {
             console.error("[chirp3hd] Alignment fetch error:", alignErr);
