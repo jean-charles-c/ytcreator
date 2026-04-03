@@ -230,9 +230,10 @@ Deno.serve(async (req) => {
     let finalTranscript: string;
     let finalDuration: number;
     let comparison: ReturnType<typeof compareRuns> | null = null;
+    let passAWords: WordTimestamp[] | null = null;
+    let passBWords: WordTimestamp[] | null = null;
 
     if (useDualPass) {
-      // Launch 2 passes in parallel with slightly different temperatures
       const [runA, runB] = await Promise.all([
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
@@ -245,10 +246,13 @@ Deno.serve(async (req) => {
         `[whisper-align] Comparison: avg=${comparison.avgDeltaMs}ms, max=${comparison.maxDeltaMs}ms, p95=${comparison.p95DeltaMs}ms`
       );
 
-      // Use averaged words for the final result
-      finalWords = averageWords(runA.words, runB.words);
+      // Keep both raw passes — do NOT average, let the user compare
+      passAWords = runA.words;
+      passBWords = runB.words;
+      // Use pass A as the "main" result
+      finalWords = runA.words;
       finalTranscript = runA.transcript;
-      finalDuration = (runA.duration + runB.duration) / 2;
+      finalDuration = runA.duration;
     } else {
       const run = await callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0);
       finalWords = run.words;
