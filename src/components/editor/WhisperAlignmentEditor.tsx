@@ -110,20 +110,66 @@ export default function WhisperAlignmentEditor({
     });
   }, [shots, scenesForSort]);
 
+  const loadDualPassData = useCallback(() => {
+    if (!projectId) {
+      setDualPassData(null);
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(`whisper-dual-${projectId}`);
+      if (!stored) {
+        setDualPassData(null);
+        return;
+      }
+
+      const parsed = JSON.parse(stored);
+      if (parsed.passA && parsed.passB && parsed.comparison) {
+        setDualPassData(parsed);
+        return;
+      }
+    } catch {
+      // Ignore malformed local data and clear the panel state.
+    }
+
+    setDualPassData(null);
+  }, [projectId]);
+
   // ── Load data ──
   // Load dual pass data from localStorage (independent of DB data)
   useEffect(() => {
-    if (!projectId) return;
-    try {
-      const stored = localStorage.getItem(`whisper-dual-${projectId}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.passA && parsed.passB && parsed.comparison) {
-          setDualPassData(parsed);
-        }
+    loadDualPassData();
+  }, [loadDualPassData, refreshKey]);
+
+  useEffect(() => {
+    const handleDualPassUpdated = (event: Event) => {
+      const detailProjectId =
+        event instanceof CustomEvent && typeof event.detail?.projectId === "string"
+          ? event.detail.projectId
+          : null;
+
+      if (detailProjectId && detailProjectId !== projectId) return;
+      loadDualPassData();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadDualPassData();
       }
-    } catch {}
-  }, [projectId, refreshKey]);
+    };
+
+    window.addEventListener("whisper-dual-updated", handleDualPassUpdated);
+    window.addEventListener("storage", handleDualPassUpdated);
+    window.addEventListener("focus", loadDualPassData);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("whisper-dual-updated", handleDualPassUpdated);
+      window.removeEventListener("storage", handleDualPassUpdated);
+      window.removeEventListener("focus", loadDualPassData);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [projectId, loadDualPassData]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -347,7 +393,7 @@ export default function WhisperAlignmentEditor({
     return alignedShots.some((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null);
   }, [alignedShots]);
 
-  if (totalCount === 0 && !loading) return null;
+  if (totalCount === 0 && !loading && !dualPassData) return null;
 
   return (
     <details className="rounded border border-border bg-card">
