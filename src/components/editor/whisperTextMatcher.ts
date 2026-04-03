@@ -21,6 +21,8 @@ interface WhisperWordLike {
  */
 function norm(w: string): string {
   return w
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[’'`´]/g, "'")
     .replace(/[^\p{L}\p{N}']/gu, "")
