@@ -985,12 +985,14 @@ export default function WhisperAlignmentEditor({
                         {!isEditing && (
                           <Button
                             size="sm"
-                            variant={shot.status === "missing" ? "destructive" : "outline"}
-                            className="h-7 text-[10px]"
+                            variant={shot.status === "blocked" || shot.status === "missing" ? "destructive" : "outline"}
+                            className={`h-7 text-[10px] ${shot.status === "blocked" ? "animate-pulse" : ""}`}
                             onClick={() => startEditing(shot.shotId)}
                           >
                             <Search className="h-3 w-3 mr-1" />
-                            {shot.status === "missing"
+                            {shot.status === "blocked"
+                              ? "⛔ Caler manuellement pour continuer"
+                              : shot.status === "missing"
                               ? "Caler manuellement"
                               : "Recaler"}
                           </Button>
