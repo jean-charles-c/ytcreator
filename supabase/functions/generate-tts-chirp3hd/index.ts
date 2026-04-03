@@ -32,15 +32,14 @@ Deno.serve(async (req) => {
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } =
-      await anonClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      console.error("[chirp3hd] Auth error:", claimsError);
+    const {
+      data: { user },
+      error: authError,
+    } = await anonClient.auth.getUser();
+    if (authError || !user) {
+      console.error("[chirp3hd] Auth error:", authError);
       return jsonResponse({ error: "Non autorisé" }, 401);
     }
-    const userId = claimsData.claims.sub as string;
 
     // ── Input validation ──
     const body = await req.json();
