@@ -277,17 +277,18 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
         )}
       </div>
 
-      {/* Quick download last export */}
-      {lastExport && !isAnyExporting && (
+      {/* Quick download timeline XML only */}
+      {!isAnyExporting && (
         <div className="px-4 pt-3">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleDownload(lastExport)}
-            className="w-full gap-2 border-emerald-400/40 text-emerald-500 hover:bg-emerald-400/10 min-h-[40px]"
+            onClick={handleDownloadXmlOnly}
+            disabled={xmlOnlyLoading}
+            className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10 min-h-[40px]"
           >
-            <Download className="h-4 w-4" />
-            Télécharger le dernier export ({lastExport.type === "xml" ? "XML+Médias" : "MP4"} — {lastExport.date})
+            {xmlOnlyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCode2 className="h-4 w-4" />}
+            Télécharger la dernière timeline
           </Button>
         </div>
       )}
