@@ -219,17 +219,8 @@ export default function WhisperAlignmentEditor({
           text: getShotFragmentText(shot),
         }));
 
-        // Build manual anchors from existing manual timepoints
-        const manualAnchors = new Map<string, number>();
-        for (const tp of timepoints) {
-          // Find closest whisper word to existing timepoint for manual anchors
-          const bestIdx = words.findIndex((w) => Math.abs(w.start - (tp.timeSeconds as number)) < 0.1);
-          if (bestIdx >= 0) {
-            manualAnchors.set(tp.shotId, bestIdx);
-          }
-        }
-
-        const strictResults = matchShotsStrictSequential(shotTexts, words, manualAnchors.size > 0 ? manualAnchors : undefined);
+        // No manual anchors on initial load — let strict 3-word matching run purely
+        const strictResults = matchShotsStrictSequential(shotTexts, words);
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
