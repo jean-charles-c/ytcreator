@@ -457,6 +457,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         } else {
           toast.success(`${totalShots} ${completionLabel} sur ${params.sceneIds.length} scènes`);
         }
+
+        // Trigger auto-detect object↔shot links after prompt generation (not segment-only)
+        if (!params.segmentOnly) {
+          window.dispatchEvent(new CustomEvent("storyboard-prompts-complete", { detail: { projectId: params.projectId } }));
+        }
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération des shots annulée");
@@ -938,8 +943,6 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           toast.success(`${globalSuccess} visuel(s) généré(s) sur ${total} — tous traités ✓`);
         }
 
-        // Dispatch event so Editor can trigger auto-detect of object↔shot links
-        window.dispatchEvent(new CustomEvent("image-gen-complete", { detail: { projectId: params.projectId } }));
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération des visuels annulée");
