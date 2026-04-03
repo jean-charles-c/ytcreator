@@ -304,8 +304,10 @@ export default function WhisperAlignmentEditor({
   const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
   const manualCount = alignedShots.filter((s) => s.status === "manual").length;
   const estimatedCount = alignedShots.filter((s) => s.status === "estimated").length;
+  const blockedCount = alignedShots.filter((s) => s.status === "blocked").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
   const totalCount = alignedShots.length;
+  const firstBlockedShot = alignedShots.find((s) => s.status === "blocked");
 
   // ── Manual selection handlers ──
   const startEditing = (shotId: string) => {
