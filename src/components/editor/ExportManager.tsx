@@ -208,6 +208,60 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
     toast.info("Export supprimé.");
   }, [exports, projectId]);
 
+  const handleDownloadXmlOnly = useCallback(async () => {
+    setXmlOnlyLoading(true);
+    try {
+      const [{ data: dbScenes }, { data: dbShots }, { data: audioData }, { data: stateData }] = await Promise.all([
+        supabase.from("scenes").select("*").eq("project_id", projectId),
+        supabase.from("shots").select("*").eq("project_id", projectId),
+        supabase.from("vo_audio_history").select("*").eq("id", timelineRef.current.audioTrack.audioId).maybeSingle(),
+        supabase.from("project_scriptcreator_state").select("timeline_state").eq("project_id", projectId).single(),
+      ]);
+
+      if (!dbScenes?.length || !dbShots?.length || !audioData) {
+        toast.error("Données manquantes pour générer la timeline XML");
+        return;
+      }
+
+      const manifest = buildManifest(projectId, dbScenes, dbShots);
+      const timepoints = (audioData.shot_timepoints as unknown as import("./timelineAssembly").ShotTimepoint[] | null) ?? null;
+      const duration = audioData.duration_estimate ?? 0;
+      const timing = buildManifestTiming(manifest, timepoints, duration);
+
+      if (timing.issues.some((issue) => issue.level === "error") || timing.entries.length === 0) {
+        toast.error(timing.issues[0]?.message ?? "Manifest timing invalide — corrigez les erreurs d'abord.");
+        return;
+      }
+
+      const chapterState = (stateData?.timeline_state as any)?.chapterState as ChapterListState | null;
+      const chapters = chapterState?.chapters?.length ? chapterState.chapters : undefined;
+
+      const xml = generateTimelineXmlOnly(
+        timelineRef.current,
+        fps,
+        chapters,
+        timing.entries,
+        resolvedMusicTracks.map((mt) => mt.name)
+      );
+
+      const blob = new Blob([xml], { type: "application/xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `timeline_${fps}fps.xml`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Timeline XML téléchargée !");
+    } catch (e: any) {
+      console.error("[ExportManager] XML-only download error:", e);
+      toast.error(`Erreur : ${e?.message || "Impossible de générer le XML"}`);
+    } finally {
+      setXmlOnlyLoading(false);
+    }
+  }, [projectId, fps, resolvedMusicTracks]);
+
   const renderProgress = (label: string, progress: ExportProgress | undefined, onAbort: () => void) => {
     if (!progress) return null;
     const pct = progress.percent ?? 0;
