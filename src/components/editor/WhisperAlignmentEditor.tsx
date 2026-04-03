@@ -50,7 +50,7 @@ interface AlignedShot {
   whisperEndIdx: number | null;
   startTime: number | null;
   endTime: number | null;
-  status: "ok" | "missing" | "manual";
+  status: "ok" | "missing" | "manual" | "estimated";
   /** Is user currently editing this? */
   editing: boolean;
 }
@@ -270,7 +270,7 @@ export default function WhisperAlignmentEditor({
             whisperEndIdx: wEndIdx !== null && wEndIdx >= 0 ? wEndIdx : null,
             startTime,
             endTime,
-            status: (startTime !== null ? "ok" : "missing") as "ok" | "missing" | "manual",
+            status: (whisperStartIdx !== null ? "ok" : startTime !== null ? "estimated" : "missing") as "ok" | "missing" | "manual" | "estimated",
             editing: false,
           };
         });
@@ -288,6 +288,7 @@ export default function WhisperAlignmentEditor({
   // ── Stats ──
   const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
   const manualCount = alignedShots.filter((s) => s.status === "manual").length;
+  const estimatedCount = alignedShots.filter((s) => s.status === "estimated").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
   const totalCount = alignedShots.length;
 
@@ -337,7 +338,7 @@ export default function WhisperAlignmentEditor({
     // Auto-save to DB immediately
     try {
       const timepoints = recalculatedShots
-        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -367,7 +368,7 @@ export default function WhisperAlignmentEditor({
     setSaving(true);
     try {
       const timepoints = alignedShots
-        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -399,7 +400,7 @@ export default function WhisperAlignmentEditor({
   };
 
   const hasChanges = useMemo(() => {
-    return alignedShots.some((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null);
+    return alignedShots.some((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null);
   }, [alignedShots]);
 
   if (totalCount === 0 && !loading && !dualPassData) return null;
@@ -412,11 +413,12 @@ export default function WhisperAlignmentEditor({
         {totalCount > 0 && (
           <span
             className={`ml-auto text-[9px] font-bold ${
-              missingCount === 0 ? "text-emerald-500" : "text-destructive"
+                missingCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
             }`}
           >
             {okCount}/{totalCount}
             {manualCount > 0 && <span className="text-orange-500 ml-1">({manualCount} manuels)</span>}
+              {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
           </span>
         )}
       </summary>
@@ -471,7 +473,7 @@ export default function WhisperAlignmentEditor({
                       setAlignedShots(recalculated);
 
                       const timepoints = recalculated
-                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
                         .map((s, idx) => ({
                           shotId: s.shotId,
                           shotIndex: idx,
@@ -766,6 +768,8 @@ export default function WhisperAlignmentEditor({
                         ? "border-orange-500/30 bg-orange-500/5"
                         : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
+                        : shot.status === "estimated"
+                        ? "border-orange-500/30 bg-orange-500/5"
                         : "border-destructive/30 bg-destructive/5"
                     }`}
                   >
@@ -781,6 +785,8 @@ export default function WhisperAlignmentEditor({
                         <CheckCircle2 className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                      ) : shot.status === "estimated" ? (
+                        <Clock className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : (
                         <XCircle className="h-3 w-3 text-destructive shrink-0" />
                       )}
@@ -828,13 +834,15 @@ export default function WhisperAlignmentEditor({
                             <p className="text-emerald-600 leading-relaxed whitespace-pre-wrap break-words">
                               {getWhisperSegment(shot.whisperStartIdx, shot.whisperEndIdx)}
                             </p>
+                          ) : shot.startTime !== null ? (
+                            <p className="text-orange-500 italic">Timecode conservé, mais aucune correspondance Whisper automatique.</p>
                           ) : (
                             <p className="text-destructive italic">Aucune correspondance trouvée</p>
                           )}
                         </div>
 
                         {/* Diagnostic: tokenized source vs nearby whisper */}
-                        {shot.status === "missing" && (
+                        {shot.whisperStartIdx === null && (
                           <div className="rounded bg-muted/50 border border-border p-2 space-y-1">
                             <span className="font-semibold text-orange-500 block text-[9px]">
                               🔍 Diagnostic de matching
@@ -903,7 +911,7 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
                                         .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
@@ -932,7 +940,7 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
                                         .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
