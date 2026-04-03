@@ -242,30 +242,32 @@ export default function WhisperAlignmentEditor({
           ? (entry.shot_timepoints as any[]).filter((tp) => tp && tp.shotId)
           : [];
         const tpMap = new Map(timepoints.map((tp) => [tp.shotId, tp.timeSeconds as number]));
+        const storedManualAnchors = loadStoredManualAnchors(entry.id);
 
         const sorted = getSortedShots();
         const resolvedAudioDuration = entry.duration_estimate ?? 0;
         setAudioDuration(resolvedAudioDuration);
 
-        // ── Strict sequential matching ──
         const shotTexts = sorted.map((shot) => ({
           id: shot.id,
           text: getShotFragmentText(shot),
         }));
 
-        // No manual anchors on initial load — let strict 3-word matching run purely
-        const strictResults = matchShotsStrictSequential(shotTexts, words);
+        const strictResults = matchShotsStrictSequential(
+          shotTexts,
+          words,
+          storedManualAnchors.size > 0 ? storedManualAnchors : undefined
+        );
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
           const matchResult = strictResults[idx];
           const whisperStartIdx = matchResult?.whisperStartIdx ?? null;
           const isBlocked = matchResult?.blocked ?? false;
-          const startTime = whisperStartIdx !== null
-            ? words[whisperStartIdx].start
-            : tpMap.get(shot.id) ?? null;
+          const startTime = tpMap.get(shot.id) ?? (
+            whisperStartIdx !== null ? words[whisperStartIdx].start : null
+          );
 
-          // Find end time from next matched shot
           let endTime: number | null = null;
           for (let j = idx + 1; j < sorted.length; j++) {
             const nextMatch = strictResults[j];
@@ -292,7 +294,9 @@ export default function WhisperAlignmentEditor({
           }
 
           let status: AlignedShot["status"];
-          if (isBlocked) {
+          if (storedManualAnchors.has(shot.id)) {
+            status = "manual";
+          } else if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null) {
             status = "ok";
@@ -323,7 +327,7 @@ export default function WhisperAlignmentEditor({
       }
     };
     load();
-  }, [projectId, refreshKey, getSortedShots]);
+  }, [projectId, refreshKey, getSortedShots, loadStoredManualAnchors]);
 
   // ── Stats ──
   const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
