@@ -95,11 +95,14 @@ export default function WhisperAlignmentEditor({
   const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   
-  const [dualPassData, setDualPassData] = useState<{
+  const [multiPassData, setMultiPassData] = useState<{
     passA: WhisperWord[];
     passB: WhisperWord[];
+    passC?: WhisperWord[];
     comparison: { avgDeltaMs: number; maxDeltaMs: number; p95DeltaMs: number; wordCountA: number; wordCountB: number; biggestDiffs: { word: string; index: number; startA: number; startB: number; deltaMs: number }[] };
+    timestamp?: string;
   } | null>(null);
+  const [applyingPass, setApplyingPass] = useState(false);
 
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
