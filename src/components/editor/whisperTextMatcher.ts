@@ -1,9 +1,12 @@
 /**
  * Text-based matching of shot fragments to Whisper transcript words.
  *
- * Instead of matching by time proximity (which fails when Chirp and Whisper
- * timestamps diverge), this module finds each shot's first word(s) in the
- * sequential Whisper word list by normalised text comparison.
+ * Strategy: strict sequential matching.
+ * - Shot 1 anchors at whisper word 0.
+ * - For each subsequent shot, search the next SEARCH_WINDOW words for an
+ *   exact 3-word match on the shot's leading words.
+ * - If no match is found, mark the shot as "blocked" and STOP.
+ *   The user can manually fix the blocked shot, then matching resumes.
  */
 
 interface WhisperWordLike {
@@ -12,10 +15,8 @@ interface WhisperWordLike {
   end: number;
 }
 
-type WordMatchKind = "exact" | "number" | "prefix" | "none";
-
 /**
- * Normalise a word for fuzzy comparison:
+ * Normalise a word for comparison:
  * lowercase, strip punctuation, collapse whitespace.
  */
 function norm(w: string): string {
@@ -27,228 +28,174 @@ function norm(w: string): string {
 }
 
 /**
- * Number-to-text equivalence map for French.
- * Allows matching "40" with "quarante", "F40" with "f quarante", etc.
- */
-const NUMBER_TEXT_MAP: Record<string, string[]> = {
-  "0": ["zéro", "zero"],
-  "1": ["un", "une"],
-  "2": ["deux"],
-  "3": ["trois"],
-  "4": ["quatre"],
-  "5": ["cinq"],
-  "6": ["six"],
-  "7": ["sept"],
-  "8": ["huit"],
-  "9": ["neuf"],
-  "10": ["dix"],
-  "11": ["onze"],
-  "12": ["douze"],
-  "13": ["treize"],
-  "14": ["quatorze"],
-  "15": ["quinze"],
-  "16": ["seize"],
-  "20": ["vingt"],
-  "30": ["trente"],
-  "40": ["quarante"],
-  "50": ["cinquante"],
-  "60": ["soixante"],
-  "80": ["quatrevingt", "quatrevingts"],
-  "100": ["cent"],
-  "200": ["deuxcent", "deuxcents"],
-  "288": ["deuxcentquatrevinghuit", "deuxcentquatrevingthuit"],
-  "1000": ["mille"],
-  "1987": ["milleneufcentquatrevingsept"],
-  "1947": ["milleneufcentquarantesept"],
-};
-
-/** Build reverse map: text → digit string */
-const TEXT_TO_NUMBER = new Map<string, string>();
-for (const [digit, texts] of Object.entries(NUMBER_TEXT_MAP)) {
-  for (const t of texts) {
-    TEXT_TO_NUMBER.set(t, digit);
-  }
-}
-
-/**
- * Check if two normalised words are equivalent,
- * including number ↔ text matching.
- */
-function getWordMatchKind(a: string, b: string): WordMatchKind {
-  if (a === b) return "exact";
-  if (a.length === 0 || b.length === 0) return "none";
-
-  // Number ↔ text: check if one is a digit string and the other is its text form
-  const aTexts = NUMBER_TEXT_MAP[a];
-  if (aTexts && aTexts.includes(b)) return "number";
-  const bTexts = NUMBER_TEXT_MAP[b];
-  if (bTexts && bTexts.includes(a)) return "number";
-
-  // Reverse: text → number
-  const aNum = TEXT_TO_NUMBER.get(a);
-  if (aNum === b) return "number";
-  const bNum = TEXT_TO_NUMBER.get(b);
-  if (bNum === a) return "number";
-
-  // Prefix matching (for partial words from Whisper), but only for strong stems
-  // to avoid false positives like "ces" matching "c'est".
-  const shorter = a.length <= b.length ? a : b;
-  const longer = shorter === a ? b : a;
-  if (shorter.length >= 4 && longer.length >= 5 && longer.startsWith(shorter)) {
-    return "prefix";
-  }
-
-  return "none";
-}
-
-function wordsMatch(a: string, b: string): boolean {
-  return getWordMatchKind(a, b) !== "none";
-}
-
-function compactNumberTextTokens(words: string[]): string[] {
-  const compacted: string[] = [];
-
-  for (let index = 0; index < words.length; ) {
-    let bestSpan = 0;
-    let bestJoined: string | null = null;
-    let joined = "";
-
-    for (let span = 1; span <= 4 && index + span <= words.length; span += 1) {
-      joined += words[index + span - 1];
-      if (TEXT_TO_NUMBER.has(joined)) {
-        bestSpan = span;
-        bestJoined = joined;
-      }
-    }
-
-    if (bestJoined && bestSpan > 1) {
-      compacted.push(bestJoined);
-      index += bestSpan;
-      continue;
-    }
-
-    compacted.push(words[index]);
-    index += 1;
-  }
-
-  return compacted;
-}
-
-/**
  * Extract the first N meaningful words from a shot text fragment.
  */
-function extractLeadingWords(text: string, count = 5): string[] {
-  return compactNumberTextTokens(
-    text
+function extractLeadingWords(text: string, count = 3): string[] {
+  return text
     .split(/\s+/)
     .map(norm)
     .filter((w) => w.length > 0)
-  )
     .slice(0, count);
 }
 
-export interface TextMatchResult {
+/** How many whisper words to look ahead from the previous match. */
+const SEARCH_WINDOW = 50;
+
+/** Minimum consecutive words that must match exactly. */
+const REQUIRED_MATCH_COUNT = 3;
+
+export interface StrictMatchResult {
   shotId: string;
   whisperStartIdx: number | null;
-  /** Confidence: how many leading words matched */
   matchedWords: number;
+  /** True if this shot blocked the sequential chain */
+  blocked: boolean;
 }
 
 /**
- * Maximum number of whisper words to look ahead from `searchFrom` before
- * giving up.  We use a very generous window to handle long audio files
- * (15+ minutes = 3000+ words).
- */
-const MAX_SEARCH_WINDOW = 2000;
-
-/**
- * Words too short/common to be reliable as a sole first-word match.
- */
-const WEAK_FIRST_WORDS = new Set([
-  "le", "la", "les", "un", "une", "des", "du", "de", "et", "en",
-  "au", "aux", "ce", "ces", "sa", "son", "ses", "se", "si", "ou",
-  "il", "elle", "on", "ne", "y", "a", "par", "pour", "sur", "dans",
-  "que", "qui", "mais", "car", "donc",
-]);
-
-/**
- * For each shot (in order), find the whisper word index where the shot's
- * text begins, searching sequentially forward through the transcript.
+ * Strict sequential matching:
+ * - Shot 0 → anchored at whisper word 0
+ * - Shot N → search in [prevMatch+1 … prevMatch+SEARCH_WINDOW] for exact 3-word match
+ * - On failure → mark blocked, all subsequent shots get null
  *
- * Uses a greedy sequential approach: each shot must start after the
- * previous one in the whisper stream.
+ * @param manualAnchors  Map of shotId → whisperStartIdx for manually fixed shots.
+ *                       When a blocked shot has a manual anchor, matching resumes from there.
  */
-export function matchShotsByText(
+export function matchShotsStrictSequential(
   shots: { id: string; text: string }[],
-  whisperWords: WhisperWordLike[]
-): TextMatchResult[] {
-  const results: TextMatchResult[] = [];
+  whisperWords: WhisperWordLike[],
+  manualAnchors?: Map<string, number>
+): StrictMatchResult[] {
+  const results: StrictMatchResult[] = [];
+  if (shots.length === 0) return results;
+
+  const anchors = manualAnchors ?? new Map<string, number>();
+
+  // Shot 0 always anchors at word 0
   let searchFrom = 0;
+  let blocked = false;
 
-  for (const shot of shots) {
-    const leadWords = extractLeadingWords(shot.text, 5);
+  for (let shotIdx = 0; shotIdx < shots.length; shotIdx++) {
+    const shot = shots[shotIdx];
 
-    if (leadWords.length === 0) {
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0 });
+    // If we're blocked, check if this shot has a manual anchor to resume
+    if (blocked) {
+      const manualIdx = anchors.get(shot.id);
+      if (manualIdx !== undefined && manualIdx !== null) {
+        // Resume from manual anchor
+        results.push({
+          shotId: shot.id,
+          whisperStartIdx: manualIdx,
+          matchedWords: REQUIRED_MATCH_COUNT,
+          blocked: false,
+        });
+        searchFrom = manualIdx + 1;
+        blocked = false;
+        continue;
+      }
+      // Still blocked
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: false });
       continue;
     }
 
-    let bestIdx: number | null = null;
-    let bestMatchCount = 0;
+    // First shot: anchor at word 0
+    if (shotIdx === 0) {
+      results.push({
+        shotId: shot.id,
+        whisperStartIdx: 0,
+        matchedWords: REQUIRED_MATCH_COUNT,
+        blocked: false,
+      });
+      searchFrom = 1;
+      continue;
+    }
 
-    const searchEnd = Math.min(searchFrom + MAX_SEARCH_WINDOW, whisperWords.length);
+    // Check for manual anchor first
+    const manualIdx = anchors.get(shot.id);
+    if (manualIdx !== undefined && manualIdx !== null) {
+      results.push({
+        shotId: shot.id,
+        whisperStartIdx: manualIdx,
+        matchedWords: REQUIRED_MATCH_COUNT,
+        blocked: false,
+      });
+      searchFrom = manualIdx + 1;
+      continue;
+    }
 
-    // Determine minimum match count based on first word strength
-    const firstWordWeak = WEAK_FIRST_WORDS.has(leadWords[0]);
-    const baseRequiredMatch = firstWordWeak && leadWords.length >= 2 ? 2 : 1;
+    const leadWords = extractLeadingWords(shot.text, REQUIRED_MATCH_COUNT);
 
-    // Search forward from the last matched position within the window
+    if (leadWords.length < REQUIRED_MATCH_COUNT) {
+      // Not enough words to match — block
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true });
+      blocked = true;
+      continue;
+    }
+
+    // Search in [searchFrom … searchFrom + SEARCH_WINDOW]
+    const searchEnd = Math.min(searchFrom + SEARCH_WINDOW, whisperWords.length);
+    let foundIdx: number | null = null;
+
     for (let i = searchFrom; i < searchEnd; i++) {
-      const wNorm = norm(whisperWords[i].word);
-      const firstWordMatchKind = getWordMatchKind(wNorm, leadWords[0]);
-
-      // Check if this word matches the first lead word
-      if (firstWordMatchKind !== "none") {
-        // Try to match subsequent words
-        let matched = 1;
-        for (let j = 1; j < leadWords.length && i + j < whisperWords.length; j++) {
-          const nextWNorm = norm(whisperWords[i + j].word);
-          if (wordsMatch(nextWNorm, leadWords[j])) {
-            matched++;
-          } else {
-            break;
-          }
+      let allMatch = true;
+      for (let j = 0; j < REQUIRED_MATCH_COUNT; j++) {
+        if (i + j >= whisperWords.length) {
+          allMatch = false;
+          break;
         }
-
-        // Accept if we matched enough words (prefer matches with more words)
-        const minRequiredMatch =
-          firstWordMatchKind === "prefix" && leadWords.length >= 2
-            ? Math.max(baseRequiredMatch, 2)
-            : baseRequiredMatch;
-        if (matched > bestMatchCount && matched >= minRequiredMatch) {
-          bestMatchCount = matched;
-          bestIdx = i;
-          // If we matched all lead words, no need to search further
-          if (matched >= leadWords.length) break;
+        if (norm(whisperWords[i + j].word) !== leadWords[j]) {
+          allMatch = false;
+          break;
         }
+      }
+      if (allMatch) {
+        foundIdx = i;
+        break;
       }
     }
 
-    if (bestIdx !== null) {
-      results.push({ shotId: shot.id, whisperStartIdx: bestIdx, matchedWords: bestMatchCount });
-      searchFrom = bestIdx + 1;
+    if (foundIdx !== null) {
+      results.push({
+        shotId: shot.id,
+        whisperStartIdx: foundIdx,
+        matchedWords: REQUIRED_MATCH_COUNT,
+        blocked: false,
+      });
+      searchFrom = foundIdx + 1;
     } else {
-      // No match found within window — skip this shot
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0 });
+      // Blocked!
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true });
+      blocked = true;
     }
   }
 
   return results;
 }
 
+// ── Legacy exports kept for whisperTimepointRepair ──
+
+export interface TextMatchResult {
+  shotId: string;
+  whisperStartIdx: number | null;
+  matchedWords: number;
+}
+
+/**
+ * Legacy wrapper: converts strict results to the old format used by repair logic.
+ */
+export function matchShotsByText(
+  shots: { id: string; text: string }[],
+  whisperWords: WhisperWordLike[]
+): TextMatchResult[] {
+  return matchShotsStrictSequential(shots, whisperWords).map((r) => ({
+    shotId: r.shotId,
+    whisperStartIdx: r.whisperStartIdx,
+    matchedWords: r.matchedWords,
+  }));
+}
+
 /**
  * Post-process matched results to enforce monotonically increasing timestamps.
- * If a matched shot has a timestamp that would go backwards, discard that match.
  */
 export function enforceMonotonicTimestamps(
   results: TextMatchResult[],
@@ -261,7 +208,6 @@ export function enforceMonotonicTimestamps(
 
     const time = whisperWords[r.whisperStartIdx]?.start ?? -1;
     if (time < lastValidTime) {
-      // This match would go backwards — discard it
       return { ...r, whisperStartIdx: null, matchedWords: 0 };
     }
 
