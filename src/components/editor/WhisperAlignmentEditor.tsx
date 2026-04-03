@@ -217,7 +217,8 @@ export default function WhisperAlignmentEditor({
           id: shot.id,
           text: getShotFragmentText(shot),
         }));
-        const textMatches = matchShotsByText(shotTexts, words);
+        const rawMatches = matchShotsByText(shotTexts, words);
+        const textMatches = enforceMonotonicTimestamps(rawMatches, words);
         const textMatchMap = new Map(textMatches.map((m) => [m.shotId, m.whisperStartIdx]));
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
