@@ -266,6 +266,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   })
                 );
 
+                window.dispatchEvent(
+                  new CustomEvent("whisper-dual-updated", {
+                    detail: { projectId },
+                  })
+                );
+
                 toast.success(
                   `Alignement double passe — ${alignData.wordCount} mots, écart moyen: ${cmp.avgDeltaMs}ms, max: ${cmp.maxDeltaMs}ms, p95: ${cmp.p95DeltaMs}ms`,
                   { duration: 8000 }
