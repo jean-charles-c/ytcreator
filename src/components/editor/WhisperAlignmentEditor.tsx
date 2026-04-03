@@ -452,6 +452,24 @@ export default function WhisperAlignmentEditor({
           </p>
         )}
 
+        {/* Dual pass comparison panel — always visible when data exists */}
+        {!loading && dualPassData && (
+          <details className="rounded border border-border bg-muted/20 mb-2">
+            <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground px-3 py-2 flex items-center gap-1.5">
+              <GitCompareArrows className="h-3 w-3 shrink-0" />
+              <span>Comparaison double passe Whisper</span>
+              <span className="ml-auto text-[9px] font-mono">
+                Δ moy: {dualPassData.comparison.avgDeltaMs}ms · max: {dualPassData.comparison.maxDeltaMs}ms · p95: {dualPassData.comparison.p95DeltaMs}ms
+              </span>
+            </summary>
+            <div className="p-2 space-y-2">
+              <div className="text-[9px] text-muted-foreground">
+                Passe A : {dualPassData.passA.length} mots · Passe B : {dualPassData.passB.length} mots
+              </div>
+            </div>
+          </details>
+        )}
+
         {!loading && whisperWords.length === 0 && (
           <p className="text-[10px] text-muted-foreground text-center py-3">
             Aucune donnée Whisper. Régénérez l'audio Chirp 3 HD pour activer l'alignement manuel.
