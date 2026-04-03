@@ -22,7 +22,7 @@ interface WhisperWordLike {
 function norm(w: string): string {
   return w
     .toLowerCase()
-    .replace(/[''`]/g, "'")
+    .replace(/[’'`´]/g, "'")
     .replace(/[^\p{L}\p{N}']/gu, "")
     .trim();
 }
