@@ -27,15 +27,11 @@ function norm(w: string): string {
     .trim();
 }
 
-/**
- * Fuzzy-equal: exact match, or one word is a prefix of the other (min 3 chars).
- * Handles Whisper truncations like "lac" vs "laque".
- */
-function fuzzyEqual(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (a.length < 3 || b.length < 3) return false;
-  return a.startsWith(b) || b.startsWith(a);
-}
+/** Minimum consecutive words that must match exactly. */
+const REQUIRED_MATCH_COUNT = 3;
+
+/** Fallback: try 2-word match if 3-word fails (handles Whisper transcription errors). */
+const FALLBACK_MATCH_COUNT = 2;
 
 /**
  * Extract the first N meaningful words from a shot text fragment.
