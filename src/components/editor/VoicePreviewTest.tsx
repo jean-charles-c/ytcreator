@@ -48,6 +48,8 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             projectId: "preview",
             voiceName: settings.voiceName,
             customFileName: "preview",
+            speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
+            pitch: (settings.pitch || 0) + (STYLE_PRESETS[settings.style]?.pitch || 0),
           }
         : {
             text: previewText,
