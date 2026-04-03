@@ -960,21 +960,28 @@ export default function WhisperAlignmentEditor({
                           <th className="px-2 py-1 text-left font-medium text-muted-foreground">Mot</th>
                           <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe A</th>
                           <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe B</th>
-                          <th className="px-2 py-1 text-right font-medium text-muted-foreground">Δ ms</th>
+                          {multiPassData.passC && <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe C</th>}
+                          <th className="px-2 py-1 text-right font-medium text-muted-foreground">Δ max ms</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {multiPassData.comparison.biggestDiffs.map((d, i) => (
-                          <tr key={i} className="border-b border-border/50">
-                            <td className="px-2 py-0.5 font-mono text-muted-foreground">{d.index}</td>
-                            <td className="px-2 py-0.5 font-medium text-foreground">{d.word}</td>
-                            <td className="px-2 py-0.5 text-right font-mono">{d.startA.toFixed(3)}s</td>
-                            <td className="px-2 py-0.5 text-right font-mono">{d.startB.toFixed(3)}s</td>
-                            <td className={`px-2 py-0.5 text-right font-mono font-bold ${
-                              d.deltaMs > 100 ? "text-destructive" : d.deltaMs > 50 ? "text-orange-500" : "text-emerald-500"
-                            }`}>{d.deltaMs}</td>
-                          </tr>
-                        ))}
+                        {multiPassData.comparison.biggestDiffs.map((d, i) => {
+                          const cStart = multiPassData.passC?.[d.index]?.start;
+                          const allStarts = [d.startA, d.startB, ...(cStart !== undefined ? [cStart] : [])];
+                          const maxDelta = Math.round((Math.max(...allStarts) - Math.min(...allStarts)) * 1000);
+                          return (
+                            <tr key={i} className="border-b border-border/50">
+                              <td className="px-2 py-0.5 font-mono text-muted-foreground">{d.index}</td>
+                              <td className="px-2 py-0.5 font-medium text-foreground">{d.word}</td>
+                              <td className="px-2 py-0.5 text-right font-mono">{d.startA.toFixed(3)}s</td>
+                              <td className="px-2 py-0.5 text-right font-mono">{d.startB.toFixed(3)}s</td>
+                              {multiPassData.passC && <td className="px-2 py-0.5 text-right font-mono">{cStart !== undefined ? `${cStart.toFixed(3)}s` : "—"}</td>}
+                              <td className={`px-2 py-0.5 text-right font-mono font-bold ${
+                                maxDelta > 100 ? "text-destructive" : maxDelta > 50 ? "text-orange-500" : "text-emerald-500"
+                              }`}>{maxDelta}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
