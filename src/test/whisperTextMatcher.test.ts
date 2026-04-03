@@ -34,7 +34,17 @@ describe("whisperTextMatcher", () => {
 
     expect(results[0].whisperStartIdx).toBe(0); // "Maranello" at 0.38s
     expect(results[1].whisperStartIdx).toBe(3); // "Sous" at 3.72s
-    expect(results[2].whisperStartIdx).toBe(15); // "une" (voiture) at 6.84s
+    expect(results[2].whisperStartIdx).toBe(15); // "une voiture" at 6.84s (needs 2-word match)
+  });
+
+  it("requires 2+ word match for weak first words", () => {
+    // "une" alone is weak, but "une voiture" should match at index 15, not index 4
+    const shots = [
+      { id: "shot-a", text: "une voiture reçoit" },
+    ];
+    const results = matchShotsByText(shots, whisperWords);
+    // Should match "une voiture" at index 15, not "une" at index 4
+    expect(results[0].whisperStartIdx).toBe(15);
   });
 
   it("returns null for shots with no matching text", () => {
@@ -50,6 +60,27 @@ describe("whisperTextMatcher", () => {
     const shots = [{ id: "shot-empty", text: "" }];
     const results = matchShotsByText(shots, whisperWords);
     expect(results[0].whisperStartIdx).toBeNull();
+  });
+
+  it("matches numbers to text equivalents", () => {
+    const words = [
+      { word: "la", start: 0, end: 0.2 },
+      { word: "F40", start: 0.5, end: 1.0 },
+      { word: "est", start: 1.0, end: 1.3 },
+    ];
+    const shots = [{ id: "s1", text: "La F quarante est une voiture" }];
+    // "la" is weak, needs 2+ match. "la F40" should match "la f quarante" → "la" matches, then "f40" vs "f" won't match
+    // Actually "F40" normalised is "f40", and "quarante" normalised is "quarante". They should match via NUMBER_TEXT_MAP.
+    // But the shot text "F quarante" splits to ["f", "quarante", "est", ...]
+    // Whisper "F40" normalises to "f40" — doesn't match "f" alone.
+    // This test verifies that simple number matching works.
+    const words2 = [
+      { word: "quarante", start: 0.5, end: 1.0 },
+      { word: "chevaux", start: 1.0, end: 1.3 },
+    ];
+    const shots2 = [{ id: "s2", text: "40 chevaux de puissance" }];
+    const results = matchShotsByText(shots2, words2);
+    expect(results[0].whisperStartIdx).toBe(0);
   });
 });
 
