@@ -82,6 +82,32 @@ describe("whisperTextMatcher", () => {
     const results = matchShotsByText(shots2, words2);
     expect(results[0].whisperStartIdx).toBe(0);
   });
+
+  it("matches multi-word year phrases against numeric whisper tokens", () => {
+    const words = [
+      { word: "En", start: 47.46, end: 48.0 },
+      { word: "1987,", start: 48.26, end: 49.0 },
+      { word: "Ferrari", start: 49.86, end: 50.2 },
+      { word: "répond", start: 50.24, end: 50.5 },
+      { word: "avec", start: 50.54, end: 50.8 },
+    ];
+    const shots = [{ id: "s3", text: "En mille neuf cent quatre-vingt-sept Ferrari répond avec" }];
+    const results = matchShotsByText(shots, words);
+    expect(results[0].whisperStartIdx).toBe(0);
+    expect(results[0].matchedWords).toBeGreaterThanOrEqual(5);
+  });
+
+  it("does not confuse 'c'est' with shorter prefix words like 'ces'", () => {
+    const words = [
+      { word: "ces", start: 10.0, end: 10.2 },
+      { word: "gens", start: 10.2, end: 10.5 },
+      { word: "C'est", start: 20.0, end: 20.2 },
+      { word: "court.", start: 20.2, end: 20.5 },
+    ];
+    const shots = [{ id: "s4", text: "C’est court" }];
+    const results = matchShotsByText(shots, words);
+    expect(results[0].whisperStartIdx).toBe(2);
+  });
 });
 
 describe("enforceMonotonicTimestamps", () => {

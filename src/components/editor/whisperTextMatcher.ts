@@ -12,6 +12,8 @@ interface WhisperWordLike {
   end: number;
 }
 
+type WordMatchKind = "exact" | "number" | "prefix" | "none";
+
 /**
  * Normalise a word for fuzzy comparison:
  * lowercase, strip punctuation, collapse whitespace.
@@ -72,38 +74,76 @@ for (const [digit, texts] of Object.entries(NUMBER_TEXT_MAP)) {
  * Check if two normalised words are equivalent,
  * including number ↔ text matching.
  */
-function wordsMatch(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (a.length === 0 || b.length === 0) return false;
-
-  // Prefix matching (for partial words from Whisper)
-  if (a.length >= 3 && b.length >= 3) {
-    if (a.startsWith(b) || b.startsWith(a)) return true;
-  }
+function getWordMatchKind(a: string, b: string): WordMatchKind {
+  if (a === b) return "exact";
+  if (a.length === 0 || b.length === 0) return "none";
 
   // Number ↔ text: check if one is a digit string and the other is its text form
   const aTexts = NUMBER_TEXT_MAP[a];
-  if (aTexts && aTexts.includes(b)) return true;
+  if (aTexts && aTexts.includes(b)) return "number";
   const bTexts = NUMBER_TEXT_MAP[b];
-  if (bTexts && bTexts.includes(a)) return true;
+  if (bTexts && bTexts.includes(a)) return "number";
 
   // Reverse: text → number
   const aNum = TEXT_TO_NUMBER.get(a);
-  if (aNum === b) return true;
+  if (aNum === b) return "number";
   const bNum = TEXT_TO_NUMBER.get(b);
-  if (bNum === a) return true;
+  if (bNum === a) return "number";
 
-  return false;
+  // Prefix matching (for partial words from Whisper), but only for strong stems
+  // to avoid false positives like "ces" matching "c'est".
+  const shorter = a.length <= b.length ? a : b;
+  const longer = shorter === a ? b : a;
+  if (shorter.length >= 4 && longer.length >= 5 && longer.startsWith(shorter)) {
+    return "prefix";
+  }
+
+  return "none";
+}
+
+function wordsMatch(a: string, b: string): boolean {
+  return getWordMatchKind(a, b) !== "none";
+}
+
+function compactNumberTextTokens(words: string[]): string[] {
+  const compacted: string[] = [];
+
+  for (let index = 0; index < words.length; ) {
+    let bestSpan = 0;
+    let bestJoined: string | null = null;
+    let joined = "";
+
+    for (let span = 1; span <= 4 && index + span <= words.length; span += 1) {
+      joined += words[index + span - 1];
+      if (TEXT_TO_NUMBER.has(joined)) {
+        bestSpan = span;
+        bestJoined = joined;
+      }
+    }
+
+    if (bestJoined && bestSpan > 1) {
+      compacted.push(bestJoined);
+      index += bestSpan;
+      continue;
+    }
+
+    compacted.push(words[index]);
+    index += 1;
+  }
+
+  return compacted;
 }
 
 /**
  * Extract the first N meaningful words from a shot text fragment.
  */
 function extractLeadingWords(text: string, count = 5): string[] {
-  return text
+  return compactNumberTextTokens(
+    text
     .split(/\s+/)
     .map(norm)
     .filter((w) => w.length > 0)
+  )
     .slice(0, count);
 }
 
@@ -160,14 +200,15 @@ export function matchShotsByText(
 
     // Determine minimum match count based on first word strength
     const firstWordWeak = WEAK_FIRST_WORDS.has(leadWords[0]);
-    const minRequiredMatch = firstWordWeak && leadWords.length >= 2 ? 2 : 1;
+    const baseRequiredMatch = firstWordWeak && leadWords.length >= 2 ? 2 : 1;
 
     // Search forward from the last matched position within the window
     for (let i = searchFrom; i < searchEnd; i++) {
       const wNorm = norm(whisperWords[i].word);
+      const firstWordMatchKind = getWordMatchKind(wNorm, leadWords[0]);
 
       // Check if this word matches the first lead word
-      if (wordsMatch(wNorm, leadWords[0])) {
+      if (firstWordMatchKind !== "none") {
         // Try to match subsequent words
         let matched = 1;
         for (let j = 1; j < leadWords.length && i + j < whisperWords.length; j++) {
@@ -180,6 +221,10 @@ export function matchShotsByText(
         }
 
         // Accept if we matched enough words (prefer matches with more words)
+        const minRequiredMatch =
+          firstWordMatchKind === "prefix" && leadWords.length >= 2
+            ? Math.max(baseRequiredMatch, 2)
+            : baseRequiredMatch;
         if (matched > bestMatchCount && matched >= minRequiredMatch) {
           bestMatchCount = matched;
           bestIdx = i;
