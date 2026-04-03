@@ -27,6 +27,7 @@ import ExportManager from "./ExportManager";
 import { resolveSelectedAudioId } from "./audioSelection";
 import { validateExactShotTimepoints } from "./exactShotSync";
 import { validateAllocation } from "./shotAllocationValidator";
+import { haveShotTimepointsChanged } from "./timepointSync";
 import { buildRepairedShotTimepoints } from "./whisperTimepointRepair";
 import type { ChapterListState } from "./chapterTypes";
 
@@ -409,10 +410,21 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
             existingTimepoints: rawTimepoints,
             audioDuration: audioFile.duration_estimate ?? 0,
           });
+      const timelineTimepointsChanged = haveShotTimepointsChanged(timeline.shotTimepoints ?? null, timepoints);
+
+      if (!audioChanged && !shotsChanged && !timelineTimepointsChanged) {
+        return;
+      }
+
       const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
       setTimeline(assembled);
       saveTimelineToDb(assembled);
-      const reason = audioChanged ? "nouvel audio détecté" : "shots modifiés";
+
+      const reason = audioChanged
+        ? "nouvel audio détecté"
+        : shotsChanged
+        ? "shots modifiés"
+        : "timecodes Whisper mis à jour";
       const syncMode = validation.ok ? "sync précis" : "sync réparé automatiquement";
       toast.info(`Timeline auto-réassemblée (${reason}) — ${syncMode}`);
     }
