@@ -498,6 +498,87 @@ export default function WhisperAlignmentEditor({
           </p>
         )}
 
+        {/* Manual dual pass trigger button */}
+        {!loading && !dualPassData && (
+          <div className="flex items-center gap-2 rounded border border-dashed border-border bg-muted/20 px-3 py-2">
+            <GitCompareArrows className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-[10px] text-muted-foreground flex-1">Aucune comparaison double passe disponible.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[9px] px-2"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  const { data: audioData } = await supabase
+                    .from("vo_audio_history")
+                    .select("file_path")
+                    .eq("project_id", projectId)
+                    .eq("style", "chirp3hd")
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+                  if (!audioData?.[0]?.file_path) {
+                    toast.error("Aucun audio Chirp trouvé pour ce projet");
+                    return;
+                  }
+                  const { data: urlData } = await supabase.storage
+                    .from("vo-audio")
+                    .createSignedUrl(audioData[0].file_path, 600);
+                  if (!urlData?.signedUrl) {
+                    toast.error("Impossible de récupérer l'URL audio");
+                    return;
+                  }
+                  const { data: sessionData } = await supabase.auth.getSession();
+                  if (!sessionData?.session) {
+                    toast.error("Session expirée");
+                    return;
+                  }
+                  toast.info("Lancement de la double passe Whisper…");
+                  const resp = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                        Authorization: `Bearer ${sessionData.session.access_token}`,
+                      },
+                      body: JSON.stringify({ audioUrl: urlData.signedUrl, projectId, dualPass: true }),
+                    }
+                  );
+                  if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err?.error || `Erreur ${resp.status}`);
+                  }
+                  const result = await resp.json();
+                  if (result.passA && result.passB && result.dualPassComparison) {
+                    const stored = {
+                      passA: result.passA,
+                      passB: result.passB,
+                      comparison: result.dualPassComparison,
+                      timestamp: new Date().toISOString(),
+                    };
+                    localStorage.setItem(`whisper-dual-${projectId}`, JSON.stringify(stored));
+                    setDualPassData(stored);
+                    toast.success(`Double passe terminée — écart moyen: ${result.dualPassComparison.avgDeltaMs}ms`);
+                  } else {
+                    toast.warning("La réponse ne contient pas de données de double passe");
+                  }
+                } catch (e: any) {
+                  console.error("[WhisperAlignmentEditor] dual pass error:", e);
+                  toast.error(`Erreur double passe: ${e.message}`);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Lancer double passe
+            </Button>
+          </div>
+        )}
+
         {/* Dual pass comparison panel — always visible when data exists */}
         {!loading && dualPassData && (
           <details className="rounded border border-border bg-muted/20 mb-2">
