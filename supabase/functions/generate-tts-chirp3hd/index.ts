@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
       .from("vo_audio_history")
       .insert({
         project_id: projectId,
-        user_id: user.id,
+        user_id: userId,
         file_name: fileName,
         file_path: storagePath,
         file_size: fileSize,
