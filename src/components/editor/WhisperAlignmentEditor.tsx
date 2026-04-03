@@ -782,7 +782,9 @@ export default function WhisperAlignmentEditor({
                   <div
                     key={shot.shotId}
                     className={`rounded border text-[10px] ${
-                      shot.status === "manual"
+                      shot.status === "blocked"
+                        ? "border-destructive bg-destructive/10 ring-2 ring-destructive/40"
+                        : shot.status === "manual"
                         ? "border-orange-500/30 bg-orange-500/5"
                         : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
