@@ -32,16 +32,26 @@ const ASPECT_RATIOS: Record<string, number> = {
 };
 
 const MAX_REF_CANDIDATES = 6;
+const MAX_BASE64_FALLBACK_REFS = 1;
 const MAX_REF_SOURCE_BYTES = 1_200_000;
 const MAX_REF_OUTPUT_BYTES = 90_000;
 const MAX_TOTAL_REF_PAYLOAD_BYTES = 360_000;
 const MAX_REF_LONGEST_SIDE = 320;
 const REF_JPEG_QUALITY = 60;
+const PUBLIC_REFERENCE_BUCKET_SEGMENT = "/storage/v1/object/public/reference-images/";
 
 const getExtensionFromMime = (mimeType: string) => {
   if (mimeType.includes("png")) return "png";
   if (mimeType.includes("webp")) return "webp";
   return "jpg";
+};
+
+const isPublicReferenceImageUrl = (url: string) => {
+  try {
+    return new URL(url).pathname.includes(PUBLIC_REFERENCE_BUCKET_SEGMENT);
+  } catch {
+    return false;
+  }
 };
 
 const bytesToBase64 = (bytes: Uint8Array) => {
@@ -422,12 +432,25 @@ serve(async (req) => {
 
     // Download reference images conservatively to stay within Edge worker limits.
     const limitedRefUrls = Array.from(new Set(referenceImageUrls)).slice(0, MAX_REF_CANDIDATES);
-    const referenceImageDataUris: string[] = [];
+    const referenceImageInputs: string[] = [];
     let preparedRefBytes = 0;
+    let directReferenceCount = 0;
+    let base64FallbackCount = 0;
     if (limitedRefUrls.length > 0) {
       console.log(`Preparing ${limitedRefUrls.length}/${referenceImageUrls.length} reference images (candidate cap ${MAX_REF_CANDIDATES})...`);
       for (const url of limitedRefUrls) {
         try {
+          if (isPublicReferenceImageUrl(url)) {
+            referenceImageInputs.push(url);
+            directReferenceCount++;
+            continue;
+          }
+
+          if (base64FallbackCount >= MAX_BASE64_FALLBACK_REFS) {
+            console.log(`Skipping additional non-public reference images above fallback cap ${MAX_BASE64_FALLBACK_REFS}`);
+            continue;
+          }
+
           const prepared = await prepareReferenceImageDataUri(url);
           if (!prepared) {
             continue;
@@ -435,19 +458,20 @@ serve(async (req) => {
 
           if (preparedRefBytes + prepared.payloadBytes > MAX_TOTAL_REF_PAYLOAD_BYTES) {
             console.log(
-              `Stopping reference image intake at ${referenceImageDataUris.length} image(s) to stay under ${MAX_TOTAL_REF_PAYLOAD_BYTES} bytes`,
+              `Stopping reference image intake at ${referenceImageInputs.length} image(s) to stay under ${MAX_TOTAL_REF_PAYLOAD_BYTES} bytes`,
             );
             break;
           }
 
-          referenceImageDataUris.push(prepared.payload);
+          referenceImageInputs.push(prepared.payload);
           preparedRefBytes += prepared.payloadBytes;
+          base64FallbackCount++;
         } catch (err) {
           console.warn(`Error downloading ref image ${url}:`, err);
         }
       }
       console.log(
-        `Successfully prepared ${referenceImageDataUris.length}/${limitedRefUrls.length} reference images (${preparedRefBytes} bytes total)`,
+        `Successfully prepared ${referenceImageInputs.length}/${limitedRefUrls.length} reference images (${directReferenceCount} direct URL, ${base64FallbackCount} base64 fallback, ${preparedRefBytes} bytes base64 total)`,
       );
     }
 
@@ -468,7 +492,7 @@ Do not import unwanted background elements, text, framing, lighting, or scene de
 
 Do not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
 
-    if (referenceImageDataUris.length > 0) {
+    if (referenceImageInputs.length > 0) {
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
 
@@ -502,15 +526,14 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
 
     // Build multimodal content array with reference images as base64
     const buildMessageContent = (promptText: string): any => {
-      if (referenceImageDataUris.length === 0) {
+      if (referenceImageInputs.length === 0) {
         return promptText;
       }
-      // Multimodal: text + reference images as base64 data URIs
       const parts: any[] = [{ type: "text", text: promptText }];
-      for (const dataUri of referenceImageDataUris) {
+      for (const imageSource of referenceImageInputs) {
         parts.push({
           type: "image_url",
-          image_url: { url: dataUri },
+          image_url: { url: imageSource },
         });
       }
       return parts;
@@ -545,7 +568,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       for (let attempt = 1; attempt <= retries; attempt++) {
         // Rebuild content each attempt (ref images may have been cleared on previous attempt)
         const currentContent = buildMessageContent(currentPromptText);
-        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageDataUris.length}`);
+        console.log(`Generating image: variant ${variantIdx}, attempt ${attempt}, ref images: ${referenceImageInputs.length}`);
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -565,9 +588,9 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
           if (aiResponse.status === 429) throw new Error("Rate limit exceeded, please try again later");
           if (aiResponse.status === 402) throw new Error("Payment required, please add credits");
           // If 400 due to image fetch failure, retry without ref images
-          if (aiResponse.status === 400 && errText.includes("fetching image from URL") && referenceImageDataUris.length > 0) {
+          if (aiResponse.status === 400 && errText.includes("fetching image from URL") && referenceImageInputs.length > 0) {
             console.warn("Reference images inaccessible via gateway, retrying without them...");
-            referenceImageDataUris.length = 0;
+            referenceImageInputs.length = 0;
             variantIdx--;
             break;
           }
