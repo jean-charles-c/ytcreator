@@ -212,11 +212,20 @@ export default function WhisperAlignmentEditor({
         const resolvedAudioDuration = entry.duration_estimate ?? 0;
         setAudioDuration(resolvedAudioDuration);
 
+        // ── Text-based matching: find each shot's first words in whisper transcript ──
+        const shotTexts = sorted.map((shot) => ({
+          id: shot.id,
+          text: getShotFragmentText(shot),
+        }));
+        const textMatches = matchShotsByText(shotTexts, words);
+        const textMatchMap = new Map(textMatches.map((m) => [m.shotId, m.whisperStartIdx]));
+
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
           const startTime = tpMap.get(shot.id) ?? null;
+          const whisperStartIdx = textMatchMap.get(shot.id) ?? null;
 
-          if (startTime === null) {
+          if (startTime === null && whisperStartIdx === null) {
             return {
               shotId: shot.id,
               globalIndex: idx + 1,
@@ -229,9 +238,6 @@ export default function WhisperAlignmentEditor({
               editing: false,
             };
           }
-
-          // Find whisper word indices that match this startTime
-          const wStartIdx = words.findIndex((w) => Math.abs(w.start - startTime) < 0.05);
 
           // Find end time from next shot
           let endTime: number | null = null;
@@ -258,11 +264,11 @@ export default function WhisperAlignmentEditor({
             shotId: shot.id,
             globalIndex: idx + 1,
             shotText: text,
-            whisperStartIdx: wStartIdx >= 0 ? wStartIdx : null,
+            whisperStartIdx,
             whisperEndIdx: wEndIdx !== null && wEndIdx >= 0 ? wEndIdx : null,
             startTime,
             endTime,
-            status: "ok" as const,
+            status: (startTime !== null ? "ok" : "missing") as "ok" | "missing" | "manual",
             editing: false,
           };
         });
