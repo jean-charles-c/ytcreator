@@ -31,10 +31,141 @@ const ASPECT_RATIOS: Record<string, number> = {
   "2:3": 2 / 3,
 };
 
+const MAX_REF_CANDIDATES = 6;
+const MAX_REF_SOURCE_BYTES = 1_200_000;
+const MAX_REF_OUTPUT_BYTES = 90_000;
+const MAX_TOTAL_REF_PAYLOAD_BYTES = 360_000;
+const MAX_REF_LONGEST_SIDE = 320;
+const REF_JPEG_QUALITY = 60;
+
 const getExtensionFromMime = (mimeType: string) => {
   if (mimeType.includes("png")) return "png";
   if (mimeType.includes("webp")) return "webp";
   return "jpg";
+};
+
+const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = "";
+  const chunkSize = 0x4000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+};
+
+const readBodyWithLimit = async (response: Response, maxBytes: number) => {
+  const contentLengthHeader = response.headers.get("content-length");
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : null;
+
+  if (typeof contentLength === "number" && Number.isFinite(contentLength) && contentLength > maxBytes) {
+    console.warn(`Skipping reference image larger than limit: ${contentLength} bytes > ${maxBytes} bytes`);
+    await response.body?.cancel();
+    return null;
+  }
+
+  if (!response.body) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return bytes.byteLength <= maxBytes ? bytes : null;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      total += value.byteLength;
+      if (total > maxBytes) {
+        console.warn(`Aborting reference image download above ${maxBytes} bytes`);
+        await reader.cancel("reference image too large");
+        return null;
+      }
+
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return merged;
+};
+
+const prepareReferenceImageDataUri = async (url: string) => {
+  const resp = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    redirect: "follow",
+  });
+
+  if (!resp.ok) {
+    console.warn(`Failed to download ref image ${url}: HTTP ${resp.status}`);
+    await resp.body?.cancel();
+    return null;
+  }
+
+  const contentType = resp.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+  if (!contentType.startsWith("image/")) {
+    console.warn(`Skipping non-image reference asset: ${url}`);
+    await resp.body?.cancel();
+    return null;
+  }
+
+  const sourceBytes = await readBodyWithLimit(resp, MAX_REF_SOURCE_BYTES);
+  if (!sourceBytes) {
+    console.warn(`Skipping oversized reference image: ${url}`);
+    return null;
+  }
+
+  let decoded: Image;
+  try {
+    decoded = await Image.decode(sourceBytes);
+  } catch {
+    console.warn(`Failed to decode reference image: ${url}`);
+    return null;
+  }
+
+  const initialScale = MAX_REF_LONGEST_SIDE / Math.max(decoded.width, decoded.height);
+  if (initialScale < 1) {
+    decoded.resize(
+      Math.max(1, Math.round(decoded.width * initialScale)),
+      Math.max(1, Math.round(decoded.height * initialScale)),
+    );
+  }
+
+  let encodedBytes = await decoded.encodeJPEG(REF_JPEG_QUALITY);
+
+  if (encodedBytes.byteLength > MAX_REF_OUTPUT_BYTES) {
+    const retryScale = 0.75;
+    decoded.resize(
+      Math.max(1, Math.round(decoded.width * retryScale)),
+      Math.max(1, Math.round(decoded.height * retryScale)),
+    );
+    encodedBytes = await decoded.encodeJPEG(55);
+  }
+
+  if (encodedBytes.byteLength > MAX_REF_OUTPUT_BYTES) {
+    console.warn(`Skipping heavy reference image after compression: ${url}`);
+    return null;
+  }
+
+  return {
+    url,
+    payload: `data:image/jpeg;base64,${bytesToBase64(encodedBytes)}`,
+    payloadBytes: encodedBytes.byteLength,
+  };
 };
 
 const extractUsdCost = (payload: any, fallback: number) => {
@@ -289,47 +420,35 @@ serve(async (req) => {
       }
     }
 
-    // Download reference images and convert to base64 data URIs
-    // Limit to 3 images max to avoid memory limit exceeded errors
-    const MAX_REF_IMAGES = 6;
-    const MAX_REF_BYTES = 500_000; // 500KB per image max
-    const limitedRefUrls = referenceImageUrls.slice(0, MAX_REF_IMAGES);
+    // Download reference images conservatively to stay within Edge worker limits.
+    const limitedRefUrls = Array.from(new Set(referenceImageUrls)).slice(0, MAX_REF_CANDIDATES);
     const referenceImageDataUris: string[] = [];
+    let preparedRefBytes = 0;
     if (limitedRefUrls.length > 0) {
-      console.log(`Downloading ${limitedRefUrls.length}/${referenceImageUrls.length} reference images (limited to ${MAX_REF_IMAGES})...`);
+      console.log(`Preparing ${limitedRefUrls.length}/${referenceImageUrls.length} reference images (candidate cap ${MAX_REF_CANDIDATES})...`);
       for (const url of limitedRefUrls) {
         try {
-          const resp = await fetch(url, { 
-            headers: { "User-Agent": "Mozilla/5.0" },
-            redirect: "follow",
-          });
-          if (!resp.ok) {
-            console.warn(`Failed to download ref image ${url}: HTTP ${resp.status}`);
+          const prepared = await prepareReferenceImageDataUri(url);
+          if (!prepared) {
             continue;
           }
-          const contentType = resp.headers.get("content-type")?.split(";")[0] || "image/jpeg";
-          if (!contentType.startsWith("image/")) continue;
-          const buffer = await resp.arrayBuffer();
-          if (buffer.byteLength > MAX_REF_BYTES) {
-            // Resize with ImageScript to stay within memory budget
-            try {
-              const decoded = await Image.decode(new Uint8Array(buffer));
-              const scale = 512 / Math.max(decoded.width, decoded.height);
-              if (scale < 1) decoded.resize(Math.round(decoded.width * scale), Math.round(decoded.height * scale));
-              const smallBytes = await decoded.encodeJPEG(70);
-              const binary = Array.from(smallBytes, (b: number) => String.fromCharCode(b)).join("");
-              referenceImageDataUris.push(`data:image/jpeg;base64,${btoa(binary)}`);
-            } catch { console.warn(`Failed to resize ref image ${url}, skipping`); }
-          } else {
-            const bytes = new Uint8Array(buffer);
-            const binary = Array.from(bytes, (b: number) => String.fromCharCode(b)).join("");
-            referenceImageDataUris.push(`data:${contentType};base64,${btoa(binary)}`);
+
+          if (preparedRefBytes + prepared.payloadBytes > MAX_TOTAL_REF_PAYLOAD_BYTES) {
+            console.log(
+              `Stopping reference image intake at ${referenceImageDataUris.length} image(s) to stay under ${MAX_TOTAL_REF_PAYLOAD_BYTES} bytes`,
+            );
+            break;
           }
+
+          referenceImageDataUris.push(prepared.payload);
+          preparedRefBytes += prepared.payloadBytes;
         } catch (err) {
           console.warn(`Error downloading ref image ${url}:`, err);
         }
       }
-      console.log(`Successfully prepared ${referenceImageDataUris.length}/${limitedRefUrls.length} reference images`);
+      console.log(
+        `Successfully prepared ${referenceImageDataUris.length}/${limitedRefUrls.length} reference images (${preparedRefBytes} bytes total)`,
+      );
     }
 
     // Add REFERENCE IMAGE RULE if there are reference images
