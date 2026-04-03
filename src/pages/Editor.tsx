@@ -1492,7 +1492,7 @@ export default function Editor() {
     });
   }, [projectId, subscribe]);
 
-  // Auto-detect object↔shot links after image generation completes
+  // Auto-detect object↔shot links after visual prompt generation completes
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -1544,8 +1544,8 @@ export default function Editor() {
       }
     };
 
-    window.addEventListener("image-gen-complete", handler);
-    return () => window.removeEventListener("image-gen-complete", handler);
+    window.addEventListener("storyboard-prompts-complete", handler);
+    return () => window.removeEventListener("storyboard-prompts-complete", handler);
   }, [projectId, shots, globalContext, handleObjectRegistryChange]);
 
   const handleGenerateSceneImages = (sceneId: string) => {
