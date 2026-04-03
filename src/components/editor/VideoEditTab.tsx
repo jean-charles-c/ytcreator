@@ -27,6 +27,7 @@ import ExportManager from "./ExportManager";
 import { resolveSelectedAudioId } from "./audioSelection";
 import { validateExactShotTimepoints } from "./exactShotSync";
 import { validateAllocation } from "./shotAllocationValidator";
+import { buildRepairedShotTimepoints } from "./whisperTimepointRepair";
 import type { ChapterListState } from "./chapterTypes";
 
 type Scene = Tables<"scenes">;
