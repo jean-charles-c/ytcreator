@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
 
     const textChunks = splitTextIntoChunks(text.trim());
     console.log(
-      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}`
+      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}`
     );
 
     const audioPartsBytes: Uint8Array[] = [];
