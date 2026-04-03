@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import { Play, Square, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
@@ -31,6 +32,15 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
 
     setLoading(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (useChirp && !accessToken) {
+        throw new Error("Vous devez être connecté pour tester une voix Chirp.");
+      }
+
       const endpoint = useChirp ? "generate-tts-chirp3hd" : "generate-tts";
       const body = useChirp
         ? {
@@ -67,7 +77,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
           headers: {
             "Content-Type": "application/json",
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           body: JSON.stringify(body),
         }
