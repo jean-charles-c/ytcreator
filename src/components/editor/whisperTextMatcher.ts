@@ -48,7 +48,6 @@ function extractLeadingWords(text: string, count = 3): string[] {
 const SEARCH_WINDOW = 50;
 
 /** Minimum consecutive words that must match exactly. */
-const REQUIRED_MATCH_COUNT = 3;
 
 export interface StrictMatchResult {
   shotId: string;
