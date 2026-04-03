@@ -1492,6 +1492,62 @@ export default function Editor() {
     });
   }, [projectId, subscribe]);
 
+  // Auto-detect object↔shot links after image generation completes
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.projectId !== projectId) return;
+      const recurringObjects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+      if (!recurringObjects.length || !shots.length) return;
+
+      try {
+        const objectsPayload = recurringObjects.map(o => ({
+          id: o.id,
+          nom: o.nom,
+          type: o.type,
+          description_visuelle: o.description_visuelle,
+        }));
+        const shotsPayload = shots.map(s => ({
+          id: s.id,
+          scene_id: s.scene_id,
+          source_sentence: s.source_sentence,
+          source_sentence_fr: s.source_sentence_fr,
+          description: s.description,
+        }));
+
+        const { data, error } = await supabase.functions.invoke("detect-object-shots", {
+          body: { objects: objectsPayload, shots: shotsPayload },
+        });
+
+        if (error || data?.error) {
+          console.warn("Auto-detect object shots failed:", error || data?.error);
+          return;
+        }
+
+        const results = data?.results as Record<string, string[]> | undefined;
+        if (!results) return;
+
+        const updated = recurringObjects.map(obj => {
+          const aiShotIds = results[obj.id] || [];
+          const existing = obj.mentions_shots || [];
+          const merged = Array.from(new Set([...existing, ...aiShotIds]));
+          return { ...obj, mentions_shots: merged };
+        });
+
+        handleObjectRegistryChange(updated);
+        const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+        if (totalDetected > 0) {
+          toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)`);
+        }
+      } catch (err) {
+        console.warn("Auto-detect object shots error:", err);
+      }
+    };
+
+    window.addEventListener("image-gen-complete", handler);
+    return () => window.removeEventListener("image-gen-complete", handler);
+  }, [projectId, shots, globalContext, handleObjectRegistryChange]);
+
   const handleGenerateSceneImages = (sceneId: string) => {
     if (!projectId || generatingAllImages) return;
     const sceneShots = shots
