@@ -8,6 +8,7 @@ import {
   Search,
   Loader2,
   Clock,
+  GitCompareArrows,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
