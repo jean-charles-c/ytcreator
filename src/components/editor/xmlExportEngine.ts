@@ -652,3 +652,99 @@ export async function exportTimelineToXmlZip(
   onProgress?.({ phase: "done", percent: 100, message: "Package XML prêt !" });
   return blob;
 }
+
+/**
+ * Generate ONLY the XML timeline file (no media, no ZIP).
+ * Much faster — useful for quick re-exports after timing adjustments.
+ */
+export function generateTimelineXmlOnly(
+  timeline: Timeline,
+  fps: ExportFps = 24,
+  chapters?: Chapter[],
+  manifestEntries?: ManifestTimingEntry[],
+  musicTrackNames?: string[]
+): string {
+  const segments = timeline.videoTrack.segments;
+
+  const useManifest = manifestEntries && manifestEntries.length > 0;
+  let exportSegments: typeof segments;
+  if (useManifest) {
+    const segmentMap = new Map(segments.map((seg) => [seg.id, seg]));
+    exportSegments = manifestEntries
+      .map((entry) => segmentMap.get(entry.shotId))
+      .filter((seg): seg is (typeof segments)[number] => seg !== undefined);
+  } else {
+    exportSegments = segments;
+  }
+
+  // Build clip frames
+  let clipFrames: ClipFrame[];
+  let totalFrames: number;
+  if (useManifest) {
+    clipFrames = buildClipFramesFromManifest(manifestEntries, fps);
+    totalFrames = clipFrames.length > 0
+      ? clipFrames[clipFrames.length - 1].end
+      : Math.ceil(timeline.totalDuration * fps);
+  } else {
+    clipFrames = buildClipFrames(timeline, fps);
+    totalFrames = clipFrames.length > 0
+      ? clipFrames[clipFrames.length - 1].end
+      : Math.ceil(timeline.totalDuration * fps);
+  }
+
+  // Build XML segments with placeholder paths (media not included)
+  const xmlSegments: XmlSegment[] = exportSegments.map((seg) => ({
+    id: seg.id,
+    sceneTitle: seg.sceneTitle,
+    description: seg.description,
+    sentence: seg.sentence,
+    sentenceFr: seg.sentenceFr,
+    imageUrl: seg.imageUrl,
+    shotType: seg.shotType,
+    selectedVideoUrl: null,
+  }));
+
+  // Build image file name map (using placeholder paths as in full export)
+  const imageFileNames = new Map<number, string>();
+  for (let i = 0; i < exportSegments.length; i++) {
+    const ext = exportSegments[i].imageUrl ? getImageExtension(exportSegments[i].imageUrl!) : "jpg";
+    imageFileNames.set(i, `media/shot_${String(i + 1).padStart(3, "0")}.${ext}`);
+  }
+
+  const audioExt = timeline.audioTrack.fileName.split(".").pop() || "mp3";
+  const audioFileName = `media/narration.${audioExt}`;
+
+  const exportUid = crypto.randomUUID().slice(0, 8);
+  const timelineMarkers = chapters
+    ? buildChapterMarkers(chapters, timeline, fps, xmlSegments, clipFrames)
+    : [];
+  const markersXml = timelineMarkers.length > 0 ? generateMarkerXml(timelineMarkers, fps) : "";
+
+  const chapterTitleClips = timelineMarkers.map((marker) => {
+    const clipEnd = clipFrames[marker.clipIndex]?.end ?? marker.startFrame + Math.round(fps * 5);
+    return {
+      name: marker.name,
+      startFrame: marker.startFrame,
+      endFrame: clipEnd,
+    };
+  });
+
+  const musicFileEntries = (musicTrackNames ?? []).map((name, i) => {
+    const ext = name.split(".").pop() || "mp3";
+    return { fileName: name, localPath: `media/music_${String(i + 1).padStart(2, "0")}.${ext}` };
+  });
+
+  return generateXml(
+    xmlSegments,
+    clipFrames,
+    totalFrames,
+    { fileName: timeline.audioTrack.fileName, durationEstimate: timeline.audioTrack.durationEstimate },
+    fps,
+    imageFileNames,
+    audioFileName,
+    exportUid,
+    markersXml,
+    musicFileEntries,
+    chapterTitleClips,
+  );
+}
