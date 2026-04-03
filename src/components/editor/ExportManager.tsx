@@ -76,7 +76,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
       setLoadingExports(true);
       const { data } = await supabase
         .from("project_scriptcreator_state")
-        .select("timeline_state")
+        .select("timeline_state, updated_at")
         .eq("project_id", projectId)
         .single();
       if (data?.timeline_state) {
@@ -84,6 +84,9 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
         if (Array.isArray(state.exports)) {
           setExports(state.exports);
         }
+      }
+      if (data?.updated_at) {
+        setLastTimelineDate(data.updated_at);
       }
       setLoadingExports(false);
     };
