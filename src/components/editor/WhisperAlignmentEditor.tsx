@@ -430,12 +430,13 @@ export default function WhisperAlignmentEditor({
         {totalCount > 0 && (
           <span
             className={`ml-auto text-[9px] font-bold ${
-                missingCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
+                blockedCount > 0 ? "text-destructive" : missingCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
             }`}
           >
             {okCount}/{totalCount}
             {manualCount > 0 && <span className="text-orange-500 ml-1">({manualCount} manuels)</span>}
-              {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
+            {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
+            {blockedCount > 0 && <span className="text-destructive ml-1">⛔ bloqué shot #{firstBlockedShot?.globalIndex}</span>}
           </span>
         )}
       </summary>
