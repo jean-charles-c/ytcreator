@@ -330,11 +330,49 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
       toast.error("Aucun shot disponible pour générer la timeline.");
       return;
     }
-    const timepoints = (audioFile as any).shot_timepoints ?? null;
-    const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
+
+    const rawTimepoints = (audioFile as any).shot_timepoints ?? null;
+    const whisperWords = Array.isArray((audioFile as any).whisper_words) ? (audioFile as any).whisper_words : [];
+    const sceneSort = scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order }));
+    const expectedShotIds = [...shots]
+      .sort((a, b) => {
+        const sceneOrderA = sceneSort.find((scene) => scene.id === a.scene_id)?.scene_order ?? 0;
+        const sceneOrderB = sceneSort.find((scene) => scene.id === b.scene_id)?.scene_order ?? 0;
+        if (sceneOrderA !== sceneOrderB) return sceneOrderA - sceneOrderB;
+        return a.shot_order - b.shot_order;
+      })
+      .map((shot) => shot.id);
+
+    const validation = validateExactShotTimepoints(expectedShotIds, rawTimepoints);
+    const repairedTimepoints = validation.ok
+      ? rawTimepoints
+      : buildRepairedShotTimepoints({
+          shots,
+          scenesForSort: sceneSort,
+          whisperWords,
+          existingTimepoints: rawTimepoints,
+          audioDuration: audioFile.duration_estimate ?? 0,
+        });
+
+    const assembled = assembleTimeline(scenes, shots, audioFile, repairedTimepoints);
     setTimeline(assembled);
     saveTimelineToDb(assembled);
-    const syncMode = timepoints ? "sync précis (marqueurs SSML)" : "sync proportionnel (par caractères)";
+
+    if (!validation.ok) {
+      supabase
+        .from("vo_audio_history")
+        .update({ shot_timepoints: repairedTimepoints as any })
+        .eq("id", audioFile.id)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Failed to persist repaired timepoints:", error);
+          }
+        });
+      toast.success(`Timeline réparée automatiquement — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s`);
+      return;
+    }
+
+    const syncMode = repairedTimepoints ? "sync précis (marqueurs SSML)" : "sync proportionnel (par caractères)";
     toast.success(`Timeline assemblée — ${assembled.segmentCount} segments, ${Math.round(assembled.totalDuration)}s (${syncMode})`);
   }, [selectedAudioId, audioFiles, scenes, shots, saveTimelineToDb]);
 
