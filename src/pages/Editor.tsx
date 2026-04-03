@@ -781,18 +781,15 @@ export default function Editor() {
   // Per-shot object overrides: { shotId: { added: [objId], removed: [objId] } }
   const [shotObjectOverrides, setShotObjectOverrides] = useState<Record<string, { added: string[]; removed: string[] }>>({});
 
-  const getLinkedObjectsForShot = useCallback((sceneOrder: number, shotId?: string): RecurringObject[] => {
-    // Start with scene-level linked objects
-    const sceneLinked = allRecurringObjects.filter(obj => obj.mentions_scenes.includes(sceneOrder));
-    if (!shotId) return sceneLinked;
-    
+  const getLinkedObjectsForShot = useCallback((_sceneOrder: number, shotId?: string): RecurringObject[] => {
+    if (!shotId) return [];
+    // Direct shot-level linking from mentions_shots
+    const shotLinked = allRecurringObjects.filter(obj => (obj.mentions_shots || []).includes(shotId));
+    // Apply per-shot overrides on top
     const overrides = shotObjectOverrides[shotId];
-    if (!overrides) return sceneLinked;
-    
-    // Apply per-shot removals
-    let result = sceneLinked.filter(obj => !overrides.removed.includes(obj.id));
-    // Apply per-shot additions (objects not already in scene)
-    const addedObjects = allRecurringObjects.filter(obj => overrides.added.includes(obj.id) && !sceneLinked.some(s => s.id === obj.id));
+    if (!overrides) return shotLinked;
+    let result = shotLinked.filter(obj => !overrides.removed.includes(obj.id));
+    const addedObjects = allRecurringObjects.filter(obj => overrides.added.includes(obj.id) && !shotLinked.some(s => s.id === obj.id));
     result = [...result, ...addedObjects];
     return result;
   }, [allRecurringObjects, shotObjectOverrides]);
