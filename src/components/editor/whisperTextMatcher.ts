@@ -153,7 +153,7 @@ export function matchShotsStrictSequential(
           allMatch = false;
           break;
         }
-        if (norm(whisperWords[i + j].word) !== leadWords[j]) {
+        if (!fuzzyEqual(norm(whisperWords[i + j].word), leadWords[j])) {
           allMatch = false;
           break;
         }
