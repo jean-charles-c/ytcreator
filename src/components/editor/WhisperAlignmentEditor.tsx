@@ -8,6 +8,7 @@ import {
   Search,
   Loader2,
   Clock,
+  GitCompareArrows,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -89,8 +90,14 @@ export default function WhisperAlignmentEditor({
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
-  const [globalOffset, setGlobalOffset] = useState(0); // seconds to ADD to Whisper timecodes
+  const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  
+  const [dualPassData, setDualPassData] = useState<{
+    passA: WhisperWord[];
+    passB: WhisperWord[];
+    comparison: { avgDeltaMs: number; maxDeltaMs: number; p95DeltaMs: number; wordCountA: number; wordCountB: number; biggestDiffs: { word: string; index: number; startA: number; startB: number; deltaMs: number }[] };
+  } | null>(null);
 
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
@@ -200,6 +207,17 @@ export default function WhisperAlignmentEditor({
         });
 
         setAlignedShots(recalculateWhisperShotEndTimes(aligned, resolvedAudioDuration));
+
+        // Load dual pass data from localStorage
+        try {
+          const stored = localStorage.getItem(`whisper-dual-${projectId}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.passA && parsed.passB && parsed.comparison) {
+              setDualPassData(parsed);
+            }
+          }
+        } catch {}
       } catch (e) {
         console.error("[WhisperAlignmentEditor] load error:", e);
       } finally {
@@ -439,6 +457,100 @@ export default function WhisperAlignmentEditor({
 
         {!loading && whisperWords.length > 0 && (
           <>
+            {/* Dual pass comparison panel */}
+            {dualPassData && (
+              <details className="rounded border border-border bg-muted/20">
+                <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground px-3 py-2 flex items-center gap-1.5">
+                  <GitCompareArrows className="h-3 w-3 shrink-0" />
+                  <span>Comparaison double passe Whisper</span>
+                  <span className="ml-auto text-[9px] font-mono">
+                    Δ moy: {dualPassData.comparison.avgDeltaMs}ms · max: {dualPassData.comparison.maxDeltaMs}ms · p95: {dualPassData.comparison.p95DeltaMs}ms
+                  </span>
+                </summary>
+                <div className="p-2 space-y-2">
+                  <div className="text-[9px] text-muted-foreground">
+                    Passe A : {dualPassData.passA.length} mots · Passe B : {dualPassData.passB.length} mots
+                  </div>
+
+                  {/* Biggest diffs table */}
+                  {dualPassData.comparison.biggestDiffs.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground mb-1">
+                        Plus gros écarts (top {dualPassData.comparison.biggestDiffs.length})
+                      </p>
+                      <div className="overflow-auto max-h-[200px] rounded border border-border">
+                        <table className="w-full text-[9px]">
+                          <thead>
+                            <tr className="bg-muted/50 border-b border-border">
+                              <th className="px-2 py-1 text-left font-medium text-muted-foreground">#</th>
+                              <th className="px-2 py-1 text-left font-medium text-muted-foreground">Mot</th>
+                              <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe A</th>
+                              <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe B</th>
+                              <th className="px-2 py-1 text-right font-medium text-muted-foreground">Δ ms</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {dualPassData.comparison.biggestDiffs.map((d, i) => (
+                              <tr key={i} className="border-b border-border/50">
+                                <td className="px-2 py-0.5 font-mono text-muted-foreground">{d.index}</td>
+                                <td className="px-2 py-0.5 font-medium text-foreground">{d.word}</td>
+                                <td className="px-2 py-0.5 text-right font-mono">{d.startA.toFixed(3)}s</td>
+                                <td className="px-2 py-0.5 text-right font-mono">{d.startB.toFixed(3)}s</td>
+                                <td className={`px-2 py-0.5 text-right font-mono font-bold ${
+                                  d.deltaMs > 100 ? "text-destructive" : d.deltaMs > 50 ? "text-orange-500" : "text-emerald-500"
+                                }`}>{d.deltaMs}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Word-by-word comparison: scrollable */}
+                  <details className="rounded border border-border">
+                    <summary className="text-[9px] font-medium text-muted-foreground cursor-pointer px-2 py-1">
+                      Comparaison mot à mot complète ({Math.min(dualPassData.passA.length, dualPassData.passB.length)} mots)
+                    </summary>
+                    <div className="overflow-auto max-h-[300px]">
+                      <table className="w-full text-[9px]">
+                        <thead className="sticky top-0">
+                          <tr className="bg-muted border-b border-border">
+                            <th className="px-1.5 py-1 text-left font-medium text-muted-foreground w-8">#</th>
+                            <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot A</th>
+                            <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Start A</th>
+                            <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot B</th>
+                            <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Start B</th>
+                            <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Δ ms</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: Math.min(dualPassData.passA.length, dualPassData.passB.length) }).map((_, i) => {
+                            const wA = dualPassData.passA[i];
+                            const wB = dualPassData.passB[i];
+                            const delta = Math.round(Math.abs(wA.start - wB.start) * 1000);
+                            const wordMismatch = wA.word.toLowerCase() !== wB.word.toLowerCase();
+                            return (
+                              <tr key={i} className={`border-b border-border/30 ${wordMismatch ? "bg-orange-500/10" : ""}`}>
+                                <td className="px-1.5 py-0.5 font-mono text-muted-foreground">{i}</td>
+                                <td className={`px-1.5 py-0.5 ${wordMismatch ? "text-orange-500 font-bold" : "text-foreground"}`}>{wA.word}</td>
+                                <td className="px-1.5 py-0.5 text-right font-mono">{wA.start.toFixed(3)}</td>
+                                <td className={`px-1.5 py-0.5 ${wordMismatch ? "text-orange-500 font-bold" : "text-foreground"}`}>{wB.word}</td>
+                                <td className="px-1.5 py-0.5 text-right font-mono">{wB.start.toFixed(3)}</td>
+                                <td className={`px-1.5 py-0.5 text-right font-mono font-bold ${
+                                  delta > 100 ? "text-destructive" : delta > 50 ? "text-orange-500" : "text-emerald-500"
+                                }`}>{delta}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </div>
+              </details>
+            )}
+
             {/* Shot list */}
             <div className="space-y-1">
               {alignedShots.map((shot) => {

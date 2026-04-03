@@ -234,12 +234,41 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               const alignData = await alignResponse.json();
               alignmentRun = alignData.alignmentRun;
 
-              // Log dual pass comparison if available
-              if (alignData.dualPassComparison) {
+              // Store dual pass raw data if available
+              if (alignData.passA && alignData.passB && alignData.dualPassComparison) {
                 const cmp = alignData.dualPassComparison;
                 console.log("[chirp3hd] Dual pass comparison:", cmp);
+                console.log("[chirp3hd] Pass A words:", alignData.passA.length);
+                console.log("[chirp3hd] Pass B words:", alignData.passB.length);
+
+                // Persist dual pass data alongside whisper_words
+                const { data: sessionData } = await supabase.auth.getSession();
+                if (sessionData?.session) {
+                  await supabase
+                    .from("vo_audio_history")
+                    .update({
+                      whisper_words: alignData.alignmentRun.words,
+                    })
+                    .eq("project_id", projectId)
+                    .eq("style", "chirp3hd")
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+                }
+
+                // Store dual pass data in localStorage for the comparison panel
+                localStorage.setItem(
+                  `whisper-dual-${projectId}`,
+                  JSON.stringify({
+                    passA: alignData.passA,
+                    passB: alignData.passB,
+                    comparison: cmp,
+                    timestamp: new Date().toISOString(),
+                  })
+                );
+
                 toast.success(
-                  `Alignement double passe — ${alignData.wordCount} mots, écart moyen: ${cmp.avgDeltaMs}ms, max: ${cmp.maxDeltaMs}ms, p95: ${cmp.p95DeltaMs}ms`
+                  `Alignement double passe — ${alignData.wordCount} mots, écart moyen: ${cmp.avgDeltaMs}ms, max: ${cmp.maxDeltaMs}ms, p95: ${cmp.p95DeltaMs}ms`,
+                  { duration: 8000 }
                 );
               } else {
                 toast.success(
