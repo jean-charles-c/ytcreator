@@ -90,8 +90,14 @@ export default function WhisperAlignmentEditor({
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
-  const [globalOffset, setGlobalOffset] = useState(0); // seconds to ADD to Whisper timecodes
+  const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [showDualPass, setShowDualPass] = useState(false);
+  const [dualPassData, setDualPassData] = useState<{
+    passA: WhisperWord[];
+    passB: WhisperWord[];
+    comparison: { avgDeltaMs: number; maxDeltaMs: number; p95DeltaMs: number; wordCountA: number; wordCountB: number; biggestDiffs: { word: string; index: number; startA: number; startB: number; deltaMs: number }[] };
+  } | null>(null);
 
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
