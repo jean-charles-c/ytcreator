@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
 import { recalculateWhisperShotEndTimes } from "./whisperAlignmentTiming";
 import { matchShotsByText, enforceMonotonicTimestamps } from "./whisperTextMatcher";
+import { buildRepairedShotTimepoints } from "./whisperTimepointRepair";
 
 // ── Types ──
 
@@ -516,45 +517,42 @@ export default function WhisperAlignmentEditor({
                 if (!audioEntryId) return;
                 setSaving(true);
                 try {
-                  // Build proposed start times, enforcing monotonicity
-                  let lastValidTime = -1;
-                  const proposed = alignedShots.map((s) => {
-                    if (s.whisperStartIdx === null || s.whisperStartIdx >= whisperWords.length) return s;
-                    const whisperStart = whisperWords[s.whisperStartIdx].start;
-                    
-                    // Skip this match if it would go backwards
-                    if (whisperStart < lastValidTime) {
-                      console.warn(`[Recaler] Shot ${s.globalIndex} skipped — timestamp ${whisperStart.toFixed(3)}s < previous ${lastValidTime.toFixed(3)}s`);
-                      return s;
-                    }
-                    
-                    lastValidTime = whisperStart;
-                    return {
-                      ...s,
-                      startTime: whisperStart,
-                      status: (s.status === "missing" ? "missing" : s.status) as "ok" | "missing" | "manual",
-                    };
+                  const sceneOrderMap = new Map(scenesForSort.map((scene) => [scene.id, scene.scene_order]));
+                  const sortedShotSources = [...shots].sort((a, b) => {
+                    const sceneOrderA = sceneOrderMap.get(a.scene_id) ?? 0;
+                    const sceneOrderB = sceneOrderMap.get(b.scene_id) ?? 0;
+                    if (sceneOrderA !== sceneOrderB) return sceneOrderA - sceneOrderB;
+                    return a.shot_order - b.shot_order;
                   });
-                  const recalculated = recalculateWhisperShotEndTimes(proposed, audioDuration);
-                  setAlignedShots(recalculated);
 
-                  const timepoints = recalculated
-                    .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
-                    .map((s, idx) => ({
-                      shotId: s.shotId,
-                      shotIndex: idx,
-                      timeSeconds: s.startTime,
-                    }));
+                  const repairedTimepoints = buildRepairedShotTimepoints({
+                    shots: sortedShotSources,
+                    scenesForSort,
+                    whisperWords,
+                    existingTimepoints: alignedShots
+                      .filter((s) => s.startTime !== null)
+                      .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime! })),
+                    audioDuration,
+                  });
+
+                  const repairedMap = new Map(repairedTimepoints.map((tp) => [tp.shotId, tp.timeSeconds]));
+                  const recalculated = recalculateWhisperShotEndTimes(
+                    alignedShots.map((s) => ({
+                      ...s,
+                      startTime: repairedMap.get(s.shotId) ?? s.startTime,
+                    })),
+                    audioDuration
+                  );
+                  setAlignedShots(recalculated);
 
                   const { error } = await supabase
                     .from("vo_audio_history")
-                    .update({ shot_timepoints: timepoints as any })
+                    .update({ shot_timepoints: repairedTimepoints as any })
                     .eq("id", audioEntryId);
 
                   if (error) throw error;
 
-                  const count = recalculated.filter((s) => s.whisperStartIdx !== null && s.startTime !== null).length;
-                  toast.success(`${count} shots recalés sur les timestamps Whisper`);
+                  toast.success(`${repairedTimepoints.length} shots recalés sur Whisper`);
                 } catch (e: any) {
                   console.error("[WhisperAlignmentEditor] recaler error:", e);
                   toast.error("Erreur lors du recalage Whisper");
