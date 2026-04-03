@@ -337,7 +337,12 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
 
       {/* Quick download timeline XML only */}
       {!isAnyExporting && (
-        <div className="px-4 pt-3">
+        <div className="px-4 pt-3 space-y-1.5">
+          {lastTimelineDate && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              Version du {new Date(lastTimelineDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })} à {new Date(lastTimelineDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
           <Button
             variant="outline"
             size="sm"
