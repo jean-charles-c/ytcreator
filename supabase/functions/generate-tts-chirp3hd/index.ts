@@ -21,7 +21,8 @@ Deno.serve(async (req) => {
   try {
     // ── Auth ──
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return jsonResponse({ error: "Non autorisé" }, 401);
+    if (!authHeader?.startsWith("Bearer "))
+      return jsonResponse({ error: "Non autorisé" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -31,10 +32,15 @@ Deno.serve(async (req) => {
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const {
-      data: { user },
-    } = await anonClient.auth.getUser();
-    if (!user) return jsonResponse({ error: "Non autorisé" }, 401);
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } =
+      await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.error("[chirp3hd] Auth error:", claimsError);
+      return jsonResponse({ error: "Non autorisé" }, 401);
+    }
+    const userId = claimsData.claims.sub as string;
 
     // ── Input validation ──
     const body = await req.json();
@@ -203,7 +209,7 @@ Deno.serve(async (req) => {
       ? customFileName.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
       : "chirp3hd";
     const fileName = `${safeName}_${timestamp}.mp3`;
-    const storagePath = `${user.id}/${projectId}/${fileName}`;
+    const storagePath = `${userId}/${projectId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("vo-audio")
@@ -229,7 +235,7 @@ Deno.serve(async (req) => {
       .from("vo_audio_history")
       .insert({
         project_id: projectId,
-        user_id: user.id,
+        user_id: userId,
         file_name: fileName,
         file_path: storagePath,
         file_size: fileSize,
