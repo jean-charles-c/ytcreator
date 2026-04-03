@@ -846,10 +846,6 @@ export default function Editor() {
         for (const shotId of obj.mentions_shots) {
           const shot = shots.find(s => s.id === shotId);
           if (!shot) continue;
-          const scene = scenes.find(sc => sc.id === shot.scene_id);
-          if (!scene) continue;
-          const isSceneLinked = obj.mentions_scenes.includes(scene.scene_order);
-          if (isSceneLinked) continue;
           const current = next[shotId] || { added: [], removed: [] };
           if (!current.added.includes(obj.id)) {
             next[shotId] = { ...current, added: [...current.added, obj.id], removed: current.removed.filter(id => id !== obj.id) };
@@ -862,7 +858,7 @@ export default function Editor() {
       }
       return changed ? next : prev;
     });
-  }, [allRecurringObjects, shots, scenes, persistShotObjectOverrides]);
+  }, [allRecurringObjects, shots, persistShotObjectOverrides]);
 
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
