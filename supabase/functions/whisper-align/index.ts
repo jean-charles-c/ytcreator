@@ -182,10 +182,11 @@ Deno.serve(async (req) => {
 
     // ── Input ──
     const body = await req.json();
-    const { audioUrl, projectId, dualPass } = body as {
+    const { audioUrl, projectId, dualPass, triplePass } = body as {
       audioUrl?: string;
       projectId?: string;
       dualPass?: boolean;
+      triplePass?: boolean;
     };
 
     if (!audioUrl || typeof audioUrl !== "string") {
@@ -222,18 +223,55 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Clé API Groq non configurée." }, 500);
     }
 
-    const useDualPass = dualPass === true;
-    console.log(`[whisper-align] Mode: ${useDualPass ? "DUAL PASS" : "single pass"}`);
+    const useTriplePass = triplePass === true;
+    const useDualPass = !useTriplePass && dualPass === true;
+    const passCount = useTriplePass ? 3 : useDualPass ? 2 : 1;
+    console.log(`[whisper-align] Mode: ${passCount} pass(es)`);
 
-    // ── Call Whisper (1 or 2 passes) ──
+    // ── Call Whisper (1, 2, or 3 passes) ──
     let finalWords: WordTimestamp[];
     let finalTranscript: string;
     let finalDuration: number;
     let comparison: ReturnType<typeof compareRuns> | null = null;
     let passAWords: WordTimestamp[] | null = null;
     let passBWords: WordTimestamp[] | null = null;
+    let passCWords: WordTimestamp[] | null = null;
 
-    if (useDualPass) {
+    if (useTriplePass) {
+      const [runA, runB, runC] = await Promise.all([
+        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+      ]);
+
+      console.log(`[whisper-align] Pass A: ${runA.words.length}, B: ${runB.words.length}, C: ${runC.words.length} words`);
+
+      // Compare all pairs
+      const compAB = compareRuns(runA.words, runB.words);
+      const compAC = compareRuns(runA.words, runC.words);
+      const compBC = compareRuns(runB.words, runC.words);
+
+      // Use pair with lowest average delta as the "best" comparison
+      const pairs = [
+        { label: "A-B", comp: compAB, avgDelta: compAB.avgDeltaMs },
+        { label: "A-C", comp: compAC, avgDelta: compAC.avgDeltaMs },
+        { label: "B-C", comp: compBC, avgDelta: compBC.avgDeltaMs },
+      ];
+      pairs.sort((a, b) => a.avgDelta - b.avgDelta);
+      comparison = pairs[0].comp;
+
+      console.log(
+        `[whisper-align] Best pair: ${pairs[0].label} avg=${pairs[0].avgDelta}ms, worst: ${pairs[2].label} avg=${pairs[2].avgDelta}ms`
+      );
+
+      passAWords = runA.words;
+      passBWords = runB.words;
+      passCWords = runC.words;
+      // Use pass A as default "main" result
+      finalWords = runA.words;
+      finalTranscript = runA.transcript;
+      finalDuration = runA.duration;
+    } else if (useDualPass) {
       const [runA, runB] = await Promise.all([
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
@@ -246,10 +284,8 @@ Deno.serve(async (req) => {
         `[whisper-align] Comparison: avg=${comparison.avgDeltaMs}ms, max=${comparison.maxDeltaMs}ms, p95=${comparison.p95DeltaMs}ms`
       );
 
-      // Keep both raw passes — do NOT average, let the user compare
       passAWords = runA.words;
       passBWords = runB.words;
-      // Use pass A as the "main" result
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
