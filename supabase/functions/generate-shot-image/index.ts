@@ -290,47 +290,46 @@ serve(async (req) => {
     }
 
     // Download reference images and convert to base64 data URIs
-    // This avoids 403 errors when the AI gateway tries to fetch external URLs
+    // Limit to 3 images max to avoid memory limit exceeded errors
+    const MAX_REF_IMAGES = 3;
+    const MAX_REF_BYTES = 500_000; // 500KB per image max
+    const limitedRefUrls = referenceImageUrls.slice(0, MAX_REF_IMAGES);
     const referenceImageDataUris: string[] = [];
-    if (referenceImageUrls.length > 0) {
-      console.log(`Downloading ${referenceImageUrls.length} reference images...`);
-      const downloadResults = await Promise.allSettled(
-        referenceImageUrls.map(async (url) => {
-          try {
-            const resp = await fetch(url, { 
-              headers: { "User-Agent": "Mozilla/5.0" },
-              redirect: "follow",
-            });
-            if (!resp.ok) {
-              console.warn(`Failed to download ref image ${url}: HTTP ${resp.status}`);
-              return null;
-            }
-            const contentType = resp.headers.get("content-type")?.split(";")[0] || "image/jpeg";
-            if (!contentType.startsWith("image/")) {
-              console.warn(`Ref image ${url} is not an image: ${contentType}`);
-              return null;
-            }
-            const buffer = await resp.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            // Convert to base64
-            let binary = "";
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            const base64 = btoa(binary);
-            return `data:${contentType};base64,${base64}`;
-          } catch (err) {
-            console.warn(`Error downloading ref image ${url}:`, err);
-            return null;
+    if (limitedRefUrls.length > 0) {
+      console.log(`Downloading ${limitedRefUrls.length}/${referenceImageUrls.length} reference images (limited to ${MAX_REF_IMAGES})...`);
+      for (const url of limitedRefUrls) {
+        try {
+          const resp = await fetch(url, { 
+            headers: { "User-Agent": "Mozilla/5.0" },
+            redirect: "follow",
+          });
+          if (!resp.ok) {
+            console.warn(`Failed to download ref image ${url}: HTTP ${resp.status}`);
+            continue;
           }
-        })
-      );
-      for (const result of downloadResults) {
-        if (result.status === "fulfilled" && result.value) {
-          referenceImageDataUris.push(result.value);
+          const contentType = resp.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+          if (!contentType.startsWith("image/")) continue;
+          const buffer = await resp.arrayBuffer();
+          if (buffer.byteLength > MAX_REF_BYTES) {
+            // Resize with ImageScript to stay within memory budget
+            try {
+              const decoded = await Image.decode(new Uint8Array(buffer));
+              const scale = 512 / Math.max(decoded.width, decoded.height);
+              if (scale < 1) decoded.resize(Math.round(decoded.width * scale), Math.round(decoded.height * scale));
+              const smallBytes = await decoded.encodeJPEG(70);
+              const binary = Array.from(smallBytes, (b: number) => String.fromCharCode(b)).join("");
+              referenceImageDataUris.push(`data:image/jpeg;base64,${btoa(binary)}`);
+            } catch { console.warn(`Failed to resize ref image ${url}, skipping`); }
+          } else {
+            const bytes = new Uint8Array(buffer);
+            const binary = Array.from(bytes, (b: number) => String.fromCharCode(b)).join("");
+            referenceImageDataUris.push(`data:${contentType};base64,${btoa(binary)}`);
+          }
+        } catch (err) {
+          console.warn(`Error downloading ref image ${url}:`, err);
         }
       }
-      console.log(`Successfully downloaded ${referenceImageDataUris.length}/${referenceImageUrls.length} reference images`);
+      console.log(`Successfully prepared ${referenceImageDataUris.length}/${limitedRefUrls.length} reference images`);
     }
 
     // Add REFERENCE IMAGE RULE if there are reference images
