@@ -556,14 +556,79 @@ export default function WhisperAlignmentEditor({
                           </div>
                         )}
 
-                        {/* Timing info */}
+                        {/* Timing info + per-shot fine-tune */}
                         {shot.startTime !== null && shot.endTime !== null && (
-                          <div className="flex gap-3 font-mono text-muted-foreground">
-                            <span>Début: {formatTimecode(shot.startTime)} ({formatSeconds(shot.startTime)})</span>
-                            <span>Fin: {formatTimecode(shot.endTime)} ({formatSeconds(shot.endTime)})</span>
-                            <span>
-                              Durée: {(shot.endTime - shot.startTime).toFixed(2)}s
-                            </span>
+                          <div className="space-y-1">
+                            <div className="flex gap-3 font-mono text-muted-foreground">
+                              <span>Début: {formatTimecode(shot.startTime)} ({formatSeconds(shot.startTime)})</span>
+                              <span>Fin: {formatTimecode(shot.endTime)} ({formatSeconds(shot.endTime)})</span>
+                              <span>
+                                Durée: {(shot.endTime - shot.startTime).toFixed(2)}s
+                              </span>
+                            </div>
+                            {/* Per-shot frame nudge */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] text-muted-foreground">Ajuster :</span>
+                              {[-5, -1].map((delta) => (
+                                <Button
+                                  key={delta}
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-5 w-7 text-[9px] px-0 font-mono"
+                                  onClick={async () => {
+                                    const frameOffset = delta / TIMECODE_FPS;
+                                    const newStart = Math.max(0, (shot.startTime ?? 0) + frameOffset);
+                                    const recalculated = recalculateWhisperShotEndTimes(
+                                      alignedShots.map((s) =>
+                                        s.shotId === shot.shotId
+                                          ? { ...s, startTime: newStart, status: "manual" as const }
+                                          : s
+                                      ),
+                                      audioDuration
+                                    );
+                                    setAlignedShots(recalculated);
+                                    if (audioEntryId) {
+                                      const timepoints = recalculated
+                                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                                        .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
+                                      await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
+                                    }
+                                  }}
+                                >
+                                  {delta}f
+                                </Button>
+                              ))}
+                              {[+1, +5].map((delta) => (
+                                <Button
+                                  key={delta}
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-5 w-7 text-[9px] px-0 font-mono"
+                                  onClick={async () => {
+                                    const frameOffset = delta / TIMECODE_FPS;
+                                    const newStart = Math.max(0, (shot.startTime ?? 0) + frameOffset);
+                                    const recalculated = recalculateWhisperShotEndTimes(
+                                      alignedShots.map((s) =>
+                                        s.shotId === shot.shotId
+                                          ? { ...s, startTime: newStart, status: "manual" as const }
+                                          : s
+                                      ),
+                                      audioDuration
+                                    );
+                                    setAlignedShots(recalculated);
+                                    if (audioEntryId) {
+                                      const timepoints = recalculated
+                                        .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                                        .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
+                                      await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
+                                    }
+                                  }}
+                                >
+                                  +{delta}f
+                                </Button>
+                              ))}
+                              <span className="text-[8px] text-muted-foreground ml-1">(1f = {(1/TIMECODE_FPS*1000).toFixed(0)}ms)</span>
+                            </div>
                           </div>
                         )}
 
