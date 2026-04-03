@@ -318,7 +318,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
     );
   };
 
-  const lastExport = exports.length > 0 ? exports[0] : null;
+  
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
