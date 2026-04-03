@@ -131,10 +131,17 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < textChunks.length; i++) {
       const chunk = textChunks[i];
+      const audioConfig: Record<string, unknown> = { audioEncoding: "MP3" };
+      if (typeof speakingRate === "number" && speakingRate !== 1) {
+        audioConfig.speakingRate = speakingRate;
+      }
+      if (typeof pitch === "number" && pitch !== 0) {
+        audioConfig.pitch = pitch;
+      }
       const ttsPayload = {
         input: { text: chunk },
         voice: { languageCode, name: resolvedVoice },
-        audioConfig: { audioEncoding: "MP3" },
+        audioConfig,
       };
 
       const ttsResponse = await fetch(ttsUrl, {
