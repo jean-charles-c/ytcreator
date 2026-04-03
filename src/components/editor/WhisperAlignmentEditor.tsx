@@ -852,8 +852,13 @@ export default function WhisperAlignmentEditor({
                           <span className="font-semibold text-muted-foreground block mb-0.5">
                             Transcription Whisper correspondante :
                           </span>
-                          {shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
-                            <p className="text-emerald-600 leading-relaxed whitespace-pre-wrap break-words">
+                         {shot.status === "blocked" ? (
+                            <p className="text-destructive font-semibold">
+                              ⛔ Matching bloqué ici — les 3 premiers mots n'ont pas été trouvés dans les 50 mots suivants du transcript Whisper.
+                              Calez manuellement ce shot pour que le matching automatique reprenne.
+                            </p>
+                          ) : shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
+                             <p className="text-emerald-600 leading-relaxed whitespace-pre-wrap break-words">
                               {getWhisperSegment(shot.whisperStartIdx, shot.whisperEndIdx)}
                             </p>
                           ) : shot.startTime !== null ? (
