@@ -333,29 +333,84 @@ export default function WhisperAlignmentEditor({
   const applyManualAlignment = useCallback(async () => {
     if (!editingShotId || selectionStart === null || selectionEnd === null || !audioEntryId) return;
 
-    const startTime = whisperWords[selectionStart].start + globalOffset;
+    // Build manual anchors: existing manual shots + this new one
+    const manualAnchors = new Map<string, number>();
+    for (const s of alignedShots) {
+      if ((s.status === "manual" || s.status === "ok") && s.whisperStartIdx !== null) {
+        manualAnchors.set(s.shotId, s.whisperStartIdx);
+      }
+    }
+    manualAnchors.set(editingShotId, selectionStart);
 
-    // Update local state
-    const recalculatedShots = recalculateWhisperShotEndTimes(
-      alignedShots.map((s) =>
-        s.shotId === editingShotId
-          ? {
-              ...s,
-              whisperStartIdx: selectionStart,
-              whisperEndIdx: selectionEnd,
-              startTime,
-              status: "manual" as const,
-            }
-          : s
-      ),
-      audioDuration
-    );
-    setAlignedShots(recalculatedShots);
+    // Re-run strict sequential matching with updated anchors
+    const sorted = getSortedShots();
+    const shotTexts = sorted.map((shot) => ({
+      id: shot.id,
+      text: getShotFragmentText(shot),
+    }));
+    const strictResults = matchShotsStrictSequential(shotTexts, whisperWords, manualAnchors);
+
+    const resolvedAudioDuration = audioDuration;
+    const newAligned: AlignedShot[] = sorted.map((shot, idx) => {
+      const text = getShotFragmentText(shot);
+      const matchResult = strictResults[idx];
+      const whisperStartIdx = matchResult?.whisperStartIdx ?? null;
+      const isBlocked = matchResult?.blocked ?? false;
+      const startTime = whisperStartIdx !== null
+        ? whisperWords[whisperStartIdx].start + (shot.id === editingShotId ? globalOffset : 0)
+        : null;
+
+      let endTime: number | null = null;
+      for (let j = idx + 1; j < sorted.length; j++) {
+        const nextMatch = strictResults[j];
+        if (nextMatch?.whisperStartIdx !== null && nextMatch?.whisperStartIdx !== undefined) {
+          endTime = whisperWords[nextMatch.whisperStartIdx].start;
+          break;
+        }
+      }
+      if (endTime === null) endTime = resolvedAudioDuration;
+
+      let wEndIdx: number | null = null;
+      if (endTime !== null) {
+        for (let wi = whisperWords.length - 1; wi >= 0; wi--) {
+          if (whisperWords[wi].end <= endTime + 0.05) {
+            wEndIdx = wi;
+            break;
+          }
+        }
+      }
+
+      let status: AlignedShot["status"];
+      if (manualAnchors.has(shot.id)) {
+        status = "manual";
+      } else if (isBlocked) {
+        status = "blocked";
+      } else if (whisperStartIdx !== null) {
+        status = "ok";
+      } else {
+        status = "missing";
+      }
+
+      return {
+        shotId: shot.id,
+        globalIndex: idx + 1,
+        shotText: text,
+        whisperStartIdx,
+        whisperEndIdx: wEndIdx !== null && wEndIdx >= 0 ? wEndIdx : null,
+        startTime,
+        endTime,
+        status,
+        editing: false,
+      };
+    });
+
+    const recalculated = recalculateWhisperShotEndTimes(newAligned, resolvedAudioDuration);
+    setAlignedShots(recalculated);
 
     // Auto-save to DB immediately
     try {
-      const timepoints = recalculatedShots
-        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+      const timepoints = recalculated
+        .filter((s) => s.startTime !== null && s.status !== "missing" && s.status !== "blocked")
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -368,7 +423,15 @@ export default function WhisperAlignmentEditor({
         .eq("id", audioEntryId);
 
       if (error) throw error;
-      toast.success(`Shot calé — ${timepoints.length} timepoints sauvegardés`);
+
+      const newOk = recalculated.filter((s) => s.status === "ok" || s.status === "manual").length;
+      const newBlocked = recalculated.find((s) => s.status === "blocked");
+      if (newBlocked) {
+        toast.success(`Shot calé — matching repris jusqu'au shot #${newBlocked.globalIndex} (bloqué)`);
+        setExpandedShotId(newBlocked.shotId);
+      } else {
+        toast.success(`Shot calé — ${newOk}/${recalculated.length} shots matchés ✓`);
+      }
     } catch (e: any) {
       console.error("[WhisperAlignmentEditor] auto-save error:", e);
       toast.error("Calage appliqué localement mais erreur de sauvegarde");
@@ -377,7 +440,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
