@@ -2474,6 +2474,18 @@ export default function Editor() {
                           Chiffres → Lettres
                         </Button>
                       )}
+                      {numberConversionBackup && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={revertNumberConversion}
+                          disabled={convertingNumbers}
+                          className="h-7 text-xs text-orange-600 border-orange-500/30 hover:bg-orange-500/10"
+                        >
+                          <Undo2 className="h-3 w-3" />
+                          Annuler
+                        </Button>
+                      )}
                       <Button
                         variant={showWarnings ? "default" : "outline"}
                         size="sm"
