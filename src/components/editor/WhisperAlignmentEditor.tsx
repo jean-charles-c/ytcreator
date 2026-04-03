@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
 import { recalculateWhisperShotEndTimes } from "./whisperAlignmentTiming";
-import { matchShotsStrictSequential, type StrictMatchResult } from "./whisperTextMatcher";
+import { matchShotsStrictSequential } from "./whisperTextMatcher";
 import { buildRepairedShotTimepoints } from "./whisperTimepointRepair";
 
 // ── Types ──
