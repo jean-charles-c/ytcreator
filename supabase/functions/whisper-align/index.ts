@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
       alignmentRun,
       wordCount: finalWords.length,
       audioDuration: finalDuration,
-      ...(comparison
+      ...(comparison && passAWords && passBWords
         ? {
             dualPassComparison: {
               avgDeltaMs: comparison.avgDeltaMs,
@@ -316,7 +316,6 @@ Deno.serve(async (req) => {
               p95DeltaMs: comparison.p95DeltaMs,
               wordCountA: comparison.wordCountA,
               wordCountB: comparison.wordCountB,
-              // Include top 20 biggest diffs for diagnosis
               biggestDiffs: comparison.diffs
                 .sort((a, b) => b.deltaMs - a.deltaMs)
                 .slice(0, 20)
@@ -328,6 +327,8 @@ Deno.serve(async (req) => {
                   deltaMs: d.deltaMs,
                 })),
             },
+            passA: passAWords,
+            passB: passBWords,
           }
         : {}),
     });
