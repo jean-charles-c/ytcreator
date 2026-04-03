@@ -204,7 +204,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             `Audio Chirp 3 HD généré — ${chirpData.fileName} • ${formatSize(chirpData.fileSize)} • ~${chirpData.durationEstimate}s`
           );
 
-          // ── Step 2: Whisper alignment (dual pass for averaged timestamps) ──
+          // ── Step 2: Whisper alignment (skip in free mode) ──
+          if (!freeMode) {
           toast.info("Alignement audio en cours via Whisper (double passe)…");
           let alignmentRun: any = null;
           try {
