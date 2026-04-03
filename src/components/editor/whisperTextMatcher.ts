@@ -135,7 +135,7 @@ export function matchShotsStrictSequential(
 
     const leadWords = extractLeadingWords(shot.text, REQUIRED_MATCH_COUNT);
 
-    if (leadWords.length < REQUIRED_MATCH_COUNT) {
+    if (leadWords.length < FALLBACK_MATCH_COUNT) {
       // Not enough words to match — block
       results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true });
       blocked = true;
@@ -145,22 +145,29 @@ export function matchShotsStrictSequential(
     // Search in [searchFrom … searchFrom + SEARCH_WINDOW]
     const searchEnd = Math.min(searchFrom + SEARCH_WINDOW, whisperWords.length);
     let foundIdx: number | null = null;
+    let matchedCount = 0;
 
-    for (let i = searchFrom; i < searchEnd; i++) {
-      let allMatch = true;
-      for (let j = 0; j < REQUIRED_MATCH_COUNT; j++) {
-        if (i + j >= whisperWords.length) {
-          allMatch = false;
-          break;
+    // Pass 1: try exact 3-word match
+    if (leadWords.length >= REQUIRED_MATCH_COUNT) {
+      for (let i = searchFrom; i < searchEnd; i++) {
+        let allMatch = true;
+        for (let j = 0; j < REQUIRED_MATCH_COUNT; j++) {
+          if (i + j >= whisperWords.length) { allMatch = false; break; }
+          if (norm(whisperWords[i + j].word) !== leadWords[j]) { allMatch = false; break; }
         }
-        if (!fuzzyEqual(norm(whisperWords[i + j].word), leadWords[j])) {
-          allMatch = false;
-          break;
-        }
+        if (allMatch) { foundIdx = i; matchedCount = REQUIRED_MATCH_COUNT; break; }
       }
-      if (allMatch) {
-        foundIdx = i;
-        break;
+    }
+
+    // Pass 2: fallback to 2-word exact match if 3-word failed
+    if (foundIdx === null) {
+      for (let i = searchFrom; i < searchEnd; i++) {
+        let allMatch = true;
+        for (let j = 0; j < FALLBACK_MATCH_COUNT; j++) {
+          if (i + j >= whisperWords.length) { allMatch = false; break; }
+          if (norm(whisperWords[i + j].word) !== leadWords[j]) { allMatch = false; break; }
+        }
+        if (allMatch) { foundIdx = i; matchedCount = FALLBACK_MATCH_COUNT; break; }
       }
     }
 
@@ -168,7 +175,7 @@ export function matchShotsStrictSequential(
       results.push({
         shotId: shot.id,
         whisperStartIdx: foundIdx,
-        matchedWords: REQUIRED_MATCH_COUNT,
+        matchedWords: matchedCount,
         blocked: false,
       });
       searchFrom = foundIdx + 1;
