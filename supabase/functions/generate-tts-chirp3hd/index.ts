@@ -135,9 +135,7 @@ Deno.serve(async (req) => {
       if (typeof speakingRate === "number" && speakingRate !== 1) {
         audioConfig.speakingRate = speakingRate;
       }
-      if (typeof pitch === "number" && pitch !== 0) {
-        audioConfig.pitch = pitch;
-      }
+      // Note: Chirp3-HD voices do NOT support pitch parameter
       const ttsPayload = {
         input: { text: chunk },
         voice: { languageCode, name: resolvedVoice },
