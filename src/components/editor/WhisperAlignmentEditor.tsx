@@ -207,6 +207,17 @@ export default function WhisperAlignmentEditor({
         });
 
         setAlignedShots(recalculateWhisperShotEndTimes(aligned, resolvedAudioDuration));
+
+        // Load dual pass data from localStorage
+        try {
+          const stored = localStorage.getItem(`whisper-dual-${projectId}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.passA && parsed.passB && parsed.comparison) {
+              setDualPassData(parsed);
+            }
+          }
+        } catch {}
       } catch (e) {
         console.error("[WhisperAlignmentEditor] load error:", e);
       } finally {
