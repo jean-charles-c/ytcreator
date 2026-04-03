@@ -291,7 +291,7 @@ serve(async (req) => {
 
     // Download reference images and convert to base64 data URIs
     // Limit to 3 images max to avoid memory limit exceeded errors
-    const MAX_REF_IMAGES = 3;
+    const MAX_REF_IMAGES = 6;
     const MAX_REF_BYTES = 500_000; // 500KB per image max
     const limitedRefUrls = referenceImageUrls.slice(0, MAX_REF_IMAGES);
     const referenceImageDataUris: string[] = [];
