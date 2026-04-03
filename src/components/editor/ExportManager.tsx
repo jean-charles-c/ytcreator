@@ -55,6 +55,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
   const [loadingExports, setLoadingExports] = useState(true);
   const [resolvedMusicTracks, setResolvedMusicTracks] = useState<ExportMusicTrack[]>(musicTracks ?? []);
   const [xmlOnlyLoading, setXmlOnlyLoading] = useState(false);
+  const [lastTimelineDate, setLastTimelineDate] = useState<string | null>(null);
 
   // Always use the freshest timeline via ref to avoid stale closures
   const timelineRef = useRef(timeline);
@@ -75,7 +76,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
       setLoadingExports(true);
       const { data } = await supabase
         .from("project_scriptcreator_state")
-        .select("timeline_state")
+        .select("timeline_state, updated_at")
         .eq("project_id", projectId)
         .single();
       if (data?.timeline_state) {
@@ -83,6 +84,9 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
         if (Array.isArray(state.exports)) {
           setExports(state.exports);
         }
+      }
+      if (data?.updated_at) {
+        setLastTimelineDate(data.updated_at);
       }
       setLoadingExports(false);
     };
@@ -333,7 +337,12 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
 
       {/* Quick download timeline XML only */}
       {!isAnyExporting && (
-        <div className="px-4 pt-3">
+        <div className="px-4 pt-3 space-y-1.5">
+          {lastTimelineDate && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              Version du {new Date(lastTimelineDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })} à {new Date(lastTimelineDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
           <Button
             variant="outline"
             size="sm"
