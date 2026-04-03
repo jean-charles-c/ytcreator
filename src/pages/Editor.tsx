@@ -29,6 +29,7 @@ import {
   ArrowUpDown,
   AlertTriangle,
   Languages,
+  Undo2,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -1360,17 +1361,25 @@ export default function Editor() {
     }
   };
 
-  // ── Convert numbers to French words in scenes + shots ──
+  // ── Convert numbers to French words in scenes + shots (reversible) ──
   const [convertingNumbers, setConvertingNumbers] = useState(false);
+  const [numberConversionBackup, setNumberConversionBackup] = useState<{
+    scenes: { id: string; source_text: string | null; source_text_fr: string | null }[];
+    shots: { id: string; source_sentence: string | null; source_sentence_fr: string | null }[];
+  } | null>(null);
 
   const convertAllNumbersToFrench = useCallback(async () => {
     if (!projectId) return;
     setConvertingNumbers(true);
     try {
+      // Save backup before converting
+      const sceneBackup = scenes.map(s => ({ id: s.id, source_text: s.source_text, source_text_fr: s.source_text_fr }));
+      const shotBackup = shots.map(s => ({ id: s.id, source_sentence: s.source_sentence, source_sentence_fr: s.source_sentence_fr }));
+      setNumberConversionBackup({ scenes: sceneBackup, shots: shotBackup });
+
       let sceneUpdates = 0;
       let shotUpdates = 0;
 
-      // 1) Convert scene texts
       for (const scene of scenes) {
         const updates: Record<string, string> = {};
         if (scene.source_text && hasDigits(scene.source_text)) {
@@ -1385,7 +1394,6 @@ export default function Editor() {
         }
       }
 
-      // 2) Convert shot texts
       for (const shot of shots) {
         const updates: Record<string, string> = {};
         if (shot.source_sentence && hasDigits(shot.source_sentence)) {
@@ -1400,19 +1408,12 @@ export default function Editor() {
         }
       }
 
-      // 3) Reload from DB
       const { data: freshScenes } = await supabase
-        .from("scenes")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("scene_order");
+        .from("scenes").select("*").eq("project_id", projectId).order("scene_order");
       if (freshScenes) setScenes(freshScenes);
 
       const { data: freshShots } = await supabase
-        .from("shots")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("shot_order");
+        .from("shots").select("*").eq("project_id", projectId).order("shot_order");
       if (freshShots) setShots(freshShots);
 
       toast.success(`Conversion terminée — ${sceneUpdates} scène(s) et ${shotUpdates} shot(s) mis à jour`);
@@ -1423,6 +1424,41 @@ export default function Editor() {
       setConvertingNumbers(false);
     }
   }, [projectId, scenes, shots]);
+
+  const revertNumberConversion = useCallback(async () => {
+    if (!projectId || !numberConversionBackup) return;
+    setConvertingNumbers(true);
+    try {
+      for (const b of numberConversionBackup.scenes) {
+        await supabase.from("scenes").update({
+          source_text: b.source_text,
+          source_text_fr: b.source_text_fr,
+        }).eq("id", b.id);
+      }
+      for (const b of numberConversionBackup.shots) {
+        await supabase.from("shots").update({
+          source_sentence: b.source_sentence,
+          source_sentence_fr: b.source_sentence_fr,
+        }).eq("id", b.id);
+      }
+
+      const { data: freshScenes } = await supabase
+        .from("scenes").select("*").eq("project_id", projectId).order("scene_order");
+      if (freshScenes) setScenes(freshScenes);
+
+      const { data: freshShots } = await supabase
+        .from("shots").select("*").eq("project_id", projectId).order("shot_order");
+      if (freshShots) setShots(freshShots);
+
+      setNumberConversionBackup(null);
+      toast.success("Conversion annulée — textes originaux restaurés");
+    } catch (err) {
+      console.error("revertNumberConversion error:", err);
+      toast.error("Erreur lors de la restauration");
+    } finally {
+      setConvertingNumbers(false);
+    }
+  }, [projectId, numberConversionBackup]);
 
 
   const handleGenerateAllImages = () => {
@@ -1992,6 +2028,18 @@ export default function Editor() {
                       Chiffres → Lettres
                     </Button>
                   )}
+                  {numberConversionBackup && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={revertNumberConversion}
+                      disabled={convertingNumbers}
+                      className="min-h-[40px] text-orange-600 border-orange-500/30 hover:bg-orange-500/10"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Annuler conversion
+                    </Button>
+                  )}
                   <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                     {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                     Créer les SHOTS
@@ -2425,6 +2473,18 @@ export default function Editor() {
                         >
                           {convertingNumbers ? <Loader2 className="h-3 w-3 animate-spin" /> : <Languages className="h-3 w-3" />}
                           Chiffres → Lettres
+                        </Button>
+                      )}
+                      {numberConversionBackup && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={revertNumberConversion}
+                          disabled={convertingNumbers}
+                          className="h-7 text-xs text-orange-600 border-orange-500/30 hover:bg-orange-500/10"
+                        >
+                          <Undo2 className="h-3 w-3" />
+                          Annuler
                         </Button>
                       )}
                       <Button
