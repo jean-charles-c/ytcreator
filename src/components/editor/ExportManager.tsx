@@ -54,7 +54,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
   const [exports, setExports] = useState<ExportEntry[]>([]);
   const [loadingExports, setLoadingExports] = useState(true);
   const [resolvedMusicTracks, setResolvedMusicTracks] = useState<ExportMusicTrack[]>(musicTracks ?? []);
-  
+  const [xmlOnlyLoading, setXmlOnlyLoading] = useState(false);
 
   // Always use the freshest timeline via ref to avoid stale closures
   const timelineRef = useRef(timeline);
