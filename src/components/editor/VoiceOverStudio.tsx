@@ -180,6 +180,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 projectId,
                 voiceName: settings.voiceName || undefined,
                 customFileName: customFileName.trim() || undefined,
+                speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
               }),
             }
           );
