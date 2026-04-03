@@ -364,6 +364,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               toast.warning("Mapping des shots échoué.");
             }
           }
+          } // end if (!freeMode)
         } catch (e: any) {
           console.error("[chirp3hd] Generation error:", e);
           toast.error(e?.message || "Erreur de génération Chirp 3 HD");
