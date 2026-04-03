@@ -368,6 +368,7 @@ Deno.serve(async (req) => {
             },
             passA: passAWords,
             passB: passBWords,
+            ...(passCWords ? { passC: passCWords } : {}),
           }
         : {}),
     });
