@@ -990,7 +990,7 @@ export default function WhisperAlignmentEditor({
 
               <details className="rounded border border-border">
                 <summary className="text-[9px] font-medium text-muted-foreground cursor-pointer px-2 py-1">
-                  Comparaison mot à mot ({Math.min(multiPassData.passA.length, multiPassData.passB.length)} mots)
+                  Comparaison mot à mot ({Math.min(multiPassData.passA.length, multiPassData.passB.length, multiPassData.passC?.length ?? Infinity)} mots)
                 </summary>
                 <div className="overflow-auto max-h-[300px]">
                   <table className="w-full text-[9px]">
@@ -998,18 +998,24 @@ export default function WhisperAlignmentEditor({
                       <tr className="bg-muted border-b border-border">
                         <th className="px-1.5 py-1 text-left font-medium text-muted-foreground w-8">#</th>
                         <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot A</th>
-                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Start A</th>
+                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">A</th>
                         <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot B</th>
-                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Start B</th>
-                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Δ ms</th>
+                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">B</th>
+                        {multiPassData.passC && <>
+                          <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot C</th>
+                          <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">C</th>
+                        </>}
+                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Δ max</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from({ length: Math.min(multiPassData.passA.length, multiPassData.passB.length) }).map((_, i) => {
+                      {Array.from({ length: Math.min(multiPassData.passA.length, multiPassData.passB.length, multiPassData.passC?.length ?? Infinity) }).map((_, i) => {
                         const wA = multiPassData.passA[i];
                         const wB = multiPassData.passB[i];
-                        const delta = Math.round(Math.abs(wA.start - wB.start) * 1000);
-                        const wordMismatch = wA.word.toLowerCase() !== wB.word.toLowerCase();
+                        const wC = multiPassData.passC?.[i];
+                        const allStarts = [wA.start, wB.start, ...(wC ? [wC.start] : [])];
+                        const maxDelta = Math.round((Math.max(...allStarts) - Math.min(...allStarts)) * 1000);
+                        const wordMismatch = wA.word.toLowerCase() !== wB.word.toLowerCase() || (wC && wC.word.toLowerCase() !== wA.word.toLowerCase());
                         return (
                           <tr key={i} className={`border-b border-border/30 ${wordMismatch ? "bg-orange-500/10" : ""}`}>
                             <td className="px-1.5 py-0.5 font-mono text-muted-foreground">{i}</td>
@@ -1017,9 +1023,17 @@ export default function WhisperAlignmentEditor({
                             <td className="px-1.5 py-0.5 text-right font-mono">{wA.start.toFixed(3)}</td>
                             <td className={`px-1.5 py-0.5 ${wordMismatch ? "text-orange-500 font-bold" : "text-foreground"}`}>{wB.word}</td>
                             <td className="px-1.5 py-0.5 text-right font-mono">{wB.start.toFixed(3)}</td>
+                            {wC && <>
+                              <td className={`px-1.5 py-0.5 ${wC.word.toLowerCase() !== wA.word.toLowerCase() ? "text-orange-500 font-bold" : "text-foreground"}`}>{wC.word}</td>
+                              <td className="px-1.5 py-0.5 text-right font-mono">{wC.start.toFixed(3)}</td>
+                            </>}
+                            {!wC && multiPassData.passC && <>
+                              <td className="px-1.5 py-0.5 text-muted-foreground">—</td>
+                              <td className="px-1.5 py-0.5 text-right font-mono">—</td>
+                            </>}
                             <td className={`px-1.5 py-0.5 text-right font-mono font-bold ${
-                              delta > 100 ? "text-destructive" : delta > 50 ? "text-orange-500" : "text-emerald-500"
-                            }`}>{delta}</td>
+                              maxDelta > 100 ? "text-destructive" : maxDelta > 50 ? "text-orange-500" : "text-emerald-500"
+                            }`}>{maxDelta}</td>
                           </tr>
                         );
                       })}
