@@ -492,6 +492,66 @@ export default function WhisperAlignmentEditor({
           </div>
         )}
 
+        {/* Recaler sur Whisper button */}
+        {!loading && whisperWords.length > 0 && alignedShots.some((s) => s.whisperStartIdx !== null) && (
+          <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
+            <GitCompareArrows className="h-3 w-3 text-primary shrink-0" />
+            <span className="text-[10px] text-muted-foreground flex-1">
+              Remplacer les timecodes Chirp par les timestamps Whisper réels
+            </span>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-6 text-[9px] px-2"
+              disabled={saving}
+              onClick={async () => {
+                if (!audioEntryId) return;
+                setSaving(true);
+                try {
+                  const recalculated = recalculateWhisperShotEndTimes(
+                    alignedShots.map((s) => {
+                      if (s.whisperStartIdx === null || s.whisperStartIdx >= whisperWords.length) return s;
+                      const whisperStart = whisperWords[s.whisperStartIdx].start;
+                      return {
+                        ...s,
+                        startTime: whisperStart,
+                        status: (s.status === "missing" ? "missing" : s.status) as "ok" | "missing" | "manual",
+                      };
+                    }),
+                    audioDuration
+                  );
+                  setAlignedShots(recalculated);
+
+                  const timepoints = recalculated
+                    .filter((s) => (s.status === "ok" || s.status === "manual") && s.startTime !== null)
+                    .map((s, idx) => ({
+                      shotId: s.shotId,
+                      shotIndex: idx,
+                      timeSeconds: s.startTime,
+                    }));
+
+                  const { error } = await supabase
+                    .from("vo_audio_history")
+                    .update({ shot_timepoints: timepoints as any })
+                    .eq("id", audioEntryId);
+
+                  if (error) throw error;
+
+                  const count = recalculated.filter((s) => s.whisperStartIdx !== null && s.startTime !== null).length;
+                  toast.success(`${count} shots recalés sur les timestamps Whisper`);
+                } catch (e: any) {
+                  console.error("[WhisperAlignmentEditor] recaler error:", e);
+                  toast.error("Erreur lors du recalage Whisper");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Recaler sur Whisper"}
+            </Button>
+          </div>
+        )}
+
         {loading && (
           <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" /> Chargement…
