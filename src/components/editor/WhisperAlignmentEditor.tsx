@@ -755,11 +755,13 @@ export default function WhisperAlignmentEditor({
           </p>
         )}
 
-        {/* Manual dual pass trigger button */}
-        {!loading && !multiPassData && (
+        {/* Triple pass trigger button */}
+        {!loading && (
           <div className="flex items-center gap-2 rounded border border-dashed border-border bg-muted/20 px-3 py-2">
             <GitCompareArrows className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="text-[10px] text-muted-foreground flex-1">Aucune comparaison double passe disponible.</span>
+            <span className="text-[10px] text-muted-foreground flex-1">
+              {multiPassData ? `Triple passe du ${new Date(multiPassData.timestamp || "").toLocaleString("fr-FR")}` : "Aucune comparaison multi-passe disponible."}
+            </span>
             <Button
               size="sm"
               variant="outline"
@@ -791,7 +793,7 @@ export default function WhisperAlignmentEditor({
                     toast.error("Session expirée");
                     return;
                   }
-                  toast.info("Lancement de la double passe Whisper…");
+                  toast.info("Lancement de la triple passe Whisper (3 transcriptions parallèles)…");
                   const resp = await fetch(
                     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
                     {
@@ -801,7 +803,7 @@ export default function WhisperAlignmentEditor({
                         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                         Authorization: `Bearer ${sessionData.session.access_token}`,
                       },
-                      body: JSON.stringify({ audioUrl: urlData.signedUrl, projectId, dualPass: true }),
+                      body: JSON.stringify({ audioUrl: urlData.signedUrl, projectId, triplePass: true }),
                     }
                   );
                   if (!resp.ok) {
@@ -813,35 +815,37 @@ export default function WhisperAlignmentEditor({
                     const stored = {
                       passA: result.passA,
                       passB: result.passB,
+                      passC: result.passC || undefined,
                       comparison: result.dualPassComparison,
                       timestamp: new Date().toISOString(),
                     };
                     localStorage.setItem(`whisper-dual-${projectId}`, JSON.stringify(stored));
                     setMultiPassData(stored);
-                    toast.success(`Double passe terminée — écart moyen: ${result.dualPassComparison.avgDeltaMs}ms`);
+                    const passCount = result.passC ? 3 : 2;
+                    toast.success(`${passCount} passes terminées — écart moyen: ${result.dualPassComparison.avgDeltaMs}ms`);
                   } else {
-                    toast.warning("La réponse ne contient pas de données de double passe");
+                    toast.warning("La réponse ne contient pas de données multi-passe");
                   }
                 } catch (e: any) {
-                  console.error("[WhisperAlignmentEditor] dual pass error:", e);
-                  toast.error(`Erreur double passe: ${e.message}`);
+                  console.error("[WhisperAlignmentEditor] triple pass error:", e);
+                  toast.error(`Erreur triple passe: ${e.message}`);
                 } finally {
                   setSaving(false);
                 }
               }}
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-              Lancer double passe
+              {multiPassData ? "Relancer triple passe" : "Lancer triple passe"}
             </Button>
           </div>
         )}
 
-        {/* Dual pass comparison panel — always visible when data exists */}
+        {/* Multi-pass comparison panel with pass selection */}
         {!loading && multiPassData && (
           <details className="rounded border border-border bg-muted/20 mb-2">
             <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground px-3 py-2 flex items-center gap-1.5">
               <GitCompareArrows className="h-3 w-3 shrink-0" />
-              <span>Comparaison double passe Whisper</span>
+              <span>Comparaison {multiPassData.passC ? "triple" : "double"} passe Whisper</span>
               <span className="ml-auto text-[9px] font-mono">
                 Δ moy: {multiPassData.comparison.avgDeltaMs}ms · max: {multiPassData.comparison.maxDeltaMs}ms · p95: {multiPassData.comparison.p95DeltaMs}ms
               </span>
@@ -849,6 +853,98 @@ export default function WhisperAlignmentEditor({
             <div className="p-2 space-y-2">
               <div className="text-[9px] text-muted-foreground">
                 Passe A : {multiPassData.passA.length} mots · Passe B : {multiPassData.passB.length} mots
+                {multiPassData.passC && ` · Passe C : ${multiPassData.passC.length} mots`}
+              </div>
+
+              {/* Pass selection buttons */}
+              <div className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2">
+                <span className="text-[10px] font-medium text-muted-foreground">Utiliser comme référence :</span>
+                {(["A", "B", ...(multiPassData.passC ? ["C"] : [])] as const).map((passLabel) => {
+                  const passWords = passLabel === "A" ? multiPassData.passA : passLabel === "B" ? multiPassData.passB : multiPassData.passC!;
+                  return (
+                    <Button
+                      key={passLabel}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[10px] px-3"
+                      disabled={applyingPass}
+                      onClick={async () => {
+                        setApplyingPass(true);
+                        try {
+                          if (!audioEntryId) {
+                            toast.error("Aucun audio trouvé");
+                            return;
+                          }
+                          // Update whisper_words in DB with selected pass
+                          const { error } = await supabase
+                            .from("vo_audio_history")
+                            .update({ whisper_words: passWords as any })
+                            .eq("id", audioEntryId);
+                          if (error) throw error;
+
+                          // Update local state
+                          setWhisperWords(passWords);
+
+                          // Re-run matching with new words
+                          const sorted = getSortedShots();
+                          const manualAnchors = loadStoredManualAnchors(audioEntryId);
+                          const shotTexts = sorted.map((shot) => ({
+                            id: shot.id,
+                            text: getShotFragmentText(shot),
+                          }));
+                          const strictResults = matchShotsStrictSequential(shotTexts, passWords, manualAnchors.size > 0 ? manualAnchors : undefined);
+
+                          const newAligned: AlignedShot[] = sorted.map((shot, idx) => {
+                            const text = getShotFragmentText(shot);
+                            const matchResult = strictResults[idx];
+                            const wsi = matchResult?.whisperStartIdx ?? null;
+                            const isBlocked = matchResult?.blocked ?? false;
+                            const startTime = wsi !== null ? passWords[wsi].start : null;
+
+                            let endTime: number | null = null;
+                            for (let j = idx + 1; j < sorted.length; j++) {
+                              const nm = strictResults[j];
+                              if (nm?.whisperStartIdx !== null && nm?.whisperStartIdx !== undefined) {
+                                endTime = passWords[nm.whisperStartIdx].start;
+                                break;
+                              }
+                            }
+                            if (endTime === null) endTime = audioDuration;
+
+                            let status: AlignedShot["status"];
+                            if (manualAnchors.has(shot.id)) status = "manual";
+                            else if (isBlocked) status = "blocked";
+                            else if (wsi !== null) status = "ok";
+                            else if (startTime !== null) status = "estimated";
+                            else status = "missing";
+
+                            return { shotId: shot.id, globalIndex: idx + 1, shotText: text, whisperStartIdx: wsi, whisperEndIdx: null, startTime, endTime, status, editing: false };
+                          });
+
+                          const recalculated = recalculateWhisperShotEndTimes(newAligned, audioDuration);
+                          setAlignedShots(recalculated);
+
+                          // Save timepoints
+                          const timepoints = recalculated
+                            .filter((s) => s.startTime !== null && s.status !== "missing" && s.status !== "blocked")
+                            .map((s, i) => ({ shotId: s.shotId, shotIndex: i, timeSeconds: s.startTime }));
+                          await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
+
+                          const okN = recalculated.filter((s) => s.status === "ok" || s.status === "manual").length;
+                          toast.success(`Passe ${passLabel} appliquée comme référence — ${okN}/${recalculated.length} shots matchés`);
+                        } catch (e: any) {
+                          console.error("[WhisperAlignmentEditor] apply pass error:", e);
+                          toast.error(`Erreur: ${e.message}`);
+                        } finally {
+                          setApplyingPass(false);
+                        }
+                      }}
+                    >
+                      {applyingPass ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                      Passe {passLabel} ({(passLabel === "A" ? multiPassData.passA : passLabel === "B" ? multiPassData.passB : multiPassData.passC!).length} mots)
+                    </Button>
+                  );
+                })}
               </div>
 
               {multiPassData.comparison.biggestDiffs.length > 0 && (
