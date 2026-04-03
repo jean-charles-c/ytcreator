@@ -466,6 +466,80 @@ export default function WhisperAlignmentEditor({
               <div className="text-[9px] text-muted-foreground">
                 Passe A : {dualPassData.passA.length} mots · Passe B : {dualPassData.passB.length} mots
               </div>
+
+              {dualPassData.comparison.biggestDiffs.length > 0 && (
+                <div>
+                  <p className="text-[9px] font-semibold text-muted-foreground mb-1">
+                    Plus gros écarts (top {dualPassData.comparison.biggestDiffs.length})
+                  </p>
+                  <div className="overflow-auto max-h-[200px] rounded border border-border">
+                    <table className="w-full text-[9px]">
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border">
+                          <th className="px-2 py-1 text-left font-medium text-muted-foreground">#</th>
+                          <th className="px-2 py-1 text-left font-medium text-muted-foreground">Mot</th>
+                          <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe A</th>
+                          <th className="px-2 py-1 text-right font-medium text-muted-foreground">Passe B</th>
+                          <th className="px-2 py-1 text-right font-medium text-muted-foreground">Δ ms</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dualPassData.comparison.biggestDiffs.map((d, i) => (
+                          <tr key={i} className="border-b border-border/50">
+                            <td className="px-2 py-0.5 font-mono text-muted-foreground">{d.index}</td>
+                            <td className="px-2 py-0.5 font-medium text-foreground">{d.word}</td>
+                            <td className="px-2 py-0.5 text-right font-mono">{d.startA.toFixed(3)}s</td>
+                            <td className="px-2 py-0.5 text-right font-mono">{d.startB.toFixed(3)}s</td>
+                            <td className={`px-2 py-0.5 text-right font-mono font-bold ${
+                              d.deltaMs > 100 ? "text-destructive" : d.deltaMs > 50 ? "text-orange-500" : "text-emerald-500"
+                            }`}>{d.deltaMs}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <details className="rounded border border-border">
+                <summary className="text-[9px] font-medium text-muted-foreground cursor-pointer px-2 py-1">
+                  Comparaison mot à mot ({Math.min(dualPassData.passA.length, dualPassData.passB.length)} mots)
+                </summary>
+                <div className="overflow-auto max-h-[300px]">
+                  <table className="w-full text-[9px]">
+                    <thead className="sticky top-0">
+                      <tr className="bg-muted border-b border-border">
+                        <th className="px-1.5 py-1 text-left font-medium text-muted-foreground w-8">#</th>
+                        <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot A</th>
+                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Start A</th>
+                        <th className="px-1.5 py-1 text-left font-medium text-muted-foreground">Mot B</th>
+                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Start B</th>
+                        <th className="px-1.5 py-1 text-right font-medium text-muted-foreground">Δ ms</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: Math.min(dualPassData.passA.length, dualPassData.passB.length) }).map((_, i) => {
+                        const wA = dualPassData.passA[i];
+                        const wB = dualPassData.passB[i];
+                        const delta = Math.round(Math.abs(wA.start - wB.start) * 1000);
+                        const wordMismatch = wA.word.toLowerCase() !== wB.word.toLowerCase();
+                        return (
+                          <tr key={i} className={`border-b border-border/30 ${wordMismatch ? "bg-orange-500/10" : ""}`}>
+                            <td className="px-1.5 py-0.5 font-mono text-muted-foreground">{i}</td>
+                            <td className={`px-1.5 py-0.5 ${wordMismatch ? "text-orange-500 font-bold" : "text-foreground"}`}>{wA.word}</td>
+                            <td className="px-1.5 py-0.5 text-right font-mono">{wA.start.toFixed(3)}</td>
+                            <td className={`px-1.5 py-0.5 ${wordMismatch ? "text-orange-500 font-bold" : "text-foreground"}`}>{wB.word}</td>
+                            <td className="px-1.5 py-0.5 text-right font-mono">{wB.start.toFixed(3)}</td>
+                            <td className={`px-1.5 py-0.5 text-right font-mono font-bold ${
+                              delta > 100 ? "text-destructive" : delta > 50 ? "text-orange-500" : "text-emerald-500"
+                            }`}>{delta}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </div>
           </details>
         )}
