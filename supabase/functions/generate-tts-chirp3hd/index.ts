@@ -43,11 +43,13 @@ Deno.serve(async (req) => {
 
     // ── Input validation ──
     const body = await req.json();
-    const { text, projectId, voiceName, customFileName } = body as {
+    const { text, projectId, voiceName, customFileName, speakingRate, pitch } = body as {
       text?: string;
       projectId?: string;
       voiceName?: string;
       customFileName?: string;
+      speakingRate?: number;
+      pitch?: number;
     };
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
