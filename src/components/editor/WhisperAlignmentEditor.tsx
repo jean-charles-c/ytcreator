@@ -112,6 +112,40 @@ export default function WhisperAlignmentEditor({
     });
   }, [shots, scenesForSort]);
 
+  const getManualAnchorsStorageKey = useCallback(
+    (audioId: string) => `whisper-manual-anchors-${projectId}-${audioId}`,
+    [projectId]
+  );
+
+  const loadStoredManualAnchors = useCallback((audioId: string) => {
+    try {
+      const stored = localStorage.getItem(getManualAnchorsStorageKey(audioId));
+      if (!stored) return new Map<string, number>();
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return new Map<string, number>();
+
+      return new Map(
+        parsed.filter(
+          (entry): entry is [string, number] =>
+            Array.isArray(entry) &&
+            typeof entry[0] === "string" &&
+            typeof entry[1] === "number" &&
+            Number.isFinite(entry[1])
+        )
+      );
+    } catch {
+      return new Map<string, number>();
+    }
+  }, [getManualAnchorsStorageKey]);
+
+  const persistManualAnchors = useCallback((audioId: string, anchors: Map<string, number>) => {
+    try {
+      localStorage.setItem(getManualAnchorsStorageKey(audioId), JSON.stringify([...anchors.entries()]));
+    } catch {
+      // ignore local persistence failures
+    }
+  }, [getManualAnchorsStorageKey]);
+
   const loadDualPassData = useCallback(() => {
     if (!projectId) {
       setDualPassData(null);
@@ -208,30 +242,32 @@ export default function WhisperAlignmentEditor({
           ? (entry.shot_timepoints as any[]).filter((tp) => tp && tp.shotId)
           : [];
         const tpMap = new Map(timepoints.map((tp) => [tp.shotId, tp.timeSeconds as number]));
+        const storedManualAnchors = loadStoredManualAnchors(entry.id);
 
         const sorted = getSortedShots();
         const resolvedAudioDuration = entry.duration_estimate ?? 0;
         setAudioDuration(resolvedAudioDuration);
 
-        // ── Strict sequential matching ──
         const shotTexts = sorted.map((shot) => ({
           id: shot.id,
           text: getShotFragmentText(shot),
         }));
 
-        // No manual anchors on initial load — let strict 3-word matching run purely
-        const strictResults = matchShotsStrictSequential(shotTexts, words);
+        const strictResults = matchShotsStrictSequential(
+          shotTexts,
+          words,
+          storedManualAnchors.size > 0 ? storedManualAnchors : undefined
+        );
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
           const matchResult = strictResults[idx];
           const whisperStartIdx = matchResult?.whisperStartIdx ?? null;
           const isBlocked = matchResult?.blocked ?? false;
-          const startTime = whisperStartIdx !== null
-            ? words[whisperStartIdx].start
-            : tpMap.get(shot.id) ?? null;
+          const startTime = tpMap.get(shot.id) ?? (
+            whisperStartIdx !== null ? words[whisperStartIdx].start : null
+          );
 
-          // Find end time from next matched shot
           let endTime: number | null = null;
           for (let j = idx + 1; j < sorted.length; j++) {
             const nextMatch = strictResults[j];
@@ -258,7 +294,9 @@ export default function WhisperAlignmentEditor({
           }
 
           let status: AlignedShot["status"];
-          if (isBlocked) {
+          if (storedManualAnchors.has(shot.id)) {
+            status = "manual";
+          } else if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null) {
             status = "ok";
@@ -289,7 +327,7 @@ export default function WhisperAlignmentEditor({
       }
     };
     load();
-  }, [projectId, refreshKey, getSortedShots]);
+  }, [projectId, refreshKey, getSortedShots, loadStoredManualAnchors]);
 
   // ── Stats ──
   const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
@@ -324,16 +362,19 @@ export default function WhisperAlignmentEditor({
   const applyManualAlignment = useCallback(async () => {
     if (!editingShotId || selectionStart === null || selectionEnd === null || !audioEntryId) return;
 
-    // Build manual anchors: existing manual shots + this new one
     const manualAnchors = new Map<string, number>();
+    const existingManualStartTimes = new Map<string, number>();
     for (const s of alignedShots) {
-      if ((s.status === "manual" || s.status === "ok") && s.whisperStartIdx !== null) {
+      if (s.status === "manual" && s.whisperStartIdx !== null) {
         manualAnchors.set(s.shotId, s.whisperStartIdx);
+        if (s.startTime !== null) {
+          existingManualStartTimes.set(s.shotId, s.startTime);
+        }
       }
     }
     manualAnchors.set(editingShotId, selectionStart);
+    persistManualAnchors(audioEntryId, manualAnchors);
 
-    // Re-run strict sequential matching with updated anchors
     const sorted = getSortedShots();
     const shotTexts = sorted.map((shot) => ({
       id: shot.id,
@@ -347,8 +388,12 @@ export default function WhisperAlignmentEditor({
       const matchResult = strictResults[idx];
       const whisperStartIdx = matchResult?.whisperStartIdx ?? null;
       const isBlocked = matchResult?.blocked ?? false;
-      const startTime = whisperStartIdx !== null
-        ? whisperWords[whisperStartIdx].start + (shot.id === editingShotId ? globalOffset : 0)
+      const startTime = shot.id === editingShotId && whisperStartIdx !== null
+        ? whisperWords[whisperStartIdx].start + globalOffset
+        : manualAnchors.has(shot.id) && existingManualStartTimes.has(shot.id)
+        ? existingManualStartTimes.get(shot.id) ?? null
+        : whisperStartIdx !== null
+        ? whisperWords[whisperStartIdx].start
         : null;
 
       let endTime: number | null = null;
@@ -398,7 +443,6 @@ export default function WhisperAlignmentEditor({
     const recalculated = recalculateWhisperShotEndTimes(newAligned, resolvedAudioDuration);
     setAlignedShots(recalculated);
 
-    // Auto-save to DB immediately
     try {
       const timepoints = recalculated
         .filter((s) => s.startTime !== null && s.status !== "missing" && s.status !== "blocked")
@@ -431,7 +475,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots, persistManualAnchors]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
