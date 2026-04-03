@@ -18,6 +18,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps, ExportProgress } from "./videoExportEngine";
+import { generateTimelineXmlOnly } from "./xmlExportEngine";
+import { buildManifestTiming } from "./manifestTiming";
+import type { ManifestTimingEntry } from "./manifestTiming";
+import type { Chapter } from "./chapterTypes";
+import type { ChapterListState } from "./chapterTypes";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 
 interface ExportManagerProps {
