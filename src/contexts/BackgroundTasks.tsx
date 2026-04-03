@@ -937,6 +937,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         } else {
           toast.success(`${globalSuccess} visuel(s) généré(s) sur ${total} — tous traités ✓`);
         }
+
+        // Dispatch event so Editor can trigger auto-detect of object↔shot links
+        window.dispatchEvent(new CustomEvent("image-gen-complete", { detail: { projectId: params.projectId } }));
       } catch (e: any) {
         if (e?.name === "AbortError") {
           toast.info("Génération des visuels annulée");

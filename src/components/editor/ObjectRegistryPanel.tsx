@@ -624,28 +624,6 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Scènes où l'objet apparaît</label>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {Array.from({ length: sceneCount }, (_, i) => i + 1).map((order) => {
-                        const isActive = obj.mentions_scenes.includes(order);
-                        return (
-                          <button
-                            key={order}
-                            onClick={() => toggleScene(obj.id, order)}
-                            className={`text-[10px] w-7 h-7 rounded border transition-colors ${
-                              isActive
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background text-muted-foreground border-border hover:bg-secondary"
-                            }`}
-                          >
-                            {order}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   {/* Shots où l'objet apparaît */}
                   {hasShots && (
                     <div>

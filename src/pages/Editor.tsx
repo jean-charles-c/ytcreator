@@ -781,18 +781,15 @@ export default function Editor() {
   // Per-shot object overrides: { shotId: { added: [objId], removed: [objId] } }
   const [shotObjectOverrides, setShotObjectOverrides] = useState<Record<string, { added: string[]; removed: string[] }>>({});
 
-  const getLinkedObjectsForShot = useCallback((sceneOrder: number, shotId?: string): RecurringObject[] => {
-    // Start with scene-level linked objects
-    const sceneLinked = allRecurringObjects.filter(obj => obj.mentions_scenes.includes(sceneOrder));
-    if (!shotId) return sceneLinked;
-    
+  const getLinkedObjectsForShot = useCallback((_sceneOrder: number, shotId?: string): RecurringObject[] => {
+    if (!shotId) return [];
+    // Direct shot-level linking from mentions_shots
+    const shotLinked = allRecurringObjects.filter(obj => (obj.mentions_shots || []).includes(shotId));
+    // Apply per-shot overrides on top
     const overrides = shotObjectOverrides[shotId];
-    if (!overrides) return sceneLinked;
-    
-    // Apply per-shot removals
-    let result = sceneLinked.filter(obj => !overrides.removed.includes(obj.id));
-    // Apply per-shot additions (objects not already in scene)
-    const addedObjects = allRecurringObjects.filter(obj => overrides.added.includes(obj.id) && !sceneLinked.some(s => s.id === obj.id));
+    if (!overrides) return shotLinked;
+    let result = shotLinked.filter(obj => !overrides.removed.includes(obj.id));
+    const addedObjects = allRecurringObjects.filter(obj => overrides.added.includes(obj.id) && !shotLinked.some(s => s.id === obj.id));
     result = [...result, ...addedObjects];
     return result;
   }, [allRecurringObjects, shotObjectOverrides]);
@@ -849,10 +846,6 @@ export default function Editor() {
         for (const shotId of obj.mentions_shots) {
           const shot = shots.find(s => s.id === shotId);
           if (!shot) continue;
-          const scene = scenes.find(sc => sc.id === shot.scene_id);
-          if (!scene) continue;
-          const isSceneLinked = obj.mentions_scenes.includes(scene.scene_order);
-          if (isSceneLinked) continue;
           const current = next[shotId] || { added: [], removed: [] };
           if (!current.added.includes(obj.id)) {
             next[shotId] = { ...current, added: [...current.added, obj.id], removed: current.removed.filter(id => id !== obj.id) };
@@ -865,7 +858,7 @@ export default function Editor() {
       }
       return changed ? next : prev;
     });
-  }, [allRecurringObjects, shots, scenes, persistShotObjectOverrides]);
+  }, [allRecurringObjects, shots, persistShotObjectOverrides]);
 
   // --- Scene editing callbacks ---
   const handleSceneUpdate = (updated: Scene) => {
@@ -1498,6 +1491,62 @@ export default function Editor() {
       });
     });
   }, [projectId, subscribe]);
+
+  // Auto-detect object↔shot links after image generation completes
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.projectId !== projectId) return;
+      const recurringObjects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+      if (!recurringObjects.length || !shots.length) return;
+
+      try {
+        const objectsPayload = recurringObjects.map(o => ({
+          id: o.id,
+          nom: o.nom,
+          type: o.type,
+          description_visuelle: o.description_visuelle,
+        }));
+        const shotsPayload = shots.map(s => ({
+          id: s.id,
+          scene_id: s.scene_id,
+          source_sentence: s.source_sentence,
+          source_sentence_fr: s.source_sentence_fr,
+          description: s.description,
+        }));
+
+        const { data, error } = await supabase.functions.invoke("detect-object-shots", {
+          body: { objects: objectsPayload, shots: shotsPayload },
+        });
+
+        if (error || data?.error) {
+          console.warn("Auto-detect object shots failed:", error || data?.error);
+          return;
+        }
+
+        const results = data?.results as Record<string, string[]> | undefined;
+        if (!results) return;
+
+        const updated = recurringObjects.map(obj => {
+          const aiShotIds = results[obj.id] || [];
+          const existing = obj.mentions_shots || [];
+          const merged = Array.from(new Set([...existing, ...aiShotIds]));
+          return { ...obj, mentions_shots: merged };
+        });
+
+        handleObjectRegistryChange(updated);
+        const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+        if (totalDetected > 0) {
+          toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)`);
+        }
+      } catch (err) {
+        console.warn("Auto-detect object shots error:", err);
+      }
+    };
+
+    window.addEventListener("image-gen-complete", handler);
+    return () => window.removeEventListener("image-gen-complete", handler);
+  }, [projectId, shots, globalContext, handleObjectRegistryChange]);
 
   const handleGenerateSceneImages = (sceneId: string) => {
     if (!projectId || generatingAllImages) return;

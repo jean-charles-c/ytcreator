@@ -355,19 +355,12 @@ serve(async (req) => {
     const globalContext = scriptState?.global_context as Record<string, any> | null;
     const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
 
-    // Find objects linked to this shot's scene
-    const linkedObjects = recurringObjects.filter((obj: any) => {
-      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0 && sceneOrder !== null) {
-        return obj.mentions_scenes.includes(sceneOrder);
+    // Find objects linked to this specific shot via mentions_shots
+    const shotLinkedObjects = recurringObjects.filter((obj: any) => {
+      if (Array.isArray(obj.mentions_shots) && obj.mentions_shots.includes(shot_id)) {
+        return true;
       }
       return false;
-    });
-
-    // Further filter: only objects whose name appears in the shot's source_sentence
-    const shotText = (shot.source_sentence || shot.description || "").toLowerCase();
-    const shotLinkedObjects = linkedObjects.filter((obj: any) => {
-      const objName = (obj.nom || "").toLowerCase();
-      return objName && shotText.includes(objName.split(" ")[0].toLowerCase());
     });
 
     // If a custom_prompt is provided (user edited the full prompt in UI), use it directly
