@@ -213,40 +213,44 @@ export default function WhisperAlignmentEditor({
         const resolvedAudioDuration = entry.duration_estimate ?? 0;
         setAudioDuration(resolvedAudioDuration);
 
-        // ── Text-based matching: find each shot's first words in whisper transcript ──
+        // ── Strict sequential matching ──
         const shotTexts = sorted.map((shot) => ({
           id: shot.id,
           text: getShotFragmentText(shot),
         }));
-        const rawMatches = matchShotsByText(shotTexts, words);
-        const textMatches = enforceMonotonicTimestamps(rawMatches, words);
-        const textMatchMap = new Map(textMatches.map((m) => [m.shotId, m.whisperStartIdx]));
+
+        // Build manual anchors from existing manual timepoints
+        const manualAnchors = new Map<string, number>();
+        for (const tp of timepoints) {
+          // Find closest whisper word to existing timepoint for manual anchors
+          const bestIdx = words.findIndex((w) => Math.abs(w.start - (tp.timeSeconds as number)) < 0.1);
+          if (bestIdx >= 0) {
+            manualAnchors.set(tp.shotId, bestIdx);
+          }
+        }
+
+        const strictResults = matchShotsStrictSequential(shotTexts, words, manualAnchors.size > 0 ? manualAnchors : undefined);
 
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
-          const startTime = tpMap.get(shot.id) ?? null;
-          const whisperStartIdx = textMatchMap.get(shot.id) ?? null;
+          const matchResult = strictResults[idx];
+          const whisperStartIdx = matchResult?.whisperStartIdx ?? null;
+          const isBlocked = matchResult?.blocked ?? false;
+          const startTime = whisperStartIdx !== null
+            ? words[whisperStartIdx].start
+            : tpMap.get(shot.id) ?? null;
 
-          if (startTime === null && whisperStartIdx === null) {
-            return {
-              shotId: shot.id,
-              globalIndex: idx + 1,
-              shotText: text,
-              whisperStartIdx: null,
-              whisperEndIdx: null,
-              startTime: null,
-              endTime: null,
-              status: "missing" as const,
-              editing: false,
-            };
-          }
-
-          // Find end time from next shot
+          // Find end time from next matched shot
           let endTime: number | null = null;
           for (let j = idx + 1; j < sorted.length; j++) {
-            const nextStart = tpMap.get(sorted[j].id);
-            if (nextStart !== undefined) {
-              endTime = nextStart;
+            const nextMatch = strictResults[j];
+            if (nextMatch?.whisperStartIdx !== null && nextMatch?.whisperStartIdx !== undefined) {
+              endTime = words[nextMatch.whisperStartIdx].start;
+              break;
+            }
+            const nextTp = tpMap.get(sorted[j].id);
+            if (nextTp !== undefined) {
+              endTime = nextTp;
               break;
             }
           }
@@ -262,6 +266,17 @@ export default function WhisperAlignmentEditor({
             }
           }
 
+          let status: AlignedShot["status"];
+          if (isBlocked) {
+            status = "blocked";
+          } else if (whisperStartIdx !== null) {
+            status = "ok";
+          } else if (startTime !== null) {
+            status = "estimated";
+          } else {
+            status = "missing";
+          }
+
           return {
             shotId: shot.id,
             globalIndex: idx + 1,
@@ -270,7 +285,7 @@ export default function WhisperAlignmentEditor({
             whisperEndIdx: wEndIdx !== null && wEndIdx >= 0 ? wEndIdx : null,
             startTime,
             endTime,
-            status: (whisperStartIdx !== null ? "ok" : startTime !== null ? "estimated" : "missing") as "ok" | "missing" | "manual" | "estimated",
+            status,
             editing: false,
           };
         });
