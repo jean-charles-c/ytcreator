@@ -16,12 +16,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { Timeline } from "./timelineAssembly";
+import type { Timeline, ShotTimepoint } from "./timelineAssembly";
 import type { ExportFps, ExportProgress } from "./videoExportEngine";
 import { generateTimelineXmlOnly } from "./xmlExportEngine";
+import { buildManifest } from "./visualPromptTypes";
 import { buildManifestTiming } from "./manifestTiming";
-import type { ManifestTimingEntry } from "./manifestTiming";
-import type { Chapter } from "./chapterTypes";
 import type { ChapterListState } from "./chapterTypes";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 
