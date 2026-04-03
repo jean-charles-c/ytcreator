@@ -112,6 +112,40 @@ export default function WhisperAlignmentEditor({
     });
   }, [shots, scenesForSort]);
 
+  const getManualAnchorsStorageKey = useCallback(
+    (audioId: string) => `whisper-manual-anchors-${projectId}-${audioId}`,
+    [projectId]
+  );
+
+  const loadStoredManualAnchors = useCallback((audioId: string) => {
+    try {
+      const stored = localStorage.getItem(getManualAnchorsStorageKey(audioId));
+      if (!stored) return new Map<string, number>();
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return new Map<string, number>();
+
+      return new Map(
+        parsed.filter(
+          (entry): entry is [string, number] =>
+            Array.isArray(entry) &&
+            typeof entry[0] === "string" &&
+            typeof entry[1] === "number" &&
+            Number.isFinite(entry[1])
+        )
+      );
+    } catch {
+      return new Map<string, number>();
+    }
+  }, [getManualAnchorsStorageKey]);
+
+  const persistManualAnchors = useCallback((audioId: string, anchors: Map<string, number>) => {
+    try {
+      localStorage.setItem(getManualAnchorsStorageKey(audioId), JSON.stringify([...anchors.entries()]));
+    } catch {
+      // ignore local persistence failures
+    }
+  }, [getManualAnchorsStorageKey]);
+
   const loadDualPassData = useCallback(() => {
     if (!projectId) {
       setDualPassData(null);
