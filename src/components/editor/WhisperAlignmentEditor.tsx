@@ -92,7 +92,7 @@ export default function WhisperAlignmentEditor({
   const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
   const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
-  const [showDualPass, setShowDualPass] = useState(false);
+  const [dualPassExpanded, setDualPassExpanded] = useState(false);
   const [dualPassData, setDualPassData] = useState<{
     passA: WhisperWord[];
     passB: WhisperWord[];
