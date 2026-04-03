@@ -801,7 +801,9 @@ export default function WhisperAlignmentEditor({
                       }}
                       className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left min-h-[36px]"
                     >
-                      {shot.status === "manual" ? (
+                      {shot.status === "blocked" ? (
+                        <XCircle className="h-3 w-3 text-destructive shrink-0 animate-pulse" />
+                      ) : shot.status === "manual" ? (
                         <CheckCircle2 className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
