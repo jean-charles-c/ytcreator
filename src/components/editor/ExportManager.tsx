@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { Timeline, ShotTimepoint } from "./timelineAssembly";
+import type { Timeline } from "./timelineAssembly";
 import type { ExportFps, ExportProgress } from "./videoExportEngine";
 import { generateTimelineXmlOnly } from "./xmlExportEngine";
 import { buildManifest } from "./visualPromptTypes";
