@@ -28,6 +28,16 @@ function norm(w: string): string {
 }
 
 /**
+ * Fuzzy-equal: exact match, or one word is a prefix of the other (min 3 chars).
+ * Handles Whisper truncations like "lac" vs "laque".
+ */
+function fuzzyEqual(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 3 || b.length < 3) return false;
+  return a.startsWith(b) || b.startsWith(a);
+}
+
+/**
  * Extract the first N meaningful words from a shot text fragment.
  */
 function extractLeadingWords(text: string, count = 3): string[] {
