@@ -155,8 +155,18 @@ const CORE_BUDGETS: SectionBudget[] = [
     longNote: "Add historical depth, geographic precision, key actor backgrounds" },
   { tag: "PROMISE",    label: "Curiosity contract",
     pct: [0.05, 0.05, 0.04],
-    shortNote: "2-3 sentences, pure traction",
-    longNote: "Can add 1-2 specific curiosity hooks, but stay concise" },
+    shortNote: "6-8 lines max, sell the discovery experience not its content",
+    longNote: `6-8 lines maximum. Sell the EXPERIENCE of discovery, never its content.
+STRICT RULES:
+- Never name what will be revealed. Sell the atmosphere of the revelation, not the revelations themselves.
+- Announce that a received idea or an official image will be questioned, WITHOUT saying which one.
+- End on a short, incomplete sentence that opens toward the next section without unveiling it.
+- Choose ONE single register among: investigation, emotion, or rupture. Never all three together.
+- No lists. No "we will discover that". No summary. No roadmap.
+STRUCTURE TO FOLLOW:
+1. The investigative gesture: show the act of digging, tracing back, following a lead.
+2. The promise of rupture: what it will change in the way of seeing, without saying what.
+3. The final tension: a door ajar, not a door wide open.` },
   { tag: "ACT1",       label: "Origins & setup",
     pct: [0.14, 0.15, 0.14],
     shortNote: "Focus on ONE key origin scene with essentials",
