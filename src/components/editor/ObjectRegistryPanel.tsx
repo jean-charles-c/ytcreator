@@ -131,6 +131,7 @@ interface ObjectRegistryPanelProps {
   shots?: Shot[];
   scenes?: Scene[];
   scriptLanguage?: string;
+  projectId?: string;
 }
 
 export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes, scriptLanguage = "fr" }: ObjectRegistryPanelProps) {
