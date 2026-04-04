@@ -688,9 +688,9 @@ Each pair of consecutive blocks has a SPECIFIC narrative contract:
 
 1. **HOOK → CONTEXT**: The hook creates cognitive friction; the context GROUNDS that friction in reality. The context must directly address the "why is this surprising?" question the hook implicitly raised.
 
-2. **CONTEXT → PROMISE**: The context establishes complexity; the promise channels that complexity into ANTICIPATION. The promise must reference something SPECIFIC from the context and redirect it forward.
+2. **CONTEXT → PROMISE**: The context establishes complexity; the promise channels that complexity into ANTICIPATION. The promise must sell the EXPERIENCE of discovery, not its content. Never name what will be revealed. Choose ONE register (investigation, emotion, or rupture) and commit. End on a short, incomplete sentence — a door ajar, not wide open.
 
-3. **PROMISE → ACT1**: The promise creates open loops; ACT1 must begin ANSWERING one of those loops immediately. No gap between "here's what we'll discover" and "here's where it started."
+3. **PROMISE → ACT1**: The promise creates an open tension; ACT1 must begin answering it immediately. The promise is a door ajar — ACT1 pushes it open. No gap between the tension and the first concrete element.
 
 4. **ACT1 → ACT2**: ACT1 establishes an initial state; ACT2 must show that state CHANGING. The last paragraph of ACT1 must create a pull: "something doesn't add up" → ACT2 investigates what.
 
