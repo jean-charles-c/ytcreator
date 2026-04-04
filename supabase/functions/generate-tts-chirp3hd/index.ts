@@ -126,8 +126,9 @@ Deno.serve(async (req) => {
     const normalizedText = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")  // curly single quotes → straight apostrophe
       .replace(/[\u201C\u201D]/g, '"')         // curly double quotes → straight quotes
-      // French elision fix: "l'échec" → "l' échec" with thin space to help Chirp pronounce liaison
-      .replace(/([lLdDnNsScCjJqQ])'([a-zA-ZÀ-ÿ])/g, "$1'\u200B$2");
+      // French elision fix for Chirp: "l'échec" → "l‑échec" using a non-breaking hyphen
+      // only in the text sent to TTS to avoid bad pauses on l', n', d', c', j', s', m', t', qu'
+      .replace(/\b([ldnscjmtLDNSCJMT]|[Qq]u)'(?=[A-Za-zÀ-ÖØ-öø-ÿ])/g, "$1\u2011");
 
     const textChunks = splitTextIntoChunks(normalizedText);
     console.log(
