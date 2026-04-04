@@ -825,6 +825,9 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
           <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
             <Plus className="h-3.5 w-3.5" /> Ajouter un objet
           </Button>
+          <Button variant="outline" size="sm" onClick={openImportDialog} className="flex-1 min-h-[40px] text-xs">
+            <FolderDown className="h-3.5 w-3.5" /> Importer
+          </Button>
         </div>
       </div>
 
@@ -837,6 +840,91 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               alt="Image de référence agrandie"
               className="max-w-full max-h-[85vh] object-contain rounded"
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Import dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <FolderDown className="h-4 w-4" /> Importer des objets récurrents
+            </DialogTitle>
+          </DialogHeader>
+          {importLoading ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Chargement des projets…
+            </div>
+          ) : importableObjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Aucun objet avec images de référence trouvé dans vos autres projets.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {importableObjects.map((group) => (
+                <div key={group.projectId}>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                    {group.projectTitle}
+                  </h4>
+                  <div className="space-y-1.5">
+                    {group.objects.map((obj) => {
+                      const alreadyExists = (obj as any)._alreadyExists;
+                      const isSelected = selectedImports.has(obj.id);
+                      const meta = TYPE_META[obj.type] || TYPE_META.object;
+                      return (
+                        <label
+                          key={obj.id}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors ${
+                            alreadyExists
+                              ? "opacity-50 border-border bg-muted/30 cursor-not-allowed"
+                              : isSelected
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:bg-secondary/50"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={alreadyExists}
+                            onCheckedChange={() => !alreadyExists && toggleImportSelection(obj.id)}
+                          />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${meta.color}`}>
+                              {meta.icon} {meta.label}
+                            </span>
+                            <span className="text-sm font-medium truncate">{obj.nom}</span>
+                            {obj.reference_images && (
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                📷 {obj.reference_images.length}
+                              </span>
+                            )}
+                            {alreadyExists && (
+                              <span className="text-[10px] text-muted-foreground italic shrink-0">déjà présent</span>
+                            )}
+                          </div>
+                          {obj.reference_images && obj.reference_images.length > 0 && (
+                            <div className="flex gap-1 shrink-0">
+                              {obj.reference_images.slice(0, 2).map((url, i) => (
+                                <img key={i} src={url} alt="" className="w-8 h-8 rounded border border-border object-cover" loading="lazy" />
+                              ))}
+                            </div>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="ghost" size="sm" onClick={() => setImportDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button size="sm" onClick={confirmImport} disabled={selectedImports.size === 0}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Importer {selectedImports.size > 0 ? `(${selectedImports.size})` : ""}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
