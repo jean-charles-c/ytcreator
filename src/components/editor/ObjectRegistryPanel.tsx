@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +21,10 @@ import {
   Upload,
   Loader2,
   Sparkles,
+  FolderDown,
+  Check,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -128,12 +131,17 @@ interface ObjectRegistryPanelProps {
   shots?: Shot[];
   scenes?: Scene[];
   scriptLanguage?: string;
+  projectId?: string;
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes, scriptLanguage = "fr" }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes, scriptLanguage = "fr", projectId }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
+  const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
 
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
@@ -412,6 +420,95 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
   }, [objects, updateObject]);
 
+  // ── Import from other projects ────────────────────────────────────
+  const loadImportableObjects = useCallback(async () => {
+    setImportLoading(true);
+    setImportableObjects([]);
+    setSelectedImports(new Set());
+    try {
+      // Fetch all project states that have global_context with objects
+      const { data: states, error } = await supabase
+        .from("project_scriptcreator_state")
+        .select("project_id, global_context")
+        .not("global_context", "is", null);
+      if (error) throw error;
+
+      // Also fetch project titles
+      const projectIds = (states || []).map(s => s.project_id).filter(pid => pid !== projectId);
+      if (projectIds.length === 0) {
+        setImportLoading(false);
+        return;
+      }
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, title")
+        .in("id", projectIds);
+      const titleMap = new Map((projects || []).map(p => [p.id, p.title]));
+
+      const existingNames = new Set(objects.map(o => o.nom.toLowerCase()));
+
+      const result: { projectTitle: string; projectId: string; objects: RecurringObject[] }[] = [];
+      for (const state of (states || [])) {
+        if (state.project_id === projectId) continue;
+        const gc = state.global_context as any;
+        const objs = gc?.recurring_objects as RecurringObject[] | undefined;
+        if (!objs || !Array.isArray(objs)) continue;
+        // Only keep objects that have reference images
+        const withImages = objs.filter(o =>
+          o.reference_images && o.reference_images.length > 0 && o.nom
+        );
+        if (withImages.length === 0) continue;
+        result.push({
+          projectTitle: titleMap.get(state.project_id) || "Projet sans titre",
+          projectId: state.project_id,
+          objects: withImages.map(o => ({
+            ...o,
+            _alreadyExists: existingNames.has(o.nom.toLowerCase()),
+          })) as any,
+        });
+      }
+      setImportableObjects(result);
+    } catch (e: any) {
+      toast.error("Erreur chargement : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setImportLoading(false);
+    }
+  }, [projectId, objects]);
+
+  const openImportDialog = useCallback(() => {
+    setImportDialogOpen(true);
+    loadImportableObjects();
+  }, [loadImportableObjects]);
+
+  const toggleImportSelection = useCallback((objectId: string) => {
+    setSelectedImports(prev => {
+      const next = new Set(prev);
+      if (next.has(objectId)) next.delete(objectId);
+      else next.add(objectId);
+      return next;
+    });
+  }, []);
+
+  const confirmImport = useCallback(() => {
+    const toImport: RecurringObject[] = [];
+    for (const group of importableObjects) {
+      for (const obj of group.objects) {
+        if (selectedImports.has(obj.id)) {
+          toImport.push({
+            ...obj,
+            id: generateId(), // new id for this project
+            mentions_scenes: [],
+            mentions_shots: [],
+          });
+        }
+      }
+    }
+    if (toImport.length === 0) return;
+    onChange([...objects, ...toImport]);
+    toast.success(`${toImport.length} objet(s) importé(s)`);
+    setImportDialogOpen(false);
+  }, [importableObjects, selectedImports, objects, onChange]);
+
   if (objects.length === 0) {
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
@@ -432,6 +529,9 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             )}
             <Button variant="outline" size="sm" onClick={addObject} className="min-h-[44px]">
               <Plus className="h-4 w-4" /> Ajouter manuellement
+            </Button>
+            <Button variant="outline" size="sm" onClick={openImportDialog} className="min-h-[44px]">
+              <FolderDown className="h-4 w-4" /> Importer d'un autre projet
             </Button>
           </div>
         </div>
@@ -725,6 +825,9 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
           <Button variant="outline" size="sm" onClick={addObject} className="flex-1 min-h-[40px] text-xs">
             <Plus className="h-3.5 w-3.5" /> Ajouter un objet
           </Button>
+          <Button variant="outline" size="sm" onClick={openImportDialog} className="flex-1 min-h-[40px] text-xs">
+            <FolderDown className="h-3.5 w-3.5" /> Importer
+          </Button>
         </div>
       </div>
 
@@ -737,6 +840,91 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               alt="Image de référence agrandie"
               className="max-w-full max-h-[85vh] object-contain rounded"
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Import dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <FolderDown className="h-4 w-4" /> Importer des objets récurrents
+            </DialogTitle>
+          </DialogHeader>
+          {importLoading ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Chargement des projets…
+            </div>
+          ) : importableObjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Aucun objet avec images de référence trouvé dans vos autres projets.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {importableObjects.map((group) => (
+                <div key={group.projectId}>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                    {group.projectTitle}
+                  </h4>
+                  <div className="space-y-1.5">
+                    {group.objects.map((obj) => {
+                      const alreadyExists = (obj as any)._alreadyExists;
+                      const isSelected = selectedImports.has(obj.id);
+                      const meta = TYPE_META[obj.type] || TYPE_META.object;
+                      return (
+                        <label
+                          key={obj.id}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors ${
+                            alreadyExists
+                              ? "opacity-50 border-border bg-muted/30 cursor-not-allowed"
+                              : isSelected
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:bg-secondary/50"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={alreadyExists}
+                            onCheckedChange={() => !alreadyExists && toggleImportSelection(obj.id)}
+                          />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${meta.color}`}>
+                              {meta.icon} {meta.label}
+                            </span>
+                            <span className="text-sm font-medium truncate">{obj.nom}</span>
+                            {obj.reference_images && (
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                📷 {obj.reference_images.length}
+                              </span>
+                            )}
+                            {alreadyExists && (
+                              <span className="text-[10px] text-muted-foreground italic shrink-0">déjà présent</span>
+                            )}
+                          </div>
+                          {obj.reference_images && obj.reference_images.length > 0 && (
+                            <div className="flex gap-1 shrink-0">
+                              {obj.reference_images.slice(0, 2).map((url, i) => (
+                                <img key={i} src={url} alt="" className="w-8 h-8 rounded border border-border object-cover" loading="lazy" />
+                              ))}
+                            </div>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="ghost" size="sm" onClick={() => setImportDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button size="sm" onClick={confirmImport} disabled={selectedImports.size === 0}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Importer {selectedImports.size > 0 ? `(${selectedImports.size})` : ""}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

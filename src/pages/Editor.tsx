@@ -2244,6 +2244,7 @@ export default function Editor() {
                   shots={shots}
                   scenes={scenes}
                   scriptLanguage={scriptLanguage}
+                  projectId={projectId ?? undefined}
                 />
 
                 {/* Segmentation QA Panel */}
