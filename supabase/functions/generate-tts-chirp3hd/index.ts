@@ -129,7 +129,9 @@ Deno.serve(async (req) => {
       // French elision fix for Chirp: "l'échec" → "léchec" (remove apostrophe, join)
       // This forces Chirp to treat it as one word and pronounce the liaison naturally
       .replace(/([ldnscjmtLDNSCJMT])['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
-      .replace(/([Qq]u)['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2");
+      .replace(/([Qq]u)['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
+      .replace(/\bn'y\b/gi, "n'i")
+      .replace(/\bc'est\b/gi, "sait");
 
     const textChunks = splitTextIntoChunks(normalizedText);
     console.log(
