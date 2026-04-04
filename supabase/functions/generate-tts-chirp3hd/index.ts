@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
 
     const textChunks = splitTextIntoChunks(normalizedText);
     console.log(
-      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}`
+      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, normalizedSample="${normalizedText.slice(0, 200)}"`
     );
 
     // ── Parallel TTS calls with order preservation ──
