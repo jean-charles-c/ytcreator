@@ -127,15 +127,15 @@ Deno.serve(async (req) => {
       `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}`
     );
 
-    const audioPartsBytes: Uint8Array[] = [];
+    // ── Parallel TTS calls with order preservation ──
+    const PARALLEL_BATCH = 5; // max concurrent requests to avoid rate limits
+    const audioPartsBytes: Uint8Array[] = new Array(textChunks.length);
 
-    for (let i = 0; i < textChunks.length; i++) {
-      const chunk = textChunks[i];
+    async function synthesizeChunk(chunk: string, index: number): Promise<string | null> {
       const audioConfig: Record<string, unknown> = { audioEncoding: "MP3" };
       if (typeof speakingRate === "number" && speakingRate !== 1) {
         audioConfig.speakingRate = speakingRate;
       }
-      // Note: Chirp3-HD voices do NOT support pitch parameter
       const ttsPayload = {
         input: { text: chunk },
         voice: { languageCode, name: resolvedVoice },
@@ -151,44 +151,46 @@ Deno.serve(async (req) => {
       if (!ttsResponse.ok) {
         const errBody = await ttsResponse.text();
         console.error(
-          `[chirp3hd] Google TTS error chunk ${i + 1}/${textChunks.length} [${ttsResponse.status}]:`,
+          `[chirp3hd] Google TTS error chunk ${index + 1}/${textChunks.length} [${ttsResponse.status}]:`,
           errBody.slice(0, 500)
         );
-        return jsonResponse(
-          {
-            error: `Google TTS API Chirp3-HD a échoué sur le chunk ${i + 1}/${textChunks.length} [${ttsResponse.status}]`,
-            details: errBody.slice(0, 500),
-          },
-          502
-        );
+        return `Google TTS API Chirp3-HD a échoué sur le chunk ${index + 1}/${textChunks.length} [${ttsResponse.status}]: ${errBody.slice(0, 300)}`;
       }
 
-      // Safely parse response — guard against HTML error pages
       const responseContentType = ttsResponse.headers.get("content-type") || "";
       let ttsData: any;
       if (responseContentType.includes("application/json")) {
         ttsData = await ttsResponse.json();
       } else {
         const bodyText = await ttsResponse.text();
-        console.error(`[chirp3hd] Non-JSON response (${responseContentType}):`, bodyText.slice(0, 300));
-        return jsonResponse(
-          { error: `Google TTS a retourné un format inattendu pour le chunk ${i + 1}.` },
-          502
-        );
+        console.error(`[chirp3hd] Non-JSON response chunk ${index + 1} (${responseContentType}):`, bodyText.slice(0, 300));
+        return `Google TTS a retourné un format inattendu pour le chunk ${index + 1}.`;
       }
 
       if (!ttsData.audioContent) {
-        return jsonResponse(
-          { error: `Aucun contenu audio retourné pour le chunk ${i + 1}.` },
-          502
-        );
+        return `Aucun contenu audio retourné pour le chunk ${index + 1}.`;
       }
 
       const bin = atob(ttsData.audioContent as string);
       const bytes = new Uint8Array(bin.length);
       for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
-      audioPartsBytes.push(bytes);
-      console.log(`[chirp3hd] Chunk ${i + 1}/${textChunks.length} OK (${bytes.length} bytes)`);
+      audioPartsBytes[index] = bytes; // ordered by index
+      console.log(`[chirp3hd] Chunk ${index + 1}/${textChunks.length} OK (${bytes.length} bytes)`);
+      return null; // success
+    }
+
+    // Process in batches of PARALLEL_BATCH to respect rate limits
+    for (let batchStart = 0; batchStart < textChunks.length; batchStart += PARALLEL_BATCH) {
+      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, textChunks.length);
+      const batchPromises = [];
+      for (let i = batchStart; i < batchEnd; i++) {
+        batchPromises.push(synthesizeChunk(textChunks[i], i));
+      }
+      const results = await Promise.all(batchPromises);
+      const firstError = results.find((r) => r !== null);
+      if (firstError) {
+        return jsonResponse({ error: firstError }, 502);
+      }
     }
 
     // ── Concatenate MP3 chunks ──
