@@ -451,7 +451,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
       for (const state of (states || [])) {
         if (state.project_id === projectId) continue;
         const gc = state.global_context as any;
-        const objs = gc?.recurring_objects as RecurringObject[] | undefined;
+        const objs = (gc?.objets_recurrents || gc?.recurring_objects) as RecurringObject[] | undefined;
         if (!objs || !Array.isArray(objs)) continue;
         // Only keep objects that have reference images
         const withImages = objs.filter(o =>
