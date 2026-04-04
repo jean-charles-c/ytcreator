@@ -530,6 +530,9 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             <Button variant="outline" size="sm" onClick={addObject} className="min-h-[44px]">
               <Plus className="h-4 w-4" /> Ajouter manuellement
             </Button>
+            <Button variant="outline" size="sm" onClick={openImportDialog} className="min-h-[44px]">
+              <FolderDown className="h-4 w-4" /> Importer d'un autre projet
+            </Button>
           </div>
         </div>
       </details>
