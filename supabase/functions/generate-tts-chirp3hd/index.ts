@@ -122,10 +122,12 @@ Deno.serve(async (req) => {
       return chunks;
     }
 
-    // Normalize curly/typographic apostrophes to straight ones for better TTS pronunciation
+    // Normalize text for better French TTS pronunciation
     const normalizedText = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")  // curly single quotes → straight apostrophe
-      .replace(/[\u201C\u201D]/g, '"');        // curly double quotes → straight quotes
+      .replace(/[\u201C\u201D]/g, '"')         // curly double quotes → straight quotes
+      // French elision fix: "l'échec" → "l' échec" with thin space to help Chirp pronounce liaison
+      .replace(/([lLdDnNsScCjJqQ])'([a-zA-ZÀ-ÿ])/g, "$1'\u200B$2");
 
     const textChunks = splitTextIntoChunks(normalizedText);
     console.log(
