@@ -134,10 +134,14 @@ interface ObjectRegistryPanelProps {
   projectId?: string;
 }
 
-export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes, scriptLanguage = "fr" }: ObjectRegistryPanelProps) {
+export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onReanalyze, onSearchMore, isAnalyzing, shots: allShots, scenes: allScenes, scriptLanguage = "fr", projectId }: ObjectRegistryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
+  const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
 
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
