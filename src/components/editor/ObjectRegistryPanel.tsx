@@ -420,7 +420,96 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
   }, [objects, updateObject]);
 
-  if (objects.length === 0) {
+  // ── Import from other projects ────────────────────────────────────
+  const loadImportableObjects = useCallback(async () => {
+    setImportLoading(true);
+    setImportableObjects([]);
+    setSelectedImports(new Set());
+    try {
+      // Fetch all project states that have global_context with objects
+      const { data: states, error } = await supabase
+        .from("project_scriptcreator_state")
+        .select("project_id, global_context")
+        .not("global_context", "is", null);
+      if (error) throw error;
+
+      // Also fetch project titles
+      const projectIds = (states || []).map(s => s.project_id).filter(pid => pid !== projectId);
+      if (projectIds.length === 0) {
+        setImportLoading(false);
+        return;
+      }
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, title")
+        .in("id", projectIds);
+      const titleMap = new Map((projects || []).map(p => [p.id, p.title]));
+
+      const existingNames = new Set(objects.map(o => o.nom.toLowerCase()));
+
+      const result: { projectTitle: string; projectId: string; objects: RecurringObject[] }[] = [];
+      for (const state of (states || [])) {
+        if (state.project_id === projectId) continue;
+        const gc = state.global_context as any;
+        const objs = gc?.recurring_objects as RecurringObject[] | undefined;
+        if (!objs || !Array.isArray(objs)) continue;
+        // Only keep objects that have reference images
+        const withImages = objs.filter(o =>
+          o.reference_images && o.reference_images.length > 0 && o.nom
+        );
+        if (withImages.length === 0) continue;
+        result.push({
+          projectTitle: titleMap.get(state.project_id) || "Projet sans titre",
+          projectId: state.project_id,
+          objects: withImages.map(o => ({
+            ...o,
+            _alreadyExists: existingNames.has(o.nom.toLowerCase()),
+          })) as any,
+        });
+      }
+      setImportableObjects(result);
+    } catch (e: any) {
+      toast.error("Erreur chargement : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setImportLoading(false);
+    }
+  }, [projectId, objects]);
+
+  const openImportDialog = useCallback(() => {
+    setImportDialogOpen(true);
+    loadImportableObjects();
+  }, [loadImportableObjects]);
+
+  const toggleImportSelection = useCallback((objectId: string) => {
+    setSelectedImports(prev => {
+      const next = new Set(prev);
+      if (next.has(objectId)) next.delete(objectId);
+      else next.add(objectId);
+      return next;
+    });
+  }, []);
+
+  const confirmImport = useCallback(() => {
+    const toImport: RecurringObject[] = [];
+    for (const group of importableObjects) {
+      for (const obj of group.objects) {
+        if (selectedImports.has(obj.id)) {
+          toImport.push({
+            ...obj,
+            id: generateId(), // new id for this project
+            mentions_scenes: [],
+            mentions_shots: [],
+          });
+        }
+      }
+    }
+    if (toImport.length === 0) return;
+    onChange([...objects, ...toImport]);
+    toast.success(`${toImport.length} objet(s) importé(s)`);
+    setImportDialogOpen(false);
+  }, [importableObjects, selectedImports, objects, onChange]);
+
+
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
         <summary className="font-display text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[44px]">
