@@ -155,8 +155,18 @@ const CORE_BUDGETS: SectionBudget[] = [
     longNote: "Add historical depth, geographic precision, key actor backgrounds" },
   { tag: "PROMISE",    label: "Curiosity contract",
     pct: [0.05, 0.05, 0.04],
-    shortNote: "2-3 sentences, pure traction",
-    longNote: "Can add 1-2 specific curiosity hooks, but stay concise" },
+    shortNote: "6-8 lines max, sell the discovery experience not its content",
+    longNote: `6-8 lines maximum. Sell the EXPERIENCE of discovery, never its content.
+STRICT RULES:
+- Never name what will be revealed. Sell the atmosphere of the revelation, not the revelations themselves.
+- Announce that a received idea or an official image will be questioned, WITHOUT saying which one.
+- End on a short, incomplete sentence that opens toward the next section without unveiling it.
+- Choose ONE single register among: investigation, emotion, or rupture. Never all three together.
+- No lists. No "we will discover that". No summary. No roadmap.
+STRUCTURE TO FOLLOW:
+1. The investigative gesture: show the act of digging, tracing back, following a lead.
+2. The promise of rupture: what it will change in the way of seeing, without saying what.
+3. The final tension: a door ajar, not a door wide open.` },
   { tag: "ACT1",       label: "Origins & setup",
     pct: [0.14, 0.15, 0.14],
     shortNote: "Focus on ONE key origin scene with essentials",
@@ -678,9 +688,9 @@ Each pair of consecutive blocks has a SPECIFIC narrative contract:
 
 1. **HOOK → CONTEXT**: The hook creates cognitive friction; the context GROUNDS that friction in reality. The context must directly address the "why is this surprising?" question the hook implicitly raised.
 
-2. **CONTEXT → PROMISE**: The context establishes complexity; the promise channels that complexity into ANTICIPATION. The promise must reference something SPECIFIC from the context and redirect it forward.
+2. **CONTEXT → PROMISE**: The context establishes complexity; the promise channels that complexity into ANTICIPATION. The promise must sell the EXPERIENCE of discovery, not its content. Never name what will be revealed. Choose ONE register (investigation, emotion, or rupture) and commit. End on a short, incomplete sentence — a door ajar, not wide open.
 
-3. **PROMISE → ACT1**: The promise creates open loops; ACT1 must begin ANSWERING one of those loops immediately. No gap between "here's what we'll discover" and "here's where it started."
+3. **PROMISE → ACT1**: The promise creates an open tension; ACT1 must begin answering it immediately. The promise is a door ajar — ACT1 pushes it open. No gap between the tension and the first concrete element.
 
 4. **ACT1 → ACT2**: ACT1 establishes an initial state; ACT2 must show that state CHANGING. The last paragraph of ACT1 must create a pull: "something doesn't add up" → ACT2 investigates what.
 
