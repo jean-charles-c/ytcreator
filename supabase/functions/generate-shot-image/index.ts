@@ -681,7 +681,10 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       .update(updatePayload)
       .eq("id", shot_id);
 
-    if (updateErr) throw new Error("Failed to update shot");
+    if (updateErr) {
+      console.error("Failed to update shot:", JSON.stringify(updateErr));
+      throw new Error(`Failed to update shot: ${updateErr.message || updateErr.code || "unknown"}`);
+    }
 
     return new Response(
       JSON.stringify({
