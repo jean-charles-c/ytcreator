@@ -615,7 +615,7 @@ export default function Editor() {
               sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
               segment_only: segmentOnly,
               prompt_only: promptOnly,
-              visual_style: visualStyle.resolveScene(sceneId).effectiveStyleId ?? visualStyle.getGlobalValue() ?? undefined,
+              visual_style: visualStyle.resolveScene(sceneId).effectiveStyleId ?? undefined,
               aspect_ratio: imageAspectRatio,
             }),
           }
@@ -649,7 +649,8 @@ export default function Editor() {
         toast.error("Aucune scène à traiter");
         return;
       }
-      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly, visualStyle: (visualStyle.getGlobalValue() ?? undefined) as string | undefined, aspectRatio: imageAspectRatio });
+      const globalStyleId = visualStyle.getGlobalValue()?.localStyleId ?? visualStyle.getGlobalValue()?.inheritedStyleId ?? undefined;
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly, visualStyle: globalStyleId, aspectRatio: imageAspectRatio });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
