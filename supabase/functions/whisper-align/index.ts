@@ -152,60 +152,6 @@ function repairWhisperRun(
 
 const MAX_CHUNK_BYTES = 24 * 1024 * 1024; // 24MB to stay under Groq's 25MB limit
 
-function splitWavIntoChunks(wavBuffer: ArrayBuffer): ArrayBuffer[] {
-  const view = new DataView(wavBuffer);
-  // Parse WAV header (assume standard 44-byte header)
-  const headerSize = 44;
-  if (wavBuffer.byteLength <= MAX_CHUNK_BYTES) {
-    return [wavBuffer];
-  }
-
-  const numChannels = view.getUint16(22, true);
-  const sampleRate = view.getUint32(24, true);
-  const bitsPerSample = view.getUint16(34, true);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const dataSize = wavBuffer.byteLength - headerSize;
-
-  const maxDataPerChunk = MAX_CHUNK_BYTES - headerSize;
-  // Align to block boundaries
-  const alignedMaxData = Math.floor(maxDataPerChunk / blockAlign) * blockAlign;
-
-  const chunks: ArrayBuffer[] = [];
-  let offset = 0;
-
-  while (offset < dataSize) {
-    const chunkDataSize = Math.min(alignedMaxData, dataSize - offset);
-    const chunkBuffer = new ArrayBuffer(headerSize + chunkDataSize);
-    const chunkView = new DataView(chunkBuffer);
-    const chunkBytes = new Uint8Array(chunkBuffer);
-
-    // Copy and patch header
-    chunkBytes.set(new Uint8Array(wavBuffer, 0, headerSize));
-    // Fix RIFF size
-    chunkView.setUint32(4, 36 + chunkDataSize, true);
-    // Fix data size
-    chunkView.setUint32(40, chunkDataSize, true);
-
-    // Copy PCM data
-    chunkBytes.set(new Uint8Array(wavBuffer, headerSize + offset, chunkDataSize), headerSize);
-
-    chunks.push(chunkBuffer);
-    offset += chunkDataSize;
-  }
-
-  console.log(`[whisper-align] Split WAV into ${chunks.length} chunks (blockAlign=${blockAlign}, sampleRate=${sampleRate})`);
-  return chunks;
-}
-
-function chunkTimeOffset(wavBuffer: ArrayBuffer, chunkIndex: number, chunkDataBytes: number): number {
-  const view = new DataView(wavBuffer);
-  const sampleRate = view.getUint32(24, true);
-  const blockAlign = view.getUint16(32, true);
-  const headerSize = 44;
-  const maxDataPerChunk = Math.floor((MAX_CHUNK_BYTES - headerSize) / blockAlign) * blockAlign;
-  const samplesPerChunk = maxDataPerChunk / blockAlign;
-  return (chunkIndex * samplesPerChunk) / sampleRate;
-}
 
 // ── Single Whisper call (with auto-chunking for WAV) ──
 
