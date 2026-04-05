@@ -258,46 +258,79 @@ async function callWhisperChunk(
   return { words, transcript: data.text || "", duration };
 }
 
-async function callWhisper(
-  audioBlob: Blob,
-  fileExtension: string,
+// Pre-split WAV into lightweight chunk descriptors to avoid duplicating the full buffer
+interface WavChunkInfo {
+  dataOffset: number; // byte offset into PCM data (after header)
+  dataSize: number;
+  timeOffset: number; // seconds
+}
+
+function planWavChunks(wavBuffer: ArrayBuffer): WavChunkInfo[] {
+  const headerSize = 44;
+  if (wavBuffer.byteLength <= MAX_CHUNK_BYTES) {
+    return [{ dataOffset: 0, dataSize: wavBuffer.byteLength - headerSize, timeOffset: 0 }];
+  }
+  const view = new DataView(wavBuffer);
+  const sampleRate = view.getUint32(24, true);
+  const blockAlign = view.getUint16(32, true);
+  const dataSize = wavBuffer.byteLength - headerSize;
+  const maxDataPerChunk = Math.floor((MAX_CHUNK_BYTES - headerSize) / blockAlign) * blockAlign;
+  const samplesPerChunk = maxDataPerChunk / blockAlign;
+
+  const infos: WavChunkInfo[] = [];
+  let offset = 0;
+  let chunkIdx = 0;
+  while (offset < dataSize) {
+    const chunkDataSize = Math.min(maxDataPerChunk, dataSize - offset);
+    infos.push({
+      dataOffset: offset,
+      dataSize: chunkDataSize,
+      timeOffset: (chunkIdx * samplesPerChunk) / sampleRate,
+    });
+    offset += chunkDataSize;
+    chunkIdx++;
+  }
+  return infos;
+}
+
+function buildWavChunk(wavBuffer: ArrayBuffer, info: WavChunkInfo): Blob {
+  const headerSize = 44;
+  const chunkBuffer = new ArrayBuffer(headerSize + info.dataSize);
+  const chunkView = new DataView(chunkBuffer);
+  const chunkBytes = new Uint8Array(chunkBuffer);
+  chunkBytes.set(new Uint8Array(wavBuffer, 0, headerSize));
+  chunkView.setUint32(4, 36 + info.dataSize, true);
+  chunkView.setUint32(40, info.dataSize, true);
+  chunkBytes.set(new Uint8Array(wavBuffer, headerSize + info.dataOffset, info.dataSize), headerSize);
+  return new Blob([chunkBuffer], { type: "audio/wav" });
+}
+
+async function callWhisperOnChunks(
+  wavBuffer: ArrayBuffer,
+  chunkInfos: WavChunkInfo[],
   groqApiKey: string,
   temperature: number
 ): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
-  // If small enough or not WAV, send directly
-  if (audioBlob.size <= MAX_CHUNK_BYTES || fileExtension !== "wav") {
-    return callWhisperChunk(audioBlob, fileExtension, groqApiKey, temperature);
-  }
-
-  // Split WAV into chunks
-  const fullBuffer = await audioBlob.arrayBuffer();
-  const chunks = splitWavIntoChunks(fullBuffer);
-
-  if (chunks.length === 1) {
-    return callWhisperChunk(audioBlob, fileExtension, groqApiKey, temperature);
-  }
-
   const allWords: WordTimestamp[] = [];
   let fullTranscript = "";
   let totalDuration = 0;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const timeOffset = chunkTimeOffset(fullBuffer, i, chunks[i].byteLength - 44);
-    const chunkBlob = new Blob([chunks[i]], { type: "audio/wav" });
-    console.log(`[whisper-align] Sending chunk ${i + 1}/${chunks.length} (${chunkBlob.size} bytes, offset=${timeOffset.toFixed(1)}s)`);
+  for (let i = 0; i < chunkInfos.length; i++) {
+    const info = chunkInfos[i];
+    const chunkBlob = buildWavChunk(wavBuffer, info);
+    console.log(`[whisper-align] Sending chunk ${i + 1}/${chunkInfos.length} (${chunkBlob.size} bytes, offset=${info.timeOffset.toFixed(1)}s)`);
 
     const result = await callWhisperChunk(chunkBlob, "wav", groqApiKey, temperature);
 
-    // Offset timestamps by chunk position
     for (const w of result.words) {
       allWords.push({
         word: w.word,
-        start: w.start + timeOffset,
-        end: w.end + timeOffset,
+        start: w.start + info.timeOffset,
+        end: w.end + info.timeOffset,
       });
     }
     fullTranscript += (fullTranscript ? " " : "") + result.transcript;
-    totalDuration = Math.max(totalDuration, result.duration + timeOffset);
+    totalDuration = Math.max(totalDuration, result.duration + info.timeOffset);
   }
 
   return { words: allWords, transcript: fullTranscript, duration: totalDuration };
