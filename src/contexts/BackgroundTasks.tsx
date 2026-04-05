@@ -437,7 +437,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                   apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                   "x-supabase-client-platform": "web",
                 },
-                body: JSON.stringify({ project_id: params.projectId, scene_id: sid, segment_only: params.segmentOnly ?? false, prompt_only: params.promptOnly ?? false }),
+                body: JSON.stringify({ project_id: params.projectId, scene_id: sid, segment_only: params.segmentOnly ?? false, prompt_only: params.promptOnly ?? false, visual_style: params.visualStyle, aspect_ratio: params.aspectRatio }),
                 signal: ac.signal,
               }
             );
