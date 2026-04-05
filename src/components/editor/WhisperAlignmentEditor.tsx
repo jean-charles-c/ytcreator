@@ -562,6 +562,23 @@ export default function WhisperAlignmentEditor({
       </summary>
 
       <div className="p-2 space-y-2">
+        {/* Whisper gap warnings */}
+        {whisperGaps.length > 0 && (
+          <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 space-y-1">
+            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+              ⚠️ Trous détectés dans la transcription Whisper ({whisperGaps.length}) — des sections audio n'ont pas été transcrites :
+            </p>
+            {whisperGaps.map((gap, i) => (
+              <p key={i} className="text-[9px] text-amber-700 dark:text-amber-400 font-mono">
+                • Trou de {gap.durationSec}s entre {formatTimecode(gap.fromTime)} et {formatTimecode(gap.toTime)}
+                {" "}(après mot #{gap.afterWordIdx}: &quot;{whisperWords[gap.afterWordIdx]?.word}&quot;)
+              </p>
+            ))}
+            <p className="text-[9px] text-muted-foreground">
+              Les shots correspondants ne pourront pas être calés automatiquement. Relancez l'alignement Whisper ou calez manuellement.
+            </p>
+          </div>
+        )}
         {/* Global offset control */}
         {!loading && whisperWords.length > 0 && (
           <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
