@@ -341,6 +341,25 @@ export default function WhisperAlignmentEditor({
   const totalCount = alignedShots.length;
   const firstBlockedShot = alignedShots.find((s) => s.status === "blocked");
 
+  // ── Whisper gap detection ──
+  const whisperGaps = useMemo(() => {
+    if (whisperWords.length < 2) return [];
+    const GAP_THRESHOLD_SEC = 5; // gaps > 5s are suspicious
+    const gaps: { afterWordIdx: number; fromTime: number; toTime: number; durationSec: number }[] = [];
+    for (let i = 0; i < whisperWords.length - 1; i++) {
+      const gapDuration = whisperWords[i + 1].start - whisperWords[i].end;
+      if (gapDuration > GAP_THRESHOLD_SEC) {
+        gaps.push({
+          afterWordIdx: i,
+          fromTime: whisperWords[i].end,
+          toTime: whisperWords[i + 1].start,
+          durationSec: Math.round(gapDuration * 10) / 10,
+        });
+      }
+    }
+    return gaps;
+  }, [whisperWords]);
+
   // ── Manual selection handlers ──
   const startEditing = (shotId: string) => {
     setEditingShotId(shotId);
@@ -543,6 +562,23 @@ export default function WhisperAlignmentEditor({
       </summary>
 
       <div className="p-2 space-y-2">
+        {/* Whisper gap warnings */}
+        {whisperGaps.length > 0 && (
+          <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 space-y-1">
+            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+              ⚠️ Trous détectés dans la transcription Whisper ({whisperGaps.length}) — des sections audio n'ont pas été transcrites :
+            </p>
+            {whisperGaps.map((gap, i) => (
+              <p key={i} className="text-[9px] text-amber-700 dark:text-amber-400 font-mono">
+                • Trou de {gap.durationSec}s entre {formatTimecode(gap.fromTime)} et {formatTimecode(gap.toTime)}
+                {" "}(après mot #{gap.afterWordIdx}: &quot;{whisperWords[gap.afterWordIdx]?.word}&quot;)
+              </p>
+            ))}
+            <p className="text-[9px] text-muted-foreground">
+              Les shots correspondants ne pourront pas être calés automatiquement. Relancez l'alignement Whisper ou calez manuellement.
+            </p>
+          </div>
+        )}
         {/* Global offset control */}
         {!loading && whisperWords.length > 0 && (
           <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">

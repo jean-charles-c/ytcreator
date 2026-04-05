@@ -139,6 +139,13 @@ Deno.serve(async (req) => {
     console.log(
       `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, normalizedSample="${normalizedText.slice(0, 200)}"`
     );
+    // Log each chunk's content boundaries for debugging paragraph order
+    for (let ci = 0; ci < textChunks.length; ci++) {
+      const c = textChunks[ci];
+      const first80 = c.slice(0, 80).replace(/\n/g, "\\n");
+      const last80 = c.slice(-80).replace(/\n/g, "\\n");
+      console.log(`[chirp3hd] Chunk ${ci + 1}/${textChunks.length}: bytes=${new TextEncoder().encode(c).length}, start="${first80}", end="${last80}"`);
+    }
 
     // ── Parallel TTS calls with order preservation ──
     const PARALLEL_BATCH = 5; // max concurrent requests to avoid rate limits
