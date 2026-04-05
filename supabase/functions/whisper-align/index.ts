@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  rebuildTranscriptText,
+  repairWhisperTranscriptWithShots,
+} from "../_shared/whisper-transcript-repair.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +32,120 @@ export interface AlignmentRun {
   model: string;
   language: string;
   createdAt: string;
+}
+
+interface ProjectShotRow {
+  id: string;
+  scene_id: string;
+  shot_order: number;
+  source_sentence: string | null;
+  source_sentence_fr: string | null;
+  description: string;
+}
+
+interface ProjectSceneRow {
+  id: string;
+  scene_order: number;
+}
+
+function getShotText(shot: ProjectShotRow): string {
+  return (
+    shot.source_sentence ||
+    shot.source_sentence_fr ||
+    shot.description ||
+    ""
+  ).trim();
+}
+
+async function loadOrderedShotSources(
+  supabaseService: ReturnType<typeof createClient>,
+  projectId: string,
+  userId: string
+): Promise<{ id: string; text: string }[]> {
+  const { data: project, error: projectError } = await supabaseService
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (projectError) {
+    throw new Error(`Impossible de vérifier le projet : ${projectError.message}`);
+  }
+  if (!project) {
+    throw new Error("Projet introuvable ou non autorisé.");
+  }
+
+  const [{ data: scenes, error: scenesError }, { data: shots, error: shotsError }] = await Promise.all([
+    supabaseService
+      .from("scenes")
+      .select("id, scene_order")
+      .eq("project_id", projectId),
+    supabaseService
+      .from("shots")
+      .select("id, scene_id, shot_order, source_sentence, source_sentence_fr, description")
+      .eq("project_id", projectId),
+  ]);
+
+  if (scenesError) {
+    throw new Error(`Impossible de charger les scènes : ${scenesError.message}`);
+  }
+  if (shotsError) {
+    throw new Error(`Impossible de charger les shots : ${shotsError.message}`);
+  }
+
+  const sceneOrderMap = new Map(
+    ((scenes ?? []) as ProjectSceneRow[]).map((scene) => [scene.id, scene.scene_order])
+  );
+
+  return ((shots ?? []) as ProjectShotRow[])
+    .sort((a, b) => {
+      const sceneOrderA = sceneOrderMap.get(a.scene_id) ?? 0;
+      const sceneOrderB = sceneOrderMap.get(b.scene_id) ?? 0;
+      if (sceneOrderA !== sceneOrderB) return sceneOrderA - sceneOrderB;
+      return a.shot_order - b.shot_order;
+    })
+    .map((shot) => ({ id: shot.id, text: getShotText(shot) }))
+    .filter((shot) => shot.text.length > 0);
+}
+
+function repairWhisperRun(
+  run: { words: WordTimestamp[]; transcript: string; duration: number },
+  orderedShots: { id: string; text: string }[]
+): {
+  words: WordTimestamp[];
+  transcript: string;
+  duration: number;
+  repairCount: number;
+  insertedWordCount: number;
+} {
+  if (orderedShots.length === 0 || run.words.length === 0) {
+    return {
+      words: run.words,
+      transcript: run.transcript,
+      duration: run.duration,
+      repairCount: 0,
+      insertedWordCount: 0,
+    };
+  }
+
+  const repaired = repairWhisperTranscriptWithShots(
+    run.words,
+    orderedShots,
+    run.duration
+  );
+
+  return {
+    words: repaired.words,
+    transcript:
+      repaired.repairs.length > 0 ? rebuildTranscriptText(repaired.words) : run.transcript,
+    duration: Math.max(run.duration, repaired.words[repaired.words.length - 1]?.end ?? run.duration),
+    repairCount: repaired.repairs.length,
+    insertedWordCount: repaired.repairs.reduce(
+      (sum, repair) => sum + repair.insertedWordCount,
+      0
+    ),
+  };
 }
 
 // ── Single Whisper call ──
@@ -172,9 +290,11 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
     const {
       data: { user },
     } = await anonClient.auth.getUser();
@@ -195,6 +315,8 @@ Deno.serve(async (req) => {
     if (!projectId || typeof projectId !== "string") {
       return jsonResponse({ error: "Le champ 'projectId' est requis." }, 400);
     }
+
+    const orderedShots = await loadOrderedShotSources(supabaseService, projectId, user.id);
 
     // ── Download audio ──
     console.log(`[whisper-align] Downloading audio: ${audioUrl.slice(0, 80)}…`);
@@ -237,14 +359,25 @@ Deno.serve(async (req) => {
     let passBWords: WordTimestamp[] | null = null;
     let passCWords: WordTimestamp[] | null = null;
 
+    let repairSummary: { repairCount: number; insertedWordCount: number } | null = null;
+
     if (useTriplePass) {
-      const [runA, runB, runC] = await Promise.all([
+      const [rawRunA, rawRunB, rawRunC] = await Promise.all([
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
       ]);
 
+      const runA = repairWhisperRun(rawRunA, orderedShots);
+      const runB = repairWhisperRun(rawRunB, orderedShots);
+      const runC = repairWhisperRun(rawRunC, orderedShots);
+
       console.log(`[whisper-align] Pass A: ${runA.words.length}, B: ${runB.words.length}, C: ${runC.words.length} words`);
+      if (runA.repairCount || runB.repairCount || runC.repairCount) {
+        console.log(
+          `[whisper-align] Transcript repair applied — A:${runA.repairCount}/${runA.insertedWordCount}w, B:${runB.repairCount}/${runB.insertedWordCount}w, C:${runC.repairCount}/${runC.insertedWordCount}w`
+        );
+      }
 
       // Compare all pairs
       const compAB = compareRuns(runA.words, runB.words);
@@ -271,13 +404,25 @@ Deno.serve(async (req) => {
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
+      repairSummary = {
+        repairCount: runA.repairCount,
+        insertedWordCount: runA.insertedWordCount,
+      };
     } else if (useDualPass) {
-      const [runA, runB] = await Promise.all([
+      const [rawRunA, rawRunB] = await Promise.all([
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
         callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
       ]);
 
+      const runA = repairWhisperRun(rawRunA, orderedShots);
+      const runB = repairWhisperRun(rawRunB, orderedShots);
+
       console.log(`[whisper-align] Pass A: ${runA.words.length} words, Pass B: ${runB.words.length} words`);
+      if (runA.repairCount || runB.repairCount) {
+        console.log(
+          `[whisper-align] Transcript repair applied — A:${runA.repairCount}/${runA.insertedWordCount}w, B:${runB.repairCount}/${runB.insertedWordCount}w`
+        );
+      }
 
       comparison = compareRuns(runA.words, runB.words);
       console.log(
@@ -289,11 +434,25 @@ Deno.serve(async (req) => {
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
+      repairSummary = {
+        repairCount: runA.repairCount,
+        insertedWordCount: runA.insertedWordCount,
+      };
     } else {
-      const run = await callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0);
+      const rawRun = await callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0);
+      const run = repairWhisperRun(rawRun, orderedShots);
+      if (run.repairCount) {
+        console.log(
+          `[whisper-align] Transcript repair applied — ${run.repairCount} gap(s), ${run.insertedWordCount} word(s) inserted`
+        );
+      }
       finalWords = run.words;
       finalTranscript = run.transcript;
       finalDuration = run.duration;
+      repairSummary = {
+        repairCount: run.repairCount,
+        insertedWordCount: run.insertedWordCount,
+      };
     }
 
     const alignmentRun: AlignmentRun = {
@@ -313,11 +472,6 @@ Deno.serve(async (req) => {
     // Only persist whisper_words (raw word timestamps) — NOT shot_timepoints.
     // shot_timepoints are managed by the client-side "Recaler sur Whisper" button
     // to avoid overwriting carefully calibrated timepoints with raw Whisper data.
-    const supabaseService = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
     const { data: latestAudio } = await supabaseService
       .from("vo_audio_history")
       .select("id")
@@ -347,6 +501,11 @@ Deno.serve(async (req) => {
       alignmentRun,
       wordCount: finalWords.length,
       audioDuration: finalDuration,
+      ...(repairSummary && repairSummary.repairCount > 0
+        ? {
+            transcriptRepair: repairSummary,
+          }
+        : {}),
       ...(comparison && passAWords && passBWords
         ? {
             dualPassComparison: {
