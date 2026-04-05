@@ -933,7 +933,7 @@ serve(async (req) => {
             model: "google/gemini-2.5-flash",
             max_tokens: 8192,
             messages: [
-              { role: "system", content: CINEMATIC_PROMPT_SYSTEM + sensitiveModeBlock },
+              { role: "system", content: CINEMATIC_PROMPT_SYSTEM.replace("[VISUAL_STYLE_LINE]", resolvedStyleSuffix).replace("[ASPECT_RATIO]", resolvedAspectRatio) + sensitiveModeBlock },
               { role: "user", content: `${projectContext}${objectIdentityBlock}\n\nIMPORTANT: You are in PROMPT-ONLY mode. The shot boundaries (source_sentence for each shot) are ALREADY FIXED by the user. Do NOT change, merge, split, or reorder them.\nYour job is ONLY to generate:\n- prompt_export (FRENCH, cinematic documentary visual prompt)\n- description (French visual description)\n- shot_type (French camera type from the Visual Camera Grid)\n- guardrails (historical constraints)\n\nFor each shot, keep the EXACT source_sentence provided. Do NOT modify it.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque).\n\nRECURRING OBJECT RULE:\nWhen a scene contains a recurring object, EVERY shot in that scene that depicts or implies that object MUST include the full IDENTITY LOCK prompt.\n\n${sceneDescriptionsForPromptOnly}` },
             ],
             tools: [
