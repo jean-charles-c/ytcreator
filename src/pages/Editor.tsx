@@ -649,7 +649,7 @@ export default function Editor() {
         toast.error("Aucune scène à traiter");
         return;
       }
-      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly, visualStyle: visualStyle.getGlobalValue() ?? undefined, aspectRatio: imageAspectRatio });
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly, visualStyle: (visualStyle.getGlobalValue() ?? undefined) as string | undefined, aspectRatio: imageAspectRatio });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
