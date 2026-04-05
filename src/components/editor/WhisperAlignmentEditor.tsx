@@ -341,6 +341,25 @@ export default function WhisperAlignmentEditor({
   const totalCount = alignedShots.length;
   const firstBlockedShot = alignedShots.find((s) => s.status === "blocked");
 
+  // ── Whisper gap detection ──
+  const whisperGaps = useMemo(() => {
+    if (whisperWords.length < 2) return [];
+    const GAP_THRESHOLD_SEC = 5; // gaps > 5s are suspicious
+    const gaps: { afterWordIdx: number; fromTime: number; toTime: number; durationSec: number }[] = [];
+    for (let i = 0; i < whisperWords.length - 1; i++) {
+      const gapDuration = whisperWords[i + 1].start - whisperWords[i].end;
+      if (gapDuration > GAP_THRESHOLD_SEC) {
+        gaps.push({
+          afterWordIdx: i,
+          fromTime: whisperWords[i].end,
+          toTime: whisperWords[i + 1].start,
+          durationSec: Math.round(gapDuration * 10) / 10,
+        });
+      }
+    }
+    return gaps;
+  }, [whisperWords]);
+
   // ── Manual selection handlers ──
   const startEditing = (shotId: string) => {
     setEditingShotId(shotId);
