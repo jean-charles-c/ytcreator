@@ -1456,6 +1456,49 @@ export default function Editor() {
     }
   }, [projectId, numberConversionBackup]);
 
+  const [detectingObjects, setDetectingObjects] = useState(false);
+  const handleManualDetectObjects = useCallback(async () => {
+    if (!projectId || detectingObjects) return;
+    const recurringObjects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+    if (!recurringObjects.length) {
+      toast.info("Aucun objet récurrent enregistré. Ajoutez-en d'abord dans le registre.");
+      return;
+    }
+    if (!shots.length) {
+      toast.info("Aucun shot disponible. Créez les shots d'abord.");
+      return;
+    }
+    setDetectingObjects(true);
+    try {
+      const objectsPayload = recurringObjects.map(o => ({
+        id: o.id, nom: o.nom, type: o.type, description_visuelle: o.description_visuelle,
+      }));
+      const shotsPayload = shots.map(s => ({
+        id: s.id, scene_id: s.scene_id, source_sentence: s.source_sentence,
+        source_sentence_fr: s.source_sentence_fr, description: s.description,
+      }));
+      const { data, error } = await supabase.functions.invoke("detect-object-shots", {
+        body: { objects: objectsPayload, shots: shotsPayload },
+      });
+      if (error || data?.error) throw new Error((data?.error as string) || "Erreur de détection");
+      const results = data?.results as Record<string, string[]> | undefined;
+      if (!results) { toast.info("Aucune liaison détectée."); return; }
+      const updated = recurringObjects.map(obj => {
+        const aiShotIds = results[obj.id] || [];
+        const existing = obj.mentions_shots || [];
+        const merged = Array.from(new Set([...existing, ...aiShotIds]));
+        return { ...obj, mentions_shots: merged };
+      });
+      handleObjectRegistryChange(updated);
+      const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+      toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)`);
+    } catch (err: any) {
+      console.error("Manual detect objects error:", err);
+      toast.error(err?.message || "Erreur lors de la détection");
+    } finally {
+      setDetectingObjects(false);
+    }
+  }, [projectId, shots, globalContext, handleObjectRegistryChange, detectingObjects]);
 
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
