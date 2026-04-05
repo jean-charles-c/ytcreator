@@ -126,9 +126,12 @@ Deno.serve(async (req) => {
     const normalizedText = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")  // curly single quotes → straight apostrophe
       .replace(/[\u201C\u201D]/g, '"')         // curly double quotes → straight quotes
-      // Specific phonetic substitutions for Chirp3-HD French pronunciation
+      // Specific word substitutions BEFORE elision removal
       .replace(/\bn['']y\b/gi, "ni")
-      .replace(/\bc['']est\b/gi, "sait");
+      .replace(/\bc['']est\b/gi, "sait")
+      // French elision fix for Chirp: "l'échec" → "léchec" (remove apostrophe, join)
+      .replace(/([ldnscjmtLDNSCJMT])['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
+      .replace(/([Qq]u)['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2");
 
     const textChunks = splitTextIntoChunks(normalizedText);
     console.log(
