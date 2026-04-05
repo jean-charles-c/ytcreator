@@ -270,29 +270,28 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    const token = authHeader.replace("Bearer ", "");
-
     let user: { id: string };
     try {
-      const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+      const { data: userData, error: userError } = await supabaseUser.auth.getUser();
 
-      if (claimsError || !claimsData?.claims?.sub) {
+      if (userError || !userData?.user?.id) {
+        const msg = userError?.message || "Unauthorized";
         return new Response(
-          JSON.stringify({ error: "Unauthorized", auth_expired: true }),
+          JSON.stringify({ error: msg, auth_expired: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      user = { id: claimsData.claims.sub };
-    } catch (claimsException) {
-      const message = claimsException instanceof Error ? claimsException.message : "Unauthorized";
+      user = { id: userData.user.id };
+    } catch (authException) {
+      const message = authException instanceof Error ? authException.message : "Unauthorized";
       if (message === "JWT has expired" || message.toLowerCase().includes("jwt") || message === "Unauthorized") {
         return new Response(
           JSON.stringify({ error: message, auth_expired: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      throw claimsException;
+      throw authException;
     }
 
     const { shot_id, model, aspect_ratio, sensitive_level, visual_style, custom_prompt } = await req.json();
