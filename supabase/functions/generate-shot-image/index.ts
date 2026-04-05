@@ -495,7 +495,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       cinematic: "Cinematic film still, dramatic lighting, shallow depth of field, anamorphic lens flare, color graded, widescreen composition, movie-like atmosphere",
       illustration: "Digital illustration, detailed artwork, rich colors, clean lines, editorial illustration style, professional book illustration",
       painting: "Oil painting style, visible brush strokes, rich texture, classical composition, fine art painting, museum quality",
-      lineart: "Detailed line art drawing, pen and ink style, fine linework, cross-hatching, black and white sketch, architectural precision",
+      lineart: "Pencil sketch portrait, graphite drawing, crosshatching, black and white, realistic editorial illustration, sketched background, fine detailed linework",
       comics: "Comic book style, bold outlines, dynamic panels, vivid flat colors, graphic novel illustration, halftone dots",
       animation: "Anime style, cel-shaded, vibrant colors, expressive characters, Studio Ghibli inspired, clean digital animation",
       conceptart: "Concept art, environment design, painterly digital art, atmospheric perspective, matte painting, professional pre-production art",

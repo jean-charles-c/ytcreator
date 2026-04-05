@@ -615,6 +615,8 @@ export default function Editor() {
               sensitive_level: sensitiveMode.resolveScene(sceneId).effectiveLevel ?? undefined,
               segment_only: segmentOnly,
               prompt_only: promptOnly,
+              visual_style: visualStyle.resolveScene(sceneId).effectiveStyleId ?? undefined,
+              aspect_ratio: imageAspectRatio,
             }),
           }
         );
@@ -647,7 +649,8 @@ export default function Editor() {
         toast.error("Aucune scène à traiter");
         return;
       }
-      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly });
+      const globalStyleId = visualStyle.getGlobalValue()?.localStyleId ?? visualStyle.getGlobalValue()?.inheritedStyleId ?? undefined;
+      bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly, visualStyle: globalStyleId, aspectRatio: imageAspectRatio });
     }
   }, [projectId, scenes, shots, bgStartStoryboard]);
 
@@ -1453,6 +1456,49 @@ export default function Editor() {
     }
   }, [projectId, numberConversionBackup]);
 
+  const [detectingObjects, setDetectingObjects] = useState(false);
+  const handleManualDetectObjects = useCallback(async () => {
+    if (!projectId || detectingObjects) return;
+    const recurringObjects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+    if (!recurringObjects.length) {
+      toast.info("Aucun objet récurrent enregistré. Ajoutez-en d'abord dans le registre.");
+      return;
+    }
+    if (!shots.length) {
+      toast.info("Aucun shot disponible. Créez les shots d'abord.");
+      return;
+    }
+    setDetectingObjects(true);
+    try {
+      const objectsPayload = recurringObjects.map(o => ({
+        id: o.id, nom: o.nom, type: o.type, description_visuelle: o.description_visuelle,
+      }));
+      const shotsPayload = shots.map(s => ({
+        id: s.id, scene_id: s.scene_id, source_sentence: s.source_sentence,
+        source_sentence_fr: s.source_sentence_fr, description: s.description,
+      }));
+      const { data, error } = await supabase.functions.invoke("detect-object-shots", {
+        body: { objects: objectsPayload, shots: shotsPayload },
+      });
+      if (error || data?.error) throw new Error((data?.error as string) || "Erreur de détection");
+      const results = data?.results as Record<string, string[]> | undefined;
+      if (!results) { toast.info("Aucune liaison détectée."); return; }
+      const updated = recurringObjects.map(obj => {
+        const aiShotIds = results[obj.id] || [];
+        const existing = obj.mentions_shots || [];
+        const merged = Array.from(new Set([...existing, ...aiShotIds]));
+        return { ...obj, mentions_shots: merged };
+      });
+      handleObjectRegistryChange(updated);
+      const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+      toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)`);
+    } catch (err: any) {
+      console.error("Manual detect objects error:", err);
+      toast.error(err?.message || "Erreur lors de la détection");
+    } finally {
+      setDetectingObjects(false);
+    }
+  }, [projectId, shots, globalContext, handleObjectRegistryChange, detectingObjects]);
 
   const handleGenerateAllImages = () => {
     if (!projectId || generatingAllImages) return;
@@ -2345,91 +2391,121 @@ export default function Editor() {
                   parentLabel={undefined}
                 />
 
-                {/* Actions globales shots */}
-                <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
-                  <div className="flex gap-2 flex-wrap items-center">
-                    <Button variant="outline" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
-                      <Play className="h-4 w-4" /> Redécouper tous les shots
-                    </Button>
-                    <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { promptOnly: true })} disabled={generatingStoryboard || shots.length === 0} className="min-h-[40px]">
-                      {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
-                      Générer tous les prompts
-                    </Button>
-                    <Button variant="default" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px] gap-1.5">
-                      <ImageIcon className="h-4 w-4" /> Voir tous les visuels
-                    </Button>
-                    {scriptLanguage !== "fr" && (
-                      <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
-                        {retranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
-                        {retranslating ? "Retraduction..." : "Retraduire les fragments 🇫🇷"}
+                {/* Actions globales shots — ordre : 1.Shots → 2.Objets → 3.Prompts → 4.Visuels */}
+                <div className="pt-2 border-t border-border/50 flex flex-col gap-3">
+                  {/* Step 1 — Création des shots */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">① Créer les shots</span>
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <Button variant="outline" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
+                        {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                        Redécouper tous les shots
                       </Button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
-                      <select
-                        value={imageModel}
-                        onChange={(e) => setImageModel(e.target.value)}
-                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        {IMAGE_MODELS.map((m) => (
-                          <option key={m.value} value={m.value}>
-                            {m.label} — {m.price}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">Format :</span>
-                      <select
-                        value={imageAspectRatio}
-                        onChange={(e) => setImageAspectRatio(e.target.value)}
-                        className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        {ASPECT_RATIOS.map((r) => (
-                          <option key={r.value} value={r.value}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">🎨 Style :</span>
-                      <VisualStyleSelector
-                        value={visualStyle.getGlobalValue()}
-                        onChange={visualStyle.setGlobalStyleId}
-                        scopeLabel="Toutes les scènes"
-                        compact
-                      />
-                    </div>
-                    {generatingAllImages ? (
-                      <div className="flex items-center gap-2">
-                        <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
-                          <Square className="h-4 w-4" /> Stopper la génération
-                          {imageGenTask?.completedShots != null && imageGenTask?.totalShots
-                            ? ` (${imageGenTask.successShots ?? 0}✓ — ${imageGenTask.completedShots}/${imageGenTask.totalShots})`
-                            : ""}
+                      {scriptLanguage !== "fr" && (
+                        <Button variant="outline" size="sm" onClick={handleRetranslateFragments} disabled={retranslating || shots.length === 0} className="min-h-[40px]">
+                          {retranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                          {retranslating ? "Retraduction..." : "Retraduire les fragments 🇫🇷"}
                         </Button>
-                        {imageGenTask?.imageGenModel && (
-                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
-                            🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
-                            {" — "}
-                            {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
-                          </span>
-                        )}
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 2 — Auto-détection objets/personnages récurrents */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">② Détecter les objets récurrents</span>
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <Button variant="outline" size="sm" onClick={handleManualDetectObjects} disabled={detectingObjects || shots.length === 0} className="min-h-[40px]">
+                        {detectingObjects ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        {detectingObjects ? "Détection en cours…" : "Auto-détecter objets ↔ shots"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Step 3 — Générer les prompts */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">③ Générer les prompts</span>
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { promptOnly: true })} disabled={generatingStoryboard || shots.length === 0} className="min-h-[40px]">
+                        {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
+                        Générer tous les prompts
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Step 4 — Générer les visuels */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">④ Générer les visuels</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
+                        <select
+                          value={imageModel}
+                          onChange={(e) => setImageModel(e.target.value)}
+                          className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {IMAGE_MODELS.map((m) => (
+                            <option key={m.value} value={m.value}>
+                              {m.label} — {m.price}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    ) : (() => {
-                      const hasAnyImage = shots.some((s: any) => s.image_url);
-                      const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
-                      return (
-                        <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
-                          <ImageIcon className="h-4 w-4" />
-                          {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
-                        </Button>
-                      );
-                    })()}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">Format :</span>
+                        <select
+                          value={imageAspectRatio}
+                          onChange={(e) => setImageAspectRatio(e.target.value)}
+                          className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {ASPECT_RATIOS.map((r) => (
+                            <option key={r.value} value={r.value}>
+                              {r.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">🎨 Style :</span>
+                        <VisualStyleSelector
+                          value={visualStyle.getGlobalValue()}
+                          onChange={visualStyle.setGlobalStyleId}
+                          scopeLabel="Toutes les scènes"
+                          compact
+                        />
+                      </div>
+                      {generatingAllImages ? (
+                        <div className="flex items-center gap-2">
+                          <Button variant="destructive" size="sm" onClick={stopImageGeneration} className="min-h-[40px]">
+                            <Square className="h-4 w-4" /> Stopper la génération
+                            {imageGenTask?.completedShots != null && imageGenTask?.totalShots
+                              ? ` (${imageGenTask.successShots ?? 0}✓ — ${imageGenTask.completedShots}/${imageGenTask.totalShots})`
+                              : ""}
+                          </Button>
+                          {imageGenTask?.imageGenModel && (
+                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
+                              🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
+                              {" — "}
+                              {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
+                            </span>
+                          )}
+                        </div>
+                      ) : (() => {
+                        const hasAnyImage = shots.some((s: any) => s.image_url);
+                        const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
+                        return (
+                          <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
+                            <ImageIcon className="h-4 w-4" />
+                            {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
+                          </Button>
+                        );
+                      })()}
+                    </div>
                   </div>
+
+                  {/* Gallery shortcut */}
+                  <Button variant="default" size="sm" onClick={() => setGalleryOpen(true)} disabled={!shots.some((s: any) => s.image_url)} className="min-h-[40px] gap-1.5 self-start">
+                    <ImageIcon className="h-4 w-4" /> Voir tous les visuels
+                  </Button>
                 </div>
                 </div>
               </details>
@@ -2861,7 +2937,7 @@ export default function Editor() {
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
                                       disabled={isRegenerating || scene.validated}
-                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id); }}
+                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { promptOnly: true }); }}
                                       title="Régénérer les prompts visuels de cette scène via IA"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
