@@ -100,6 +100,8 @@ export interface StoryboardParams {
   sceneIds: string[];
   segmentOnly?: boolean;
   promptOnly?: boolean;
+  visualStyle?: string;
+  aspectRatio?: string;
 }
 
 const BackgroundTasksContext = createContext<BackgroundTasksContextValue | null>(null);
