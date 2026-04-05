@@ -152,60 +152,6 @@ function repairWhisperRun(
 
 const MAX_CHUNK_BYTES = 24 * 1024 * 1024; // 24MB to stay under Groq's 25MB limit
 
-function splitWavIntoChunks(wavBuffer: ArrayBuffer): ArrayBuffer[] {
-  const view = new DataView(wavBuffer);
-  // Parse WAV header (assume standard 44-byte header)
-  const headerSize = 44;
-  if (wavBuffer.byteLength <= MAX_CHUNK_BYTES) {
-    return [wavBuffer];
-  }
-
-  const numChannels = view.getUint16(22, true);
-  const sampleRate = view.getUint32(24, true);
-  const bitsPerSample = view.getUint16(34, true);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const dataSize = wavBuffer.byteLength - headerSize;
-
-  const maxDataPerChunk = MAX_CHUNK_BYTES - headerSize;
-  // Align to block boundaries
-  const alignedMaxData = Math.floor(maxDataPerChunk / blockAlign) * blockAlign;
-
-  const chunks: ArrayBuffer[] = [];
-  let offset = 0;
-
-  while (offset < dataSize) {
-    const chunkDataSize = Math.min(alignedMaxData, dataSize - offset);
-    const chunkBuffer = new ArrayBuffer(headerSize + chunkDataSize);
-    const chunkView = new DataView(chunkBuffer);
-    const chunkBytes = new Uint8Array(chunkBuffer);
-
-    // Copy and patch header
-    chunkBytes.set(new Uint8Array(wavBuffer, 0, headerSize));
-    // Fix RIFF size
-    chunkView.setUint32(4, 36 + chunkDataSize, true);
-    // Fix data size
-    chunkView.setUint32(40, chunkDataSize, true);
-
-    // Copy PCM data
-    chunkBytes.set(new Uint8Array(wavBuffer, headerSize + offset, chunkDataSize), headerSize);
-
-    chunks.push(chunkBuffer);
-    offset += chunkDataSize;
-  }
-
-  console.log(`[whisper-align] Split WAV into ${chunks.length} chunks (blockAlign=${blockAlign}, sampleRate=${sampleRate})`);
-  return chunks;
-}
-
-function chunkTimeOffset(wavBuffer: ArrayBuffer, chunkIndex: number, chunkDataBytes: number): number {
-  const view = new DataView(wavBuffer);
-  const sampleRate = view.getUint32(24, true);
-  const blockAlign = view.getUint16(32, true);
-  const headerSize = 44;
-  const maxDataPerChunk = Math.floor((MAX_CHUNK_BYTES - headerSize) / blockAlign) * blockAlign;
-  const samplesPerChunk = maxDataPerChunk / blockAlign;
-  return (chunkIndex * samplesPerChunk) / sampleRate;
-}
 
 // ── Single Whisper call (with auto-chunking for WAV) ──
 
@@ -258,46 +204,79 @@ async function callWhisperChunk(
   return { words, transcript: data.text || "", duration };
 }
 
-async function callWhisper(
-  audioBlob: Blob,
-  fileExtension: string,
+// Pre-split WAV into lightweight chunk descriptors to avoid duplicating the full buffer
+interface WavChunkInfo {
+  dataOffset: number; // byte offset into PCM data (after header)
+  dataSize: number;
+  timeOffset: number; // seconds
+}
+
+function planWavChunks(wavBuffer: ArrayBuffer): WavChunkInfo[] {
+  const headerSize = 44;
+  if (wavBuffer.byteLength <= MAX_CHUNK_BYTES) {
+    return [{ dataOffset: 0, dataSize: wavBuffer.byteLength - headerSize, timeOffset: 0 }];
+  }
+  const view = new DataView(wavBuffer);
+  const sampleRate = view.getUint32(24, true);
+  const blockAlign = view.getUint16(32, true);
+  const dataSize = wavBuffer.byteLength - headerSize;
+  const maxDataPerChunk = Math.floor((MAX_CHUNK_BYTES - headerSize) / blockAlign) * blockAlign;
+  const samplesPerChunk = maxDataPerChunk / blockAlign;
+
+  const infos: WavChunkInfo[] = [];
+  let offset = 0;
+  let chunkIdx = 0;
+  while (offset < dataSize) {
+    const chunkDataSize = Math.min(maxDataPerChunk, dataSize - offset);
+    infos.push({
+      dataOffset: offset,
+      dataSize: chunkDataSize,
+      timeOffset: (chunkIdx * samplesPerChunk) / sampleRate,
+    });
+    offset += chunkDataSize;
+    chunkIdx++;
+  }
+  return infos;
+}
+
+function buildWavChunk(wavBuffer: ArrayBuffer, info: WavChunkInfo): Blob {
+  const headerSize = 44;
+  const chunkBuffer = new ArrayBuffer(headerSize + info.dataSize);
+  const chunkView = new DataView(chunkBuffer);
+  const chunkBytes = new Uint8Array(chunkBuffer);
+  chunkBytes.set(new Uint8Array(wavBuffer, 0, headerSize));
+  chunkView.setUint32(4, 36 + info.dataSize, true);
+  chunkView.setUint32(40, info.dataSize, true);
+  chunkBytes.set(new Uint8Array(wavBuffer, headerSize + info.dataOffset, info.dataSize), headerSize);
+  return new Blob([chunkBuffer], { type: "audio/wav" });
+}
+
+async function callWhisperOnChunks(
+  wavBuffer: ArrayBuffer,
+  chunkInfos: WavChunkInfo[],
   groqApiKey: string,
   temperature: number
 ): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
-  // If small enough or not WAV, send directly
-  if (audioBlob.size <= MAX_CHUNK_BYTES || fileExtension !== "wav") {
-    return callWhisperChunk(audioBlob, fileExtension, groqApiKey, temperature);
-  }
-
-  // Split WAV into chunks
-  const fullBuffer = await audioBlob.arrayBuffer();
-  const chunks = splitWavIntoChunks(fullBuffer);
-
-  if (chunks.length === 1) {
-    return callWhisperChunk(audioBlob, fileExtension, groqApiKey, temperature);
-  }
-
   const allWords: WordTimestamp[] = [];
   let fullTranscript = "";
   let totalDuration = 0;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const timeOffset = chunkTimeOffset(fullBuffer, i, chunks[i].byteLength - 44);
-    const chunkBlob = new Blob([chunks[i]], { type: "audio/wav" });
-    console.log(`[whisper-align] Sending chunk ${i + 1}/${chunks.length} (${chunkBlob.size} bytes, offset=${timeOffset.toFixed(1)}s)`);
+  for (let i = 0; i < chunkInfos.length; i++) {
+    const info = chunkInfos[i];
+    const chunkBlob = buildWavChunk(wavBuffer, info);
+    console.log(`[whisper-align] Sending chunk ${i + 1}/${chunkInfos.length} (${chunkBlob.size} bytes, offset=${info.timeOffset.toFixed(1)}s)`);
 
     const result = await callWhisperChunk(chunkBlob, "wav", groqApiKey, temperature);
 
-    // Offset timestamps by chunk position
     for (const w of result.words) {
       allWords.push({
         word: w.word,
-        start: w.start + timeOffset,
-        end: w.end + timeOffset,
+        start: w.start + info.timeOffset,
+        end: w.end + info.timeOffset,
       });
     }
     fullTranscript += (fullTranscript ? " " : "") + result.transcript;
-    totalDuration = Math.max(totalDuration, result.duration + timeOffset);
+    totalDuration = Math.max(totalDuration, result.duration + info.timeOffset);
   }
 
   return { words: allWords, transcript: fullTranscript, duration: totalDuration };
@@ -434,14 +413,14 @@ Deno.serve(async (req) => {
 
     const contentType = audioResponse.headers.get("content-type") || "audio/mpeg";
     const audioBuffer = await audioResponse.arrayBuffer();
-    const audioBlob = new Blob([audioBuffer], { type: contentType });
     const fileExtension = contentType.includes("wav") || audioUrl.toLowerCase().includes(".wav")
       ? "wav"
       : contentType.includes("mpeg") || audioUrl.toLowerCase().includes(".mp3")
         ? "mp3"
         : "audio";
+    const isLargeWav = fileExtension === "wav" && audioBuffer.byteLength > MAX_CHUNK_BYTES;
 
-    console.log(`[whisper-align] Audio: ${audioBlob.size} bytes, type=${contentType}`);
+    console.log(`[whisper-align] Audio: ${audioBuffer.byteLength} bytes, type=${contentType}, largeWav=${isLargeWav}`);
 
     // ── Groq key ──
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
@@ -449,10 +428,29 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Clé API Groq non configurée." }, 500);
     }
 
-    const useTriplePass = triplePass === true;
-    const useDualPass = !useTriplePass && dualPass === true;
+    // Force single pass for large WAV to avoid memory limit
+    const useTriplePass = !isLargeWav && triplePass === true;
+    const useDualPass = !isLargeWav && !useTriplePass && dualPass === true;
     const passCount = useTriplePass ? 3 : useDualPass ? 2 : 1;
+    if (isLargeWav && (dualPass || triplePass)) {
+      console.log(`[whisper-align] Large WAV detected (${audioBuffer.byteLength} bytes) — forcing single pass to stay within memory limits`);
+    }
     console.log(`[whisper-align] Mode: ${passCount} pass(es)`);
+
+    // ── Prepare chunks (for WAV) or direct blob ──
+    const wavChunkInfos = isLargeWav ? planWavChunks(audioBuffer) : null;
+    if (wavChunkInfos && wavChunkInfos.length > 1) {
+      console.log(`[whisper-align] Planned ${wavChunkInfos.length} WAV chunks`);
+    }
+
+    // Helper to run one Whisper pass
+    async function runOnePass(): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
+      if (wavChunkInfos && wavChunkInfos.length > 1) {
+        return callWhisperOnChunks(audioBuffer, wavChunkInfos, GROQ_API_KEY!, 0);
+      }
+      const audioBlob = new Blob([audioBuffer], { type: contentType });
+      return callWhisperChunk(audioBlob, fileExtension, GROQ_API_KEY!, 0);
+    }
 
     // ── Call Whisper (1, 2, or 3 passes) ──
     let finalWords: WordTimestamp[];
@@ -466,10 +464,9 @@ Deno.serve(async (req) => {
     let repairSummary: { repairCount: number; insertedWordCount: number } | null = null;
 
     if (useTriplePass) {
+      // Small files only — run in parallel
       const [rawRunA, rawRunB, rawRunC] = await Promise.all([
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+        runOnePass(), runOnePass(), runOnePass(),
       ]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
@@ -477,18 +474,10 @@ Deno.serve(async (req) => {
       const runC = repairWhisperRun(rawRunC, orderedShots);
 
       console.log(`[whisper-align] Pass A: ${runA.words.length}, B: ${runB.words.length}, C: ${runC.words.length} words`);
-      if (runA.repairCount || runB.repairCount || runC.repairCount) {
-        console.log(
-          `[whisper-align] Transcript repair applied — A:${runA.repairCount}/${runA.insertedWordCount}w, B:${runB.repairCount}/${runB.insertedWordCount}w, C:${runC.repairCount}/${runC.insertedWordCount}w`
-        );
-      }
 
-      // Compare all pairs
       const compAB = compareRuns(runA.words, runB.words);
       const compAC = compareRuns(runA.words, runC.words);
       const compBC = compareRuns(runB.words, runC.words);
-
-      // Use pair with lowest average delta as the "best" comparison
       const pairs = [
         { label: "A-B", comp: compAB, avgDelta: compAB.avgDeltaMs },
         { label: "A-C", comp: compAC, avgDelta: compAC.avgDeltaMs },
@@ -497,53 +486,32 @@ Deno.serve(async (req) => {
       pairs.sort((a, b) => a.avgDelta - b.avgDelta);
       comparison = pairs[0].comp;
 
-      console.log(
-        `[whisper-align] Best pair: ${pairs[0].label} avg=${pairs[0].avgDelta}ms, worst: ${pairs[2].label} avg=${pairs[2].avgDelta}ms`
-      );
-
       passAWords = runA.words;
       passBWords = runB.words;
       passCWords = runC.words;
-      // Use pass A as default "main" result
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
-      repairSummary = {
-        repairCount: runA.repairCount,
-        insertedWordCount: runA.insertedWordCount,
-      };
+      repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
     } else if (useDualPass) {
       const [rawRunA, rawRunB] = await Promise.all([
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+        runOnePass(), runOnePass(),
       ]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
 
       console.log(`[whisper-align] Pass A: ${runA.words.length} words, Pass B: ${runB.words.length} words`);
-      if (runA.repairCount || runB.repairCount) {
-        console.log(
-          `[whisper-align] Transcript repair applied — A:${runA.repairCount}/${runA.insertedWordCount}w, B:${runB.repairCount}/${runB.insertedWordCount}w`
-        );
-      }
 
       comparison = compareRuns(runA.words, runB.words);
-      console.log(
-        `[whisper-align] Comparison: avg=${comparison.avgDeltaMs}ms, max=${comparison.maxDeltaMs}ms, p95=${comparison.p95DeltaMs}ms`
-      );
-
       passAWords = runA.words;
       passBWords = runB.words;
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
-      repairSummary = {
-        repairCount: runA.repairCount,
-        insertedWordCount: runA.insertedWordCount,
-      };
+      repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
     } else {
-      const rawRun = await callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0);
+      const rawRun = await runOnePass();
       const run = repairWhisperRun(rawRun, orderedShots);
       if (run.repairCount) {
         console.log(
