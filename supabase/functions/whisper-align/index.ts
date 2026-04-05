@@ -467,14 +467,14 @@ Deno.serve(async (req) => {
 
     const contentType = audioResponse.headers.get("content-type") || "audio/mpeg";
     const audioBuffer = await audioResponse.arrayBuffer();
-    const audioBlob = new Blob([audioBuffer], { type: contentType });
     const fileExtension = contentType.includes("wav") || audioUrl.toLowerCase().includes(".wav")
       ? "wav"
       : contentType.includes("mpeg") || audioUrl.toLowerCase().includes(".mp3")
         ? "mp3"
         : "audio";
+    const isLargeWav = fileExtension === "wav" && audioBuffer.byteLength > MAX_CHUNK_BYTES;
 
-    console.log(`[whisper-align] Audio: ${audioBlob.size} bytes, type=${contentType}`);
+    console.log(`[whisper-align] Audio: ${audioBuffer.byteLength} bytes, type=${contentType}, largeWav=${isLargeWav}`);
 
     // ── Groq key ──
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
@@ -482,10 +482,29 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Clé API Groq non configurée." }, 500);
     }
 
-    const useTriplePass = triplePass === true;
-    const useDualPass = !useTriplePass && dualPass === true;
+    // Force single pass for large WAV to avoid memory limit
+    const useTriplePass = !isLargeWav && triplePass === true;
+    const useDualPass = !isLargeWav && !useTriplePass && dualPass === true;
     const passCount = useTriplePass ? 3 : useDualPass ? 2 : 1;
+    if (isLargeWav && (dualPass || triplePass)) {
+      console.log(`[whisper-align] Large WAV detected (${audioBuffer.byteLength} bytes) — forcing single pass to stay within memory limits`);
+    }
     console.log(`[whisper-align] Mode: ${passCount} pass(es)`);
+
+    // ── Prepare chunks (for WAV) or direct blob ──
+    const wavChunkInfos = isLargeWav ? planWavChunks(audioBuffer) : null;
+    if (wavChunkInfos && wavChunkInfos.length > 1) {
+      console.log(`[whisper-align] Planned ${wavChunkInfos.length} WAV chunks`);
+    }
+
+    // Helper to run one Whisper pass
+    async function runOnePass(): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
+      if (wavChunkInfos && wavChunkInfos.length > 1) {
+        return callWhisperOnChunks(audioBuffer, wavChunkInfos, GROQ_API_KEY!, 0);
+      }
+      const audioBlob = new Blob([audioBuffer], { type: contentType });
+      return callWhisperChunk(audioBlob, fileExtension, GROQ_API_KEY!, 0);
+    }
 
     // ── Call Whisper (1, 2, or 3 passes) ──
     let finalWords: WordTimestamp[];
@@ -499,10 +518,9 @@ Deno.serve(async (req) => {
     let repairSummary: { repairCount: number; insertedWordCount: number } | null = null;
 
     if (useTriplePass) {
+      // Small files only — run in parallel
       const [rawRunA, rawRunB, rawRunC] = await Promise.all([
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+        runOnePass(), runOnePass(), runOnePass(),
       ]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
@@ -510,18 +528,10 @@ Deno.serve(async (req) => {
       const runC = repairWhisperRun(rawRunC, orderedShots);
 
       console.log(`[whisper-align] Pass A: ${runA.words.length}, B: ${runB.words.length}, C: ${runC.words.length} words`);
-      if (runA.repairCount || runB.repairCount || runC.repairCount) {
-        console.log(
-          `[whisper-align] Transcript repair applied — A:${runA.repairCount}/${runA.insertedWordCount}w, B:${runB.repairCount}/${runB.insertedWordCount}w, C:${runC.repairCount}/${runC.insertedWordCount}w`
-        );
-      }
 
-      // Compare all pairs
       const compAB = compareRuns(runA.words, runB.words);
       const compAC = compareRuns(runA.words, runC.words);
       const compBC = compareRuns(runB.words, runC.words);
-
-      // Use pair with lowest average delta as the "best" comparison
       const pairs = [
         { label: "A-B", comp: compAB, avgDelta: compAB.avgDeltaMs },
         { label: "A-C", comp: compAC, avgDelta: compAC.avgDeltaMs },
@@ -530,53 +540,32 @@ Deno.serve(async (req) => {
       pairs.sort((a, b) => a.avgDelta - b.avgDelta);
       comparison = pairs[0].comp;
 
-      console.log(
-        `[whisper-align] Best pair: ${pairs[0].label} avg=${pairs[0].avgDelta}ms, worst: ${pairs[2].label} avg=${pairs[2].avgDelta}ms`
-      );
-
       passAWords = runA.words;
       passBWords = runB.words;
       passCWords = runC.words;
-      // Use pass A as default "main" result
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
-      repairSummary = {
-        repairCount: runA.repairCount,
-        insertedWordCount: runA.insertedWordCount,
-      };
+      repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
     } else if (useDualPass) {
       const [rawRunA, rawRunB] = await Promise.all([
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
-        callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0),
+        runOnePass(), runOnePass(),
       ]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
 
       console.log(`[whisper-align] Pass A: ${runA.words.length} words, Pass B: ${runB.words.length} words`);
-      if (runA.repairCount || runB.repairCount) {
-        console.log(
-          `[whisper-align] Transcript repair applied — A:${runA.repairCount}/${runA.insertedWordCount}w, B:${runB.repairCount}/${runB.insertedWordCount}w`
-        );
-      }
 
       comparison = compareRuns(runA.words, runB.words);
-      console.log(
-        `[whisper-align] Comparison: avg=${comparison.avgDeltaMs}ms, max=${comparison.maxDeltaMs}ms, p95=${comparison.p95DeltaMs}ms`
-      );
-
       passAWords = runA.words;
       passBWords = runB.words;
       finalWords = runA.words;
       finalTranscript = runA.transcript;
       finalDuration = runA.duration;
-      repairSummary = {
-        repairCount: runA.repairCount,
-        insertedWordCount: runA.insertedWordCount,
-      };
+      repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
     } else {
-      const rawRun = await callWhisper(audioBlob, fileExtension, GROQ_API_KEY, 0);
+      const rawRun = await runOnePass();
       const run = repairWhisperRun(rawRun, orderedShots);
       if (run.repairCount) {
         console.log(
