@@ -615,8 +615,29 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { project_id, scene_id, sensitive_level, segment_only, prompt_only } = await req.json();
+    const { project_id, scene_id, sensitive_level, segment_only, prompt_only, visual_style, aspect_ratio: reqAspectRatio } = await req.json();
     if (!project_id) throw new Error("Missing project_id");
+
+    // Visual style suffix map — must stay in sync with client types.ts
+    const STYLE_SUFFIXES: Record<string, string> = {
+      realistic: "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique.",
+      cinematic: "Style : image fixe cinématographique, éclairage dramatique, profondeur de champ, composition grand écran, atmosphère de film.",
+      illustration: "Style : illustration numérique éditoriale, détails riches, couleurs vives, lignes nettes, illustration professionnelle.",
+      painting: "Style : peinture à l'huile, coups de pinceau visibles, texture riche, composition classique, qualité muséale.",
+      lineart: "Style : Pencil sketch portrait, graphite drawing, crosshatching, black and white, realistic editorial illustration, sketched background, fine detailed linework.",
+      comics: "Style : bande dessinée, contours marqués, couleurs vives et aplaties, illustration de roman graphique, trames de points.",
+      animation: "Style : animation, cel-shaded, couleurs vibrantes, personnages expressifs, animation numérique nette.",
+      conceptart: "Style : concept art, design d'environnement, art numérique pictural, perspective atmosphérique, matte painting.",
+      "3dcgi": "Style : rendu 3D, CGI, rendu physiquement réaliste, illumination globale, qualité Unreal Engine.",
+      graphicdesign: "Style : design graphique, flat design, formes géométriques, mise en page moderne, esthétique vectorielle.",
+      abstract: "Style : art abstrait, composition expérimentale, couleurs vives, couches texturées, interprétation artistique.",
+      scientific: "Style : illustration scientifique, diagramme technique, précision anatomique, illustration médicale, clarté éducative.",
+    };
+
+    const resolvedStyleSuffix = (visual_style && STYLE_SUFFIXES[visual_style])
+      ? STYLE_SUFFIXES[visual_style]
+      : STYLE_SUFFIXES.realistic;
+    const resolvedAspectRatio = reqAspectRatio || "16:9";
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
 
