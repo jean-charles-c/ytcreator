@@ -126,6 +126,8 @@ Deno.serve(async (req) => {
     const normalizedText = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")  // curly single quotes → straight apostrophe
       .replace(/[\u201C\u201D]/g, '"')         // curly double quotes → straight quotes
+      // Fix: remove spaces before punctuation (e.g. "option ." → "option.")
+      .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
       // Specific word substitutions BEFORE elision removal
       .replace(/\bn['']y\b/gi, "ni")
       .replace(/\bc['']est\b/gi, "sait")
