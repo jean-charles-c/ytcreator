@@ -148,9 +148,68 @@ function repairWhisperRun(
   };
 }
 
-// ── Single Whisper call ──
+// ── WAV chunking helpers ──
 
-async function callWhisper(
+const MAX_CHUNK_BYTES = 24 * 1024 * 1024; // 24MB to stay under Groq's 25MB limit
+
+function splitWavIntoChunks(wavBuffer: ArrayBuffer): ArrayBuffer[] {
+  const view = new DataView(wavBuffer);
+  // Parse WAV header (assume standard 44-byte header)
+  const headerSize = 44;
+  if (wavBuffer.byteLength <= MAX_CHUNK_BYTES) {
+    return [wavBuffer];
+  }
+
+  const numChannels = view.getUint16(22, true);
+  const sampleRate = view.getUint32(24, true);
+  const bitsPerSample = view.getUint16(34, true);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = wavBuffer.byteLength - headerSize;
+
+  const maxDataPerChunk = MAX_CHUNK_BYTES - headerSize;
+  // Align to block boundaries
+  const alignedMaxData = Math.floor(maxDataPerChunk / blockAlign) * blockAlign;
+
+  const chunks: ArrayBuffer[] = [];
+  let offset = 0;
+
+  while (offset < dataSize) {
+    const chunkDataSize = Math.min(alignedMaxData, dataSize - offset);
+    const chunkBuffer = new ArrayBuffer(headerSize + chunkDataSize);
+    const chunkView = new DataView(chunkBuffer);
+    const chunkBytes = new Uint8Array(chunkBuffer);
+
+    // Copy and patch header
+    chunkBytes.set(new Uint8Array(wavBuffer, 0, headerSize));
+    // Fix RIFF size
+    chunkView.setUint32(4, 36 + chunkDataSize, true);
+    // Fix data size
+    chunkView.setUint32(40, chunkDataSize, true);
+
+    // Copy PCM data
+    chunkBytes.set(new Uint8Array(wavBuffer, headerSize + offset, chunkDataSize), headerSize);
+
+    chunks.push(chunkBuffer);
+    offset += chunkDataSize;
+  }
+
+  console.log(`[whisper-align] Split WAV into ${chunks.length} chunks (blockAlign=${blockAlign}, sampleRate=${sampleRate})`);
+  return chunks;
+}
+
+function chunkTimeOffset(wavBuffer: ArrayBuffer, chunkIndex: number, chunkDataBytes: number): number {
+  const view = new DataView(wavBuffer);
+  const sampleRate = view.getUint32(24, true);
+  const blockAlign = view.getUint16(32, true);
+  const headerSize = 44;
+  const maxDataPerChunk = Math.floor((MAX_CHUNK_BYTES - headerSize) / blockAlign) * blockAlign;
+  const samplesPerChunk = maxDataPerChunk / blockAlign;
+  return (chunkIndex * samplesPerChunk) / sampleRate;
+}
+
+// ── Single Whisper call (with auto-chunking for WAV) ──
+
+async function callWhisperChunk(
   audioBlob: Blob,
   fileExtension: string,
   groqApiKey: string,
@@ -197,6 +256,51 @@ async function callWhisper(
       : 0;
 
   return { words, transcript: data.text || "", duration };
+}
+
+async function callWhisper(
+  audioBlob: Blob,
+  fileExtension: string,
+  groqApiKey: string,
+  temperature: number
+): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
+  // If small enough or not WAV, send directly
+  if (audioBlob.size <= MAX_CHUNK_BYTES || fileExtension !== "wav") {
+    return callWhisperChunk(audioBlob, fileExtension, groqApiKey, temperature);
+  }
+
+  // Split WAV into chunks
+  const fullBuffer = await audioBlob.arrayBuffer();
+  const chunks = splitWavIntoChunks(fullBuffer);
+
+  if (chunks.length === 1) {
+    return callWhisperChunk(audioBlob, fileExtension, groqApiKey, temperature);
+  }
+
+  const allWords: WordTimestamp[] = [];
+  let fullTranscript = "";
+  let totalDuration = 0;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const timeOffset = chunkTimeOffset(fullBuffer, i, chunks[i].byteLength - 44);
+    const chunkBlob = new Blob([chunks[i]], { type: "audio/wav" });
+    console.log(`[whisper-align] Sending chunk ${i + 1}/${chunks.length} (${chunkBlob.size} bytes, offset=${timeOffset.toFixed(1)}s)`);
+
+    const result = await callWhisperChunk(chunkBlob, "wav", groqApiKey, temperature);
+
+    // Offset timestamps by chunk position
+    for (const w of result.words) {
+      allWords.push({
+        word: w.word,
+        start: w.start + timeOffset,
+        end: w.end + timeOffset,
+      });
+    }
+    fullTranscript += (fullTranscript ? " " : "") + result.transcript;
+    totalDuration = Math.max(totalDuration, result.duration + timeOffset);
+  }
+
+  return { words: allWords, transcript: fullTranscript, duration: totalDuration };
 }
 
 // ── Compare two runs ──
