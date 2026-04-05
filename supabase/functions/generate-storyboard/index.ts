@@ -14,7 +14,7 @@ const corsHeaders = {
 
 const CINEMATIC_PROMPT_SYSTEM = `You are a cinematic visual prompt generator specialized in documentary filmmaking visuals.
 
-You are generating image prompts that will be executed by Grok Image.
+You are generating image prompts that will be executed by an image generation AI.
 All prompts must therefore be optimized for Grok Image's interpretation of photorealistic cinematic scenes.
 
 ## MISSION
