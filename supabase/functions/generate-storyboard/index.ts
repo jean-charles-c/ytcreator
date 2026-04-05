@@ -154,9 +154,9 @@ Each prompt_export must be in FRENCH and contain ALL of these woven into one con
 6. Lighting: describe light source, direction, quality, shadows — motivated by the scene's ambiance when available
 7. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
 8. End with these three mandatory lines in the same paragraph:
-   "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique."
+   "[VISUAL_STYLE_LINE]"
    "Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste."
-   "Ratio d'aspect : 16:9"
+   "Ratio d'aspect : [ASPECT_RATIO]"
 
 The prompt_export MUST be at least 100 words. Be extremely descriptive and specific — the image generation AI performs best with rich, concrete visual details rather than abstract concepts.
 
@@ -273,7 +273,7 @@ const splitLongSentenceIntoSegments = (
 const splitSceneIntoShotSegments = (text: string): string[] =>
   getNarrativeSegments(text);
 
-const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number, recurringObjects?: any[]): string => {
+const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number, recurringObjects?: any[], styleSuffix?: string, aspectRatio?: string): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
 
   // 1. Historical & geographic anchor (mandatory first sentence)
@@ -342,8 +342,12 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
     }
   }
 
-  // 8. Build the prompt — fragment is the core subject
-  return `${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles. Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9`;
+  // 8. Resolve style suffix
+  const effectiveStyle = styleSuffix || "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique.";
+  const effectiveRatio = aspectRatio || "16:9";
+
+  // 9. Build the prompt — fragment is the core subject
+  return `${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles. ${effectiveStyle} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
 };
 
 // Keep legacy name for compatibility
