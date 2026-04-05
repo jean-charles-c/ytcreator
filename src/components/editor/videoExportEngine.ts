@@ -230,7 +230,10 @@ export async function exportTimelineToMp4(
   // ── Phase: Fetch audio ──
   onProgress({ phase: "preparing", percent: 32, message: "Chargement de l'audio…" });
   const audioData = await fetchFile(timeline.audioTrack.audioUrl);
-  await ffmpeg.writeFile("audio.mp3", audioData);
+  const rawAudioExt = timeline.audioTrack.fileName.split(".").pop()?.toLowerCase() || "mp3";
+  const audioExt = /^[a-z0-9]+$/.test(rawAudioExt) ? rawAudioExt : "mp3";
+  const audioInputName = `audio.${audioExt}`;
+  await ffmpeg.writeFile(audioInputName, audioData);
 
   // ── Phase: Encode ──
   onProgress({ phase: "encoding", percent: 35, message: "Encodage vidéo…" });
@@ -239,7 +242,7 @@ export async function exportTimelineToMp4(
     "-f", "concat",
     "-safe", "0",
     "-i", "input.txt",
-    "-i", "audio.mp3",
+    "-i", audioInputName,
     "-c:v", "libx264",
     "-preset", "fast",
     "-crf", "23",
@@ -266,7 +269,7 @@ export async function exportTimelineToMp4(
     await ffmpeg.deleteFile(`img_${String(i).padStart(4, "0")}.jpg`).catch(() => {});
   }
   await ffmpeg.deleteFile("input.txt").catch(() => {});
-  await ffmpeg.deleteFile("audio.mp3").catch(() => {});
+  await ffmpeg.deleteFile(audioInputName).catch(() => {});
   await ffmpeg.deleteFile("output.mp4").catch(() => {});
 
   const blob = new Blob([outputBytes], { type: "video/mp4" });

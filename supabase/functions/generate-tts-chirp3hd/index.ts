@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { concatLinear16Wavs } from "../_shared/linear16-wav.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,16 +14,23 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function decodeBase64Audio(audioContent: string): Uint8Array {
+  const bin = atob(audioContent);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // ── Auth ──
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer "))
+    if (!authHeader?.startsWith("Bearer ")) {
       return jsonResponse({ error: "Non autorisé" }, 401);
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -41,7 +49,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Non autorisé" }, 401);
     }
 
-    // ── Input validation ──
     const body = await req.json();
     const { text, projectId, voiceName, customFileName, speakingRate, pitch } = body as {
       text?: string;
@@ -65,25 +72,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Resolve voice name ──
     const resolvedVoice =
       voiceName && voiceName.trim().length > 0
         ? voiceName.trim()
-        : "fr-FR-Chirp3-HD-Charon"; // Default: masculine Chirp3-HD
+        : "fr-FR-Chirp3-HD-Charon";
 
     const languageCode = "fr-FR";
-
-    // ── Call Google TTS (chunked for texts > 4500 bytes) ──
     const GOOGLE_TTS_API_KEY = Deno.env.get("GOOGLE_TTS_API_KEY");
     if (!GOOGLE_TTS_API_KEY) {
-      return jsonResponse(
-        { error: "Clé API Google TTS non configurée." },
-        500
-      );
+      return jsonResponse({ error: "Clé API Google TTS non configurée." }, 500);
     }
 
     const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`;
-    const MAX_BYTES = 4500; // safe margin under 5000 byte limit
+    const MAX_BYTES = 4500;
 
     function splitTextIntoChunks(fullText: string): string[] {
       const encoder = new TextEncoder();
@@ -122,16 +123,12 @@ Deno.serve(async (req) => {
       return chunks;
     }
 
-    // Normalize text for better French TTS pronunciation
     const normalizedText = text.trim()
-      .replace(/[\u2018\u2019\u02BC]/g, "'")  // curly single quotes → straight apostrophe
-      .replace(/[\u201C\u201D]/g, '"')         // curly double quotes → straight quotes
-      // Fix: remove spaces before punctuation (e.g. "option ." → "option.")
+      .replace(/[\u2018\u2019\u02BC]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
-      // Specific word substitutions BEFORE elision removal
       .replace(/\bn['']y\b/gi, "ni")
       .replace(/\bc['']est\b/gi, "sait")
-      // French elision fix for Chirp: "l'échec" → "léchec" (remove apostrophe, join)
       .replace(/([ldnscjmtLDNSCJMT])['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
       .replace(/([Qq]u)['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2");
 
@@ -139,23 +136,25 @@ Deno.serve(async (req) => {
     console.log(
       `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, normalizedSample="${normalizedText.slice(0, 200)}"`
     );
-    // Log each chunk's content boundaries for debugging paragraph order
     for (let ci = 0; ci < textChunks.length; ci++) {
-      const c = textChunks[ci];
-      const first80 = c.slice(0, 80).replace(/\n/g, "\\n");
-      const last80 = c.slice(-80).replace(/\n/g, "\\n");
-      console.log(`[chirp3hd] Chunk ${ci + 1}/${textChunks.length}: bytes=${new TextEncoder().encode(c).length}, start="${first80}", end="${last80}"`);
+      const chunk = textChunks[ci];
+      const first80 = chunk.slice(0, 80).replace(/\n/g, "\\n");
+      const last80 = chunk.slice(-80).replace(/\n/g, "\\n");
+      console.log(
+        `[chirp3hd] Chunk ${ci + 1}/${textChunks.length}: bytes=${new TextEncoder().encode(chunk).length}, start="${first80}", end="${last80}"`
+      );
     }
 
-    // ── Parallel TTS calls with order preservation ──
-    const PARALLEL_BATCH = 5; // max concurrent requests to avoid rate limits
-    const audioPartsBytes: Uint8Array[] = new Array(textChunks.length);
+    const PARALLEL_BATCH = 5;
+    const audioChunkWavs: Uint8Array[] = new Array(textChunks.length);
 
     async function synthesizeChunk(chunk: string, index: number): Promise<string | null> {
-      const audioConfig: Record<string, unknown> = { audioEncoding: "MP3" };
+      const audioConfig: Record<string, unknown> = { audioEncoding: "LINEAR16" };
       if (typeof speakingRate === "number" && speakingRate !== 1) {
         audioConfig.speakingRate = speakingRate;
       }
+      void pitch;
+
       const ttsPayload = {
         input: { text: chunk },
         voice: { languageCode, name: resolvedVoice },
@@ -178,12 +177,15 @@ Deno.serve(async (req) => {
       }
 
       const responseContentType = ttsResponse.headers.get("content-type") || "";
-      let ttsData: any;
+      let ttsData: { audioContent?: string };
       if (responseContentType.includes("application/json")) {
         ttsData = await ttsResponse.json();
       } else {
         const bodyText = await ttsResponse.text();
-        console.error(`[chirp3hd] Non-JSON response chunk ${index + 1} (${responseContentType}):`, bodyText.slice(0, 300));
+        console.error(
+          `[chirp3hd] Non-JSON response chunk ${index + 1} (${responseContentType}):`,
+          bodyText.slice(0, 300)
+        );
         return `Google TTS a retourné un format inattendu pour le chunk ${index + 1}.`;
       }
 
@@ -191,15 +193,12 @@ Deno.serve(async (req) => {
         return `Aucun contenu audio retourné pour le chunk ${index + 1}.`;
       }
 
-      const bin = atob(ttsData.audioContent as string);
-      const bytes = new Uint8Array(bin.length);
-      for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
-      audioPartsBytes[index] = bytes; // ordered by index
-      console.log(`[chirp3hd] Chunk ${index + 1}/${textChunks.length} OK (${bytes.length} bytes)`);
-      return null; // success
+      const wavBytes = decodeBase64Audio(ttsData.audioContent);
+      audioChunkWavs[index] = wavBytes;
+      console.log(`[chirp3hd] Chunk ${index + 1}/${textChunks.length} OK (${wavBytes.length} bytes WAV)`);
+      return null;
     }
 
-    // Process in batches of PARALLEL_BATCH to respect rate limits
     for (let batchStart = 0; batchStart < textChunks.length; batchStart += PARALLEL_BATCH) {
       const batchEnd = Math.min(batchStart + PARALLEL_BATCH, textChunks.length);
       const batchPromises = [];
@@ -207,28 +206,30 @@ Deno.serve(async (req) => {
         batchPromises.push(synthesizeChunk(textChunks[i], i));
       }
       const results = await Promise.all(batchPromises);
-      const firstError = results.find((r) => r !== null);
+      const firstError = results.find((result) => result !== null);
       if (firstError) {
         return jsonResponse({ error: firstError }, 502);
       }
     }
 
-    // ── Concatenate MP3 chunks ──
-    // Google TTS MP3 chunks are self-contained MPEG frames without ID3 headers,
-    // so simple byte concatenation produces a valid MP3 stream.
-    const totalSize = audioPartsBytes.reduce((sum, part) => sum + part.length, 0);
-    const audioBytes = new Uint8Array(totalSize);
-    let offset = 0;
-    for (const part of audioPartsBytes) {
-      audioBytes.set(part, offset);
-      offset += part.length;
+    const resolvedChunkCount = audioChunkWavs.filter((part) => part instanceof Uint8Array).length;
+    if (resolvedChunkCount !== textChunks.length) {
+      console.error(
+        `[chirp3hd] Missing audio chunk after synthesis: expected=${textChunks.length}, received=${resolvedChunkCount}`
+      );
+      return jsonResponse(
+        {
+          error: `Audio incomplet après synthèse : ${resolvedChunkCount}/${textChunks.length} chunk(s) reçus.`,
+        },
+        500
+      );
     }
+
+    const exactCombinedAudio = concatLinear16Wavs(audioChunkWavs);
+    const audioBytes = exactCombinedAudio.wav;
     const fileSize = audioBytes.length;
+    const durationEstimate = exactCombinedAudio.durationSeconds;
 
-    // Google TTS MP3 is at 32kbps per docs
-    const durationEstimate = Math.round((fileSize * 8) / 32000);
-
-    // ── Upload to storage ──
     const timestamp = new Date()
       .toISOString()
       .replace(/[:.]/g, "-")
@@ -236,55 +237,46 @@ Deno.serve(async (req) => {
     const safeName = customFileName?.trim()
       ? customFileName.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
       : "chirp3hd";
-    const fileName = `${safeName}_${timestamp}.mp3`;
+    const fileName = `${safeName}_${timestamp}.wav`;
     const storagePath = `${user.id}/${projectId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("vo-audio")
       .upload(storagePath, audioBytes, {
-        contentType: "audio/mpeg",
+        contentType: "audio/wav",
         upsert: false,
       });
 
     if (uploadError) {
       console.error("[chirp3hd] Upload error:", uploadError);
-      return jsonResponse(
-        { error: `Erreur upload : ${uploadError.message}` },
-        500
-      );
+      return jsonResponse({ error: `Erreur upload : ${uploadError.message}` }, 500);
     }
 
     const {
       data: { publicUrl },
     } = supabase.storage.from("vo-audio").getPublicUrl(storagePath);
 
-    // ── Save to history ──
-    const { error: insertError } = await supabase
-      .from("vo_audio_history")
-      .insert({
-        project_id: projectId,
-        user_id: user.id,
-        file_name: fileName,
-        file_path: storagePath,
-        file_size: fileSize,
-        duration_estimate: durationEstimate,
-        language_code: languageCode,
-        voice_gender: resolvedVoice.toLowerCase().includes("féminin")
-          ? "FEMALE"
-          : "MALE",
-        speaking_rate: null,
-        style: "chirp3hd",
-        text_length: text.length,
-        shot_timepoints: null, // Will be filled by alignment step (Prompt 4+)
-      });
+    const { error: insertError } = await supabase.from("vo_audio_history").insert({
+      project_id: projectId,
+      user_id: user.id,
+      file_name: fileName,
+      file_path: storagePath,
+      file_size: fileSize,
+      duration_estimate: durationEstimate,
+      language_code: languageCode,
+      voice_gender: resolvedVoice.toLowerCase().includes("féminin") ? "FEMALE" : "MALE",
+      speaking_rate: null,
+      style: "chirp3hd",
+      text_length: text.length,
+      shot_timepoints: null,
+    });
 
     if (insertError) {
       console.error("[chirp3hd] DB insert error:", insertError);
-      // Non-blocking: audio is still usable
     }
 
     console.log(
-      `[chirp3hd] Success: ${fileName}, ${fileSize} bytes, ~${durationEstimate}s`
+      `[chirp3hd] Success: ${fileName}, ${fileSize} bytes WAV, ${durationEstimate.toFixed(3)}s`
     );
 
     return jsonResponse({
@@ -294,6 +286,8 @@ Deno.serve(async (req) => {
       durationEstimate,
       voiceName: resolvedVoice,
       pipeline: "chirp3hd",
+      chunks: textChunks.length,
+      audioFormat: "wav",
     });
   } catch (err) {
     console.error("[chirp3hd] Unexpected error:", err);
