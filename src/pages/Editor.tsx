@@ -2937,7 +2937,7 @@ export default function Editor() {
                                       variant="outline"
                                       className="h-8 text-xs px-2 gap-1"
                                       disabled={isRegenerating || scene.validated}
-                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id); }}
+                                      onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { promptOnly: true }); }}
                                       title="Régénérer les prompts visuels de cette scène via IA"
                                     >
                                       {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
