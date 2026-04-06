@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { text, projectId, voiceName, customFileName, speakingRate, pitch, customPronunciations: userPronunciations } = body as {
+    const { text, projectId, voiceName, customFileName, speakingRate, pitch, customPronunciations: userPronunciations, pauseBetweenParagraphs, pauseAfterSentences, pauseAfterComma } = body as {
       text?: string;
       projectId?: string;
       voiceName?: string;
@@ -58,6 +58,9 @@ Deno.serve(async (req) => {
       speakingRate?: number;
       pitch?: number;
       customPronunciations?: { phrase: string; pronunciation: string }[];
+      pauseBetweenParagraphs?: number;
+      pauseAfterSentences?: number;
+      pauseAfterComma?: number;
     };
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -167,23 +170,37 @@ Deno.serve(async (req) => {
       pronunciation: p.pronunciation,
     }));
 
-    const textChunks = splitTextIntoChunks(preNormalized);
+    // ── Split by paragraphs first, then by byte-size chunks within each paragraph ──
+    const paragraphs = preNormalized.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+    // If no paragraph breaks, treat as single paragraph
+    const effectiveParagraphs = paragraphs.length > 0 ? paragraphs : [preNormalized];
+
+    // Build flat chunk list with paragraph boundary markers
+    interface ChunkMeta { text: string; paragraphIndex: number; }
+    const allChunks: ChunkMeta[] = [];
+    for (let pi = 0; pi < effectiveParagraphs.length; pi++) {
+      const paraChunks = splitTextIntoChunks(effectiveParagraphs[pi]);
+      for (const chunk of paraChunks) {
+        allChunks.push({ text: chunk, paragraphIndex: pi });
+      }
+    }
 
     const userCount = Array.isArray(userPronunciations) ? userPronunciations.length : 0;
+    const paragraphPauseMs = typeof pauseBetweenParagraphs === "number" ? Math.max(0, Math.min(pauseBetweenParagraphs, 5000)) : 0;
     console.log(
-      `[chirp3hd] Generating audio (customPronunciations): voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, builtIn=${BUILT_IN_PRONUNCIATIONS.length}, userCustom=${userCount}, total=${CUSTOM_PRONUNCIATIONS.length}`
+      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, paragraphs=${effectiveParagraphs.length}, chunks=${allChunks.length}, speakingRate=${speakingRate}, pauseBetweenParagraphs=${paragraphPauseMs}ms, builtIn=${BUILT_IN_PRONUNCIATIONS.length}, userCustom=${userCount}, total=${CUSTOM_PRONUNCIATIONS.length}`
     );
-    for (let ci = 0; ci < textChunks.length; ci++) {
-      const chunk = textChunks[ci];
+    for (let ci = 0; ci < allChunks.length; ci++) {
+      const chunk = allChunks[ci].text;
       const first80 = chunk.slice(0, 80).replace(/\n/g, "\\n");
       const last80 = chunk.slice(-80).replace(/\n/g, "\\n");
       console.log(
-        `[chirp3hd] Chunk ${ci + 1}/${textChunks.length}: bytes=${new TextEncoder().encode(chunk).length}, start="${first80}", end="${last80}"`
+        `[chirp3hd] Chunk ${ci + 1}/${allChunks.length} (para ${allChunks[ci].paragraphIndex + 1}): bytes=${new TextEncoder().encode(chunk).length}, start="${first80}", end="${last80}"`
       );
     }
 
     const PARALLEL_BATCH = 5;
-    const audioChunkWavs: Uint8Array[] = new Array(textChunks.length);
+    const audioChunkWavs: Uint8Array[] = new Array(allChunks.length);
 
     async function synthesizeChunk(chunk: string, index: number): Promise<string | null> {
       const audioConfig: Record<string, unknown> = { audioEncoding: "LINEAR16" };
@@ -212,10 +229,10 @@ Deno.serve(async (req) => {
       if (!ttsResponse.ok) {
         const errBody = await ttsResponse.text();
         console.error(
-          `[chirp3hd] Google TTS error chunk ${index + 1}/${textChunks.length} [${ttsResponse.status}]:`,
+          `[chirp3hd] Google TTS error chunk ${index + 1}/${allChunks.length} [${ttsResponse.status}]:`,
           errBody.slice(0, 500)
         );
-        return `Google TTS API Chirp3-HD a échoué sur le chunk ${index + 1}/${textChunks.length} [${ttsResponse.status}]: ${errBody.slice(0, 300)}`;
+        return `Google TTS API Chirp3-HD a échoué sur le chunk ${index + 1}/${allChunks.length} [${ttsResponse.status}]: ${errBody.slice(0, 300)}`;
       }
 
       const responseContentType = ttsResponse.headers.get("content-type") || "";
@@ -237,15 +254,15 @@ Deno.serve(async (req) => {
 
       const wavBytes = decodeBase64Audio(ttsData.audioContent);
       audioChunkWavs[index] = wavBytes;
-      console.log(`[chirp3hd] Chunk ${index + 1}/${textChunks.length} OK (${wavBytes.length} bytes WAV)`);
+      console.log(`[chirp3hd] Chunk ${index + 1}/${allChunks.length} OK (${wavBytes.length} bytes WAV)`);
       return null;
     }
 
-    for (let batchStart = 0; batchStart < textChunks.length; batchStart += PARALLEL_BATCH) {
-      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, textChunks.length);
+    for (let batchStart = 0; batchStart < allChunks.length; batchStart += PARALLEL_BATCH) {
+      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, allChunks.length);
       const batchPromises = [];
       for (let i = batchStart; i < batchEnd; i++) {
-        batchPromises.push(synthesizeChunk(textChunks[i], i));
+        batchPromises.push(synthesizeChunk(allChunks[i].text, i));
       }
       const results = await Promise.all(batchPromises);
       const firstError = results.find((result) => result !== null);
@@ -255,19 +272,64 @@ Deno.serve(async (req) => {
     }
 
     const resolvedChunkCount = audioChunkWavs.filter((part) => part instanceof Uint8Array).length;
-    if (resolvedChunkCount !== textChunks.length) {
+    if (resolvedChunkCount !== allChunks.length) {
       console.error(
-        `[chirp3hd] Missing audio chunk after synthesis: expected=${textChunks.length}, received=${resolvedChunkCount}`
+        `[chirp3hd] Missing audio chunk after synthesis: expected=${allChunks.length}, received=${resolvedChunkCount}`
       );
       return jsonResponse(
         {
-          error: `Audio incomplet après synthèse : ${resolvedChunkCount}/${textChunks.length} chunk(s) reçus.`,
+          error: `Audio incomplet après synthèse : ${resolvedChunkCount}/${allChunks.length} chunk(s) reçus.`,
         },
         500
       );
     }
 
-    const exactCombinedAudio = concatLinear16Wavs(audioChunkWavs);
+    // ── Assemble WAVs with silence between paragraphs ──
+    function createSilenceWav(durationMs: number, sampleRate: number): Uint8Array {
+      const numSamples = Math.round((durationMs / 1000) * sampleRate);
+      // 16-bit mono silence = zero bytes
+      const silencePayload = new Uint8Array(numSamples * 2);
+      // Build a minimal WAV
+      const header = new Uint8Array(44);
+      const byteRate = sampleRate * 2;
+      // RIFF header
+      const dv = new DataView(header.buffer);
+      header.set([0x52, 0x49, 0x46, 0x46], 0); // "RIFF"
+      dv.setUint32(4, 36 + silencePayload.length, true);
+      header.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
+      header.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
+      dv.setUint32(16, 16, true);
+      dv.setUint16(20, 1, true); // PCM
+      dv.setUint16(22, 1, true); // mono
+      dv.setUint32(24, sampleRate, true);
+      dv.setUint32(28, byteRate, true);
+      dv.setUint16(32, 2, true); // block align
+      dv.setUint16(34, 16, true); // bits per sample
+      header.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
+      dv.setUint32(40, silencePayload.length, true);
+      const wav = new Uint8Array(44 + silencePayload.length);
+      wav.set(header, 0);
+      wav.set(silencePayload, 44);
+      return wav;
+    }
+
+    // Build final WAV array with silence injected between paragraph boundaries
+    const finalWavParts: Uint8Array[] = [];
+    let sampleRateForSilence = 24000; // will be updated from first chunk
+    try {
+      const firstFmt = parseLinear16WavFormat(audioChunkWavs[0]);
+      sampleRateForSilence = firstFmt.sampleRate;
+    } catch { /* fallback 24000 */ }
+
+    for (let ci = 0; ci < allChunks.length; ci++) {
+      // Insert silence before this chunk if it's the start of a new paragraph (not the first)
+      if (ci > 0 && paragraphPauseMs > 0 && allChunks[ci].paragraphIndex !== allChunks[ci - 1].paragraphIndex) {
+        finalWavParts.push(createSilenceWav(paragraphPauseMs, sampleRateForSilence));
+      }
+      finalWavParts.push(audioChunkWavs[ci]);
+    }
+
+    const exactCombinedAudio = concatLinear16Wavs(finalWavParts);
     const audioBytes = exactCombinedAudio.wav;
     const fileSize = audioBytes.length;
     const durationEstimate = exactCombinedAudio.durationSeconds;
