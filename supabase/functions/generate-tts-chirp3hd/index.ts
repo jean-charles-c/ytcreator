@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
     const CUSTOM_PRONUNCIATIONS = Array.from(mergedMap.values()).map(p => ({
       phrase: p.phrase,
-      phoneticEncoding: "IPA" as const,
+      phoneticEncoding: "PHONETIC_ENCODING_IPA" as const,
       pronunciation: p.pronunciation,
     }));
 
