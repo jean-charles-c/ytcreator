@@ -342,6 +342,8 @@ CRITICAL STYLE RULES:
 3. TONAL CONSISTENCY: the style must feel like ONE voice throughout — not 13 different authors. Variations in intensity are fine; contradictions in tone are not.
 4. STYLE ≠ QUALITY SUBSTITUTE: a "dramatic" style does NOT excuse vague claims. A "humorous" style does NOT excuse shallow analysis. A "documentary" style does NOT excuse empty atmosphere. Every stylistic choice must CARRY analytical content.
 
+${cadenceSection}
+
 ---
 
 ## PLANNING PHASE (mandatory, internal)
