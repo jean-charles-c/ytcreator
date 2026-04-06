@@ -138,7 +138,9 @@ Deno.serve(async (req) => {
       // Fuse all single-letter elisions: c', n', s', d', j', m', t', l'
       .replace(new RegExp(`\\b([cCnNsSlLdDjJmMtT])[''](?=[${ELISION_VOWELS}])`, "g"), "$1")
       // Fuse qu' elision
-      .replace(/\bqu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "qu");
+      .replace(/\bqu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "qu")
+      // Liaison "t" après c'est / n'est devant voyelle: "cest un" → "cest tun"
+      .replace(new RegExp(`\\b([cn])est\\s+(?=[${ELISION_VOWELS}])`, "gi"), "$1est t");
 
     // Step 2: Build customPronunciations — built-in + user overrides
     // Phrases must match the FUSED form (no apostrophe) since the text is
