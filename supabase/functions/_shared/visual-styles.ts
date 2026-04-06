@@ -136,6 +136,11 @@ export const STYLE_SUFFIXES: Record<string, StyleDef> = {
     promptSuffix: "Precise technical or scientific illustration. Detailed cross-section or exploded view diagram with clear labeling. Clean lines on white or light grey background. Restricted palette of black, white, grey and one or two accent colors (typically blue or red for callouts). Style references: engineering assembly manuals, medical atlas anatomy plates, natural history museum engravings, NASA technical documentation or patent drawing style.",
     promptSuffixFr: "Style : illustration technique ou scientifique précise. Coupe détaillée ou vue éclatée avec légendes. Lignes nettes sur fond blanc. Palette restreinte noir, blanc, gris avec un ou deux accents. Références : manuels techniques, atlas médical, documentation NASA.",
   },
+  invertedlineart: {
+    label: "Line art inversé / Chalk style",
+    promptSuffix: "White line art on pure black background. Single uniform stroke weight with no fill or color. Large black negative space used as shadow and volume. Minimal interior detail, expressive and loose contours. Chalkboard or inverted storyboard aesthetic. Clean, graphic and high contrast.",
+    promptSuffixFr: "Style : dessin au trait blanc sur fond noir pur. Trait unique d'épaisseur uniforme sans remplissage ni couleur. Grand espace négatif noir utilisé comme ombre et volume. Détails intérieurs minimaux, contours expressifs et libres. Esthétique de tableau noir ou storyboard inversé. Net, graphique et très contrasté.",
+  },
 };
 
 /** Default style when none is selected */
