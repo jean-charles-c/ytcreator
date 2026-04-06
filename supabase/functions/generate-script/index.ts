@@ -261,6 +261,7 @@ function buildSystemPrompt(
   charMax: number,
   charTarget: number,
   narrativeStyle: string,
+  shortSentencePct: number = 0,
 ): string {
   const wordTarget = Math.round(charTarget / 5.5);
   const wordMin = Math.round(charMin / 5.5);
@@ -976,7 +977,7 @@ serve(async (req) => {
       }, 15000);
 
       try {
-        const { analysis, structure, text, language, targetChars, narrativeStyle } = await req.json();
+        const { analysis, structure, text, language, targetChars, narrativeStyle, shortSentencePct } = await req.json();
         if (!analysis) {
           controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
           controller.close();
