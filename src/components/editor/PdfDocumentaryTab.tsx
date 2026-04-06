@@ -633,7 +633,7 @@ export default function PdfDocumentaryTab({
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ script: taggedScript, language: scriptLanguage, model: scriptAiModel }),
+          body: JSON.stringify({ script: taggedScript, language: scriptLanguage, model: scriptAiModel, shortSentencePct }),
         }
       );
 
@@ -888,8 +888,9 @@ export default function PdfDocumentaryTab({
       narrativeStyle: narrativeStyleId === "custom" ? customStyleLabel || "documentary" : narrativeStyleId,
       existingScript: script,
       isRegenerate,
+      shortSentencePct,
     });
-  }, [analysis, extractedText, scriptLanguage, script, targetChars, narrativeStyleId, customStyleLabel, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange]);
+  }, [analysis, extractedText, scriptLanguage, script, targetChars, narrativeStyleId, customStyleLabel, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange, shortSentencePct]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -1365,6 +1366,27 @@ export default function PdfDocumentaryTab({
               className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+            <div className="flex items-center gap-1.5 ml-2">
+              <label className="text-[10px] text-muted-foreground whitespace-nowrap" title="Pourcentage de phrases courtes (2-6 mots). 0% = rédaction libre.">
+                Phrases courtes
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={50}
+                step={5}
+                value={shortSentencePct}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setShortSentencePct(v);
+                  try { localStorage.setItem("script-short-sentence-pct", String(v)); } catch {}
+                }}
+                className="w-20 h-4 accent-primary"
+              />
+              <span className="text-[10px] text-muted-foreground tabular-nums w-8">
+                {shortSentencePct === 0 ? "libre" : `${shortSentencePct}%`}
+              </span>
+            </div>
           </div>
         }
       />
