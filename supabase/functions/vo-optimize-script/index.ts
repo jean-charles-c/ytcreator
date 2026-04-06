@@ -92,7 +92,7 @@ CONSIGNE DE CADENCE SUPPLÉMENTAIRE :
 Ne produis surtout pas un flux homogène.
 Le texte doit respirer en permanence.
 
-{{CADENCE_RULES}}`;
+{{CADENCE_RULES}}
 
 INTERDICTIONS :
 - ne pas écrire comme un journaliste magazine
