@@ -88,6 +88,7 @@ export interface ScriptGenParams {
   narrativeStyle?: string;
   existingScript?: string | null;
   isRegenerate?: boolean;
+  shortSentencePct?: number;
 }
 
 export interface SegmentationParams {

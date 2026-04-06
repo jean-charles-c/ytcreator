@@ -168,6 +168,9 @@ export default function PdfDocumentaryTab({
   const [findingTension, setFindingTension] = useState(false);
   const [humanizing, setHumanizing] = useState(false);
   const [voOptimizing, setVoOptimizing] = useState(false);
+  const [shortSentencePct, setShortSentencePct] = useState<number>(() => {
+    try { const v = localStorage.getItem("script-short-sentence-pct"); return v ? Number(v) : 0; } catch { return 0; }
+  });
   const [scriptAiModel, setScriptAiModel] = useState<ScriptAiModelId>(getPersistedScriptAiModel);
   const [showVersionPreviewId, setShowVersionPreviewId] = useState<number | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
