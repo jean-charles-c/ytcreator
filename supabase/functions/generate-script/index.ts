@@ -261,6 +261,7 @@ function buildSystemPrompt(
   charMax: number,
   charTarget: number,
   narrativeStyle: string,
+  shortSentencePct: number = 0,
 ): string {
   const wordTarget = Math.round(charTarget / 5.5);
   const wordMin = Math.round(charMin / 5.5);
@@ -271,6 +272,23 @@ function buildSystemPrompt(
 
   const volumeTable = buildVolumeTable(charTarget);
   const volumeGuidance = buildVolumeGuidance(charTarget);
+
+  let cadenceSection: string;
+  if (shortSentencePct === 0) {
+    cadenceSection = `### SentenceCadenceAdapter — Free Mode
+
+No specific constraint on sentence length distribution. Let the chosen narrative style naturally dictate the rhythm. Vary sentence lengths organically according to context, emotion and pacing needs.`;
+  } else {
+    cadenceSection = `### SentenceCadenceAdapter — Controlled Rhythm
+
+MANDATORY CADENCE RULE: approximately ${shortSentencePct}% of all sentences in the script must be very short fragments of 2 to 6 words.
+- Insert isolated short sentences regularly throughout every section.
+- After an explanatory paragraph, return to a brief punchy sentence.
+- Use short triplets when an idea deserves emphasis ("On roule. On photographie. On observe.").
+- Never chain more than 4 medium-to-long sentences without a short fragment break.
+- When a stake or revelation appears, express it in a brief isolated sentence.
+- This cadence percentage (${shortSentencePct}%) is a HARD constraint — count mentally and ensure compliance.`;
+  }
 
   return `You are NarrativeEngineExpert — a world-class documentary scriptwriter and narrator.
 
@@ -323,6 +341,8 @@ CRITICAL STYLE RULES:
 2. VARY the style intensity per block: the HOOK and CLIMAX can be more stylistically charged; ACT2 (analytical core) must remain substance-first regardless of style.
 3. TONAL CONSISTENCY: the style must feel like ONE voice throughout — not 13 different authors. Variations in intensity are fine; contradictions in tone are not.
 4. STYLE ≠ QUALITY SUBSTITUTE: a "dramatic" style does NOT excuse vague claims. A "humorous" style does NOT excuse shallow analysis. A "documentary" style does NOT excuse empty atmosphere. Every stylistic choice must CARRY analytical content.
+
+${cadenceSection}
 
 ---
 
@@ -976,7 +996,7 @@ serve(async (req) => {
       }, 15000);
 
       try {
-        const { analysis, structure, text, language, targetChars, narrativeStyle } = await req.json();
+        const { analysis, structure, text, language, targetChars, narrativeStyle, shortSentencePct } = await req.json();
         if (!analysis) {
           controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
           controller.close();
@@ -995,7 +1015,8 @@ serve(async (req) => {
         const charMin = Math.round(charTarget * 0.9);
         const charMax = Math.round(charTarget * 1.1);
         const activeStyle = narrativeStyle || "documentary";
-        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, target=${charTarget}`);
+        const pct = typeof shortSentencePct === "number" ? shortSentencePct : 0;
+        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, target=${charTarget}, shortPct=${pct}`);
 
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -1007,7 +1028,7 @@ serve(async (req) => {
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
             messages: [
-              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle) },
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle, pct) },
               { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
             ],
             stream: true,

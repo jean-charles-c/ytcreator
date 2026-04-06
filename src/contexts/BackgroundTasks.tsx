@@ -88,6 +88,7 @@ export interface ScriptGenParams {
   narrativeStyle?: string;
   existingScript?: string | null;
   isRegenerate?: boolean;
+  shortSentencePct?: number;
 }
 
 export interface SegmentationParams {
@@ -243,6 +244,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               language: params.scriptLanguage,
               targetChars: params.targetChars,
               narrativeStyle: params.narrativeStyle,
+              shortSentencePct: params.shortSentencePct ?? 0,
             }),
             signal: ac.signal,
           }
