@@ -166,6 +166,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 customFileName: customFileName.trim() || undefined,
                 speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
                 customPronunciations: customPronunciations.length > 0 ? customPronunciations : undefined,
+                pauseBetweenParagraphs: settings.pauseBetweenParagraphs ?? 0,
+                pauseAfterSentences: settings.pauseAfterSentences ?? 0,
+                pauseAfterComma: settings.pauseAfterComma ?? 0,
               }),
             }
           );
