@@ -52,7 +52,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [freeMode, setFreeMode] = useState(false);
   const [pipelineMode, setPipelineMode] = useState<"ssml" | "chirp3hd">("ssml");
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
+  const [customPronunciations, setCustomPronunciations] = useState<{ phrase: string; pronunciation: string }[]>([]);
   /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
   const stripThousandSeparators = (text: string): string =>
     text.replace(/\*/g, "")
