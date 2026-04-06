@@ -179,10 +179,13 @@ Deno.serve(async (req) => {
       }
       void pitch;
 
-      const ssmlContent = chunkToSsml(chunk);
-
       const ttsPayload = {
-        input: { ssml: ssmlContent },
+        input: {
+          text: chunk,
+          customPronunciations: {
+            pronunciations: CUSTOM_PRONUNCIATIONS,
+          },
+        },
         voice: { languageCode, name: resolvedVoice },
         audioConfig,
       };
