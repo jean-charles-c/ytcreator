@@ -50,6 +50,9 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             customFileName: "preview",
             speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
             pitch: (settings.pitch || 0) + (STYLE_PRESETS[settings.style]?.pitch || 0),
+            pauseBetweenParagraphs: settings.pauseBetweenParagraphs ?? 0,
+            pauseAfterSentences: settings.pauseAfterSentences ?? 0,
+            pauseAfterComma: settings.pauseAfterComma ?? 0,
           }
         : {
             text: previewText,
