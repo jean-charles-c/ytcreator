@@ -13,6 +13,7 @@ import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, getShotFragmentText, normalizeExactSyncText } from "./voiceOverShotSync";
+import CustomPronunciationsPanel from "./CustomPronunciationsPanel";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
 
 interface VoiceOverStudioProps {
@@ -51,7 +52,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [freeMode, setFreeMode] = useState(false);
   const [pipelineMode, setPipelineMode] = useState<"ssml" | "chirp3hd">("ssml");
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
+  const [customPronunciations, setCustomPronunciations] = useState<{ phrase: string; pronunciation: string }[]>([]);
   /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
   const stripThousandSeparators = (text: string): string =>
     text.replace(/\*/g, "")
@@ -164,6 +165,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 voiceName: settings.voiceName || undefined,
                 customFileName: customFileName.trim() || undefined,
                 speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
+                customPronunciations: customPronunciations.length > 0 ? customPronunciations : undefined,
               }),
             }
           );
@@ -652,6 +654,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   </div>
                 </AccordionItem>
               </Accordion>
+
+              {/* Custom pronunciations panel */}
+              <div className="border rounded-lg border-border bg-card px-4 py-3">
+                <CustomPronunciationsPanel onPronunciationsChange={setCustomPronunciations} />
+              </div>
             </div>
 
             {/* LEFT column (2/3): Script + bottom row */}
