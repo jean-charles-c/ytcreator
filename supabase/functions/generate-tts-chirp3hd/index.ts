@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { concatLinear16Wavs } from "../_shared/linear16-wav.ts";
+import { concatLinear16Wavs, parseLinear16WavFormat } from "../_shared/linear16-wav.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
       durationEstimate,
       voiceName: resolvedVoice,
       pipeline: "chirp3hd",
-      chunks: textChunks.length,
+      chunks: allChunks.length,
       audioFormat: "wav",
     });
   } catch (err) {
