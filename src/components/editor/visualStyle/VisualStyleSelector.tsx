@@ -1,5 +1,6 @@
 /**
- * VisualStyleSelector — Dropdown to pick a visual style or inherit.
+ * VisualStyleSelector — Dropdown to pick a visual style.
+ * No inheritance labels — just shows the effective style applied.
  */
 
 import { VISUAL_STYLES, getVisualStyleById, type VisualStyleValue, computeEffective } from "./types";
@@ -20,7 +21,7 @@ export default function VisualStyleSelector({
   parentLabel,
   compact = false,
 }: VisualStyleSelectorProps) {
-  const { effectiveStyleId, state } = computeEffective(value);
+  const { effectiveStyleId } = computeEffective(value);
   const effectiveStyle = effectiveStyleId ? getVisualStyleById(effectiveStyleId) : null;
 
   return (
@@ -38,7 +39,7 @@ export default function VisualStyleSelector({
           className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[220px]"
         >
           <option value="">
-            {parentLabel ? `Hériter (${parentLabel})` : "Aucun style imposé"}
+            {parentLabel ? `Par défaut (${parentLabel})` : "Aucun style imposé"}
           </option>
           {VISUAL_STYLES.map((s) => (
             <option key={s.id} value={s.id}>
@@ -47,9 +48,9 @@ export default function VisualStyleSelector({
           ))}
         </select>
       </div>
-      {!compact && state !== "none" && effectiveStyle && (
+      {!compact && value.localStyleId != null && effectiveStyle && (
         <p className="text-[10px] text-muted-foreground pl-0.5">
-          {state === "inherited" ? "⬆ Hérité" : "✏️ Surcharge locale"} — {effectiveStyle.label}
+          ✏️ Style imposé : {effectiveStyle.label}
         </p>
       )}
     </div>
