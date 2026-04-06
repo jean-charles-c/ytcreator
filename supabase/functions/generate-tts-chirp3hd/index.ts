@@ -128,38 +128,46 @@ Deno.serve(async (req) => {
     }
 
     // Step 1: normalize unicode quotes and punctuation spacing
+    // Then fuse ALL French elisions (c', n', s', d', j', m', t', l', qu') so
+    // the API never sees an apostrophe inside a word — which it rejects.
+    const ELISION_VOWELS = "aeéèêëiîïoôuùûüyàâæœ";
     const preNormalized = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
-      // Step 1b: elision — fuse l' with following word (l'écran → lécran)
-      .replace(/\bl[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "l")
-      // Step 1c: fuse qu' with following word (qu'à → quà)
+      // Fuse all single-letter elisions: c', n', s', d', j', m', t', l'
+      .replace(new RegExp(`\\b([cCnNsSlLdDjJmMtT])[''](?=[${ELISION_VOWELS}])`, "g"), "$1")
+      // Fuse qu' elision
       .replace(/\bqu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "qu");
 
     // Step 2: Build customPronunciations — built-in + user overrides
+    // Phrases must match the FUSED form (no apostrophe) since the text is
+    // pre-normalized above.
     const BUILT_IN_PRONUNCIATIONS = [
-      { phrase: "c'est",   pronunciation: "sɛ" },
-      { phrase: "n'est",   pronunciation: "nɛ" },
-      { phrase: "l'est",   pronunciation: "lɛ" },
-      { phrase: "s'est",   pronunciation: "sɛ" },
-      { phrase: "c'était", pronunciation: "setɛ" },
-      { phrase: "n'était", pronunciation: "netɛ" },
-      { phrase: "n'y",     pronunciation: "ni" },
-      { phrase: "qu'est",  pronunciation: "kɛ" },
-      { phrase: "qu'il",   pronunciation: "kil" },
-      { phrase: "qu'elle", pronunciation: "kɛl" },
-      { phrase: "qu'une",  pronunciation: "kyn" },
-      { phrase: "d'une",   pronunciation: "dyn" },
+      { phrase: "cest",    pronunciation: "sɛ" },
+      { phrase: "nest",    pronunciation: "nɛ" },
+      { phrase: "lest",    pronunciation: "lɛ" },
+      { phrase: "sest",    pronunciation: "sɛ" },
+      { phrase: "cétait",  pronunciation: "setɛ" },
+      { phrase: "nétait",  pronunciation: "netɛ" },
+      { phrase: "ny",      pronunciation: "ni" },
+      { phrase: "quest",   pronunciation: "kɛ" },
+      { phrase: "quil",    pronunciation: "kil" },
+      { phrase: "quelle",  pronunciation: "kɛl" },
+      { phrase: "quune",   pronunciation: "kyn" },
+      { phrase: "dune",    pronunciation: "dyn" },
     ];
 
     function normalizeCustomPronunciationPhrase(phrase: string): string {
       return phrase
         .trim()
-        .replace(/[\u2018\u2019\u02BC]/g, "'")
-        .replace(/[\u201C\u201D]/g, '"')
-        .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\\-]+|[\s"'«»“”()\[\]{}.,;:!?/\\-]+$/g, "")
-        .toLowerCase();
+        .replace(/[‘’ʼ]/g, "'")
+        .replace(/[“”]/g, '"')
+        .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\-]+|[\s"'«»“”()\[\]{}.,;:!?/\-]+$/g, "")
+        .toLowerCase()
+        // Fuse elisions same as text pre-normalization: c'était → cétait
+        .replace(/([cnsldjtm])['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "$1")
+        .replace(/qu['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "qu");
     }
 
     function extractInvalidCustomPronunciationPhrases(errorBody: string): string[] {
