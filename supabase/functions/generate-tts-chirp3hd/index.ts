@@ -130,8 +130,8 @@ Deno.serve(async (req) => {
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1");
 
-    // Step 2: Build customPronunciations using IPA for French contractions
-    const CUSTOM_PRONUNCIATIONS = [
+    // Step 2: Build customPronunciations — built-in + user overrides
+    const BUILT_IN_PRONUNCIATIONS = [
       { phrase: "c'est",   pronunciation: "sɛ" },
       { phrase: "n'est",   pronunciation: "nɛ" },
       { phrase: "l'est",   pronunciation: "lɛ" },
@@ -150,7 +150,22 @@ Deno.serve(async (req) => {
       { phrase: "d'un",    pronunciation: "dœ̃" },
       { phrase: "d'une",   pronunciation: "dyn" },
       { phrase: "l'on",    pronunciation: "lɔ̃" },
-    ].map(p => ({
+    ];
+
+    // Merge: user pronunciations override built-in ones (match by lowercase phrase)
+    const mergedMap = new Map<string, { phrase: string; pronunciation: string }>();
+    for (const p of BUILT_IN_PRONUNCIATIONS) {
+      mergedMap.set(p.phrase.toLowerCase(), p);
+    }
+    if (Array.isArray(userPronunciations)) {
+      for (const p of userPronunciations) {
+        if (p.phrase && p.pronunciation) {
+          mergedMap.set(p.phrase.toLowerCase(), { phrase: p.phrase, pronunciation: p.pronunciation });
+        }
+      }
+    }
+
+    const CUSTOM_PRONUNCIATIONS = Array.from(mergedMap.values()).map(p => ({
       phrase: p.phrase,
       phoneticEncoding: "IPA" as const,
       pronunciation: p.pronunciation,
@@ -158,8 +173,9 @@ Deno.serve(async (req) => {
 
     const textChunks = splitTextIntoChunks(preNormalized);
 
+    const userCount = Array.isArray(userPronunciations) ? userPronunciations.length : 0;
     console.log(
-      `[chirp3hd] Generating audio (customPronunciations): voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, pronunciations=${CUSTOM_PRONUNCIATIONS.length}`
+      `[chirp3hd] Generating audio (customPronunciations): voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, builtIn=${BUILT_IN_PRONUNCIATIONS.length}, userCustom=${userCount}, total=${CUSTOM_PRONUNCIATIONS.length}`
     );
     for (let ci = 0; ci < textChunks.length; ci++) {
       const chunk = textChunks[ci];
