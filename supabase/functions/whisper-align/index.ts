@@ -497,9 +497,9 @@ Deno.serve(async (req) => {
       finalDuration = runA.duration;
       repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
     } else if (useDualPass) {
-      const [rawRunA, rawRunB] = await Promise.all([
-        runOnePass(), runOnePass(),
-      ]);
+      // Run passes sequentially to avoid compute limits
+      const rawRunA = await runOnePass();
+      const rawRunB = await runOnePass();
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
