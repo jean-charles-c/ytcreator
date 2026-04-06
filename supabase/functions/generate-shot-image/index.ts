@@ -488,25 +488,9 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
 
-    // Visual style suffix map
-    const STYLE_SUFFIXES: Record<string, string> = {
-      realistic: "Ultra realistic documentary photography, photojournalistic style, natural lighting, high dynamic range, film grain, 8k detail",
-      cinematic: "Cinematic film still, dramatic lighting, shallow depth of field, anamorphic lens flare, color graded, widescreen composition, movie-like atmosphere",
-      illustration: "Digital illustration, detailed artwork, rich colors, clean lines, editorial illustration style, professional book illustration",
-      painting: "Oil painting style, visible brush strokes, rich texture, classical composition, fine art painting, museum quality",
-      lineart: "Pencil sketch portrait, graphite drawing, crosshatching, black and white, realistic editorial illustration, sketched background, fine detailed linework",
-      comics: "Comic book style, bold outlines, dynamic panels, vivid flat colors, graphic novel illustration, halftone dots",
-      animation: "Anime style, cel-shaded, vibrant colors, expressive characters, Studio Ghibli inspired, clean digital animation",
-      conceptart: "Concept art, environment design, painterly digital art, atmospheric perspective, matte painting, professional pre-production art",
-      "3dcgi": "3D rendered, CGI, physically based rendering, global illumination, subsurface scattering, photorealistic 3D, Unreal Engine quality",
-      graphicdesign: "Graphic design, flat design, bold typography, geometric shapes, modern layout, clean vector aesthetic, infographic style",
-      abstract: "Abstract art, experimental composition, non-representational, bold colors, textured layers, artistic interpretation, mixed media",
-      scientific: "Scientific illustration, technical diagram, anatomically precise, labeled cross-section, medical illustration, educational clarity",
-    };
-
-    const styleSuffix = visual_style && STYLE_SUFFIXES[visual_style]
-      ? STYLE_SUFFIXES[visual_style]
-      : null;
+    // Visual style from shared definitions
+    const { getStyleSuffix } = await import("../_shared/visual-styles.ts");
+    const styleSuffix = visual_style ? getStyleSuffix(visual_style) : null;
 
     const buildPrompt = (text: string) => [
       "Generate one single cinematic image.",
