@@ -60,6 +60,15 @@ import { applyFrenchTypography } from "@/components/editor/frenchTypography";
 import { reorderShotsByReadingPosition } from "@/components/editor/shotAlignment";
 import { convertNumbersToFrench, hasDigits } from "@/components/editor/numberToFrenchText";
 
+/** Strip [[TAGS]], editorial blocks and section headings from narration text */
+function cleanNarrationText(raw: string): string {
+  return raw
+    .replace(/\[\[\s*(TRANSITIONS|STYLE\s*CHECK|RISK\s*CHECK)\s*\]\][\s\S]*/i, "")
+    .replace(/\[\[(HOOK|CONTEXT|PROMISE|ACT[123]B?|CLIMAX|INSIGHT|CONCLUSION)\]\]\s*/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 type Tab = "rsearch" | "script-creator" | "segmentation" | "storyboard" | "videoprompts" | "seo" | "cp" | "vo" | "videoedit" | "export";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -262,7 +271,7 @@ export default function Editor() {
       setTitle(projectRes.data.title);
       setSubject(projectRes.data.subject ?? "");
       setScriptLanguage(projectRes.data.script_language);
-      setNarration(projectRes.data.narration ?? "");
+      setNarration(cleanNarrationText(projectRes.data.narration ?? ""));
       setProjectId(projectRes.data.id);
       setShowSetup(false);
 
@@ -1999,7 +2008,7 @@ export default function Editor() {
               scriptLanguage={scriptLanguage}
               onLanguageChange={(lang) => setScriptLanguage(lang)}
               onSendToNarration={(text) => {
-                setNarration(text);
+                setNarration(cleanNarrationText(text));
               }}
               onAnalysisReady={(analysis, text) => {
                 setPdfAnalysis(analysis);
