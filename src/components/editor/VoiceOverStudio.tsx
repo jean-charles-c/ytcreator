@@ -54,7 +54,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
   /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
   const stripThousandSeparators = (text: string): string =>
-    text.replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2")
+    text.replace(/\*/g, "")
+        .replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2")
         .replace(/(\d)[,.](\d{3})(?=\b)/g, "$1$2"); // second pass for millions+
 
   const buildScriptFromCurrentShots = () => {
