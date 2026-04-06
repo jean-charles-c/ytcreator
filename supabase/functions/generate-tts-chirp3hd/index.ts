@@ -128,7 +128,9 @@ Deno.serve(async (req) => {
     const preNormalized = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
-      .replace(/\s+([.!?…,;:»\u00BB])/g, "$1");
+      .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
+      // Step 1b: elision — fuse l' with following word (l'écran → lécran)
+      .replace(/\bl[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "l");
 
     // Step 2: Build customPronunciations — built-in + user overrides
     const BUILT_IN_PRONUNCIATIONS = [
