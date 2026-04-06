@@ -137,6 +137,29 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // ── Build cadence rules based on shortSentencePct ──
+    const pct: number = typeof body.shortSentencePct === "number" ? body.shortSentencePct : 0;
+    let cadenceRules: string;
+    if (pct === 0) {
+      cadenceRules = `Règles de cadence.
+- Rédaction libre, pas de contrainte spécifique sur la proportion de phrases courtes.
+- Laisse le style narratif choisi dicter naturellement le rythme.
+- Varie les longueurs de phrases selon le contexte et l'émotion.`;
+    } else {
+      cadenceRules = `Règles de cadence.
+- environ ${pct} % des phrases doivent être très courtes (fragments de 2 à 6 mots)
+- insérer régulièrement des phrases isolées de 2 à 6 mots
+- après un paragraphe explicatif, revenir à une phrase brève de relance
+- utiliser des triptyques courts quand une idée mérite d'être martelée
+- éviter d'enchaîner plus de 4 phrases longues ou moyennes
+- créer souvent des blocs verticaux à l'oral.
+  "On roule. On photographie. On observe."
+- quand un enjeu apparaît, le faire tomber dans une phrase isolée
+- quand une révélation arrive, la formuler simplement, en peu de mots`;
+    }
+
+    const systemPrompt = VO_SYSTEM.replace("{{CADENCE_RULES}}", cadenceRules);
+
     // ── Global script mode (preferred) ──────────────
     // Receives the full script with [[TAGS]], rewrites globally, returns with tags preserved
     const script = body.script;
@@ -171,7 +194,7 @@ ${script}`;
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: VO_SYSTEM },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         stream: true,
