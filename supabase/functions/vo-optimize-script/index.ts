@@ -92,16 +92,7 @@ CONSIGNE DE CADENCE SUPPLÉMENTAIRE :
 Ne produis surtout pas un flux homogène.
 Le texte doit respirer en permanence.
 
-Règles de cadence.
-- environ 30 à 40 % des phrases doivent être très courtes
-- insérer régulièrement des phrases isolées de 2 à 6 mots
-- après un paragraphe explicatif, revenir à une phrase brève de relance
-- utiliser des triptyques courts quand une idée mérite d'être martelée
-- éviter d'enchaîner plus de 4 phrases longues ou moyennes
-- créer souvent des blocs verticaux à l'oral.
-  "On roule. On photographie. On observe."
-- quand un enjeu apparaît, le faire tomber dans une phrase isolée
-- quand une révélation arrive, la formuler simplement, en peu de mots
+{{CADENCE_RULES}}`;
 
 INTERDICTIONS :
 - ne pas écrire comme un journaliste magazine
