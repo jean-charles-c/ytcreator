@@ -2974,7 +2974,7 @@ export default function Editor() {
                                       renderShot={(shot, globalIdx, isLast) => (
                                         <div id={`shot-${shot.id}`}>
                                           {/* Regen + move buttons row */}
-                                          <div className="mb-1 flex items-center gap-1.5">
+                                          <div className="mb-1 flex items-center gap-1.5 flex-wrap">
                                                 {/* Move up/down */}
                                                 <Button
                                                   size="sm"
@@ -3011,46 +3011,74 @@ export default function Editor() {
                                                   <ChevronDown className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-                                                <VisualStyleSelector
-                                                  value={visualStyle.getShotValue(scene.id, shot.id)}
-                                                  onChange={(id) => visualStyle.setShotStyle(shot.id, id)}
-                                                  scopeLabel={`Shot ${globalIdx}`}
-                                                  parentLabel={`Scène ${scene.scene_order}`}
-                                                  compact
-                                                />
-                                                <select
-                                                  value={shotImageModelOverrides[shot.id] || imageModel}
-                                                  onChange={(e) => setShotImageModelOverrides(prev => ({ ...prev, [shot.id]: e.target.value }))}
-                                                  className="rounded border border-border bg-background px-1.5 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[140px] h-6"
-                                                >
-                                                  {IMAGE_MODELS.map((m) => (
-                                                    <option key={m.value} value={m.value}>
-                                                      {m.label} — {m.price}
-                                                    </option>
-                                                  ))}
-                                                </select>
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-6 text-[10px] px-2 gap-1"
-                                                  disabled={regeneratingShots[shot.id]}
-                                                  onClick={() => handleShotRegenerate(shot.id)}
-                                                >
-                                                  {regeneratingShots[shot.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                                  Régénérer le prompt
-                                                </Button>
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-6 text-[10px] px-2 gap-1"
-                                                  disabled={generatingAllImages}
-                                                  onClick={() => handleGenerateShotImage(shot.id)}
-                                                >
-                                                  {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
-                                                  Régénérer le visuel
-                                                </Button>
+                                                  <VisualStyleSelector
+                                                    value={visualStyle.getShotValue(scene.id, shot.id)}
+                                                    onChange={(id) => visualStyle.setShotStyle(shot.id, id)}
+                                                    scopeLabel={`Shot ${globalIdx}`}
+                                                    parentLabel={`Scène ${scene.scene_order}`}
+                                                    compact
+                                                  />
+                                                  <select
+                                                    value={shotImageModelOverrides[shot.id] || imageModel}
+                                                    onChange={(e) => setShotImageModelOverrides(prev => ({ ...prev, [shot.id]: e.target.value }))}
+                                                    className="rounded border border-border bg-background px-1.5 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[140px] h-6"
+                                                  >
+                                                    {IMAGE_MODELS.map((m) => (
+                                                      <option key={m.value} value={m.value}>
+                                                        {m.label} — {m.price}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 text-[10px] px-2 gap-1"
+                                                    disabled={regeneratingShots[shot.id]}
+                                                    onClick={() => handleShotRegenerate(shot.id)}
+                                                  >
+                                                    {regeneratingShots[shot.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                                    Régénérer le prompt
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 text-[10px] px-2 gap-1"
+                                                    disabled={generatingAllImages}
+                                                    onClick={() => handleGenerateShotImage(shot.id)}
+                                                  >
+                                                    {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                                    Régénérer le visuel
+                                                  </Button>
                                                 </div>
-                                          {/* Shot-level sensitive mode settings (collapsed) */}
+                                          </div>
+                                          {/* ShotCard */}
+                                          <ShotCard
+                                            key={shot.id}
+                                            shot={shot}
+                                            globalIndex={globalIdx}
+                                            sceneLabel={`Scène ${scene.scene_order} — ${scene.title}`}
+                                            isLastInScene={isLast}
+                                            imageExpanded={imageOpenShots.has(shot.id)}
+                                            scriptLanguage={scriptLanguage}
+                                            linkedObjects={getLinkedObjectsForShot(scene.scene_order, shot.id)}
+                                            allObjects={allRecurringObjects}
+                                            onLinkObject={(_sceneOrder, objId) => handleLinkObjectToShot(shot.id, objId)}
+                                            onUnlinkObject={(_sceneOrder, objId) => handleUnlinkObjectFromShot(shot.id, objId)}
+                                            sceneOrder={scene.scene_order}
+                                            onToggleImageExpanded={() => setImageOpenShots(prev => {
+                                              const next = new Set(prev);
+                                              if (next.has(shot.id)) next.delete(shot.id); else next.add(shot.id);
+                                              return next;
+                                            })}
+                                            onUpdate={handleShotUpdate}
+                                            onDelete={handleShotDelete}
+                                            onRegenerate={handleShotRegenerate}
+                                            onGenerateImage={handleGenerateShotImage}
+                                            onMergeWithNext={handleShotMergeWithNext}
+                                            onSplit={handleShotSplit}
+                                            onRetranslate={scriptLanguage !== "fr" ? handleRetranslateSingleShot : undefined}
+                                          />
+                                          {/* Shot-level sensitive mode (collapsed) */}
                                           <details className="mt-1 rounded border border-border/50 bg-secondary/20 p-2 group/shot-settings">
                                             <summary className="text-[10px] font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
                                               <ChevronRight className="h-3 w-3 transition-transform group-open/shot-settings:rotate-90 shrink-0" />
@@ -3058,13 +3086,13 @@ export default function Editor() {
                                               <span>Mode sensible du shot</span>
                                             </summary>
                                             <div className="mt-2">
-                                            <ScopeOverrideControl
-                                              value={sensitiveMode.getShotValue(scene.id, shot.id)}
-                                              onChangeLocal={(lvl) => sensitiveMode.setShotLevel(shot.id, lvl)}
-                                              scopeLabel={`Shot ${globalIdx}`}
-                                              parentLabel={`Scène ${scene.scene_order}`}
-                                              compact
-                                            />
+                                              <ScopeOverrideControl
+                                                value={sensitiveMode.getShotValue(scene.id, shot.id)}
+                                                onChangeLocal={(lvl) => sensitiveMode.setShotLevel(shot.id, lvl)}
+                                                scopeLabel={`Shot ${globalIdx}`}
+                                                parentLabel={`Scène ${scene.scene_order}`}
+                                                compact
+                                              />
                                             </div>
                                           </details>
                                         </div>
