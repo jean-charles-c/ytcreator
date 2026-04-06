@@ -161,10 +161,13 @@ Deno.serve(async (req) => {
     function normalizeCustomPronunciationPhrase(phrase: string): string {
       return phrase
         .trim()
-        .replace(/[\u2018\u2019\u02BC]/g, "'")
-        .replace(/[\u201C\u201D]/g, '"')
-        .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\\-]+|[\s"'«»“”()\[\]{}.,;:!?/\\-]+$/g, "")
-        .toLowerCase();
+        .replace(/[‘’ʼ]/g, "'")
+        .replace(/[“”]/g, '"')
+        .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\-]+|[\s"'«»“”()\[\]{}.,;:!?/\-]+$/g, "")
+        .toLowerCase()
+        // Fuse elisions same as text pre-normalization: c'était → cétait
+        .replace(/([cnsldjtm])['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "$1")
+        .replace(/qu['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "qu");
     }
 
     function extractInvalidCustomPronunciationPhrases(errorBody: string): string[] {
