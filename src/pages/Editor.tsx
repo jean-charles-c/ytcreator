@@ -1990,7 +1990,7 @@ export default function Editor() {
               projectId={projectId}
               projectTitle={title}
               onSendToScriptCreator={(text) => {
-                setNarration(text);
+                setNarration(cleanNarrationText(text));
                 setPdfExtractedText(text);
                 setPdfAnalysis(null);
                 setGeneratedScript(null);
