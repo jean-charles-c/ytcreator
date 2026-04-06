@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, getShotFragmentText, normalizeExactSyncText } from "./voiceOverShotSync";
+import CustomPronunciationsPanel from "./CustomPronunciationsPanel";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
 
 interface VoiceOverStudioProps {
