@@ -223,6 +223,20 @@ The prompt must illustrate ONLY what the given text fragment describes.
 Do not illustrate the entire scene — focus on the specific fragment's visual content.
 The prompt must describe what the FRAGMENT says, not what the scene says in general.
 
+VISUAL STYLE — CRITICAL:
+The selected visual style is: "${resolvedStyle.label}" (${styleSuffix}).
+The prompt_export MUST end with this style suffix as the closing directive.
+9. End with: "${styleSuffix}. Ratio d'aspect : 16:9"
+${isRealistic ? `
+PHOTOREALISM ENFORCEMENT:
+All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
+Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
+Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.` : `
+STYLE ENFORCEMENT:
+All output must consistently follow the "${resolvedStyle.label}" visual style.
+The entire prompt must be written to produce images in this specific aesthetic.
+Do NOT mix with photorealistic or documentary style unless that is the selected style.`}
+
 PROMPT STRUCTURE (prompt_export, in FRENCH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
 2. Camera framing (MUST differ from neighbors)
@@ -232,18 +246,11 @@ PROMPT STRUCTURE (prompt_export, in FRENCH):
 6. Foreground depth elements relevant to the fragment adding visual depth
 7. Lighting: source, direction, quality, shadows — physically motivated
 8. Atmosphere and mood from the fragment's narrative tone
-9. End with: "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9"
-
-PHOTOREALISM ENFORCEMENT:
-All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
-Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
-Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
+9. End with the style suffix: "${styleSuffix}. Ratio d'aspect : 16:9"
 
 MATERIAL DENSITY RULE:
 Include physically rich environments. Avoid empty compositions.
-Add environmental elements: objects, scrolls, pottery, fabrics, tools, architectural textures, vegetation, atmospheric particles.
-
-Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
+Add environmental elements: objects, scrolls, pottery, fabrics, tools, architectural textures, vegetation, atmospheric particles.`,
             },
             {
               role: "user",
