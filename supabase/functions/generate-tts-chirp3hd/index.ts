@@ -123,18 +123,66 @@ Deno.serve(async (req) => {
       return chunks;
     }
 
-    const normalizedText = text.trim()
+    // Step 1: normalize unicode quotes and punctuation spacing
+    const preNormalized = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
-      .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
-      .replace(/\bn['']y\b/gi, "ni")
-      .replace(/\bc['']est\b/gi, "sait")
-      .replace(/([ldnscjmtLDNSCJMT])['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
-      .replace(/([Qq]u)['']([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2");
+      .replace(/\s+([.!?…,;:»\u00BB])/g, "$1");
 
-    const textChunks = splitTextIntoChunks(normalizedText);
+    // Step 2: IPA phoneme map for French contractions that GTTS mispronounces
+    const IPA_PHONEMES: Array<{ pattern: RegExp; ipa: string; display: string }> = [
+      { pattern: /\bn'y\b/gi,           ipa: "ni",       display: "ni" },
+      { pattern: /\bc'est\b/gi,         ipa: "sɛ",       display: "c'est" },
+      { pattern: /\bn'est\b/gi,         ipa: "nɛ",       display: "n'est" },
+      { pattern: /\bl'est\b/gi,         ipa: "lɛ",       display: "l'est" },
+      { pattern: /\bc'était\b/gi,       ipa: "setɛ",     display: "c'était" },
+      { pattern: /\bn'était\b/gi,       ipa: "netɛ",     display: "n'était" },
+      { pattern: /\bc'en\b/gi,          ipa: "sɑ̃",       display: "c'en" },
+      { pattern: /\bn'en\b/gi,          ipa: "nɑ̃",       display: "n'en" },
+      { pattern: /\bs'est\b/gi,         ipa: "sɛ",       display: "s'est" },
+      { pattern: /\bqu'est\b/gi,        ipa: "kɛ",       display: "qu'est" },
+      { pattern: /\bqu'il\b/gi,         ipa: "kil",      display: "qu'il" },
+      { pattern: /\bqu'elle\b/gi,       ipa: "kɛl",      display: "qu'elle" },
+      { pattern: /\bqu'on\b/gi,         ipa: "kɔ̃",       display: "qu'on" },
+      { pattern: /\bqu'un\b/gi,         ipa: "kœ̃",       display: "qu'un" },
+      { pattern: /\bqu'une\b/gi,        ipa: "kyn",      display: "qu'une" },
+      { pattern: /\bd'un\b/gi,          ipa: "dœ̃",       display: "d'un" },
+      { pattern: /\bd'une\b/gi,         ipa: "dyn",      display: "d'une" },
+      { pattern: /\bl'on\b/gi,          ipa: "lɔ̃",       display: "l'on" },
+    ];
+
+    // Step 3: XML-escape helper for SSML
+    function xmlEscape(s: string): string {
+      return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    // Step 4: apply elision fusion on remaining apostrophes (not handled by IPA)
+    // then build plain text for chunking (byte budget uses plain text length)
+    const elisionFused = preNormalized
+      .replace(/([ldnscjmtLDNSCJMT])'([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
+      .replace(/([Qq]u)'([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2");
+
+    const textChunks = splitTextIntoChunks(elisionFused);
+
+    // Step 5: convert a plain chunk to SSML with <phoneme> tags
+    function chunkToSsml(chunk: string): string {
+      let ssml = xmlEscape(chunk);
+      for (const { pattern, ipa, display } of IPA_PHONEMES) {
+        // We need to match against the original elision-fused text
+        // The phoneme patterns still match because elision fusion only touches
+        // single-letter elisions, not multi-char contractions like c'est, n'est
+        ssml = ssml.replace(pattern,
+          `<phoneme alphabet="ipa" ph="${ipa}">${xmlEscape(display)}</phoneme>`);
+      }
+      return `<speak>${ssml}</speak>`;
+    }
+
     console.log(
-      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, normalizedSample="${normalizedText.slice(0, 200)}"`
+      `[chirp3hd] Generating audio (SSML/IPA): voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}`
     );
     for (let ci = 0; ci < textChunks.length; ci++) {
       const chunk = textChunks[ci];
@@ -155,8 +203,10 @@ Deno.serve(async (req) => {
       }
       void pitch;
 
+      const ssmlContent = chunkToSsml(chunk);
+
       const ttsPayload = {
-        input: { text: chunk },
+        input: { ssml: ssmlContent },
         voice: { languageCode, name: resolvedVoice },
         audioConfig,
       };
