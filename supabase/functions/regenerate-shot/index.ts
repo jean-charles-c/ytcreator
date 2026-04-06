@@ -220,10 +220,13 @@ PHOTOREALISM ENFORCEMENT:
 All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
 Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
 Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.` : `
-STYLE ENFORCEMENT:
-All output must consistently follow the "${resolvedStyle.label}" visual style.
-The entire prompt must be written to produce images in this specific aesthetic.
-Do NOT mix with photorealistic or documentary style unless that is the selected style.`}
+STYLE ENFORCEMENT — CRITICAL:
+ALL output MUST strictly and consistently follow the "${resolvedStyle.label}" visual style.
+The style suffix is a MANDATORY directive, not a suggestion.
+If the style specifies a background color (e.g. pure black, white, grey), the shot MUST use that exact background.
+If the style specifies a rendering technique (e.g. line art, chalk, silhouette), the shot MUST use that technique.
+Do NOT mix with photorealistic or documentary style unless that is the selected style.
+Do NOT deviate from the imposed style for any reason.`}
 
 PROMPT STRUCTURE (prompt_export, in FRENCH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)

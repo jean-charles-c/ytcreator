@@ -12,15 +12,54 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CINEMATIC_PROMPT_SYSTEM = `You are a cinematic visual prompt generator specialized in documentary filmmaking visuals.
+const buildSystemPrompt = (styleId: string | null | undefined, styleLabel: string): string => {
+  const isRealistic = !styleId || styleId === "none" || styleId === "realistic" || styleId === "cinematic";
+
+  const photorealismBlock = isRealistic ? `
+## GLOBAL VISUAL BASELINE
+All generated prompts must follow the same cinematic documentary baseline:
+- cinematic documentary film still
+- photorealistic historical reconstruction
+- natural textures
+- realistic lighting
+- historically accurate clothing and architecture
+
+The visual style must resemble high-end historical documentaries such as BBC History or National Geographic productions.
+
+Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
+
+## PHOTOREALISM ENFORCEMENT RULE
+All scenes must resemble frames from a high-budget historical film production.
+Mandatory elements whenever relevant:
+- natural skin textures
+- realistic materials (wood, clay, stone, bronze, metal, parchment)
+- environmental depth
+- cinematic lighting contrast
+- natural imperfections
+- atmospheric perspective
+
+Lighting must always be physically motivated: candlelight, firelight, torchlight, sunrise, sunset, diffused daylight through smoke/dust/fog.
+Scenes must never appear flat, empty, minimal, or illustration-like.` : `
+## VISUAL STYLE ENFORCEMENT — CRITICAL
+The selected visual style for this project is: "${styleLabel}".
+ALL generated prompts MUST strictly and consistently follow this visual style.
+Every single shot, without exception, must produce an image in this exact aesthetic.
+Do NOT mix with photorealistic or documentary style.
+Do NOT vary the style between shots — absolute visual consistency is required.
+The style suffix provided at the end of each prompt_export is a MANDATORY directive, not a suggestion.
+If the style specifies a background color (e.g. pure black, white, grey), ALL shots MUST use that exact background.
+If the style specifies a rendering technique (e.g. line art, chalk, silhouette), ALL shots MUST use that technique.
+No shot may deviate from the imposed style for any reason.`;
+
+  return `You are a cinematic visual prompt generator specialized in documentary filmmaking visuals.
 
 You are generating image prompts that will be executed by an image generation AI.
-All prompts must therefore be optimized for Grok Image's interpretation of photorealistic cinematic scenes.
+All prompts must therefore be optimized for the image generation AI's interpretation of the scenes.
 
 ## MISSION
 Transform voice-over narration scenes into highly detailed cinematic image prompts.
 Each prompt must illustrate a specific narrative moment.
-The result must resemble a visual storyboard for a historical documentary film.
+The result must resemble a visual storyboard for a documentary film.
 Scenes must produce enough visual material to sustain cinematic rhythm in a documentary edit.
 
 ## LANGUAGE RULES
@@ -71,18 +110,7 @@ To ensure cinematic visual diversity, shots must rotate between several camera t
 5 — Plan de détail d'artefact (close-up on significant object or texture)
 6 — Plan de détail scientifique (close examination of evidence, inscription, material)
 Avoid repeating the same camera type consecutively whenever possible.
-
-## GLOBAL VISUAL BASELINE
-All generated prompts must follow the same cinematic documentary baseline:
-- cinematic documentary film still
-- photorealistic historical reconstruction
-- natural textures
-- realistic lighting
-- historically accurate clothing and architecture
-
-The visual style must resemble high-end historical documentaries such as BBC History or National Geographic productions.
-
-Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
+${photorealismBlock}
 
 ## TEXT RENDERING PROHIBITION — CRITICAL
 Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene.
@@ -90,19 +118,6 @@ Never render, quote, copy, or spell out the narrative wording of the prompt itse
 Do not turn the descriptive sentence of the prompt into visible text in the image.
 The prompt is only an instruction for image creation, not a source of text to display.
 If written elements appear, they must be context-appropriate and independent from the prompt wording.
-
-## PHOTOREALISM ENFORCEMENT RULE
-All scenes must resemble frames from a high-budget historical film production.
-Mandatory elements whenever relevant:
-- natural skin textures
-- realistic materials (wood, clay, stone, bronze, metal, parchment)
-- environmental depth
-- cinematic lighting contrast
-- natural imperfections
-- atmospheric perspective
-
-Lighting must always be physically motivated: candlelight, firelight, torchlight, sunrise, sunset, diffused daylight through smoke/dust/fog.
-Scenes must never appear flat, empty, minimal, or illustration-like.
 
 ## MATERIAL DENSITY RULE
 Scenes must contain physically rich environments. Avoid empty compositions.
@@ -161,6 +176,7 @@ Each prompt_export must be in FRENCH and contain ALL of these woven into one con
 The prompt_export MUST be at least 100 words. Be extremely descriptive and specific — the image generation AI performs best with rich, concrete visual details rather than abstract concepts.
 
 The entire prompt must be one continuous paragraph. No bullet points, no numbered lists.`;
+};
 
 const CAMERA_TYPES = [
   "Plan d'ensemble",
@@ -347,7 +363,12 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const effectiveRatio = aspectRatio || "16:9";
 
   // 9. Build the prompt — fragment is the core subject
-  return `${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles. ${effectiveStyle} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
+  // Only include photorealism baseline when no specific non-realistic style is set
+  const isDefaultOrRealistic = !styleSuffix || styleSuffix.includes("photographique") || styleSuffix.includes("cinématographique") || styleSuffix === "Aucun style artistique imposé";
+  const baselineDesc = isDefaultOrRealistic
+    ? "Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles."
+    : "Image documentaire historique, architecture et vêtements fidèles à la période. Composition riche avec éléments de profondeur.";
+  return `${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} ${baselineDesc} ${effectiveStyle} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
 };
 
 // Keep legacy name for compatibility
@@ -619,8 +640,10 @@ serve(async (req) => {
     if (!project_id) throw new Error("Missing project_id");
 
     // Visual style from shared definitions
-    const { STYLE_SUFFIXES, getStyleSuffixFr } = await import("../_shared/visual-styles.ts");
+    const { STYLE_SUFFIXES, getStyleSuffixFr, getStyleLabel, isRealisticStyle } = await import("../_shared/visual-styles.ts");
     const resolvedStyleSuffix = getStyleSuffixFr(visual_style);
+    const resolvedStyleLabel = getStyleLabel(visual_style);
+    const resolvedIsRealistic = isRealisticStyle(visual_style) || !visual_style || visual_style === "none" || visual_style === "cinematic";
     const resolvedAspectRatio = reqAspectRatio || "16:9";
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
@@ -743,7 +766,7 @@ serve(async (req) => {
           model: "google/gemini-2.5-flash",
           max_tokens: 8192,
           messages: [
-            { role: "system", content: CINEMATIC_PROMPT_SYSTEM.replace("[VISUAL_STYLE_LINE]", resolvedStyleSuffix).replace("[ASPECT_RATIO]", resolvedAspectRatio) + sensitiveModeBlock },
+            { role: "system", content: buildSystemPrompt(visual_style, resolvedStyleLabel).replace("[VISUAL_STYLE_LINE]", resolvedStyleSuffix).replace("[ASPECT_RATIO]", resolvedAspectRatio) + sensitiveModeBlock },
             { role: "user", content: `${projectContext}${objectIdentityBlock}\n\nIMPORTANT: All visual prompts MUST be grounded in the historical period, geographic location, and cultural context described by the project subject above. Architecture, clothing, objects, vegetation, and lighting must be accurate to that specific era and place. Never use generic or anachronistic elements.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque). This anchoring is MANDATORY in every single prompt_export. All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be specific to that era, culture, and place. Never use generic, Western, or anachronistic elements.\n\nSCENE CONTEXT USAGE RULE:\nEach scene below includes a CONTEXTE DE LA SCÈNE block with: Contexte, Sujet, Lieu, Époque, Personnages, Ambiance, Ton, and Cohérence. You MUST use this information SELECTIVELY:\n- ALWAYS ground every prompt_export in the correct lieu and époque\n- Include personnages ONLY when the fragment mentions or implies people\n- Include ambiance/ton ONLY when it enhances the visual quality of THAT specific fragment\n- Do NOT mechanically inject all context fields — select only what is visually relevant\n\nRECURRING OBJECT RULE:\nWhen a scene contains a recurring object (listed in OBJETS RÉCURRENTS), EVERY shot in that scene that depicts or implies that object MUST include the full IDENTITY LOCK prompt for that object in its prompt_export. The object must look identical across all shots and all scenes.\n\nFRAGMENT-SPECIFIC PROMPTS — CRITICAL:\nEach scene includes PRE-COMPUTED FRAGMENTS. Each fragment = exactly one shot.\n- Use each fragment as the source_sentence for its corresponding shot\n- The prompt_export MUST illustrate ONLY what THAT fragment describes, not the full scene\n- If a fragment describes stone walls, the prompt focuses on stone walls — not on trade routes or city life\n- Context from CONTEXTE enriches the prompt but the FRAGMENT is the visual subject\n\nGenerate cinematic documentary shots for these scenes. CRITICAL RULES:\n1. Generate EXACTLY the number of shots indicated by MANDATORY_shot_count for each scene. This is NON-NEGOTIABLE.\n2. Each shot MUST use the corresponding PRE-COMPUTED FRAGMENT as its source_sentence.\n3. shot_type and description MUST be in FRENCH.\n4. source_sentence MUST be the EXACT fragment text copied verbatim.\n5. prompt_export MUST be in FRENCH and must illustrate ONLY that exact fragment.\n6. Do NOT merge fragments. Do NOT skip fragments.\n7. Prompts must stay strictly faithful to the fragment text, enriched by scene context.\n8. Follow the VISUAL CAMERA GRID to vary shot types.\n9. Apply VISUAL ANCHOR SYSTEM for recurring characters/elements.\n10. Each prompt_export MUST explicitly open with the historical period/era and geographic location from the scene's CONTEXTE — this is MANDATORY for every single prompt.${translationRule}\n\n${sceneDescriptions}` },
           ],
           tools: [
@@ -917,7 +940,7 @@ serve(async (req) => {
             model: "google/gemini-2.5-flash",
             max_tokens: 8192,
             messages: [
-              { role: "system", content: CINEMATIC_PROMPT_SYSTEM.replace("[VISUAL_STYLE_LINE]", resolvedStyleSuffix).replace("[ASPECT_RATIO]", resolvedAspectRatio) + sensitiveModeBlock },
+              { role: "system", content: buildSystemPrompt(visual_style, resolvedStyleLabel).replace("[VISUAL_STYLE_LINE]", resolvedStyleSuffix).replace("[ASPECT_RATIO]", resolvedAspectRatio) + sensitiveModeBlock },
               { role: "user", content: `${projectContext}${objectIdentityBlock}\n\nIMPORTANT: You are in PROMPT-ONLY mode. The shot boundaries (source_sentence for each shot) are ALREADY FIXED by the user. Do NOT change, merge, split, or reorder them.\nYour job is ONLY to generate:\n- prompt_export (FRENCH, cinematic documentary visual prompt)\n- description (French visual description)\n- shot_type (French camera type from the Visual Camera Grid)\n- guardrails (historical constraints)\n\nFor each shot, keep the EXACT source_sentence provided. Do NOT modify it.\n\nCONTEXTUAL ANCHORING RULE — CRITICAL:\nEvery prompt_export MUST begin its first sentence by explicitly stating the historical period/era and geographic location from the scene's CONTEXTE block (lieu + époque).\n\nRECURRING OBJECT RULE:\nWhen a scene contains a recurring object, EVERY shot in that scene that depicts or implies that object MUST include the full IDENTITY LOCK prompt.\n\n${sceneDescriptionsForPromptOnly}` },
             ],
             tools: [
