@@ -654,6 +654,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   </div>
                 </AccordionItem>
               </Accordion>
+
+              {/* Custom pronunciations panel */}
+              <div className="border rounded-lg border-border bg-card px-4 py-3">
+                <CustomPronunciationsPanel onPronunciationsChange={setCustomPronunciations} />
+              </div>
             </div>
 
             {/* LEFT column (2/3): Script + bottom row */}
