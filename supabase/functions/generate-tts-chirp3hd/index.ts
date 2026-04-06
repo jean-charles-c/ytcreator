@@ -50,13 +50,14 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { text, projectId, voiceName, customFileName, speakingRate, pitch } = body as {
+    const { text, projectId, voiceName, customFileName, speakingRate, pitch, customPronunciations: userPronunciations } = body as {
       text?: string;
       projectId?: string;
       voiceName?: string;
       customFileName?: string;
       speakingRate?: number;
       pitch?: number;
+      customPronunciations?: { phrase: string; pronunciation: string }[];
     };
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
