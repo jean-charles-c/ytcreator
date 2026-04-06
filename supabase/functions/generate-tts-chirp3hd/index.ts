@@ -129,60 +129,36 @@ Deno.serve(async (req) => {
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1");
 
-    // Step 2: IPA phoneme map for French contractions that GTTS mispronounces
-    const IPA_PHONEMES: Array<{ pattern: RegExp; ipa: string; display: string }> = [
-      { pattern: /\bn'y\b/gi,           ipa: "ni",       display: "ni" },
-      { pattern: /\bc'est\b/gi,         ipa: "sɛ",       display: "c'est" },
-      { pattern: /\bn'est\b/gi,         ipa: "nɛ",       display: "n'est" },
-      { pattern: /\bl'est\b/gi,         ipa: "lɛ",       display: "l'est" },
-      { pattern: /\bc'était\b/gi,       ipa: "setɛ",     display: "c'était" },
-      { pattern: /\bn'était\b/gi,       ipa: "netɛ",     display: "n'était" },
-      { pattern: /\bc'en\b/gi,          ipa: "sɑ̃",       display: "c'en" },
-      { pattern: /\bn'en\b/gi,          ipa: "nɑ̃",       display: "n'en" },
-      { pattern: /\bs'est\b/gi,         ipa: "sɛ",       display: "s'est" },
-      { pattern: /\bqu'est\b/gi,        ipa: "kɛ",       display: "qu'est" },
-      { pattern: /\bqu'il\b/gi,         ipa: "kil",      display: "qu'il" },
-      { pattern: /\bqu'elle\b/gi,       ipa: "kɛl",      display: "qu'elle" },
-      { pattern: /\bqu'on\b/gi,         ipa: "kɔ̃",       display: "qu'on" },
-      { pattern: /\bqu'un\b/gi,         ipa: "kœ̃",       display: "qu'un" },
-      { pattern: /\bqu'une\b/gi,        ipa: "kyn",      display: "qu'une" },
-      { pattern: /\bd'un\b/gi,          ipa: "dœ̃",       display: "d'un" },
-      { pattern: /\bd'une\b/gi,         ipa: "dyn",      display: "d'une" },
-      { pattern: /\bl'on\b/gi,          ipa: "lɔ̃",       display: "l'on" },
-    ];
+    // Step 2: Build customPronunciations using IPA for French contractions
+    const CUSTOM_PRONUNCIATIONS = [
+      { phrase: "c'est",   pronunciation: "sɛ" },
+      { phrase: "n'est",   pronunciation: "nɛ" },
+      { phrase: "l'est",   pronunciation: "lɛ" },
+      { phrase: "s'est",   pronunciation: "sɛ" },
+      { phrase: "c'était", pronunciation: "setɛ" },
+      { phrase: "n'était", pronunciation: "netɛ" },
+      { phrase: "c'en",    pronunciation: "sɑ̃" },
+      { phrase: "n'en",    pronunciation: "nɑ̃" },
+      { phrase: "n'y",     pronunciation: "ni" },
+      { phrase: "qu'est",  pronunciation: "kɛ" },
+      { phrase: "qu'il",   pronunciation: "kil" },
+      { phrase: "qu'elle", pronunciation: "kɛl" },
+      { phrase: "qu'on",   pronunciation: "kɔ̃" },
+      { phrase: "qu'un",   pronunciation: "kœ̃" },
+      { phrase: "qu'une",  pronunciation: "kyn" },
+      { phrase: "d'un",    pronunciation: "dœ̃" },
+      { phrase: "d'une",   pronunciation: "dyn" },
+      { phrase: "l'on",    pronunciation: "lɔ̃" },
+    ].map(p => ({
+      phrase: p.phrase,
+      phoneticEncoding: "IPA" as const,
+      pronunciation: p.pronunciation,
+    }));
 
-    // Step 3: XML-escape helper for SSML
-    function xmlEscape(s: string): string {
-      return s
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    // Step 4: apply elision fusion on remaining apostrophes (not handled by IPA)
-    // then build plain text for chunking (byte budget uses plain text length)
-    const elisionFused = preNormalized
-      .replace(/([ldnscjmtLDNSCJMT])'([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2")
-      .replace(/([Qq]u)'([a-zA-ZÀ-ÖØ-öø-ÿ])/gi, "$1$2");
-
-    const textChunks = splitTextIntoChunks(elisionFused);
-
-    // Step 5: convert a plain chunk to SSML with <phoneme> tags
-    function chunkToSsml(chunk: string): string {
-      let ssml = xmlEscape(chunk);
-      for (const { pattern, ipa, display } of IPA_PHONEMES) {
-        // We need to match against the original elision-fused text
-        // The phoneme patterns still match because elision fusion only touches
-        // single-letter elisions, not multi-char contractions like c'est, n'est
-        ssml = ssml.replace(pattern,
-          `<phoneme alphabet="ipa" ph="${ipa}">${xmlEscape(display)}</phoneme>`);
-      }
-      return `<speak>${ssml}</speak>`;
-    }
+    const textChunks = splitTextIntoChunks(preNormalized);
 
     console.log(
-      `[chirp3hd] Generating audio (SSML/IPA): voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}`
+      `[chirp3hd] Generating audio (customPronunciations): voice=${resolvedVoice}, textLen=${text.length}, chunks=${textChunks.length}, speakingRate=${speakingRate}, pronunciations=${CUSTOM_PRONUNCIATIONS.length}`
     );
     for (let ci = 0; ci < textChunks.length; ci++) {
       const chunk = textChunks[ci];
