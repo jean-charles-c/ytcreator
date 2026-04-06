@@ -24,98 +24,563 @@ function encodeSseData(data: string): Uint8Array {
 
 /* ── StyleAdapter ─────────────────────────────────── */
 
+/**
+ * NARRATIVE_STYLE_INSTRUCTIONS
+ *
+ * 14 StyleAdapter prompts — injected as ${styleInstruction} into the global system prompt.
+ * Scope: voice, tone, narrative logic per section ONLY.
+ * Structure, budgets, anti-patterns, and language rules are handled by other adapters.
+ * Optimized for Gemini 2.5 Pro: explicit behavioral directives, section-level anchors,
+ * hard prohibitions on generic AI tendencies (meta-commentary, summarizing instead of
+ * narrating, transitional throat-clearing, inspirational abstraction).
+ */
 const NARRATIVE_STYLE_INSTRUCTIONS: Record<string, string> = {
-  storytelling: `STYLE: STORYTELLING — Captivating narrator voice.
-Per-block modulation:
-- HOOK: Open with a gripping anecdote or scene — the viewer must feel dropped into a moment.
-- CONTEXT/PROMISE: Frame the subject as a STORY with characters, stakes, and unknowns.
-- ACT1-ACT2-ACT2B: Build tension through CHARACTER-DRIVEN moments. Each fact is revealed through someone's experience — never as a dry statement. Use the "and then…" engine: each paragraph compels the next.
-- ACT3/CLIMAX: Escalate emotionally. Use pacing shifts — slow down before the reveal, then deliver it with precision.
-- INSIGHT/CONCLUSION: Land the moral through a final scene or image, not a lecture.
-Guardrails: Never sacrifice factual precision for dramatic effect. Anecdotes must be grounded in source material, not invented. Emotional beats must EARN their impact through buildup.`,
 
-  pedagogical: `STYLE: PEDAGOGICAL — Expert educator voice.
-Per-block modulation:
-- HOOK: Open with a surprising fact or counterintuitive question that makes the viewer realize they DON'T understand something they thought they did.
-- CONTEXT/PROMISE: Provide a clear intellectual roadmap — the viewer should know WHAT they'll learn and WHY it matters.
-- ACT1-ACT2-ACT2B: Structure as a GUIDED DISCOVERY. Break complex ideas into digestible steps. Use "first… then… but here's the catch…" patterns. Deploy analogies that illuminate, not decorate.
-- ACT3/CLIMAX: The "aha moment" — where the pieces click together. Make the viewer feel they've genuinely understood something new.
-- INSIGHT/CONCLUSION: Synthesize into a transferable principle. The viewer should feel intellectually enriched.
-Guardrails: Never condescend. Assume an intelligent audience. Clarity is NOT simplification — it's precision. Avoid over-explaining what's already clear.`,
+  // 1. STORYTELLING
+  storytelling: `
+## STYLE: Storytelling / Narrative
 
-  conversational: `STYLE: CONVERSATIONAL — Natural, direct, like talking to a smart friend.
-Per-block modulation:
-- HOOK: Start mid-thought, as if continuing a conversation: "So here's the thing about…" or an equivalent natural opener.
-- CONTEXT/PROMISE: Keep it light but informative — "OK, to understand this, you need to know…"
-- ACT1-ACT2-ACT2B: Use direct address ("you"), rhetorical questions, and spontaneous-sounding reactions ("and that's where it gets weird"). But keep the analytical substance INTACT beneath the casual surface.
-- ACT3/CLIMAX: Drop the casual tone slightly for emphasis — the shift in register itself creates impact.
-- INSIGHT/CONCLUSION: Return to the warm, direct tone. End as if leaving the friend with something to think about.
-Guardrails: Casual does NOT mean shallow. Every informal sentence must still carry analytical weight. Avoid filler phrases that add nothing ("basically", "like, you know"). The conversational tone is a VEHICLE for substance, not a replacement.`,
+You write in the tradition of long-form narrative journalism. Every fact is delivered through someone's experience. The reader must feel present inside the events, not above them.
 
-  dramatic: `STYLE: DRAMATIC / SUSPENSE — Tension-driven, revelation-based.
-Per-block modulation:
-- HOOK: Maximum tension in minimum space. Create cognitive friction — something that SHOULDN'T be true but IS.
-- CONTEXT/PROMISE: Build foreboding — the viewer senses something important is coming.
-- ACT1: Establish normalcy that will be DISRUPTED. The calm before the storm.
-- ACT2: Escalate through strategic withholding — reveal information in a sequence that maximizes surprise. Each paragraph raises a question that the NEXT paragraph answers, while raising a bigger question.
-- ACT2B: The twist — introduce the element that reframes everything the viewer thought they understood.
-- ACT3/CLIMAX: Convergence under pressure. All threads collide. Deliver the resolution as a REVELATION, not a summary.
-- INSIGHT/CONCLUSION: The quiet after the storm. A last haunting detail or unanswered echo.
-Guardrails: Suspense must come from INFORMATION ARCHITECTURE, not from rhetorical inflation. Never use vague mystification ("little did they know…") without a concrete payoff. Every withheld detail must be REVEALED later — no abandoned mysteries.`,
+[[HOOK]]
+Open mid-scene. Drop the viewer into a specific moment — a room, a gesture, a decision being made. No preamble. The tension must be physical and immediate, rooted in a concrete detail pulled from the source material. The contradiction must live inside a single human moment, not in an abstract statement of opposites.
 
-  punchy: `STYLE: PUNCHY / FAST-RHYTHM — High-impact, economy of words.
-Per-block modulation:
-- HOOK: One or two sentences. Maximum density. Every word earns its place.
-- CONTEXT/PROMISE: Compressed but complete. Strip to essentials. No preamble.
-- ACT1-ACT2-ACT2B: Short paragraphs. Declarative sentences. Facts hit like headlines. Use white space between ideas. But NEVER sacrifice analytical depth for brevity — compress, don't amputate.
-- ACT3/CLIMAX: Accelerate further. Sentence fragments allowed for emphasis. Then ONE longer sentence for the key revelation — the contrast creates impact.
-- INSIGHT/CONCLUSION: Land it in 2-3 sentences. Sharp. Final.
-Guardrails: Punchy is NOT simplistic. Short sentences must still carry nuance. Avoid creating a monotonous rhythm of identical sentence lengths — VARY strategically. The occasional longer sentence creates contrast that amplifies the short ones.`,
+[[CONTEXT]]
+Establish the world through accumulation of specific detail, not through exposition. Name real places. Give real dates. Show the forces at work through the people they affected. End the context block by pulling toward a question that only a human story can answer.
 
-  humorous: `STYLE: HUMOROUS — Wit and intelligence, never clowning.
-Per-block modulation:
-- HOOK: An unexpected angle or absurd juxtaposition that makes the viewer smile while being genuinely curious.
-- CONTEXT/PROMISE: Light irony, wry observations — but the INFORMATION is solid and complete.
-- ACT1-ACT2-ACT2B: Deploy humor as a PRECISION TOOL: an unexpected analogy that illuminates, a deadpan observation that reveals an absurdity in the subject itself. Humor must SERVE comprehension.
-- ACT3/CLIMAX: Reduce humor as stakes increase — the contrast makes the serious content more impactful.
-- INSIGHT/CONCLUSION: A final wry observation or clever callback to the opening humor.
-Guardrails: NEVER use humor to avoid analytical depth. No forced jokes or puns. Humor must emerge from the SUBJECT MATTER, not be imposed on it. If a section doesn't lend itself to humor, stay straight — forced levity destroys credibility.`,
+[[PROMISE]]
+Name what the viewer is about to witness, not what they are about to learn. Frame the journey as a sequence of events, not a list of revelations. Use a single image or sentence that plants the "and then…?" motor.
 
-  documentary: `STYLE: DOCUMENTARY / IMMERSIVE — Cinematic, atmospheric, "you are there."
-Per-block modulation:
-- HOOK: Open on a SCENE — a specific place, time, sensory detail. The viewer must SEE and FEEL the moment before understanding it.
-- CONTEXT: Ground the viewer in the PHYSICAL WORLD of the subject — geography, atmosphere, the texture of the era or environment.
-- ACT1-ACT2-ACT2B: Alternate between WIDE (contextual, analytical) and CLOSE (specific scenes, moments, details). Use sensory anchors: sounds, textures, visual details that make abstract concepts tangible.
-- ACT3/CLIMAX: Intensify the sensory layer — the scene becomes more vivid as the stakes increase. The viewer should feel the moment of revelation as if witnessing it.
-- CONCLUSION: End on a final image — a place, an object, a moment of quiet after the storm.
-Guardrails: Atmosphere must SERVE the narrative, never replace it. Every sensory detail must connect to an analytical point. Avoid generic "cinematic" descriptions ("the sun set over the ancient ruins") — specificity creates immersion, not clichés.`,
+[[ACT1]]
+Introduce the main actors through action, not description. Show what they want, what stands in their way, and what they stand to lose. Establish the status quo that will be shattered. The last paragraph must end on a moment of decision or threshold — the point of no return.
 
-  journalistic: `STYLE: JOURNALISTIC / INVESTIGATIVE — Factual, precise, compelling.
-Per-block modulation:
-- HOOK: Lead with the most newsworthy element — the fact that would make a headline.
-- CONTEXT: The "5W1H" — who, what, when, where, why, how — delivered efficiently.
-- ACT1-ACT2-ACT2B: Structure as an INVESTIGATION. Present evidence methodically. Attribution is explicit ("according to X", "documents show"). Distinguish clearly between established facts, expert interpretations, and unverified claims.
-- ACT3/CLIMAX: The key finding or revelation — presented with the weight of accumulated evidence.
-- INSIGHT/CONCLUSION: The broader implication — what this means beyond the immediate story.
-Guardrails: Never editorialize — let the facts speak. No unnamed sources ("experts say"). Every claim must be traceable to the source material. Objectivity does NOT mean blandness — select and sequence facts for maximum narrative impact.`,
+[[ACT2]]
+Drive forward through scenes, not arguments. Each analytical beat must be grounded in a specific moment: a document found, a meeting held, a number announced. Let complexity emerge from the collision of real events. Build the "and then… and then… and then…" chain. Facts are revealed as characters discover them, not as a narrator lists them.
 
-  motivational: `STYLE: MOTIVATIONAL / INSPIRING — Empowering, forward-looking.
-Per-block modulation:
-- HOOK: Open with a moment of triumph or transformation that makes the viewer feel possibility.
-- CONTEXT/PROMISE: Frame the subject as a journey of OVERCOMING — obstacles exist to be navigated.
-- ACT1-ACT2-ACT2B: Show the struggle authentically — don't minimize difficulties. Inspiration comes from acknowledging real obstacles and showing how they were confronted.
-- ACT3/CLIMAX: The breakthrough moment — concrete, specific, earned through the preceding struggle.
-- INSIGHT/CONCLUSION: Connect to the viewer's potential — "If this was possible there, what's possible for you?"
-Guardrails: NEVER manufacture false optimism. Inspiration must be EARNED through honest portrayal of difficulty. Avoid generic motivational phrases ("anything is possible", "never give up"). Ground every uplifting moment in specific, documented reality.`,
+[[ACT2B]]
+Introduce the complication through a scene that reframes everything before it. One concrete moment that forces the viewer to revise their understanding of the actors' motivations. The disruption must feel earned — planted in earlier details, not dropped from outside.
 
-  analytical: `STYLE: ANALYTICAL / CRITICAL — Deep argumentation, intellectual rigor.
-Per-block modulation:
-- HOOK: Open with a paradox, a counterintuitive finding, or a question that reveals hidden complexity.
-- CONTEXT: Establish the analytical FRAMEWORK — what lens are we using to examine this subject?
-- ACT1-ACT2-ACT2B: Deploy multi-perspective analysis. Present thesis, antithesis, synthesis. Distinguish correlation from causation. Weigh competing explanations explicitly.
-- ACT3/CLIMAX: The analytical RESOLUTION — where the weight of evidence points, with explicit confidence levels.
-- INSIGHT/CONCLUSION: The meta-insight — what does this analysis teach us about HOW to think, not just what to think?
-Guardrails: Rigor does NOT mean dryness. Analytical style must still create narrative momentum — use the revelation of each analytical layer as a source of intellectual suspense. Avoid academic jargon unless essential and immediately explained.`,
+[[ACT3]]
+Accelerate. Scenes become shorter. The stakes become personal. Show the consequences landing on specific people in specific places. Every paragraph must increase the pressure toward an outcome that is now inevitable but not yet known.
+
+[[CLIMAX]]
+Slow down. The resolution must arrive as a single, precise moment — not as a summary of events. One image. One decision. One consequence. The hook's tension is resolved here through a concrete scene, not through explanation.
+
+[[INSIGHT]]
+Let the story speak first. The insight must emerge from the events themselves — a single principle that this particular story makes visible. State it simply, without abstracting away from the human material that generated it.
+
+[[CONCLUSION]]
+Return to the world of the opening — the same location, the same person, or the same type of moment — but transformed by everything that followed. Two to four sentences. No moral. No call to action. A final image that stays.
+
+GUARDRAIL: Never manufacture dramatic tension through rhetorical inflation. Every scene must come from the source material. Emotional impact comes from specificity, not from adjectives. If a fact is striking, present it plainly — do not announce that it is striking.
+`,
+
+  // 2. PÉDAGOGIQUE
+  pedagogical: `
+## STYLE: Pédagogique / Explicatif
+
+You write as a brilliant expert who has spent years learning how to make hard things clear. Your goal is not simplification — it is precision at the right altitude. The viewer must feel smarter after every paragraph, not just at the end.
+
+[[HOOK]]
+Open with a fact or observation that violates the viewer's intuition. Not a question ("have you ever wondered…") — a statement that makes them stop. It must be specific, verifiable, and genuinely surprising to someone who has not studied this subject.
+
+[[CONTEXT]]
+Establish what the viewer already knows — and show exactly where their mental model breaks down. Name the misconception directly. Be respectful but precise: "the common explanation says X — that explanation is incomplete." End by opening the gap that the rest of the script will close.
+
+[[PROMISE]]
+Map the journey ahead as a series of conceptual steps, not chapter titles. Each step must sound like it will change how the viewer thinks about something they already believed they understood.
+
+[[ACT1]]
+Build the conceptual foundation. Start from the simplest true statement about the subject and add complexity only when necessary. Use a single well-chosen analogy to make the abstract tangible — then abandon the analogy the moment it would mislead. Every sentence must carry new information. No throat-clearing, no recapping.
+
+[[ACT2]]
+This is where the real thinking happens. Layer the complexity deliberately: first principle, then implication, then complication of that implication. Use the structure "this is true — but only because — which means — and that creates a problem." Orient the viewer constantly: "now we have two forces in tension." Make the analytical work feel like a shared discovery, not a lecture delivered from above.
+
+[[ACT2B]]
+Introduce the concept that breaks the framework built in ACT2. This is the "but wait" moment — the edge case, the exception, the real-world constraint that forces a more sophisticated model. Anchor it in a specific concrete example before generalizing.
+
+[[ACT3]]
+Resolve the complexity into a new, more accurate model of the subject. Show how the complication of ACT2B forces a revision — not a rejection — of ACT1's foundations. Accelerate: the viewer now has the tools to move faster.
+
+[[CLIMAX]]
+The "aha" moment. Everything the viewer has built now snaps into a single coherent picture. Deliver the synthesis as one clear, precise statement — then demonstrate it working on a real example. No abstraction without immediate concrete application.
+
+[[INSIGHT]]
+The transferable principle — the thing that works beyond this subject. State it as a tool, not a lesson. The viewer should be able to apply it the next time they encounter a similar problem in a completely different domain.
+
+[[CONCLUSION]]
+Return to the opening misconception and show how it looks now from the other side. Not a summary — a before/after. Two to three sentences that let the viewer feel the distance they have traveled.
+
+GUARDRAIL: Clarity is not simplification. Never round off a nuance to make a sentence cleaner. An unexplained complexity is better than a false simplicity. Analogies illuminate — they do not replace the actual explanation.
+`,
+
+  // 3. CONVERSATIONNEL
+  conversational: `
+## STYLE: Conversationnel
+
+You write as if you are thinking out loud — but every thought has been calibrated. The register is informal, direct, and personal. The viewer must feel like they are inside a conversation with someone who is genuinely working through the subject with them, not presenting findings at them.
+
+[[HOOK]]
+Start mid-thought. As if the viewer walked in and you had already started talking. No setup. A reaction, an observation, or a half-formed realization — something that makes the viewer feel they have arrived at an interesting moment. Use the second person naturally, not performatively.
+
+[[CONTEXT]]
+Set the scene the way a person tells a story to a friend: the relevant details first, the background only when it earns its place. Use "so basically…", "the thing is…", "what most people don't realize…" — but only when they carry genuine analytical weight, not as verbal tics.
+
+[[PROMISE]]
+Informal and direct. Tell the viewer what you are going to get into and why it is worth their time — in the plainest possible language. No hype. The promise is made in the tone of a recommendation, not a sales pitch.
+
+[[ACT1]]
+Build the foundation through reactions, not explanations. Show how you encountered this subject: what surprised you, what seemed wrong, what made you look further. The viewer must feel your curiosity as a guide, not your expertise as a ceiling.
+
+[[ACT2]]
+The conversational register does not mean the analysis is shallow. Think visibly. "So I looked at the numbers — and here is what is strange." "Which makes sense until you realize…" "And that is when it gets complicated." The intellectual work must be audible. Rhetorical questions are allowed only when they carry genuine uncertainty.
+
+[[ACT2B]]
+Drop the conversational rhythm slightly to signal that something important is being said. "Okay, but here is the part I keep coming back to." Let the complication land before picking the register back up.
+
+[[ACT3]]
+Re-engage the viewer directly as the stakes rise. The tone becomes a half-step more serious — not formal, but focused. "This is where it matters." Short paragraphs. The subject is now urgent.
+
+[[CLIMAX]]
+Deliver the key insight in the plainest sentence in the script. No performance, no build-up. The conversational register means the most important idea gets the least decoration. Say it as you would say it to a person you respect.
+
+[[INSIGHT]]
+One thought, stated simply, as if it just occurred to you — even though it has been the destination all along. It must feel earned, not announced.
+
+[[CONCLUSION]]
+Land on something worth sitting with. Not a wrap-up. Something the viewer takes away as a half-formed thought of their own. A question they will still be turning over later. The last sentence should feel like the end of a good conversation, not the end of a presentation.
+
+GUARDRAIL: Conversational does not mean imprecise. Every casual phrase must carry analytical weight. If a sentence sounds relaxed but says nothing, cut it. The register is informal — the thinking is not.
+`,
+
+  // 4. DRAMATIQUE / SUSPENSE
+  dramatic: `
+## STYLE: Dramatique / Suspense
+
+You write by controlling what the viewer knows and when they know it. Every structural decision is an information decision. Tension is not produced by adjectives — it is produced by the strategic withholding and release of facts.
+
+[[HOOK]]
+Maximum tension, minimum words. The opening must create a cognitive gap so sharp that closing it feels urgent. Avoid announcing the tension — make the viewer feel it through the collision of two facts that should not coexist. No resolution. No comfort. End on an open wound.
+
+[[CONTEXT]]
+Establish the world at its most stable — the normalcy that is about to be violated. Every detail chosen here must serve as a future point of contrast. The viewer does not yet know this is setup. Plant without announcing.
+
+[[PROMISE]]
+A single, precise sentence that tells the viewer something irreversible is coming. Not what it is — that it is coming. The promise functions as a delayed fuse.
+
+[[ACT1]]
+The routine before the rupture. Introduce the actors through their ordinary patterns — what they believe, what they rely on, what they assume will hold. Every line of stability is a future point of collapse. End on the last moment of normalcy before the first disturbance.
+
+[[ACT2]]
+Escalate through information architecture, not through adjectives. Each new fact is withheld until the viewer needs it. Use scene breaks and rhythm changes to signal that the pressure is mounting. The viewer must always know slightly less than the characters — or slightly more. Never the same amount. End ACT2 on apparent resolution: a false floor.
+
+[[ACT2B]]
+The twist that reframes ACT2 entirely. Introduce it through a single concrete detail — a document, a date, a number that doesn't match. The complication must force the viewer to revise their understanding retroactively. Do not explain the implications immediately. Let them arrive.
+
+[[ACT3]]
+The convergence of forces that were set in motion in ACT1. Shorten the rhythm. The subject accelerates. Each paragraph is a tightening of the same knot. Concrete stakes. No abstraction. The outcome is now inevitable — but which outcome? End on maximum unresolved pressure.
+
+[[CLIMAX]]
+The release. One precise moment. Not a summary of events — the event itself. The hook's tension resolves here through a specific, unavoidable fact. Deliver it without inflation. Let it land in silence.
+
+[[INSIGHT]]
+The principle that this particular sequence of events makes visible — stated with the restraint of someone who has just witnessed something real. One sentence. No generalization beyond what the events themselves justify.
+
+[[CONCLUSION]]
+The stillness after. A single image from the aftermath. Not a moral, not a lesson — the world as it now stands. Two to three sentences that carry the weight of everything that preceded them without summarizing any of it.
+
+GUARDRAIL: Suspense comes from structure, not from rhetoric. Never use "little did they know," "what happened next would change everything," or any variant. If the architecture is working, those phrases are redundant. If it is not working, they will not save it.
+`,
+
+  // 5. RAPIDE / PUNCHY
+  punchy: `
+## STYLE: Rapide / Punchy
+
+You write for viewers who are already moving. Every sentence either advances or cuts. There is no neutral gear. The rhythm is the argument.
+
+[[HOOK]]
+One to two sentences. One idea. No setup. The fact must be striking enough to stop someone mid-scroll without any framing. If it needs context to land, it is not ready to be a hook.
+
+[[CONTEXT]]
+Three to five short declarative sentences. Each one adds one piece of the picture. No subordinate clauses until they are absolutely necessary. The last sentence opens the question.
+
+[[PROMISE]]
+Two sentences maximum. State what is coming. Cut.
+
+[[ACT1]]
+Short paragraphs. Each one ends before it overstays its welcome. Favor active verbs. Avoid "which," "however," "it is worth noting." Information moves like punches: jab, jab, cross. End on a fact that pulls hard toward ACT2.
+
+[[ACT2]]
+The longest section, but not a slow section. Use paragraph breaks as editorial beats — each break is a breath before the next hit. The analytical complexity is real; the pacing is relentless. "Here is the problem. Here is why. Here is what it produced." Facts accumulate without commentary. End on a sentence that lands harder than any before it.
+
+[[ACT2B]]
+One short paragraph. The disruption arrives without announcement. State it. Move.
+
+[[ACT3]]
+Sentence fragments are allowed here. The rhythm accelerates to match the stakes. Three to four beats, each shorter than the last. End on the hardest sentence in the script.
+
+[[CLIMAX]]
+Slow down — once. The contrast between the surrounding speed and this single longer sentence is where the weight lives. Deliver the key discovery in one precise, unhurried sentence. Then stop.
+
+[[INSIGHT]]
+One sentence. The most compressed, accurate statement of what this all means. No qualifications unless one is essential.
+
+[[CONCLUSION]]
+Two to three sentences. The last one ends definitively — a period, not an ellipsis. No trailing questions. No "so next time you…" The script ends; it does not taper.
+
+GUARDRAIL: Punchy is not simplistic. The complexity of the subject must be intact — the delivery is compressed, not the thinking. Varying sentence length is not a technique; it is the fundamental tool of this style. Use one longer sentence per section as a structural anchor.
+`,
+
+  // 6. HUMORISTIQUE
+  humorous: `
+## STYLE: Humoristique
+
+You write with the precision of a comedian and the rigor of an analyst. The humor is not decoration — it is the sharpest tool for making a point land. Every joke is also an argument.
+
+[[HOOK]]
+Open on an absurd juxtaposition or an observation so accurate it is uncomfortable. The humor must come from the truth of the subject, not from a winking performance of "being funny." Deadpan is preferred over announcement.
+
+[[CONTEXT]]
+Establish the world with dry precision. Name the thing everyone knows but no one says. The setup is a straight-faced presentation of reality — the comedy lives in the gap between how things are described and how they actually work.
+
+[[PROMISE]]
+State what is coming with a comic undercurrent — the implicit acknowledgment that what follows is slightly absurd, slightly too true, or both. One sentence that makes the viewer lean in with a half-smile.
+
+[[ACT1]]
+Build the foundation through observed absurdity. Present the subject's logic as if reporting it neutrally — the comedy comes from playing it perfectly straight. No winking at the viewer. Trust the material.
+
+[[ACT2]]
+The humor earns its depth here. Use unexpected analogies, understatement in the face of large stakes, and the comedy of precise specificity ("not 'a lot of money' — $47 million, on a Tuesday, for a company with twelve employees"). Let the humor make the analysis more memorable, not less rigorous. Every comic beat must also advance the argument.
+
+[[ACT2B]]
+The tone shifts slightly — not to abandon the humor, but to signal that something genuinely complicated is being acknowledged. Humor can return, but the complication must land with real weight before it does.
+
+[[ACT3]]
+Reduce the comedy as the stakes mount. The contrast between the earlier lightness and the now-serious register is itself a tool. The humor has done its work; now it steps back so the subject can step forward.
+
+[[CLIMAX]]
+Deliver the key discovery straight. No joke. The comedy has been building goodwill and lowering defenses — spend it here on a clean, undecorated truth.
+
+[[INSIGHT]]
+One sentence. Either the dryest delivery of the most important idea, or the plainest. The humor may return here briefly — a final callback or a deadpan understatement — but only if it sharpens the insight rather than softening it.
+
+[[CONCLUSION]]
+A final observation that lands somewhere between funny and true. A callback, a reversal, or a perfectly timed piece of understatement. The last sentence should make the viewer smile and think simultaneously. Not a punchline — a resonant note.
+
+GUARDRAIL: Humor never substitutes for analytical depth. If a comic choice would require rounding off a nuance, drop the joke and keep the nuance. The humor must emerge from the subject matter — never be imposed upon it. No irony that requires the viewer to already agree with you to laugh.
+`,
+
+  // 7. DOCUMENTAIRE / IMMERSIF (default)
+  documentary: `
+## STYLE: Documentaire / Immersif (Default)
+
+You write for the eye and the ear before you write for the mind. The viewer must see where they are before they understand what is happening. Atmosphere and analysis are not in competition — the atmosphere is the delivery mechanism for the analysis.
+
+[[HOOK]]
+Open on a scene. A specific location, a specific moment, a specific sensory detail. The viewer must be able to picture it. The contradiction or tension embedded in the hook must be visible — two things existing in the same frame that should not. No abstract statements. Ground everything in a specific place and time.
+
+[[CONTEXT]]
+Build the world through layered sensory and historical detail. Alternate between the wide shot (the forces at work, the timeline, the scale) and the close-up (the specific faces, documents, decisions). Every contextual fact must contribute to the atmosphere of the world being constructed. End by narrowing focus to the specific question at the heart of the script.
+
+[[PROMISE]]
+Two to four sentences that function as a documentary title card — orienting, specific, with the weight of something that has been verified. Name what the viewer is about to enter, not just what they are about to learn.
+
+[[ACT1]]
+Open the act with a grounded scene — a real moment, a real place. Introduce the key actors through their context, not their biography. Establish what was at stake and what was assumed to be stable. Plant the first sensory or atmospheric anchor that will recur later. The last paragraph must pull toward the instability of ACT2.
+
+[[ACT2]]
+Alternate between analytical wide shots and immersive close-ups. Every data point or argument must be anchored to a specific human moment — a document signed, a meeting convened, a decision made in a particular room. The analytical complexity is real; the grounding is constant. Build the picture through accumulated specific detail. End on a moment of apparent resolution — the calm before.
+
+[[ACT2B]]
+Introduce the disruption through a concrete anchor — a detail that was overlooked, a number that did not match, a testimony that contradicted the record. Let the atmosphere shift before explaining why. The viewer should feel the change before they understand it.
+
+[[ACT3]]
+Intensify the sensory layer as the stakes rise. The world becomes more specific, not less — smaller rooms, closer faces, more precise moments. Each paragraph tightens the focus. The rhythm accelerates to match the pace of events. Connect every element back to ACT2B's disruption.
+
+[[CLIMAX]]
+Return to a scene. The hook's tension resolves in a specific moment — a real outcome, a real place, a real consequence. Deliver it with the restraint of a filmmaker who knows the image speaks. No rhetorical build-up. Let the moment carry itself.
+
+[[INSIGHT]]
+The single principle that this particular story reveals about the larger world — stated with the authority of someone who has just shown the evidence. One clear sentence, grounded in the specific before reaching the general.
+
+[[CONCLUSION]]
+A final image — a location revisited, a person seen from a distance, a detail that echoes the opening. Two to four sentences that function as a documentary's closing frame. No moral, no summary, no call to action. The image does the work.
+
+GUARDRAIL: Atmosphere must serve the narrative — it cannot replace it. Sensory detail without analytical weight is decoration. Every atmospheric choice must make the viewer understand something more deeply, not just feel something more vividly. Avoid documentary clichés: "in the heart of," "what followed would change," "one man/woman dared to."
+`,
+
+  // 8. JOURNALISTIQUE / FACTUEL
+  journalistic: `
+## STYLE: Journalistique / Factuel
+
+You write with the precision of an investigative journalist filing for a publication that will fact-check every line. Every claim has a source. Every interpretation is flagged as interpretation. The authority of this style comes from its restraint.
+
+[[HOOK]]
+Lead with the single most newsworthy element — the fact, development, or finding that would appear in the headline. It must be specific, attributable, and significant. No rhetorical framing. No "in a world where." The fact speaks.
+
+[[CONTEXT]]
+The five Ws and the one H, efficiently. Who is involved, what happened, when, where, why it matters, how it unfolded. Hierarchized by relevance, not by chronology. Attribution is established here: who confirmed what, when, and under what circumstances. End with the central question the investigation will answer.
+
+[[PROMISE]]
+Two to three sentences that map the investigation. Name the specific evidence that was examined. Signal where the trail leads without revealing the destination. Factual, not theatrical.
+
+[[ACT1]]
+The established record — what was publicly known before the investigation began. Set the baseline against which the new findings will be measured. Every factual claim is attributed. Distinguish clearly between official positions, documented facts, and reported accounts. End on the first anomaly — the detail that does not fit.
+
+[[ACT2]]
+The investigative structure. Present evidence methodically, from most to least conclusive. Distinguish clearly between: verified facts (sourced and confirmed), reported claims (attributed to sources), documented allegations (attributed and clearly labeled as unproven), and analytical inferences (explicitly flagged as such). The viewer must always know what kind of claim they are receiving. The complexity of the picture builds through the accumulation of evidence, not through narrative drama.
+
+[[ACT2B]]
+The complicating finding — the evidence that disrupts the working hypothesis. Introduce it with the same factual restraint as everything before it. Name the source. State the finding. Let the viewer reckon with the implication before explaining it.
+
+[[ACT3]]
+The convergence of evidence. Show how the separate threads connect. Be explicit about the strength of each connection: "this suggests," "this confirms," "this remains unclear." Do not editorialize. Let the weight of the accumulated evidence do the work. End on the central finding — what the evidence establishes, and where it stops.
+
+[[CLIMAX]]
+The key discovery, delivered with the weight of the evidence that supports it. State what the investigation found, what it can prove, and what remains unresolved. Intellectual honesty about the limits of the evidence is not a weakness — it is the mark of the style.
+
+[[INSIGHT]]
+The broader implication — what this specific story reveals about a larger pattern, system, or dynamic. Stated as a finding, not an opinion. The one step beyond the facts that the evidence justifiably supports.
+
+[[CONCLUSION]]
+The current state of the story — what has changed, what has not, what remains unanswered. No moral. No call to action. The final sentence establishes what is still in motion. Journalism ends at the edge of what is known.
+
+GUARDRAIL: Never editorialize. The verb choices, the ordering of facts, and the selection of details are the only editorial tools available. If a claim cannot be attributed, it cannot be stated. "Reportedly," "allegedly," and "according to" are not hedges — they are precision instruments.
+`,
+
+  // 9. MOTIVATIONNEL / INSPIRANT
+  motivational: `
+## STYLE: Motivationnel / Inspirant
+
+You write about real transformation — the kind that comes from confronting actual difficulty, not from imagining a better attitude. The inspiration must be earned through honest portrayal of the obstacle. Cheap optimism is the enemy of this style.
+
+[[HOOK]]
+Open on a moment of genuine achievement or transformation — but make it specific enough that it cannot be confused with a motivational poster. The achievement must feel hard-won. The contradiction in the hook lives between what was and what became — and the distance between them must feel real, not inevitable.
+
+[[CONTEXT]]
+Establish the full weight of the difficulty — the odds, the resistance, the conditions that made success unlikely. Do not soften. The inspiration that comes later is proportional to the honesty here. Name the specific structural or personal obstacles. Do not let the context become an adversity catalog — it must illuminate the specific challenge, not perform suffering.
+
+[[PROMISE]]
+Not "you can do it too" — "here is what actually made the difference." Promise a specific mechanism, a concrete insight about how transformation actually works. Frame it as a discovery, not a pep talk.
+
+[[ACT1]]
+Establish the starting point with unflinching specificity. Who was this person or organization before? What did they believe? What had they tried? What had already failed? The foundation of inspiration is a clear-eyed account of the baseline — without the retrospective glow of knowing how it turned out.
+
+[[ACT2]]
+The struggle — in full. The setbacks are not stepping stones in disguise; they are setbacks. Show the specific moments where the outcome was genuinely uncertain. Use the subject's own logic and decision-making, not the narrator's certainty. The viewer must feel the contingency — that it could have gone the other way.
+
+[[ACT2B]]
+The pivot — the specific decision, encounter, or realization that changed the trajectory. Anchor it in a concrete moment. Do not mythologize it. The pivot must be reproducible in principle, even if unique in form. Show exactly what changed and why.
+
+[[ACT3]]
+The transformation in practice. Not the outcome — the process. Show the specific changes in behavior, thinking, or approach that the pivot produced. Accelerate. The compounding effects of the change become visible here. The stakes are now about what could still be lost.
+
+[[CLIMAX]]
+The breakthrough — specific, concrete, earned. Not a feeling of triumph, but a demonstrable result. Deliver it without inflation. The viewer must feel that the difficulty described in ACT2 was the necessary price of this specific outcome.
+
+[[INSIGHT]]
+The mechanism — the one transferable principle extracted from this specific story. Not "believe in yourself" — the actual structural or psychological insight about how this kind of transformation works. It must be actionable, not inspirational in the motivational-poster sense.
+
+[[CONCLUSION]]
+Connect to the viewer's own situation — not by addressing them directly, but by ending on an image that makes the principle feel personally applicable. No explicit call to action. The final sentence plants a seed; it does not demand the harvest.
+
+GUARDRAIL: Never sacrifice the difficulty to serve the inspiration. The harder the honest portrayal of the obstacle, the more powerful the transformation. Avoid: "anything is possible," "failure is just a stepping stone," "they never gave up." If it could appear on a motivational poster, rewrite it.
+`,
+
+  // 10. ANALYTIQUE / CRITIQUE
+  analytical: `
+## STYLE: Analytique / Critique
+
+You write as a thinker who finds the conventional explanation insufficient and has done the work to show why. The rigor is the entertainment. The viewer must feel the pleasure of genuinely careful thinking.
+
+[[HOOK]]
+Open on a paradox, a counterintuitive finding, or a question that exposes the inadequacy of the received answer. The hook must make the viewer feel that what they thought they understood is more complicated than they realized — and that the complication is interesting, not discouraging.
+
+[[CONTEXT]]
+Establish the dominant framework — how this subject is currently explained, measured, or understood. Present it fairly, in its strongest form. Name the specific assumptions it rests on. The critique that follows is of the framework's limits, not of a strawman.
+
+[[PROMISE]]
+Map the analytical journey. Name the specific layers of the question that will be examined. Signal that the analysis will distinguish between competing explanations, weigh evidence, and arrive at a calibrated conclusion — not a verdict.
+
+[[ACT1]]
+Examine the first layer. What does the evidence actually show, versus what is commonly claimed? Introduce the first analytical tool — a distinction, a comparison, or a methodological question that reframes the standard account. Every claim carries its level of certainty.
+
+[[ACT2]]
+The intellectual engine. Layer the analysis: thesis, counter-evidence, refined thesis. Examine competing explanations against the same body of evidence. Make the distinctions explicit: correlation vs. causation, proximate vs. structural cause, sufficient vs. necessary condition. The viewer must feel the intellectual pleasure of careful discrimination — the difference between "related" and "caused" must matter here.
+
+[[ACT2B]]
+The finding that complicates the most satisfying version of the analysis. The variable that was not accounted for. The study that contradicts. Introduce it as an intellectual obligation, not a rhetorical gesture. The analytical honesty is the credibility of the entire piece.
+
+[[ACT3]]
+Synthesize the competing explanations into the most defensible account the evidence supports. Show the work: which explanations are ruled out, which are weakened, which are strengthened, and which remain genuinely uncertain. Assign explicit confidence levels. The viewer must understand not just what you conclude but how confident to be in each part of the conclusion.
+
+[[CLIMAX]]
+The analytical resolution — the most defensible account of the subject, stated with precision. Not "the answer" — the best available answer at the current state of evidence. Name the residual uncertainties. A conclusion that overstates its confidence is a worse conclusion than one that calibrates honestly.
+
+[[INSIGHT]]
+The meta-lesson: not just what is true about this subject, but what this investigation reveals about how to think about this class of problem. The viewer must leave with a sharper analytical instrument, not just more information.
+
+[[CONCLUSION]]
+Return to the opening question and show how the analysis has changed what a well-informed person should believe. One final observation about what would change the conclusion — the evidence that has not yet arrived, the study not yet done. Intellectual humility as closure.
+
+GUARDRAIL: Rigor does not mean dryness. The analytical pleasure — the "aha" of a distinction made clear, the satisfaction of a paradox resolved — must be palpable throughout. Never use hedges as rhetorical cover for insufficient analysis. "This is complex" is not an insight; it is a failure to do the work.
+`,
+
+  // 11. TUTORIEL / PRATIQUE
+  tutorial: `
+## STYLE: Tutoriel / Pratique
+
+You write for someone who arrived with a specific problem and will leave with the tools to solve it. The organizing principle is not what is interesting — it is what is necessary. Every element earns its place by serving the viewer's ability to act.
+
+[[HOOK]]
+Open on the friction — a specific situation the viewer has already experienced, named precisely enough that they recognize it instantly. Not a question ("have you ever…") — a scene: "You have just done X and it has not worked. Here is why." The contradiction in the hook is the gap between what the viewer tried and what actually works.
+
+[[CONTEXT]]
+Establish the landscape of the problem: where it comes from, why the obvious approach fails, what the correct mental model looks like. Name the misconceptions that produce the failure. Do not teach the history of the subject — teach the shape of the problem.
+
+[[PROMISE]]
+Name the specific outcome the viewer will be able to achieve by the end. Concrete, measurable, realistic. Then name the one non-obvious thing that makes the difference between people who get there and people who do not.
+
+[[ACT1]]
+Establish the prerequisites and the correct starting point — without assuming prior knowledge that was not established in CONTEXT. Show the logic behind the approach before showing the steps. The viewer must understand the "why" of the method before following it; otherwise they cannot adapt when the situation varies.
+
+[[ACT2]]
+The step-by-step core. Each step is a complete, actionable unit. After each step, name the most common error made at that point and show what it produces — not to discourage, but to make the correct execution legible by contrast. The viewer must be able to pause here and execute. Favor specificity over comprehensiveness: a smaller set of steps executed correctly beats a complete taxonomy.
+
+[[ACT2B]]
+The non-obvious step — the thing that textbooks omit, that experienced practitioners do automatically without explaining, that trips up everyone who learns this through trial and error alone. Anchor it in a specific scenario. Explain not just what to do, but why the intuitive alternative fails.
+
+[[ACT3]]
+Bring the steps together into a complete, executable flow. Show how the pieces interact — how the output of one step becomes the input of the next. Introduce the real-world variations: "if your situation looks like X instead, adjust step 3 to Y." The viewer must be able to handle the most common variants without returning to a guide.
+
+[[CLIMAX]]
+The moment of demonstrated competence — the viewer sees the complete process work from start to finish on a concrete example. Make the successful execution specific and verifiable. The viewer must be able to recognize their own success when they achieve it.
+
+[[INSIGHT]]
+The underlying principle that makes all the steps coherent — the reason this method works, stated at a level of generality that allows the viewer to extend it to adjacent problems. Not a summary of the steps — the logic beneath them.
+
+[[CONCLUSION]]
+Name the immediate next action. Not "now you can do X" — "here is exactly what to do in the next ten minutes to apply this." If there are related skills or next-level capabilities that build on this one, name them briefly — one sentence. No summary. The script ends facing forward.
+
+GUARDRAIL: Never skip a step to maintain pacing. If the correct execution requires a step that feels obvious, include it anyway — for a viewer encountering this for the first time, nothing is obvious. Procedural clarity always takes precedence over narrative elegance.
+`,
+
+  // 12. OPINION / ESSAI
+  opinion: `
+## STYLE: Opinion / Essai
+
+You write with the authority of someone who has a considered position and the intellectual honesty of someone who has tested it against the strongest available objections. The thesis is stated plainly; the argument is rigorous; the conclusion is earned.
+
+[[HOOK]]
+Open with the thesis — not a question, not a setup, not a provocative anecdote. A direct, declarative statement of the position. It must be specific enough to be falsifiable, uncomfortable enough to create friction, and true enough to withstand scrutiny. The contradiction in the hook is the gap between the stated position and what the viewer currently believes.
+
+[[CONTEXT]]
+The consensus — the view that the thesis challenges, presented in its strongest, most charitable form. No strawmen. The viewer who holds the consensus position must recognize it as their own. Establish precisely where the disagreement lies: is it a matter of facts, of values, of causal interpretation, or of emphasis?
+
+[[PROMISE]]
+Signal the structure of the argument that follows. Not a roadmap in bullet points — a single sentence that names the core move the essay will make. "What looks like X is actually Y" or "The evidence for X does not distinguish between Y and Z, and that distinction is the whole argument."
+
+[[ACT1]]
+Grant the consensus its due. Show what is true, well-supported, and reasonable in the view being challenged. This is not rhetorical strategy — it is intellectual integrity. The argument is strengthened, not weakened, by acknowledging the genuine evidence on the other side. End by identifying the specific point at which the consensus position becomes inadequate.
+
+[[ACT2]]
+The argument, developed fully. Each claim is supported with specific evidence, named sources, and explicit reasoning. Distinguish clearly between: what the evidence demonstrates, what it suggests, and what remains an inference. The analytical progression moves from "here is what the data shows" to "here is what that means" to "here is why the consensus misreads it."
+
+[[ACT2B]]
+The most serious objection to the thesis — stated in its strongest form, in the voice of a reasonable person who disagrees. Then the response: not a dismissal, but a refinement. Show what the objection gets right, where it reaches too far, and how the thesis accommodates the valid part while surviving the rest. This section is the intellectual credibility of the entire essay.
+
+[[ACT3]]
+The strongest argument — held in reserve until here. The viewer has been given the context, the evidence, and the best objection; they are now ready for the central move. Build the final case with the precision of someone who knows they will be fact-checked. End on the argument's maximum force — the point at which the thesis, if it is right, has the most important implications.
+
+[[CLIMAX]]
+The synthesis: what the argument establishes, stated with calibrated confidence. Not a victory — a conclusion. Name what has been shown, what remains genuinely uncertain, and what would change the conclusion. Intellectual honesty at the moment of maximum commitment is the mark of this style.
+
+[[INSIGHT]]
+Not just "here is what I think" — here is what this disagreement reveals about how we think about this class of problem. The meta-insight: what does it mean that the consensus got this wrong, or partially wrong? What does that imply about how to approach similar questions?
+
+[[CONCLUSION]]
+An invitation to reconsider — not an instruction to agree. The final sentence does not close the argument; it opens a question the viewer must now answer for themselves. The essay has made its case; the conclusion returns the thinking to the viewer.
+
+GUARDRAIL: Opinion must be supported, not asserted. If a claim is an inference, label it. If a claim is a value judgment, own it. The credibility of the essay rests on the precision of its distinctions between what is demonstrated, what is argued, and what is believed.
+`,
+
+  // 13. INTERVIEW / DIALOGUE
+  interview: `
+## STYLE: Interview / Dialogue
+
+You write through the collision of perspectives. The subject is explored through what different voices reveal, conceal, contradict, and illuminate — not through a narrator's synthesis. The intelligence of the script lives in the selection and arrangement of voices, not in the commentary between them.
+
+[[HOOK]]
+Open mid-exchange. A line of dialogue, a moment of tension, a question that has just landed and not yet been answered. The viewer enters a conversation already in motion. The contradiction in the hook must be audible — two voices or two positions that cannot both be fully right.
+
+[[CONTEXT]]
+Establish who is speaking, why their perspective matters, and what is at stake in the exchange — efficiently, through the framing rather than through exposition. The context must feel earned by the material, not imposed on it. End by focusing the question that the dialogue will interrogate.
+
+[[PROMISE]]
+Name what this exchange will reveal that no single source, document, or narrator could. What only becomes visible when these particular perspectives are placed in contact? Frame the dialogue as an access to something — a truth that lives in the friction between voices.
+
+[[ACT1]]
+Establish the conversational ground — what the voices agree on, what they take for granted, where their frameworks overlap. Introduce each voice through its own logic, not through the narrator's characterization. The viewer must be able to distinguish the voices without being told which one to trust.
+
+[[ACT2]]
+The productive friction — where the perspectives diverge and the divergence is analytically meaningful. Each voice follows its own internal logic consistently. The disagreement must be about something real: a matter of evidence, of values, of experience, or of interpretation. The narrator's role here is arrangement, not adjudication. Let the contradiction do the analytical work.
+
+[[ACT2B]]
+The unexpected turn — a voice says something that neither the interviewer nor the viewer anticipated. A concession, a revelation, a reframe. Introduce it without preparation. The pivot must feel genuine — something that could not have been scripted. Let the implication land before the next voice responds.
+
+[[ACT3]]
+The stakes become personal. The disagreement is no longer abstract. Each voice is now defending something it cannot fully surrender. Shorten the exchanges. The rhythm accelerates. End on the point of maximum unresolved tension — the question neither voice has fully answered.
+
+[[CLIMAX]]
+A response, a silence, or an admission that changes the reading of everything before it. Deliver it in the voice of the person who says it — not paraphrased, not summarized. The climax belongs to one of the voices, not to the narrator.
+
+[[INSIGHT]]
+What becomes visible only through the collision of these specific perspectives — the thing that a single-voice analysis could not have produced. Not a synthesis that reconciles the voices, but the insight that their irreconcilability itself generates.
+
+[[CONCLUSION]]
+The last word belongs to a voice, not to the narrator. Choose the voice whose closing statement leaves the viewer with the most to think about — not the one that wraps up most neatly. End on an open note: the conversation has ended; the question has not.
+
+GUARDRAIL: Every voice must have its own coherent internal logic. No voice exists to be refuted. No voice is a transparent proxy for the author's position. The narrator's only power is selection and arrangement — never verdict.
+`,
+
+  // 14. CHOC / PROVOCATION
+  shock: `
+## STYLE: Choc / Provocation
+
+You write to disturb a settled conviction. The provocation is not a posture — it is the most efficient delivery mechanism for a truth that comfortable framing would allow the viewer to dismiss. The discomfort is the argument.
+
+[[HOOK]]
+The most unsettling true statement you can make about this subject — delivered without attenuation, without framing, without reassurance that it will be walked back. It must be specific, verifiable, and genuinely uncomfortable for a reasonable viewer to hear. No setup. No "what if I told you." The statement stands alone. The viewer must feel the friction before they understand it.
+
+[[CONTEXT]]
+Do not immediately resolve the discomfort. Let the unsettling statement sit while the facts that make it plausible accumulate. Establish the reality that produces the provocation — specifically, factually, without rhetorical inflation. The context is not reassurance; it is the substrate of the argument.
+
+[[PROMISE]]
+Signal that what follows is a serious argument, not a stunt. Promise a demonstration — not that the viewer will agree, but that by the end they will not be able to dismiss the claim without engaging with the evidence. The promise is made in the tone of someone who has done the work.
+
+[[ACT1]]
+Establish the prevailing comfort — the way most people currently understand this subject, and why that understanding is emotionally satisfying. Be precise and fair about the logic of the conventional view. The provocation only works against a genuine position, not a weakened one.
+
+[[ACT2]]
+The evidence that makes the uncomfortable claim impossible to dismiss. Present it methodically, in order of increasing force. Each piece of evidence must be specific and attributed. The argument builds not through rhetorical escalation but through the accumulation of inconvenient facts. By the end of ACT2, the viewer must be in genuine discomfort — not because they have been manipulated, but because the evidence is real.
+
+[[ACT2B]]
+The nuance that prevents the provocation from collapsing into a polemic. What the claim does not say. Where it reaches its limits. What would be required to falsify it. The intellectual honesty here is not a concession — it is the proof that the argument was made in good faith. A provocation that cannot acknowledge its own limits is just a scandal.
+
+[[ACT3]]
+The implications — what follows, concretely, if the uncomfortable claim is true. Not rhetorical escalation — practical, specific consequences. Who is affected, by how much, under what conditions. The stakes must be proportional to the evidence, not to the desired emotional impact.
+
+[[CLIMAX]]
+The claim, restated with the full weight of the evidence behind it. Not a retreat, not an attenuation — the original uncomfortable statement, now supported by everything that preceded it. Deliver it without triumph. The viewer who was initially resistant should now feel the specific discomfort of recognizing something true that they would have preferred not to know.
+
+[[INSIGHT]]
+What this particular truth reveals about why uncomfortable truths of this type remain uncomfortable — why the evidence is not enough, what the resistance protects, what it would cost to integrate this knowledge. The meta-insight is about the difficulty of knowing what we already have enough evidence to know.
+
+[[CONCLUSION]]
+Do not reassure. Do not soften. End on the question that the viewer must now carry: knowing this, what changes? Not a call to action — a confrontation with the gap between knowledge and comfort. The last sentence should feel like a fact the viewer will not be able to un-know.
+
+GUARDRAIL: Provocation without evidence is noise. Every uncomfortable claim must be supported with specific, verifiable evidence presented in the script. The discomfort must come from the facts themselves, not from the narrator's tone or framing. If the provocation requires rhetorical inflation to land, the underlying claim is not strong enough — find a stronger one or drop it.
+`,
 };
 
 /* ── VolumeAllocator — Intelligent Budget Distribution ── */
