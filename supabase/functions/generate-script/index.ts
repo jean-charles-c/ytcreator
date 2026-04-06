@@ -574,12 +574,12 @@ The implications — what follows, concretely, if the uncomfortable claim is tru
 The claim, restated with the full weight of the evidence behind it. Not a retreat, not an attenuation — the original uncomfortable statement, now supported by everything that preceded it. Deliver it without triumph. The viewer who was initially resistant should now feel the specific discomfort of recognizing something true that they would have preferred not to know.
 
 [[INSIGHT]]
-What this particular truth reveals about why uncomfortable truths of this type remain uncomfortable — why the evidence is not enough, what the resistance protects, what it would cost to integrate this knowledge. The meta-insight is about the difficulty of knowing what we already have enough evidence to know.
+What this particular truth reveals about why uncomfortable truths of this type remain uncomfortable — why the evidence is not enough, what the resistance protects, what it would cost to integrate this knowledge. The meta-insight is about the difficulty of the truth, not just its content.
 
 [[CONCLUSION]]
-Do not reassure. Do not soften. End on the question that the viewer must now carry: knowing this, what changes? Not a call to action — a confrontation with the gap between knowledge and comfort. The last sentence should feel like a fact the viewer will not be able to un-know.
+Transform the discomfort into a specific cognitive instrument — not optimism, not a call to action, but a more accurate map. The viewer does not leave feeling better. They leave seeing more clearly. The final sentence states what can now be done with this knowledge that could not be done without it.
 
-GUARDRAIL: Provocation without evidence is noise. Every uncomfortable claim must be supported with specific, verifiable evidence presented in the script. The discomfort must come from the facts themselves, not from the narrator's tone or framing. If the provocation requires rhetorical inflation to land, the underlying claim is not strong enough — find a stronger one or drop it.
+GUARDRAIL: The provocation must be intellectually honest at every point. A claim that cannot survive rigorous examination is not a provocation — it is a manipulation. The discomfort must come from the truth of the claim, never from its phrasing. If the statement would be no less uncomfortable stated more precisely, state it more precisely.
 `,
 };
 
