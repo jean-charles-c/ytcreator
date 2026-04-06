@@ -99,7 +99,16 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editingFullPrompt, setEditingFullPrompt] = useState(false);
   const [fullPromptDraft, setFullPromptDraft] = useState("");
   const [customFullPrompt, setCustomFullPrompt] = useState<string | null>(null);
+  const prevPromptExportRef = useRef(shot.prompt_export);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset custom prompt when shot is regenerated (prompt_export changed externally)
+  if (shot.prompt_export !== prevPromptExportRef.current) {
+    prevPromptExportRef.current = shot.prompt_export;
+    if (customFullPrompt !== null) {
+      setCustomFullPrompt(null);
+    }
+  }
 
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
