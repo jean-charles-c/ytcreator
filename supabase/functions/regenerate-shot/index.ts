@@ -30,10 +30,29 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { shot_id, sensitive_level } = await req.json();
+    const { shot_id, sensitive_level, visual_style_id } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
+
+    // ── Visual style suffix map (mirrors client-side VISUAL_STYLES) ──
+    const STYLE_SUFFIXES: Record<string, { label: string; promptSuffix: string }> = {
+      realistic: { label: "Réaliste / Photographique", promptSuffix: "Ultra realistic documentary photography, photojournalistic style, natural lighting, high dynamic range, film grain, 8k detail" },
+      cinematic: { label: "Cinématographique", promptSuffix: "Cinematic film still, dramatic lighting, shallow depth of field, anamorphic lens flare, color graded, widescreen composition, movie-like atmosphere" },
+      illustration: { label: "Illustration", promptSuffix: "Digital illustration, detailed artwork, rich colors, clean lines, editorial illustration style, professional book illustration" },
+      painting: { label: "Peinture", promptSuffix: "Oil painting style, visible brush strokes, rich texture, classical composition, fine art painting, museum quality" },
+      lineart: { label: "Dessin / Line art", promptSuffix: "Pencil sketch portrait, graphite drawing, crosshatching, black and white, realistic editorial illustration, sketched background, fine detailed linework" },
+      comics: { label: "BD / Comics / Manga", promptSuffix: "Comic book style, bold outlines, dynamic panels, vivid flat colors, graphic novel illustration, halftone dots" },
+      animation: { label: "Animation / Cartoon / Anime", promptSuffix: "Anime style, cel-shaded, vibrant colors, expressive characters, Studio Ghibli inspired, clean digital animation" },
+      conceptart: { label: "Concept art", promptSuffix: "Concept art, environment design, painterly digital art, atmospheric perspective, matte painting, professional pre-production art" },
+      "3dcgi": { label: "3D / CGI", promptSuffix: "3D rendered, CGI, physically based rendering, global illumination, subsurface scattering, photorealistic 3D, Unreal Engine quality" },
+      graphicdesign: { label: "Design graphique", promptSuffix: "Graphic design, flat design, bold typography, geometric shapes, modern layout, clean vector aesthetic, infographic style" },
+      abstract: { label: "Abstrait / Expérimental", promptSuffix: "Abstract art, experimental composition, non-representational, bold colors, textured layers, artistic interpretation, mixed media" },
+      scientific: { label: "Technique / Scientifique", promptSuffix: "Scientific illustration, technical diagram, anatomically precise, labeled cross-section, medical illustration, educational clarity" },
+    };
+    const resolvedStyle = STYLE_SUFFIXES[visual_style_id || "realistic"] || STYLE_SUFFIXES["realistic"];
+    const styleSuffix = resolvedStyle.promptSuffix;
+    const isRealistic = (visual_style_id || "realistic") === "realistic";
 
     const { data: shot, error: shotErr } = await supabase
       .from("shots")
@@ -204,6 +223,20 @@ The prompt must illustrate ONLY what the given text fragment describes.
 Do not illustrate the entire scene — focus on the specific fragment's visual content.
 The prompt must describe what the FRAGMENT says, not what the scene says in general.
 
+VISUAL STYLE — CRITICAL:
+The selected visual style is: "${resolvedStyle.label}" (${styleSuffix}).
+The prompt_export MUST end with this style suffix as the closing directive.
+9. End with: "${styleSuffix}. Ratio d'aspect : 16:9"
+${isRealistic ? `
+PHOTOREALISM ENFORCEMENT:
+All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
+Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
+Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.` : `
+STYLE ENFORCEMENT:
+All output must consistently follow the "${resolvedStyle.label}" visual style.
+The entire prompt must be written to produce images in this specific aesthetic.
+Do NOT mix with photorealistic or documentary style unless that is the selected style.`}
+
 PROMPT STRUCTURE (prompt_export, in FRENCH):
 1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
 2. Camera framing (MUST differ from neighbors)
@@ -213,18 +246,11 @@ PROMPT STRUCTURE (prompt_export, in FRENCH):
 6. Foreground depth elements relevant to the fragment adding visual depth
 7. Lighting: source, direction, quality, shadows — physically motivated
 8. Atmosphere and mood from the fragment's narrative tone
-9. End with: "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9"
-
-PHOTOREALISM ENFORCEMENT:
-All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
-Mandatory: natural skin textures, realistic materials, environmental depth, cinematic lighting contrast, natural imperfections, atmospheric perspective.
-Images must NOT resemble: illustration, fantasy painting, stylized digital art, concept art.
+9. End with the style suffix: "${styleSuffix}. Ratio d'aspect : 16:9"
 
 MATERIAL DENSITY RULE:
 Include physically rich environments. Avoid empty compositions.
-Add environmental elements: objects, scrolls, pottery, fabrics, tools, architectural textures, vegetation, atmospheric particles.
-
-Images must be photorealistic historical documentary style. Never illustration or fantasy.`,
+Add environmental elements: objects, scrolls, pottery, fabrics, tools, architectural textures, vegetation, atmospheric particles.`,
             },
             {
               role: "user",

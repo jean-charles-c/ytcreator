@@ -1187,6 +1187,10 @@ export default function Editor() {
       const effectiveLevel = sceneId
         ? sensitiveMode.resolveShot(sceneId, shotId).effectiveLevel
         : null;
+      // Resolve effective visual style for this shot
+      const effectiveStyleId = sceneId
+        ? visualStyle.resolveShot(sceneId, shotId).effectiveStyleId
+        : visualStyle.globalStyleId;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/regenerate-shot`,
         {
@@ -1199,6 +1203,7 @@ export default function Editor() {
           body: JSON.stringify({
             shot_id: shotId,
             ...(effectiveLevel != null ? { sensitive_level: effectiveLevel } : {}),
+            ...(effectiveStyleId ? { visual_style_id: effectiveStyleId } : {}),
           }),
         }
       );
