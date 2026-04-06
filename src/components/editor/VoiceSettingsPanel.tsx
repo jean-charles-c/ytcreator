@@ -164,7 +164,27 @@ const EFFECTS_PROFILES = [
 
 const GENDER_LABELS: Record<string, string> = { MALE: "♂", FEMALE: "♀", NEUTRAL: "◎" };
 
-export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onActiveProfileChange }: VoiceSettingsPanelProps) {
+export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+  languageCode: "fr-FR",
+  voiceGender: "FEMALE",
+  voiceType: "Standard",
+  voiceName: "",
+  style: "neutral",
+  narrationProfile: "standard",
+  speakingRate: 1.0,
+  pitch: 0,
+  volumeGainDb: 0,
+  effectsProfileId: "none",
+  pauseBetweenParagraphs: 500,
+  pauseAfterSentences: 0,
+  pauseAfterComma: 0,
+  dynamicPauseEnabled: false,
+  dynamicPauseVariation: 300,
+  sentenceStartBoost: 0,
+  sentenceEndSlow: 0,
+};
+
+export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onActiveProfileChange, defaultSettings }: VoiceSettingsPanelProps) {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
