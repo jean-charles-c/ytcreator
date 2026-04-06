@@ -2007,8 +2007,13 @@ export default function Editor() {
               projectId={projectId}
               scriptLanguage={scriptLanguage}
               onLanguageChange={(lang) => setScriptLanguage(lang)}
-              onSendToNarration={(text) => {
-                setNarration(cleanNarrationText(text));
+              onSendToNarration={async (text) => {
+                const clean = cleanNarrationText(text);
+                setNarration(clean);
+                // Persist to DB so it survives tab switches and reloads
+                if (projectId) {
+                  await supabase.from("projects").update({ narration: clean }).eq("id", projectId);
+                }
               }}
               onAnalysisReady={(analysis, text) => {
                 setPdfAnalysis(analysis);
