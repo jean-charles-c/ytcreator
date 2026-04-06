@@ -19,6 +19,7 @@ export const NARRATIVE_STYLES: NarrativeStyle[] = [
   { id: "opinion", label: "Opinion / essai", description: "Thèse affirmée, argumentation rigoureuse, prise de position" },
   { id: "interview", label: "Interview / dialogue", description: "Collision de perspectives, voix multiples, friction productive" },
   { id: "shock", label: "Choc / provocation", description: "Vérités inconfortables, preuves accumulées, confrontation directe" },
+  { id: "philo", label: "Philo / grand public", description: "Philosophie accessible, questions profondes, langage quotidien" },
 ];
 
 export const DEFAULT_NARRATIVE_STYLE_ID = "documentary";
