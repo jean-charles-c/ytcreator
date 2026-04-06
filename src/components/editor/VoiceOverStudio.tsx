@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -622,9 +622,24 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               <Accordion type="multiple" defaultValue={[]}>
                 <AccordionItem value="settings" className="border rounded-lg border-border bg-card px-4">
                   <AccordionTrigger className="py-3 hover:no-underline gap-2">
-                    <span className="flex items-center gap-2 text-sm font-semibold font-display">
+                    <span className="flex items-center gap-2 text-sm font-semibold font-display flex-1">
                       <Settings2 className="h-4 w-4 text-primary" />
                       Paramètres de voix
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-muted-foreground hover:text-destructive gap-1 ml-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSettings(DEFAULT_SETTINGS);
+                          setActiveProfileName(null);
+                          toast.success("Réglages réinitialisés");
+                        }}
+                        title="Réinitialiser tous les paramètres"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Reset
+                      </Button>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent>
@@ -762,7 +777,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 <Textarea
                   id="vo-script"
                   value={voScript}
-                  onChange={(e) => { setVoScript(e.target.value); setUserEditedScript(true); }}
+                  onChange={(e) => { setVoScript(e.target.value.replace(/\*/g, "")); setUserEditedScript(true); }}
                   placeholder="Collez ou saisissez votre texte narratif ici..."
                   className="min-h-[100px] sm:min-h-[120px] lg:min-h-[110px] text-sm leading-relaxed resize-y font-body"
                   aria-label="Script narratif pour la voix off"
