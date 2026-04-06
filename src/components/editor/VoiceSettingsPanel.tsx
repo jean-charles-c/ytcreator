@@ -433,6 +433,20 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
           <h3 className="font-display text-sm font-semibold text-foreground">
             Paramètres de voix
           </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive gap-1"
+            onClick={() => {
+              onChange(defaultSettings ?? DEFAULT_VOICE_SETTINGS);
+              setActiveProfileId(null);
+              toast.success("Réglages réinitialisés");
+            }}
+            title="Réinitialiser tous les paramètres"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </Button>
         </div>
       )}
 
