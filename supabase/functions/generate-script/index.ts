@@ -581,6 +581,47 @@ Transform the discomfort into a specific cognitive instrument — not optimism, 
 
 GUARDRAIL: The provocation must be intellectually honest at every point. A claim that cannot survive rigorous examination is not a provocation — it is a manipulation. The discomfort must come from the truth of the claim, never from its phrasing. If the statement would be no less uncomfortable stated more precisely, state it more precisely.
 `,
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 15. PHILO / GRAND PUBLIC
+  // ─────────────────────────────────────────────────────────────────────────────
+  philo: `
+## STYLE: Philo / Grand public
+
+You write philosophy for someone who has never read a philosophy book but is genuinely curious about big questions. Your voice is warm, direct, and unpretentious. No jargon without immediate translation. No name-dropping without immediate context. The goal is not to teach philosophy — it is to make the viewer feel that they have always been capable of thinking philosophically, and were just missing the invitation.
+
+[[HOOK]]
+Open on a moment from everyday life that secretly contains the philosophical problem. Not an abstract question — a concrete situation the viewer has already lived: a decision, a feeling, a thing they noticed and never had words for. The philosophical problem must arrive through the back door of ordinary experience. No announcements. No "philosophers have long debated…"
+
+[[CONTEXT]]
+Name what most people believe about this — in the exact words a non-specialist would use. Validate that belief: explain why it feels true, why it is reasonable, why almost everyone starts there. Then, gently, show the one situation where it stops working. The crack must feel like something the viewer has already sensed without knowing how to name it.
+
+[[PROMISE]]
+Two or three sentences, conversational. Tell the viewer what they are going to understand by the end — in plain language, as if explaining it to a friend. Avoid words like "explore," "examine," or "delve into." Say what the answer is going to be, and make it sound surprising enough to be worth the next eight minutes.
+
+[[ACT1]]
+Introduce the philosophical distinction that matters — but through a story or a scenario, never through a definition. Show two cases that seem identical but produce different intuitions. Let the viewer feel the difference before naming it. One analogy maximum — chosen for its familiarity, not its elegance. End by naming the question precisely, in the simplest sentence that captures it.
+
+[[ACT2]]
+Walk through the argument step by step. Each step is one idea. Each idea is one paragraph. Before moving to the next step, check: does the viewer have everything they need? Use "imagine that…", "think about what happens when…", "here is the strange part:" as natural transitions. The thought experiment — if there is one — must be introduced as a story first, with characters and a situation, before the philosophical implication is drawn from it. Never assume prior knowledge.
+
+[[ACT2B]]
+The honest complication — the part where the answer gets harder. Introduce it as "but there is something that bothers me about this" or "here is where I am less certain." The viewer must feel that the thinker is genuinely uncertain, not performing uncertainty. Explain the complication in plain terms. Show why it matters without turning it into a crisis.
+
+[[ACT3]]
+Show why this question matters outside of philosophy — in a domain the viewer already cares about: how we treat people, how we make decisions, how we understand ourselves, how technology is changing something. The philosophical position must produce a concrete, non-obvious implication that lands in the viewer's real world. Keep it to one implication, developed fully, rather than three implications sketched superficially.
+
+[[CLIMAX]]
+The answer — stated plainly, in one or two sentences a twelve-year-old could understand without losing any of the real meaning. Then one sentence acknowledging what remains genuinely open. The viewer must feel that a real question has been given a real answer, even if that answer is "we do not know yet, but here is what we can say."
+
+[[INSIGHT]]
+The one thing the viewer now has that they did not have before — not a fact, but a way of seeing. Stated as something they can use: "the next time you find yourself thinking X, notice that what is actually happening is Y." Grounded, transferable, specific.
+
+[[CONCLUSION]]
+Return to the opening scene — the everyday moment from the HOOK — and show how it looks different now. Not a summary. A transformation of perception. The viewer must feel that the same ordinary experience now contains something they can see that they could not see before. Two to three sentences. The last one opens a question they will sit with — not a cliffhanger, but a genuine invitation to keep thinking.
+
+GUARDRAIL: Accessible does not mean shallow. The philosophical content must be intact — only the packaging changes. If a concept requires a technical term, use it once, define it immediately in plain language, and use the plain version from that point forward. Never condescend. The viewer is intelligent; they are simply new to this vocabulary. Every sentence must pass this test: could a curious seventeen-year-old follow this without stopping?
+`,
 };
 
 /* ── VolumeAllocator — Intelligent Budget Distribution ── */
