@@ -138,18 +138,12 @@ Deno.serve(async (req) => {
       { phrase: "s'est",   pronunciation: "sɛ" },
       { phrase: "c'était", pronunciation: "setɛ" },
       { phrase: "n'était", pronunciation: "netɛ" },
-      { phrase: "c'en",    pronunciation: "sɑ̃" },
-      { phrase: "n'en",    pronunciation: "nɑ̃" },
       { phrase: "n'y",     pronunciation: "ni" },
       { phrase: "qu'est",  pronunciation: "kɛ" },
       { phrase: "qu'il",   pronunciation: "kil" },
       { phrase: "qu'elle", pronunciation: "kɛl" },
-      { phrase: "qu'on",   pronunciation: "kɔ̃" },
-      { phrase: "qu'un",   pronunciation: "kœ̃" },
       { phrase: "qu'une",  pronunciation: "kyn" },
-      { phrase: "d'un",    pronunciation: "dœ̃" },
       { phrase: "d'une",   pronunciation: "dyn" },
-      { phrase: "l'on",    pronunciation: "lɔ̃" },
     ];
 
     // Merge: user pronunciations override built-in ones (match by lowercase phrase)
