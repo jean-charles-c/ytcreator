@@ -153,20 +153,52 @@ Deno.serve(async (req) => {
       { phrase: "d'une",   pronunciation: "dyn" },
     ];
 
-    // Merge: user pronunciations override built-in ones (match by lowercase phrase)
-    const mergedMap = new Map<string, { phrase: string; pronunciation: string }>();
-    for (const p of BUILT_IN_PRONUNCIATIONS) {
-      mergedMap.set(p.phrase.toLowerCase(), p);
-    }
-    if (Array.isArray(userPronunciations)) {
-      for (const p of userPronunciations) {
-        if (p.phrase && p.pronunciation) {
-          mergedMap.set(p.phrase.toLowerCase(), { phrase: p.phrase, pronunciation: p.pronunciation });
-        }
-      }
+    function normalizeCustomPronunciationPhrase(phrase: string): string {
+      return phrase
+        .trim()
+        .replace(/[\u2018\u2019\u02BC]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\\-]+|[\s"'«»“”()\[\]{}.,;:!?/\\-]+$/g, "")
+        .toLowerCase();
     }
 
-    const CUSTOM_PRONUNCIATIONS = Array.from(mergedMap.values()).map(p => ({
+    function extractInvalidCustomPronunciationPhrases(errorBody: string): string[] {
+      const match = errorBody.match(/The following custom pronunciation phrases are invalid:\s*([^]+?)\.\s*Please ensure/i);
+      if (!match) return [];
+
+      return Array.from(
+        new Set(
+          match[1]
+            .split(",")
+            .map((phrase) => normalizeCustomPronunciationPhrase(phrase))
+            .filter((phrase) => phrase.length > 0)
+        )
+      );
+    }
+
+    const CHIRP_PRONUNCIATION_PHRASE_PATTERN = /^[\p{L}' -]+$/u;
+
+    // Merge: user pronunciations override built-in ones after normalization
+    const mergedMap = new Map<string, { phrase: string; pronunciation: string }>();
+    const pronunciationSources = [
+      ...BUILT_IN_PRONUNCIATIONS,
+      ...(Array.isArray(userPronunciations) ? userPronunciations : []),
+    ];
+
+    for (const source of pronunciationSources) {
+      const phrase = normalizeCustomPronunciationPhrase(source.phrase ?? "");
+      const pronunciation = source.pronunciation?.trim();
+
+      if (!phrase || !pronunciation) continue;
+      if (!CHIRP_PRONUNCIATION_PHRASE_PATTERN.test(phrase)) {
+        console.warn(`[chirp3hd] Skipping unsupported custom pronunciation phrase: ${source.phrase}`);
+        continue;
+      }
+
+      mergedMap.set(phrase, { phrase, pronunciation });
+    }
+
+    const CUSTOM_PRONUNCIATIONS = Array.from(mergedMap.values()).map((p) => ({
       phrase: p.phrase,
       phoneticEncoding: "PHONETIC_ENCODING_IPA" as const,
       pronunciation: p.pronunciation,
@@ -211,53 +243,82 @@ Deno.serve(async (req) => {
       }
       void pitch;
 
-      const ttsPayload = {
-        input: {
-          text: chunk,
-          customPronunciations: {
-            pronunciations: CUSTOM_PRONUNCIATIONS,
+      let activePronunciations = CUSTOM_PRONUNCIATIONS;
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const ttsPayload = {
+          input: {
+            text: chunk,
+            ...(activePronunciations.length > 0
+              ? {
+                  customPronunciations: {
+                    pronunciations: activePronunciations,
+                  },
+                }
+              : {}),
           },
-        },
-        voice: { languageCode, name: resolvedVoice },
-        audioConfig,
-      };
+          voice: { languageCode, name: resolvedVoice },
+          audioConfig,
+        };
 
-      const ttsResponse = await fetch(ttsUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ttsPayload),
-      });
+        const ttsResponse = await fetch(ttsUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ttsPayload),
+        });
 
-      if (!ttsResponse.ok) {
-        const errBody = await ttsResponse.text();
-        console.error(
-          `[chirp3hd] Google TTS error chunk ${index + 1}/${allChunks.length} [${ttsResponse.status}]:`,
-          errBody.slice(0, 500)
-        );
-        return `Google TTS API Chirp3-HD a échoué sur le chunk ${index + 1}/${allChunks.length} [${ttsResponse.status}]: ${errBody.slice(0, 300)}`;
+        if (!ttsResponse.ok) {
+          const errBody = await ttsResponse.text();
+          const invalidPhrases = ttsResponse.status === 400
+            ? extractInvalidCustomPronunciationPhrases(errBody)
+            : [];
+
+          if (invalidPhrases.length > 0 && activePronunciations.length > 0) {
+            const invalidSet = new Set(invalidPhrases);
+            const filteredPronunciations = activePronunciations.filter(
+              (pronunciation) => !invalidSet.has(normalizeCustomPronunciationPhrase(pronunciation.phrase))
+            );
+
+            if (filteredPronunciations.length < activePronunciations.length) {
+              console.warn(
+                `[chirp3hd] Retrying chunk ${index + 1}/${allChunks.length} without invalid custom pronunciations: ${Array.from(invalidSet).join(", ")}`
+              );
+              activePronunciations = filteredPronunciations;
+              continue;
+            }
+          }
+
+          console.error(
+            `[chirp3hd] Google TTS error chunk ${index + 1}/${allChunks.length} [${ttsResponse.status}]:`,
+            errBody.slice(0, 500)
+          );
+          return `Google TTS API Chirp3-HD a échoué sur le chunk ${index + 1}/${allChunks.length} [${ttsResponse.status}]: ${errBody.slice(0, 300)}`;
+        }
+
+        const responseContentType = ttsResponse.headers.get("content-type") || "";
+        let ttsData: { audioContent?: string };
+        if (responseContentType.includes("application/json")) {
+          ttsData = await ttsResponse.json();
+        } else {
+          const bodyText = await ttsResponse.text();
+          console.error(
+            `[chirp3hd] Non-JSON response chunk ${index + 1} (${responseContentType}):`,
+            bodyText.slice(0, 300)
+          );
+          return `Google TTS a retourné un format inattendu pour le chunk ${index + 1}.`;
+        }
+
+        if (!ttsData.audioContent) {
+          return `Aucun contenu audio retourné pour le chunk ${index + 1}.`;
+        }
+
+        const wavBytes = decodeBase64Audio(ttsData.audioContent);
+        audioChunkWavs[index] = wavBytes;
+        console.log(`[chirp3hd] Chunk ${index + 1}/${allChunks.length} OK (${wavBytes.length} bytes WAV)`);
+        return null;
       }
 
-      const responseContentType = ttsResponse.headers.get("content-type") || "";
-      let ttsData: { audioContent?: string };
-      if (responseContentType.includes("application/json")) {
-        ttsData = await ttsResponse.json();
-      } else {
-        const bodyText = await ttsResponse.text();
-        console.error(
-          `[chirp3hd] Non-JSON response chunk ${index + 1} (${responseContentType}):`,
-          bodyText.slice(0, 300)
-        );
-        return `Google TTS a retourné un format inattendu pour le chunk ${index + 1}.`;
-      }
-
-      if (!ttsData.audioContent) {
-        return `Aucun contenu audio retourné pour le chunk ${index + 1}.`;
-      }
-
-      const wavBytes = decodeBase64Audio(ttsData.audioContent);
-      audioChunkWavs[index] = wavBytes;
-      console.log(`[chirp3hd] Chunk ${index + 1}/${allChunks.length} OK (${wavBytes.length} bytes WAV)`);
-      return null;
+      return `Google TTS API Chirp3-HD a échoué après suppression des prononciations invalides sur le chunk ${index + 1}/${allChunks.length}.`;
     }
 
     for (let batchStart = 0; batchStart < allChunks.length; batchStart += PARALLEL_BATCH) {
