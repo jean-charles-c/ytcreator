@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Star, Loader2, Mic2, Pencil, Check, X, Trash2 } from "lucide-react";
+import { Star, Loader2, Mic2, Pencil, Check, X, Trash2, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
