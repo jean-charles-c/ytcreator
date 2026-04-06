@@ -635,8 +635,10 @@ serve(async (req) => {
     if (!project_id) throw new Error("Missing project_id");
 
     // Visual style from shared definitions
-    const { STYLE_SUFFIXES, getStyleSuffixFr } = await import("../_shared/visual-styles.ts");
+    const { STYLE_SUFFIXES, getStyleSuffixFr, getStyleLabel, isRealisticStyle } = await import("../_shared/visual-styles.ts");
     const resolvedStyleSuffix = getStyleSuffixFr(visual_style);
+    const resolvedStyleLabel = getStyleLabel(visual_style);
+    const resolvedIsRealistic = isRealisticStyle(visual_style) || !visual_style || visual_style === "none" || visual_style === "cinematic";
     const resolvedAspectRatio = reqAspectRatio || "16:9";
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
