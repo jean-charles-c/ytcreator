@@ -273,6 +273,23 @@ function buildSystemPrompt(
   const volumeTable = buildVolumeTable(charTarget);
   const volumeGuidance = buildVolumeGuidance(charTarget);
 
+  let cadenceSection: string;
+  if (shortSentencePct === 0) {
+    cadenceSection = `### SentenceCadenceAdapter — Free Mode
+
+No specific constraint on sentence length distribution. Let the chosen narrative style naturally dictate the rhythm. Vary sentence lengths organically according to context, emotion and pacing needs.`;
+  } else {
+    cadenceSection = `### SentenceCadenceAdapter — Controlled Rhythm
+
+MANDATORY CADENCE RULE: approximately ${shortSentencePct}% of all sentences in the script must be very short fragments of 2 to 6 words.
+- Insert isolated short sentences regularly throughout every section.
+- After an explanatory paragraph, return to a brief punchy sentence.
+- Use short triplets when an idea deserves emphasis ("On roule. On photographie. On observe.").
+- Never chain more than 4 medium-to-long sentences without a short fragment break.
+- When a stake or revelation appears, express it in a brief isolated sentence.
+- This cadence percentage (${shortSentencePct}%) is a HARD constraint — count mentally and ensure compliance.`;
+  }
+
   return `You are NarrativeEngineExpert — a world-class documentary scriptwriter and narrator.
 
 You produce premium voice-over scripts for YouTube documentaries. Your output is structured, credible, intellectually rigorous, and sounds natural when read aloud. You never produce generic AI-sounding text.
