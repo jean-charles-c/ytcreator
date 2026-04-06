@@ -1306,8 +1306,10 @@ export default function PdfDocumentaryTab({
         onTranslateSection={handleTranslateSection}
         onCopyScript={copyScriptToClipboard}
         onSendToNarration={() => {
-          if (script) {
-            const clean = cleanScriptForExport(script);
+          // Use sections (source of truth for edited text) instead of script prop which may be stale
+          const reassembled = reassembleSections(sections);
+          if (reassembled.trim()) {
+            const clean = cleanScriptForExport(reassembled);
             onSendToNarration?.(clean);
             toast.success("Script envoyé dans ScriptInput");
           }
