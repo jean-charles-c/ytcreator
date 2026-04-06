@@ -133,7 +133,9 @@ Deno.serve(async (req) => {
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
       // Step 1b: elision — fuse l' with following word (l'écran → lécran)
-      .replace(/\bl[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "l");
+      .replace(/\bl[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "l")
+      // Step 1c: fuse qu' with following word (qu'à → quà)
+      .replace(/\bqu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "qu");
 
     // Step 2: Build customPronunciations — built-in + user overrides
     const BUILT_IN_PRONUNCIATIONS = [
