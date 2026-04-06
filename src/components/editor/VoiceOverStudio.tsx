@@ -27,25 +27,7 @@ interface VoiceOverStudioProps {
   onMusicSelected?: (tracks: { url: string; name: string }[]) => void;
 }
 
-const DEFAULT_SETTINGS: VoiceSettings = {
-  languageCode: "fr-FR",
-  voiceGender: "FEMALE",
-  voiceType: "Standard",
-  voiceName: "",
-  style: "neutral",
-  narrationProfile: "standard",
-  speakingRate: 1.0,
-  pitch: 0,
-  volumeGainDb: 0,
-  effectsProfileId: "none",
-  pauseBetweenParagraphs: 500,
-  pauseAfterSentences: 0,
-  pauseAfterComma: 0,
-  dynamicPauseEnabled: false,
-  dynamicPauseVariation: 300,
-  sentenceStartBoost: 0,
-  sentenceEndSlow: 0,
-};
+const DEFAULT_SETTINGS = DEFAULT_VOICE_SETTINGS;
 
 interface PlayerState {
   audioUrl: string;
