@@ -996,7 +996,8 @@ serve(async (req) => {
         const charMin = Math.round(charTarget * 0.9);
         const charMax = Math.round(charTarget * 1.1);
         const activeStyle = narrativeStyle || "documentary";
-        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, target=${charTarget}`);
+        const pct = typeof shortSentencePct === "number" ? shortSentencePct : 0;
+        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, target=${charTarget}, shortPct=${pct}`);
 
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -1008,7 +1009,7 @@ serve(async (req) => {
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
             messages: [
-              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle) },
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle, pct) },
               { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
             ],
             stream: true,
