@@ -213,8 +213,7 @@ The prompt must describe what the FRAGMENT says, not what the scene says in gene
 
 VISUAL STYLE — CRITICAL:
 The selected visual style is: "${resolvedStyle.label}" (${styleSuffix}).
-The prompt_export MUST end with this style suffix as the closing directive.
-9. End with: "${styleSuffix}. Ratio d'aspect : 16:9"
+The prompt_export MUST START with this style suffix as the very first directive, before any scene description.
 ${isRealistic ? `
 PHOTOREALISM ENFORCEMENT:
 All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
