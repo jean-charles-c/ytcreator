@@ -1504,7 +1504,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       let shotUpdates = 0;
 
       for (const scene of scenes) {
-        const updates: Record<string, string> = {};
+        const updates: { source_text?: string; source_text_fr?: string } = {};
         if (scene.source_text && hasDigits(scene.source_text)) {
           updates.source_text = convertNumbersToFrench(scene.source_text);
         }
@@ -1518,7 +1518,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       }
 
       for (const shot of shots) {
-        const updates: Record<string, string> = {};
+        const updates: { source_sentence?: string; source_sentence_fr?: string } = {};
         if (shot.source_sentence && hasDigits(shot.source_sentence)) {
           updates.source_sentence = convertNumbersToFrench(shot.source_sentence);
         }
