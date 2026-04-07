@@ -970,15 +970,24 @@ export default function Editor() {
     const idx = scenes.findIndex((s) => s.id === sceneId);
     if (idx < 0) return;
     const scene = scenes[idx];
+
+    // Copy parent scene_context as baseline for new scene
+    const parentContext = scene.scene_context || null;
+
     // Update current scene with text1
     await supabase.from("scenes").update({ source_text: text1 }).eq("id", scene.id);
-    // Insert new scene after current
+    // Insert new scene after current, inheriting parent's context
     const { data: newScene } = await supabase.from("scenes").insert({
       project_id: projectId,
       scene_order: scene.scene_order + 1,
       title: `${scene.title} (suite)`,
       source_text: text2,
       visual_intention: null,
+      scene_context: parentContext,
+      continuity: "develops",
+      location: scene.location,
+      characters: scene.characters,
+      scene_type: scene.scene_type,
     }).select().single();
     // Reorder scenes after
     const updated = [...scenes];
@@ -989,7 +998,111 @@ export default function Editor() {
       await supabase.from("scenes").update({ scene_order: s.scene_order }).eq("id", s.id);
     }
     setScenes(reordered);
-    toast.success("Scène scindée");
+    toast.success("Scène scindée — analyse du contexte en cours…");
+
+    // Async AI scan for both scenes' context
+    if (newScene) {
+      scanSplitScenesContext(scene.id, text1, newScene.id, text2, parentContext);
+    }
+  };
+
+  const scanSplitScenesContext = async (
+    scene1Id: string, text1: string,
+    scene2Id: string, text2: string,
+    baseContext: any
+  ) => {
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session?.access_token) return;
+
+      const gc = globalContext || {};
+      const systemPrompt = `Tu es un analyste narratif. Pour chaque texte de scène fourni, génère un objet JSON avec:
+- contexte_scene: résumé en 1 phrase de ce dont parle la scène
+- sujet: sujet principal traité
+- lieu: lieu décrit (ou "Non déterminé")
+- epoque: époque/période (ou celle du contexte global si non spécifié)
+- personnages: personnages/sujets présents (ou "Aucun")
+- coherence_globale: note de cohérence avec le contexte global
+
+Contexte global du projet:
+- Sujet: ${gc.sujet_principal || "Non déterminé"}
+- Lieu principal: ${gc.lieu_principal || "Non déterminé"}
+- Époque: ${gc.epoque || "Non déterminé"}
+- Ton: ${gc.ton || "Non déterminé"}
+
+Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
+
+      const userPrompt = `Scène 1:\n"${text1}"\n\nScène 2:\n"${text2}"`;
+
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.2,
+        }),
+      });
+
+      if (!res.ok) {
+        console.warn("Scene context scan failed:", res.status);
+        return;
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content || "";
+      // Extract JSON from response
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.warn("No JSON array found in AI response");
+        return;
+      }
+
+      const contexts = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(contexts) || contexts.length < 2) return;
+
+      // Update scene 1 context
+      const ctx1 = {
+        ...baseContext,
+        ...contexts[0],
+        lieux_ordonnes: contexts[0].lieu ? [contexts[0].lieu] : baseContext?.lieux_ordonnes || [],
+        epoques_ordonnees: contexts[0].epoque ? [contexts[0].epoque] : baseContext?.epoques_ordonnees || [],
+      };
+      await supabase.from("scenes").update({
+        scene_context: ctx1,
+        visual_intention: contexts[0].contexte_scene || null,
+      }).eq("id", scene1Id);
+
+      // Update scene 2 context
+      const ctx2 = {
+        ...baseContext,
+        ...contexts[1],
+        lieux_ordonnes: contexts[1].lieu ? [contexts[1].lieu] : baseContext?.lieux_ordonnes || [],
+        epoques_ordonnees: contexts[1].epoque ? [contexts[1].epoque] : baseContext?.epoques_ordonnees || [],
+      };
+      await supabase.from("scenes").update({
+        scene_context: ctx2,
+        visual_intention: contexts[1].contexte_scene || null,
+      }).eq("id", scene2Id);
+
+      // Update local state
+      setScenes((prev) => prev.map((s) => {
+        if (s.id === scene1Id) return { ...s, scene_context: ctx1, visual_intention: contexts[0].contexte_scene || s.visual_intention };
+        if (s.id === scene2Id) return { ...s, scene_context: ctx2, visual_intention: contexts[1].contexte_scene || s.visual_intention };
+        return s;
+      }));
+
+      toast.success("Contexte des scènes scindées analysé ✓");
+    } catch (e: any) {
+      console.warn("Scene context scan error:", e);
+      toast.info("Contexte hérité de la scène parente (analyse automatique échouée)");
+    }
   };
 
   const handleToggleValidated = async (sceneId: string, validated: boolean) => {
