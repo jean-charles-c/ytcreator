@@ -77,6 +77,21 @@ export default function SceneBlock({
   const [showSplit, setShowSplit] = useState(false);
   const [splitPos, setSplitPos] = useState(Math.floor(scene.source_text.length / 2));
 
+  // Context editing state
+  const [editingContext, setEditingContext] = useState(false);
+  const [savingContext, setSavingContext] = useState(false);
+  const ctx = (scene as any).scene_context as SceneContext | null;
+  const [editCtx, setEditCtx] = useState<SceneContext>({
+    contexte_scene: ctx?.contexte_scene ?? "",
+    sujet: ctx?.sujet ?? "",
+    lieu: ctx?.lieu ?? "",
+    epoque: ctx?.epoque ?? "",
+    personnages: ctx?.personnages ?? "",
+    coherence_globale: ctx?.coherence_globale ?? "",
+    lieux_ordonnes: ctx?.lieux_ordonnes ?? [],
+    epoques_ordonnees: ctx?.epoques_ordonnees ?? [],
+  });
+
   const startEdit = () => {
     if (scene.validated) {
       toast.error("Scène validée — déverrouillez-la pour modifier.");
@@ -87,6 +102,42 @@ export default function SceneBlock({
     setEditVisual(scene.visual_intention ?? "");
     setEditNarrativeAction(scene.narrative_action ?? "");
     setEditing(true);
+  };
+
+  const startEditContext = () => {
+    if (scene.validated) {
+      toast.error("Scène validée — déverrouillez-la pour modifier.");
+      return;
+    }
+    const c = (scene as any).scene_context as SceneContext | null;
+    setEditCtx({
+      contexte_scene: c?.contexte_scene ?? "",
+      sujet: c?.sujet ?? "",
+      lieu: c?.lieu ?? "",
+      epoque: c?.epoque ?? "",
+      personnages: c?.personnages ?? "",
+      coherence_globale: c?.coherence_globale ?? "",
+      lieux_ordonnes: c?.lieux_ordonnes ?? [],
+      epoques_ordonnees: c?.epoques_ordonnees ?? [],
+    });
+    setEditingContext(true);
+  };
+
+  const saveContext = async () => {
+    setSavingContext(true);
+    const newCtx = { ...editCtx };
+    const { error } = await supabase
+      .from("scenes")
+      .update({ scene_context: newCtx as any })
+      .eq("id", scene.id);
+    setSavingContext(false);
+    if (error) {
+      toast.error("Erreur de sauvegarde du contexte");
+      return;
+    }
+    onUpdate({ ...scene, scene_context: newCtx as any });
+    setEditingContext(false);
+    toast.success("Contexte mis à jour");
   };
 
   const cancelEdit = () => setEditing(false);
@@ -205,31 +256,76 @@ export default function SceneBlock({
         <>
           <h3 className="font-display text-base font-semibold text-foreground mb-2">{scene.title}</h3>
 
-          {/* BlocContexteScene */}
+          {/* BlocContexteScene — Editable */}
           {(scene as any).scene_context && (() => {
-            const ctx = (scene as any).scene_context as SceneContext;
+            const ctxDisplay = (scene as any).scene_context as SceneContext;
             return (
               <details className="mb-3 rounded border border-accent/30 bg-accent/5 group/ctx" open>
                 <summary className="flex items-center gap-1.5 p-2.5 sm:p-3 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[40px]">
                   <BookOpen className="h-3 w-3 text-accent-foreground/70 shrink-0" />
                   <span className="text-[10px] font-semibold text-accent-foreground/80 uppercase tracking-wider">Contexte</span>
+                  {!editingContext && !scene.validated && (
+                    <button onClick={(e) => { e.preventDefault(); startEditContext(); }} className="ml-1 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Modifier le contexte">
+                      <Pencil className="h-2.5 w-2.5" />
+                    </button>
+                  )}
                   <span className="ml-auto text-muted-foreground text-[10px] group-open/ctx:rotate-90 transition-transform">▶</span>
                 </summary>
                 <div className="px-2.5 pb-2.5 sm:px-3 sm:pb-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                    <div className="break-words"><span className="font-medium text-foreground/80">Contexte :</span> <span className="text-muted-foreground">{ctx.contexte_scene}</span></div>
-                    <div className="break-words"><span className="font-medium text-foreground/80">Sujet :</span> <span className="text-muted-foreground">{ctx.sujet}</span></div>
-                    <div className="break-words"><span className="font-medium text-foreground/80">Lieu :</span> <span className="text-muted-foreground">{ctx.lieu}</span></div>
-                    {ctx.lieux_ordonnes && ctx.lieux_ordonnes.length > 1 && (
-                      <div className="break-words"><span className="font-medium text-foreground/80">Lieux (ordre) :</span> <span className="text-muted-foreground">{ctx.lieux_ordonnes.map((l, i) => `${i + 1}. ${l}`).join(" → ")}</span></div>
-                    )}
-                    <div className="break-words"><span className="font-medium text-foreground/80">Époque :</span> <span className="text-muted-foreground">{ctx.epoque}</span></div>
-                    {ctx.epoques_ordonnees && ctx.epoques_ordonnees.length > 1 && (
-                      <div className="break-words"><span className="font-medium text-foreground/80">Époques (ordre) :</span> <span className="text-muted-foreground">{ctx.epoques_ordonnees.map((e, i) => `${i + 1}. ${e}`).join(" → ")}</span></div>
-                    )}
-                    <div className="break-words"><span className="font-medium text-foreground/80">Personnages :</span> <span className="text-muted-foreground">{ctx.personnages}</span></div>
-                    <div className="break-words sm:col-span-2"><span className="font-medium text-foreground/80">Cohérence :</span> <span className="text-muted-foreground">{ctx.coherence_globale}</span></div>
-                  </div>
+                  {editingContext ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <label className="font-medium text-foreground/80 text-[10px] block mb-0.5">Contexte</label>
+                          <input type="text" value={editCtx.contexte_scene} onChange={(e) => setEditCtx(prev => ({ ...prev, contexte_scene: e.target.value }))} className={`${inputClass} text-xs h-8`} />
+                        </div>
+                        <div>
+                          <label className="font-medium text-foreground/80 text-[10px] block mb-0.5">Sujet</label>
+                          <input type="text" value={editCtx.sujet} onChange={(e) => setEditCtx(prev => ({ ...prev, sujet: e.target.value }))} className={`${inputClass} text-xs h-8`} />
+                        </div>
+                        <div>
+                          <label className="font-medium text-foreground/80 text-[10px] block mb-0.5">Lieu</label>
+                          <input type="text" value={editCtx.lieu} onChange={(e) => setEditCtx(prev => ({ ...prev, lieu: e.target.value }))} className={`${inputClass} text-xs h-8`} />
+                        </div>
+                        <div>
+                          <label className="font-medium text-foreground/80 text-[10px] block mb-0.5">Époque</label>
+                          <input type="text" value={editCtx.epoque} onChange={(e) => setEditCtx(prev => ({ ...prev, epoque: e.target.value }))} className={`${inputClass} text-xs h-8`} />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="font-medium text-foreground/80 text-[10px] block mb-0.5">Personnages</label>
+                          <input type="text" value={editCtx.personnages} onChange={(e) => setEditCtx(prev => ({ ...prev, personnages: e.target.value }))} className={`${inputClass} text-xs h-8`} />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="font-medium text-foreground/80 text-[10px] block mb-0.5">Cohérence</label>
+                          <input type="text" value={editCtx.coherence_globale} onChange={(e) => setEditCtx(prev => ({ ...prev, coherence_globale: e.target.value }))} className={`${inputClass} text-xs h-8`} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" onClick={saveContext} disabled={savingContext} className="h-7 text-xs">
+                          {savingContext ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          Enregistrer
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingContext(false)} className="h-7 text-xs">
+                          <X className="h-3 w-3" /> Annuler
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div className="break-words"><span className="font-medium text-foreground/80">Contexte :</span> <span className="text-muted-foreground">{ctxDisplay.contexte_scene}</span></div>
+                      <div className="break-words"><span className="font-medium text-foreground/80">Sujet :</span> <span className="text-muted-foreground">{ctxDisplay.sujet}</span></div>
+                      <div className="break-words"><span className="font-medium text-foreground/80">Lieu :</span> <span className="text-muted-foreground">{ctxDisplay.lieu}</span></div>
+                      {ctxDisplay.lieux_ordonnes && ctxDisplay.lieux_ordonnes.length > 1 && (
+                        <div className="break-words"><span className="font-medium text-foreground/80">Lieux (ordre) :</span> <span className="text-muted-foreground">{ctxDisplay.lieux_ordonnes.map((l, i) => `${i + 1}. ${l}`).join(" → ")}</span></div>
+                      )}
+                      <div className="break-words"><span className="font-medium text-foreground/80">Époque :</span> <span className="text-muted-foreground">{ctxDisplay.epoque}</span></div>
+                      {ctxDisplay.epoques_ordonnees && ctxDisplay.epoques_ordonnees.length > 1 && (
+                        <div className="break-words"><span className="font-medium text-foreground/80">Époques (ordre) :</span> <span className="text-muted-foreground">{ctxDisplay.epoques_ordonnees.map((e, i) => `${i + 1}. ${e}`).join(" → ")}</span></div>
+                      )}
+                      <div className="break-words"><span className="font-medium text-foreground/80">Personnages :</span> <span className="text-muted-foreground">{ctxDisplay.personnages}</span></div>
+                      <div className="break-words sm:col-span-2"><span className="font-medium text-foreground/80">Cohérence :</span> <span className="text-muted-foreground">{ctxDisplay.coherence_globale}</span></div>
+                    </div>
+                  )}
                 </div>
               </details>
             );
