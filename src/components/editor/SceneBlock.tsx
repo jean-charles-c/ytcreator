@@ -104,6 +104,42 @@ export default function SceneBlock({
     setEditing(true);
   };
 
+  const startEditContext = () => {
+    if (scene.validated) {
+      toast.error("Scène validée — déverrouillez-la pour modifier.");
+      return;
+    }
+    const c = (scene as any).scene_context as SceneContext | null;
+    setEditCtx({
+      contexte_scene: c?.contexte_scene ?? "",
+      sujet: c?.sujet ?? "",
+      lieu: c?.lieu ?? "",
+      epoque: c?.epoque ?? "",
+      personnages: c?.personnages ?? "",
+      coherence_globale: c?.coherence_globale ?? "",
+      lieux_ordonnes: c?.lieux_ordonnes ?? [],
+      epoques_ordonnees: c?.epoques_ordonnees ?? [],
+    });
+    setEditingContext(true);
+  };
+
+  const saveContext = async () => {
+    setSavingContext(true);
+    const newCtx = { ...editCtx };
+    const { error } = await supabase
+      .from("scenes")
+      .update({ scene_context: newCtx as any })
+      .eq("id", scene.id);
+    setSavingContext(false);
+    if (error) {
+      toast.error("Erreur de sauvegarde du contexte");
+      return;
+    }
+    onUpdate({ ...scene, scene_context: newCtx as any });
+    setEditingContext(false);
+    toast.success("Contexte mis à jour");
+  };
+
   const cancelEdit = () => setEditing(false);
 
   const saveEdit = async () => {
