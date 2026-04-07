@@ -1268,6 +1268,23 @@ serve(async (req) => {
         const shot = sceneShots[j];
         const fbType = CAMERA_TYPES[j % CAMERA_TYPES.length];
         const fbSentence = sceneSentences[j] || sceneText;
+
+        // In segment-only mode, do NOT generate prompts — only create shot structure
+        if (segment_only) {
+          shotRows.push({
+            scene_id: scene.id,
+            project_id,
+            shot_order: j + 1,
+            shot_type: shot?.shot_type || fbType,
+            description: shot?.description || fallbackDescription(fbSentence),
+            source_sentence: shot?.source_sentence || fbSentence,
+            source_sentence_fr: shot?.source_sentence_fr || null,
+            prompt_export: null,
+            guardrails: null,
+          });
+          continue;
+        }
+
         let promptExport = shot?.prompt_export || fallbackPrompt(fbSentence, scene, fbType);
 
         // Prepend identity lock prompts for relevant recurring objects
