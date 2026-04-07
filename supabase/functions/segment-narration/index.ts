@@ -797,20 +797,26 @@ serve(async (req) => {
         && scene.characters !== "Aucun personnage actif"
         ? scene.characters : null;
 
-      // ─── Ordered locations: use scene's list, or inherit last from previous scene ─
+      // ─── Ordered locations: use scene's list, or fall back to global location ─
+      // Same fix as epochs: only inherit from previous scene on explicit continuation
       const prevLocationsOrdered: string[] = prevContext?.lieux_ordonnes || [];
+      const isContinuationForLieu = scene.continuity === "continues";
       const sceneLocationsOrdered = scene.locations_ordered.length > 0
         ? scene.locations_ordered
-        : prevLocationsOrdered.length > 0
-          ? [prevLocationsOrdered[prevLocationsOrdered.length - 1]]  // inherit last
+        : (isContinuationForLieu && prevLocationsOrdered.length > 0)
+          ? [prevLocationsOrdered[prevLocationsOrdered.length - 1]]  // inherit only on explicit continuation
           : (gc.lieu_principal && gc.lieu_principal !== "Non déterminé" ? [gc.lieu_principal] : []);
 
-      // ─── Ordered epochs: use scene's list, or inherit last from previous scene ─
+      // ─── Ordered epochs: use scene's list, or fall back to global epoch ─
+      // IMPORTANT: Do NOT blindly inherit from previous scene — this causes epoch
+      // propagation errors (e.g. scene mentioning Spinoza sets "17e siècle" and all
+      // subsequent scenes inherit it). Only inherit if scene explicitly continues.
       const prevEpochsOrdered: string[] = prevContext?.epoques_ordonnees || [];
+      const isContinuation = scene.continuity === "continues";
       const sceneEpochsOrdered = scene.epochs_ordered.length > 0
         ? scene.epochs_ordered
-        : prevEpochsOrdered.length > 0
-          ? [prevEpochsOrdered[prevEpochsOrdered.length - 1]]  // inherit last
+        : (isContinuation && prevEpochsOrdered.length > 0)
+          ? [prevEpochsOrdered[prevEpochsOrdered.length - 1]]  // inherit only on explicit continuation
           : (gc.epoque && gc.epoque !== "Non déterminé" ? [gc.epoque] : []);
 
       // Temporal variation detection from scene text
