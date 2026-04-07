@@ -585,7 +585,19 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
           throw new Error("AI gateway error");
         }
 
-        aiData = await aiResponse.json();
+        const rawText = await aiResponse.text();
+        if (!rawText || rawText.trim().length === 0) {
+          console.warn(`Empty response body (variant ${variantIdx}, attempt ${attempt})`);
+          if (attempt < retries) { await new Promise((r) => setTimeout(r, attempt * 3000)); continue; }
+          break;
+        }
+        try {
+          aiData = JSON.parse(rawText);
+        } catch (parseErr) {
+          console.warn(`JSON parse failed (variant ${variantIdx}, attempt ${attempt}): ${(parseErr as Error).message}, body length=${rawText.length}`);
+          if (attempt < retries) { await new Promise((r) => setTimeout(r, attempt * 3000)); continue; }
+          break;
+        }
         const msg = aiData.choices?.[0]?.message;
         const finishReason = aiData.choices?.[0]?.native_finish_reason || aiData.choices?.[0]?.finish_reason;
         console.log(`AI variant ${variantIdx} attempt ${attempt} - finish: ${finishReason}`);
