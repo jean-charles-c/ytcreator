@@ -77,6 +77,21 @@ export default function SceneBlock({
   const [showSplit, setShowSplit] = useState(false);
   const [splitPos, setSplitPos] = useState(Math.floor(scene.source_text.length / 2));
 
+  // Context editing state
+  const [editingContext, setEditingContext] = useState(false);
+  const [savingContext, setSavingContext] = useState(false);
+  const ctx = (scene as any).scene_context as SceneContext | null;
+  const [editCtx, setEditCtx] = useState<SceneContext>({
+    contexte_scene: ctx?.contexte_scene ?? "",
+    sujet: ctx?.sujet ?? "",
+    lieu: ctx?.lieu ?? "",
+    epoque: ctx?.epoque ?? "",
+    personnages: ctx?.personnages ?? "",
+    coherence_globale: ctx?.coherence_globale ?? "",
+    lieux_ordonnes: ctx?.lieux_ordonnes ?? [],
+    epoques_ordonnees: ctx?.epoques_ordonnees ?? [],
+  });
+
   const startEdit = () => {
     if (scene.validated) {
       toast.error("Scène validée — déverrouillez-la pour modifier.");
