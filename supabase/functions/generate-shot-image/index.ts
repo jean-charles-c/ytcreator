@@ -488,15 +488,22 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
 
-    // Visual style from shared definitions
+    // ── VISUAL STYLE ENFORCEMENT (single source of truth) ──
+    // Style is ALWAYS injected here, before ANY content, regardless of how prompt_export was built.
+    // This guarantees consistent style application across all prompt construction paths:
+    // generate-storyboard, regenerate-shot, custom_prompt, or manual edit.
     const { getStyleSuffix } = await import("../_shared/visual-styles.ts");
-    const styleSuffix = visual_style ? getStyleSuffix(visual_style) : null;
+    const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
 
     const buildPrompt = (text: string) => [
       "Generate one single cinematic image.",
       `Mandatory aspect ratio: ${selectedAspectRatio}.`,
       "Compose the framing to work natively in that ratio without letterboxing or white borders.",
-      ...(styleSuffix ? [`MANDATORY VISUAL STYLE — apply this style to the entire image without exception: ${styleSuffix}`] : []),
+      ...(styleSuffix
+        ? [
+            `MANDATORY VISUAL STYLE — apply this style to the entire image without exception. This overrides any other style instruction that may appear later in the prompt:\n${styleSuffix}`,
+          ]
+        : []),
       text,
     ].join("\n");
 
