@@ -161,17 +161,16 @@ If a fragment describes "stone walls built without mortar", the prompt must focu
 
 ## PROMPT STRUCTURE
 Each prompt_export must be in FRENCH and contain ALL of these woven into one continuous paragraph:
-1. Camera framing: "Plan large de...", "Gros plan sur...", "Vue en contre-plongée de...", "Plan moyen de..."
-2. Fragment-specific visual content: what the fragment describes, with hyper-specific materials, textures, colors
-3. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color, facial expression, body language
-4. Environment grounded in the scene's lieu and époque: what surrounds the subject, period-accurate background elements
-5. Foreground elements adding depth, relevant to the fragment's subject
-6. Lighting: describe light source, direction, quality, shadows — motivated by the scene's ambiance when available
-7. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
-8. End with these three mandatory lines in the same paragraph:
-   "[VISUAL_STYLE_LINE]"
-   "Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste."
-   "Ratio d'aspect : [ASPECT_RATIO]"
+1. START with the visual style directive: "[VISUAL_STYLE_LINE]" — this MUST be the very first element of the prompt
+2. Historical period and geographic location anchor
+3. Camera framing: "Plan large de...", "Gros plan sur...", "Vue en contre-plongée de...", "Plan moyen de..."
+4. Fragment-specific visual content: what the fragment describes, with hyper-specific materials, textures, colors
+5. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color, facial expression, body language
+6. Environment grounded in the scene's lieu and époque: what surrounds the subject, period-accurate background elements
+7. Foreground elements adding depth, relevant to the fragment's subject
+8. Lighting: describe light source, direction, quality, shadows — motivated by the scene's ambiance when available
+9. Atmosphere and mood from the fragment's narrative tone: dust, haze, humidity, temperature feel
+10. End with: "Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : [ASPECT_RATIO]"
 
 The prompt_export MUST be at least 100 words. Be extremely descriptive and specific — the image generation AI performs best with rich, concrete visual details rather than abstract concepts.
 
@@ -362,13 +361,13 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const effectiveStyle = styleSuffix || "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique.";
   const effectiveRatio = aspectRatio || "16:9";
 
-  // 9. Build the prompt — fragment is the core subject
+  // 9. Build the prompt — style FIRST, then fragment description
   // Only include photorealism baseline when no specific non-realistic style is set
   const isDefaultOrRealistic = !styleSuffix || styleSuffix.includes("photographique") || styleSuffix.includes("cinématographique") || styleSuffix === "Aucun style artistique imposé";
   const baselineDesc = isDefaultOrRealistic
     ? "Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles."
     : "Image documentaire historique, architecture et vêtements fidèles à la période. Composition riche avec éléments de profondeur.";
-  return `${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} ${baselineDesc} ${effectiveStyle} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
+  return `${effectiveStyle} ${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} ${baselineDesc} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
 };
 
 // Keep legacy name for compatibility

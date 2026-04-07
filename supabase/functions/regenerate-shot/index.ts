@@ -213,8 +213,7 @@ The prompt must describe what the FRAGMENT says, not what the scene says in gene
 
 VISUAL STYLE — CRITICAL:
 The selected visual style is: "${resolvedStyle.label}" (${styleSuffix}).
-The prompt_export MUST end with this style suffix as the closing directive.
-9. End with: "${styleSuffix}. Ratio d'aspect : 16:9"
+The prompt_export MUST START with this style suffix as the very first directive, before any scene description.
 ${isRealistic ? `
 PHOTOREALISM ENFORCEMENT:
 All output must resemble frames from a high-budget historical film production (BBC History / National Geographic quality).
@@ -229,15 +228,16 @@ Do NOT mix with photorealistic or documentary style unless that is the selected 
 Do NOT deviate from the imposed style for any reason.`}
 
 PROMPT STRUCTURE (prompt_export, in FRENCH):
-1. Historical period and geographic location anchor (MANDATORY FIRST SENTENCE)
-2. Camera framing (MUST differ from neighbors)
-3. Fragment-specific visual content with hyper-specific materials, textures, colors
-4. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color — culturally accurate to the era and place
-5. Environment grounded in the scene's lieu and époque: period-accurate background elements
-6. Foreground depth elements relevant to the fragment adding visual depth
-7. Lighting: source, direction, quality, shadows — physically motivated
-8. Atmosphere and mood from the fragment's narrative tone
-9. End with the style suffix: "${styleSuffix}. Ratio d'aspect : 16:9"
+1. START with the visual style directive: "${styleSuffix}" — this MUST be the very first element of the prompt
+2. Historical period and geographic location anchor
+3. Camera framing (MUST differ from neighbors)
+4. Fragment-specific visual content with hyper-specific materials, textures, colors
+5. Characters if present IN THE FRAGMENT: pose, gesture, clothing fabric and color — culturally accurate to the era and place
+6. Environment grounded in the scene's lieu and époque: period-accurate background elements
+7. Foreground depth elements relevant to the fragment adding visual depth
+8. Lighting: source, direction, quality, shadows — physically motivated
+9. Atmosphere and mood from the fragment's narrative tone
+10. End with: "Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : 16:9"
 
 MATERIAL DENSITY RULE:
 Include physically rich environments. Avoid empty compositions.
