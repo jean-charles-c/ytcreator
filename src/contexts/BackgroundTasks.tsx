@@ -420,7 +420,19 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const session = (await supabase.auth.getSession()).data.session;
+        const getValidToken = async (): Promise<string> => {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          if (s?.access_token) {
+            // Refresh if expiring within 60s
+            const expiresAt = s.expires_at ?? 0;
+            if (expiresAt - Math.floor(Date.now() / 1000) < 60) {
+              const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+              if (refreshed?.access_token) return refreshed.access_token;
+            }
+            return s.access_token;
+          }
+          throw new Error("Session expirée — veuillez vous reconnecter");
+        };
 
         let totalShots = 0;
         const failedSceneIds: string[] = [];
@@ -429,13 +441,14 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           if (ac.signal.aborted) return;
           const sid = params.sceneIds[i];
           try {
+            const token = await getValidToken();
             const response = await fetch(
               `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${session?.access_token}`,
+                  Authorization: `Bearer ${token}`,
                   apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                   "x-supabase-client-platform": "web",
                 },
