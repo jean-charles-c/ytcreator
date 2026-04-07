@@ -1069,7 +1069,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       // Update scene 1 context
       const ctx1 = {
-        ...(baseContext || {}),
+        ...baseContext,
         ...contexts[0],
         lieux_ordonnes: contexts[0].lieu ? [contexts[0].lieu] : baseContext?.lieux_ordonnes || [],
         epoques_ordonnees: contexts[0].epoque ? [contexts[0].epoque] : baseContext?.epoques_ordonnees || [],
@@ -1081,7 +1081,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       // Update scene 2 context
       const ctx2 = {
-        ...(baseContext || {}),
+        ...baseContext,
         ...contexts[1],
         lieux_ordonnes: contexts[1].lieu ? [contexts[1].lieu] : baseContext?.lieux_ordonnes || [],
         epoques_ordonnees: contexts[1].epoque ? [contexts[1].epoque] : baseContext?.epoques_ordonnees || [],
