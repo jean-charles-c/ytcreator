@@ -496,8 +496,8 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       "Generate one single cinematic image.",
       `Mandatory aspect ratio: ${selectedAspectRatio}.`,
       "Compose the framing to work natively in that ratio without letterboxing or white borders.",
+      ...(styleSuffix ? [`MANDATORY VISUAL STYLE — apply this style to the entire image without exception: ${styleSuffix}`] : []),
       text,
-      ...(styleSuffix ? [`Visual style: ${styleSuffix}`] : []),
     ].join("\n");
 
     // Build multimodal content array with reference images as base64
