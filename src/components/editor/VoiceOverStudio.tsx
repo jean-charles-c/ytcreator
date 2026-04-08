@@ -14,6 +14,7 @@ import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "
 import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, getShotFragmentText, normalizeExactSyncText } from "./voiceOverShotSync";
 import CustomPronunciationsPanel from "./CustomPronunciationsPanel";
+import CustomTtsTransformsPanel from "./CustomTtsTransformsPanel";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
 import {
   Select,
