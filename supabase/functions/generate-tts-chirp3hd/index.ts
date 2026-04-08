@@ -170,40 +170,23 @@ Deno.serve(async (req) => {
       // Liaison "t" après c'est / n'est devant voyelle: "cest un" → "cest tun"
       .replace(new RegExp(`\\b([cn])est\\s+(?=[${ELISION_VOWELS}])`, "gi"), "$1est t");
 
-    // Step 2: Build customPronunciations — built-in + user overrides
-    // Phrases must match the FUSED form (no apostrophe) since the text is
-    // pre-normalized above.
-    const BUILT_IN_PRONUNCIATIONS = [
-      { phrase: "cest",    pronunciation: "sɛ" },
-      { phrase: "nest",    pronunciation: "nɛ" },
-      { phrase: "lest",    pronunciation: "lɛ" },
-      { phrase: "sest",    pronunciation: "sɛ" },
-      { phrase: "cétait",  pronunciation: "setɛ" },
-      { phrase: "nétait",  pronunciation: "netɛ" },
-      { phrase: "ny",      pronunciation: "ni" },
-      { phrase: "quest",   pronunciation: "kɛ" },
-      { phrase: "quil",    pronunciation: "kil" },
-      { phrase: "quelle",  pronunciation: "kɛl" },
-      { phrase: "quune",   pronunciation: "kyn" },
-      { phrase: "dune",    pronunciation: "dyn" },
-    ];
+    // Step 2: Build customPronunciations — all from DB (user entries include
+    // the seeded defaults). No more hardcoded built-in list.
 
     function normalizeCustomPronunciationPhrase(phrase: string): string {
       return phrase
         .trim()
-        .replace(/[‘’ʼ]/g, "'")
-        .replace(/[“”]/g, '"')
-        .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\-]+|[\s"'«»“”()\[\]{}.,;:!?/\-]+$/g, "")
+        .replace(/[''ʼ]/g, "'")
+        .replace(/[""]/g, '"')
+        .replace(/^[\s"'«»""()\[\]{}.,;:!?/\-]+|[\s"'«»""()\[\]{}.,;:!?/\-]+$/g, "")
         .toLowerCase()
-        // Fuse elisions same as text pre-normalization: c'était → cétait
-        .replace(/([cnsldtm])['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "$1")
-        .replace(/qu['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "qu");
+        .replace(/([cnsldtm])[''](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "$1")
+        .replace(/qu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "qu");
     }
 
     function extractInvalidCustomPronunciationPhrases(errorBody: string): string[] {
       const match = errorBody.match(/The following custom pronunciation phrases are invalid:\s*([^]+?)\.\s*Please ensure/i);
       if (!match) return [];
-
       return Array.from(
         new Set(
           match[1]
@@ -216,10 +199,22 @@ Deno.serve(async (req) => {
 
     const CHIRP_PRONUNCIATION_PHRASE_PATTERN = /^[\p{L}' -]+$/u;
 
-    // Merge: user pronunciations override built-in ones after normalization
+    // Load all pronunciations from DB for this user
+    let dbPronunciations: { phrase: string; pronunciation: string }[] = [];
+    try {
+      const { data: dbPron } = await supabase
+        .from("custom_pronunciations")
+        .select("phrase, pronunciation")
+        .eq("user_id", user.id);
+      if (dbPron) dbPronunciations = dbPron;
+    } catch (e) {
+      console.warn("[chirp3hd] Failed to load DB pronunciations:", e);
+    }
+
+    // Merge: request-level pronunciations override DB ones
     const mergedMap = new Map<string, { phrase: string; pronunciation: string }>();
     const pronunciationSources = [
-      ...BUILT_IN_PRONUNCIATIONS,
+      ...dbPronunciations,
       ...(Array.isArray(userPronunciations) ? userPronunciations : []),
     ];
 
