@@ -247,11 +247,13 @@ export default function VoiceSettingsPanel({ settings, onChange, hideHeader, onA
 
       if (!error && data && data.length > 0) {
         setProfiles(data);
-        // Auto-select last used if none active
+        // Auto-select last used profile from localStorage, fallback to last created
         if (!activeProfileId) {
-          const last = data[data.length - 1];
-          setActiveProfileId(last.id);
-          applyProfile(last);
+          const savedId = localStorage.getItem("vo-quick-profile-id");
+          const saved = savedId ? data.find((p: VoiceProfile) => p.id === savedId) : null;
+          const target = saved || data[data.length - 1];
+          setActiveProfileId(target.id);
+          applyProfile(target);
         }
       }
     } catch (e) {
