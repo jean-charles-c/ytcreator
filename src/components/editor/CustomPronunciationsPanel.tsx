@@ -165,11 +165,13 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange, hide
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <BookA className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées</span>
-        <span className="text-[10px] text-muted-foreground">({items.length})</span>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2">
+          <BookA className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées</span>
+          <span className="text-[10px] text-muted-foreground">({items.length})</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <Input value={newPhrase} onChange={(e) => setNewPhrase(e.target.value)} placeholder="Mot (ex: Libet)" className="h-8 text-xs flex-1 font-mono" />
