@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Replace } from "lucide-react";
+import { Plus, Trash2, Loader2, Replace, Pencil, Check, X } from "lucide-react";
 
 interface TtsTransform {
   id: string;
@@ -15,17 +15,17 @@ interface CustomTtsTransformsPanelProps {
   onTransformsChange?: (transforms: { pattern: string; replacement: string }[]) => void;
 }
 
-const BUILT_IN: { pattern: string; replacement: string }[] = [
-  { pattern: "c'est + voyelle", replacement: "cest t..." },
-  { pattern: "n'est + voyelle", replacement: "nest t..." },
-  { pattern: "c' + voyelle", replacement: "c (fusionné)" },
-  { pattern: "n' + voyelle", replacement: "n (fusionné)" },
-  { pattern: "s' + voyelle", replacement: "s (fusionné)" },
-  { pattern: "l' + voyelle", replacement: "l (fusionné)" },
-  { pattern: "d' + voyelle", replacement: "d (fusionné)" },
-  { pattern: "m' + voyelle", replacement: "m (fusionné)" },
-  { pattern: "t' + voyelle", replacement: "t (fusionné)" },
-  { pattern: "qu' + voyelle", replacement: "qu (fusionné)" },
+const DEFAULT_ENTRIES: { pattern: string; replacement: string }[] = [
+  { pattern: "c' + voyelle", replacement: "fusion (ex: c'est → cest)" },
+  { pattern: "n' + voyelle", replacement: "fusion (ex: n'est → nest)" },
+  { pattern: "s' + voyelle", replacement: "fusion (ex: s'est → sest)" },
+  { pattern: "l' + voyelle", replacement: "fusion (ex: l'un → lun)" },
+  { pattern: "d' + voyelle", replacement: "fusion (ex: d'une → dune)" },
+  { pattern: "m' + voyelle", replacement: "fusion (ex: m'a → ma)" },
+  { pattern: "t' + voyelle", replacement: "fusion (ex: t'en → ten)" },
+  { pattern: "qu' + voyelle", replacement: "fusion (ex: qu'il → quil)" },
+  { pattern: "c'est + voyelle", replacement: "liaison t (ex: cest tun)" },
+  { pattern: "n'est + voyelle", replacement: "liaison t (ex: nest tun)" },
 ];
 
 export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomTtsTransformsPanelProps) {
@@ -34,7 +34,9 @@ export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomT
   const [newPattern, setNewPattern] = useState("");
   const [newReplacement, setNewReplacement] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showBuiltIn, setShowBuiltIn] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPattern, setEditPattern] = useState("");
+  const [editReplacement, setEditReplacement] = useState("");
 
   const fetchItems = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -48,13 +50,40 @@ export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomT
 
     if (error) {
       console.error("Failed to load custom TTS transforms:", error);
+      setLoading(false);
       return;
     }
-    const fetched = (data as any[] || []).map((r: any) => ({
+
+    let fetched = (data as any[] || []).map((r: any) => ({
       id: r.id as string,
       pattern: r.pattern as string,
       replacement: r.replacement as string,
     }));
+
+    // Seed default entries on first use
+    if (fetched.length === 0) {
+      const inserts = DEFAULT_ENTRIES.map(e => ({
+        user_id: user.id,
+        pattern: e.pattern,
+        replacement: e.replacement,
+      }));
+      const { error: seedErr } = await supabase
+        .from("custom_tts_transforms" as any)
+        .insert(inserts as any);
+      if (!seedErr) {
+        const { data: seeded } = await supabase
+          .from("custom_tts_transforms" as any)
+          .select("id, pattern, replacement")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true });
+        fetched = (seeded as any[] || []).map((r: any) => ({
+          id: r.id as string,
+          pattern: r.pattern as string,
+          replacement: r.replacement as string,
+        }));
+      }
+    }
+
     setItems(fetched);
     onTransformsChange?.(fetched.map(({ pattern, replacement }) => ({ pattern, replacement })));
     setLoading(false);
@@ -104,35 +133,41 @@ export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomT
     }
   };
 
+  const handleEdit = (item: TtsTransform) => {
+    setEditingId(item.id);
+    setEditPattern(item.pattern);
+    setEditReplacement(item.replacement);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    const pattern = editPattern.trim();
+    if (!pattern) {
+      toast.error("Le champ pattern est requis.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("custom_tts_transforms" as any)
+      .update({ pattern, replacement: editReplacement.trim() } as any)
+      .eq("id", editingId);
+
+    if (error) {
+      toast.error("Impossible de modifier.");
+    } else {
+      toast.success("Transformation modifiée.");
+      setEditingId(null);
+      await fetchItems();
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Replace className="h-4 w-4 text-primary" />
-          <span className="text-xs font-semibold text-foreground">Transformations texte → TTS</span>
-        </div>
-        <button
-          onClick={() => setShowBuiltIn(!showBuiltIn)}
-          className="text-[10px] text-muted-foreground hover:text-foreground underline"
-        >
-          {showBuiltIn ? "Masquer les intégrées" : `Voir les ${BUILT_IN.length} intégrées`}
-        </button>
+      <div className="flex items-center gap-2">
+        <Replace className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold text-foreground">Transformations texte → TTS</span>
+        <span className="text-[10px] text-muted-foreground">({items.length})</span>
       </div>
-
-      {showBuiltIn && (
-        <div className="rounded-md border border-border bg-muted/30 p-2 max-h-40 overflow-y-auto">
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Transformations intégrées (non modifiables) :</p>
-          <div className="grid grid-cols-1 gap-y-0.5">
-            {BUILT_IN.map((b) => (
-              <div key={b.pattern} className="flex items-center gap-1 text-[10px]">
-                <span className="text-foreground font-mono">{b.pattern}</span>
-                <span className="text-muted-foreground">→</span>
-                <span className="text-primary font-mono">{b.replacement}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Add form */}
       <div className="flex items-center gap-2">
@@ -166,23 +201,55 @@ export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomT
         </div>
       ) : items.length === 0 ? (
         <p className="text-[10px] text-muted-foreground text-center py-2">
-          Aucune transformation personnalisée. Ajoutez des règles de remplacement texte avant envoi au TTS.
+          Aucune transformation. Ajoutez des règles de remplacement texte avant envoi au TTS.
         </p>
       ) : (
-        <div className="space-y-1 max-h-48 overflow-y-auto">
+        <div className="space-y-1 max-h-60 overflow-y-auto">
           {items.map((item) => (
             <div key={item.id} className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5 group">
-              <span className="text-xs font-mono text-foreground flex-1 truncate">{item.pattern}</span>
-              <span className="text-[10px] text-muted-foreground">→</span>
-              <span className="text-xs font-mono text-primary flex-1 truncate">{item.replacement || '(supprimé)'}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                onClick={() => handleDelete(item.id)}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              {editingId === item.id ? (
+                <>
+                  <Input
+                    value={editPattern}
+                    onChange={(e) => setEditPattern(e.target.value)}
+                    className="h-6 text-xs flex-1 font-mono px-1"
+                  />
+                  <span className="text-[10px] text-muted-foreground">→</span>
+                  <Input
+                    value={editReplacement}
+                    onChange={(e) => setEditReplacement(e.target.value)}
+                    className="h-6 text-xs flex-1 font-mono px-1"
+                  />
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-green-600" onClick={handleSaveEdit}>
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingId(null)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs font-mono text-foreground flex-1 truncate">{item.pattern}</span>
+                  <span className="text-[10px] text-muted-foreground">→</span>
+                  <span className="text-xs font-mono text-primary flex-1 truncate">{item.replacement || '(supprimé)'}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                    onClick={() => handleEdit(item)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -190,5 +257,3 @@ export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomT
     </div>
   );
 }
-
-export { BUILT_IN as BUILT_IN_TTS_TRANSFORMS };
