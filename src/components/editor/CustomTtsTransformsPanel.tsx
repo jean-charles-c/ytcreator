@@ -15,9 +15,10 @@ interface TtsTransform {
 
 interface CustomTtsTransformsPanelProps {
   onTransformsChange?: (transforms: { pattern: string; replacement: string }[]) => void;
+  hideHeader?: boolean;
 }
 
-export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomTtsTransformsPanelProps) {
+export default function CustomTtsTransformsPanel({ onTransformsChange, hideHeader }: CustomTtsTransformsPanelProps) {
   const [items, setItems] = useState<TtsTransform[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPattern, setNewPattern] = useState("");
@@ -133,11 +134,13 @@ export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomT
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Replace className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-foreground">Transformations texte → TTS</span>
-        <span className="text-[10px] text-muted-foreground">({transforms.length})</span>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2">
+          <Replace className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">Transformations texte → TTS</span>
+          <span className="text-[10px] text-muted-foreground">({transforms.length})</span>
+        </div>
+      )}
 
       {/* Add form */}
       <div className="space-y-2">

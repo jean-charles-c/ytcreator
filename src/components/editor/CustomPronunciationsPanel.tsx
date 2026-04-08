@@ -13,6 +13,7 @@ interface Pronunciation {
 
 interface CustomPronunciationsPanelProps {
   onPronunciationsChange?: (pronunciations: { phrase: string; pronunciation: string }[]) => void;
+  hideHeader?: boolean;
 }
 
 const DEFAULT_ENTRIES: { phrase: string; pronunciation: string }[] = [
@@ -32,7 +33,7 @@ const DEFAULT_ENTRIES: { phrase: string; pronunciation: string }[] = [
 
 const SEED_MARKER = "c'est"; // If this phrase exists, defaults were already seeded
 
-export default function CustomPronunciationsPanel({ onPronunciationsChange }: CustomPronunciationsPanelProps) {
+export default function CustomPronunciationsPanel({ onPronunciationsChange, hideHeader }: CustomPronunciationsPanelProps) {
   const [items, setItems] = useState<Pronunciation[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPhrase, setNewPhrase] = useState("");
@@ -164,11 +165,13 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange }: Cu
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <BookA className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées</span>
-        <span className="text-[10px] text-muted-foreground">({items.length})</span>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2">
+          <BookA className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées</span>
+          <span className="text-[10px] text-muted-foreground">({items.length})</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <Input value={newPhrase} onChange={(e) => setNewPhrase(e.target.value)} placeholder="Mot (ex: Libet)" className="h-8 text-xs flex-1 font-mono" />

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -759,15 +759,37 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                 </AccordionItem>
               </Accordion>
 
-              {/* Custom pronunciations panel */}
-              <div className="border rounded-lg border-border bg-card px-4 py-3">
-                <CustomPronunciationsPanel onPronunciationsChange={setCustomPronunciations} />
-              </div>
+              {/* Custom pronunciations panel — collapsible, closed by default */}
+              <Collapsible defaultOpen={false}>
+                <div className="border rounded-lg border-border bg-card px-4 py-3">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <BookA className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées ({customPronunciations.length})</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-3">
+                    <CustomPronunciationsPanel onPronunciationsChange={setCustomPronunciations} hideHeader />
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
 
-              {/* Custom TTS transforms panel */}
-              <div className="border rounded-lg border-border bg-card px-4 py-3">
-                <CustomTtsTransformsPanel />
-              </div>
+              {/* Custom TTS transforms panel — collapsible, closed by default */}
+              <Collapsible defaultOpen={false}>
+                <div className="border rounded-lg border-border bg-card px-4 py-3">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Replace className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-semibold text-foreground">Transformations texte → TTS</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-3">
+                    <CustomTtsTransformsPanel hideHeader />
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
             </div>
 
             {/* LEFT column (2/3): Script + bottom row */}
