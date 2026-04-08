@@ -15,6 +15,7 @@ interface TtsTransform {
 
 interface CustomTtsTransformsPanelProps {
   onTransformsChange?: (transforms: { pattern: string; replacement: string }[]) => void;
+  hideHeader?: boolean;
 }
 
 export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomTtsTransformsPanelProps) {

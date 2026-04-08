@@ -13,6 +13,7 @@ interface Pronunciation {
 
 interface CustomPronunciationsPanelProps {
   onPronunciationsChange?: (pronunciations: { phrase: string; pronunciation: string }[]) => void;
+  hideHeader?: boolean;
 }
 
 const DEFAULT_ENTRIES: { phrase: string; pronunciation: string }[] = [
