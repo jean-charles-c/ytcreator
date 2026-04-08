@@ -1,0 +1,1 @@
+ALTER TABLE public.custom_tts_transforms ADD COLUMN is_exception boolean NOT NULL DEFAULT false;

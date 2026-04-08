@@ -30,6 +30,8 @@ const DEFAULT_ENTRIES: { phrase: string; pronunciation: string }[] = [
   { phrase: "d'une", pronunciation: "dyn" },
 ];
 
+const SEED_MARKER = "c'est"; // If this phrase exists, defaults were already seeded
+
 export default function CustomPronunciationsPanel({ onPronunciationsChange }: CustomPronunciationsPanelProps) {
   const [items, setItems] = useState<Pronunciation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,17 +64,20 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange }: Cu
       pronunciation: r.pronunciation as string,
     }));
 
-    // Seed default entries on first use
-    if (fetched.length === 0) {
-      const inserts = DEFAULT_ENTRIES.map(e => ({
-        user_id: user.id,
-        phrase: e.phrase,
-        pronunciation: e.pronunciation,
-      }));
-      const { error: seedErr } = await supabase
-        .from("custom_pronunciations" as any)
-        .insert(inserts as any);
-      if (!seedErr) {
+    // Seed defaults if the marker entry doesn't exist yet
+    const hasMarker = fetched.some(e => e.phrase.toLowerCase() === SEED_MARKER.toLowerCase());
+    if (!hasMarker) {
+      // Only insert defaults that don't already exist by phrase
+      const existingPhrases = new Set(fetched.map(e => e.phrase.toLowerCase()));
+      const toInsert = DEFAULT_ENTRIES.filter(e => !existingPhrases.has(e.phrase.toLowerCase()));
+      if (toInsert.length > 0) {
+        const inserts = toInsert.map(e => ({
+          user_id: user.id,
+          phrase: e.phrase,
+          pronunciation: e.pronunciation,
+        }));
+        await supabase.from("custom_pronunciations" as any).insert(inserts as any);
+        // Re-fetch after seeding
         const { data: seeded } = await supabase
           .from("custom_pronunciations" as any)
           .select("id, phrase, pronunciation")
@@ -100,17 +105,13 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange }: Cu
       toast.error("Remplissez le mot et sa prononciation IPA.");
       return;
     }
-
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
-
     const { error } = await supabase
       .from("custom_pronunciations" as any)
       .insert({ user_id: user.id, phrase, pronunciation } as any);
-
     if (error) {
-      console.error("Insert error:", error);
       toast.error("Impossible d'ajouter la prononciation.");
     } else {
       toast.success(`Prononciation ajoutée : ${phrase} → /${pronunciation}/`);
@@ -126,7 +127,6 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange }: Cu
       .from("custom_pronunciations" as any)
       .delete()
       .eq("id", id);
-
     if (error) {
       toast.error("Impossible de supprimer.");
     } else {
@@ -149,12 +149,10 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange }: Cu
       toast.error("Les deux champs sont requis.");
       return;
     }
-
     const { error } = await supabase
       .from("custom_pronunciations" as any)
       .update({ phrase, pronunciation } as any)
       .eq("id", editingId);
-
     if (error) {
       toast.error("Impossible de modifier.");
     } else {
@@ -172,85 +170,37 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange }: Cu
         <span className="text-[10px] text-muted-foreground">({items.length})</span>
       </div>
 
-      {/* Add form */}
       <div className="flex items-center gap-2">
-        <Input
-          value={newPhrase}
-          onChange={(e) => setNewPhrase(e.target.value)}
-          placeholder="Mot (ex: Libet)"
-          className="h-8 text-xs flex-1 font-mono"
-        />
-        <Input
-          value={newPronunciation}
-          onChange={(e) => setNewPronunciation(e.target.value)}
-          placeholder="IPA (ex: libɛ)"
-          className="h-8 text-xs flex-1 font-mono"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 px-2 shrink-0"
-          onClick={handleAdd}
-          disabled={saving || !newPhrase.trim() || !newPronunciation.trim()}
-        >
+        <Input value={newPhrase} onChange={(e) => setNewPhrase(e.target.value)} placeholder="Mot (ex: Libet)" className="h-8 text-xs flex-1 font-mono" />
+        <Input value={newPronunciation} onChange={(e) => setNewPronunciation(e.target.value)} placeholder="IPA (ex: libɛ)" className="h-8 text-xs flex-1 font-mono" />
+        <Button size="sm" variant="outline" className="h-8 px-2 shrink-0" onClick={handleAdd} disabled={saving || !newPhrase.trim() || !newPronunciation.trim()}>
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
         </Button>
       </div>
 
-      {/* List */}
       {loading ? (
-        <div className="flex justify-center py-2">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
+        <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
       ) : items.length === 0 ? (
-        <p className="text-[10px] text-muted-foreground text-center py-2">
-          Aucune prononciation. Ajoutez des corrections pour les noms propres ou mots mal prononcés.
-        </p>
+        <p className="text-[10px] text-muted-foreground text-center py-2">Aucune prononciation.</p>
       ) : (
         <div className="space-y-1 max-h-60 overflow-y-auto">
           {items.map((item) => (
             <div key={item.id} className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5 group">
               {editingId === item.id ? (
                 <>
-                  <Input
-                    value={editPhrase}
-                    onChange={(e) => setEditPhrase(e.target.value)}
-                    className="h-6 text-xs flex-1 font-mono px-1"
-                  />
+                  <Input value={editPhrase} onChange={(e) => setEditPhrase(e.target.value)} className="h-6 text-xs flex-1 font-mono px-1" />
                   <span className="text-[10px] text-muted-foreground">→</span>
-                  <Input
-                    value={editPronunciation}
-                    onChange={(e) => setEditPronunciation(e.target.value)}
-                    className="h-6 text-xs flex-1 font-mono px-1"
-                  />
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-green-600" onClick={handleSaveEdit}>
-                    <Check className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingId(null)}>
-                    <X className="h-3 w-3" />
-                  </Button>
+                  <Input value={editPronunciation} onChange={(e) => setEditPronunciation(e.target.value)} className="h-6 text-xs flex-1 font-mono px-1" />
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-green-600" onClick={handleSaveEdit}><Check className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingId(null)}><X className="h-3 w-3" /></Button>
                 </>
               ) : (
                 <>
                   <span className="text-xs font-mono text-foreground flex-1 truncate">{item.phrase}</span>
                   <span className="text-[10px] text-muted-foreground">→</span>
                   <span className="text-xs font-mono text-primary flex-1 truncate">/{item.pronunciation}/</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
-                    onClick={() => handleEdit(item)}
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(item)}><Pencil className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3 w-3" /></Button>
                 </>
               )}
             </div>
