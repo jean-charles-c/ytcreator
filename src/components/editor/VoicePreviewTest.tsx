@@ -67,6 +67,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             pauseBetweenParagraphs: settings.pauseBetweenParagraphs ?? 0,
             pauseAfterSentences: settings.pauseAfterSentences ?? 0,
             pauseAfterComma: settings.pauseAfterComma ?? 0,
+            customPronunciations,
           }
         : {
             text: previewText,
