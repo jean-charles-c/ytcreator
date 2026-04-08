@@ -763,6 +763,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
               <div className="border rounded-lg border-border bg-card px-4 py-3">
                 <CustomPronunciationsPanel onPronunciationsChange={setCustomPronunciations} />
               </div>
+
+              {/* Custom TTS transforms panel */}
+              <div className="border rounded-lg border-border bg-card px-4 py-3">
+                <CustomTtsTransformsPanel />
+              </div>
             </div>
 
             {/* LEFT column (2/3): Script + bottom row */}
