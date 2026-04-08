@@ -832,15 +832,40 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                         : "Générer la voix off"}
                   </Button>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={freeMode}
-                    onChange={(e) => setFreeMode(e.target.checked)}
-                    className="rounded border-border accent-primary"
-                  />
-                  <span className="text-[11px] text-muted-foreground">Mode libre (générer l'audio sans synchronisation avec les shots)</span>
-                </label>
+                <div className="flex flex-wrap items-center gap-3 mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={freeMode}
+                      onChange={(e) => setFreeMode(e.target.checked)}
+                      className="rounded border-border accent-primary"
+                    />
+                    <span className="text-[11px] text-muted-foreground">Mode libre (sans synchronisation)</span>
+                  </label>
+                  {quickProfiles.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <User className="h-3 w-3 text-muted-foreground" />
+                      <Select
+                        value={selectedQuickProfileId || "__none__"}
+                        onValueChange={(val) => {
+                          if (val === "__none__") return;
+                          applyQuickProfile(val);
+                        }}
+                      >
+                        <SelectTrigger className="h-7 w-[180px] text-[11px] border-border">
+                          <SelectValue placeholder="Profil de voix…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {quickProfiles.map((p) => (
+                            <SelectItem key={p.id} value={p.id} className="text-xs">
+                              {p.profile_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
                 {/* Desync warning banner */}
                 {desyncWarning && (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
