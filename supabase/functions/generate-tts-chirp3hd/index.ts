@@ -128,17 +128,24 @@ Deno.serve(async (req) => {
     }
 
     // Step 0: Load and apply user custom TTS transforms from DB
+    // Also load exceptions (is_exception=true) to protect certain words from elision fusion
     let transformedText = text.trim();
+    let elisionExceptions: string[] = [];
     try {
       const { data: userTransforms } = await supabase
         .from("custom_tts_transforms")
-        .select("pattern, replacement")
+        .select("pattern, replacement, is_exception")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
 
       if (userTransforms && userTransforms.length > 0) {
         for (const t of userTransforms) {
-          if (t.pattern) {
+          if (!t.pattern) continue;
+          if (t.is_exception) {
+            // This is an exception — protect this pattern from elision fusion
+            elisionExceptions.push(t.pattern);
+          } else {
+            // Normal replacement transform
             try {
               const escaped = t.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
               transformedText = transformedText.replace(new RegExp(escaped, "gi"), t.replacement ?? "");
@@ -147,7 +154,7 @@ Deno.serve(async (req) => {
             }
           }
         }
-        console.log(`[chirp3hd] Applied ${userTransforms.length} custom TTS transforms`);
+        console.log(`[chirp3hd] Applied ${userTransforms.filter(t => !t.is_exception).length} custom TTS transforms, ${elisionExceptions.length} exceptions`);
       }
     } catch (e) {
       console.warn("[chirp3hd] Failed to load custom TTS transforms:", e);
@@ -159,7 +166,21 @@ Deno.serve(async (req) => {
     // NOTE: j' is NOT fused — Google TTS handles j'en, j'ai etc. correctly
     // and fusing them (jen, jai) breaks pronunciation + gets rejected by customPronunciations.
     const ELISION_VOWELS = "aeéèêëiîïoôuùûüyàâæœ";
-    const preNormalized = transformedText
+
+    // Protect exception patterns with placeholders before elision fusion
+    const placeholderMap = new Map<string, string>();
+    let protectedText = transformedText;
+    for (let i = 0; i < elisionExceptions.length; i++) {
+      const exc = elisionExceptions[i];
+      const placeholder = `\uFFF0EXC${i}\uFFF0`;
+      placeholderMap.set(placeholder, exc);
+      try {
+        const escaped = exc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        protectedText = protectedText.replace(new RegExp(escaped, "gi"), placeholder);
+      } catch { /* skip */ }
+    }
+
+    const preNormalized = protectedText
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
@@ -168,7 +189,9 @@ Deno.serve(async (req) => {
       // Fuse qu' elision
       .replace(/\bqu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "qu")
       // Liaison "t" après c'est / n'est devant voyelle: "cest un" → "cest tun"
-      .replace(new RegExp(`\\b([cn])est\\s+(?=[${ELISION_VOWELS}])`, "gi"), "$1est t");
+      .replace(new RegExp(`\\b([cn])est\\s+(?=[${ELISION_VOWELS}])`, "gi"), "$1est t")
+      // Restore exception placeholders
+      .replace(/\uFFF0EXC\d+\uFFF0/g, (match) => placeholderMap.get(match) ?? match);
 
     // Step 2: Build customPronunciations — all from DB (user entries include
     // the seeded defaults). No more hardcoded built-in list.
