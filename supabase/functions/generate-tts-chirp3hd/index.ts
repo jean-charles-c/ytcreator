@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
     const userCount = Array.isArray(userPronunciations) ? userPronunciations.length : 0;
     const paragraphPauseMs = typeof pauseBetweenParagraphs === "number" ? Math.max(0, Math.min(pauseBetweenParagraphs, 5000)) : 0;
     console.log(
-      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, paragraphs=${effectiveParagraphs.length}, chunks=${allChunks.length}, speakingRate=${speakingRate}, pauseBetweenParagraphs=${paragraphPauseMs}ms, builtIn=${BUILT_IN_PRONUNCIATIONS.length}, userCustom=${userCount}, total=${CUSTOM_PRONUNCIATIONS.length}`
+      `[chirp3hd] Generating audio: voice=${resolvedVoice}, textLen=${text.length}, paragraphs=${effectiveParagraphs.length}, chunks=${allChunks.length}, speakingRate=${speakingRate}, pauseBetweenParagraphs=${paragraphPauseMs}ms, dbPronunciations=${dbPronunciations.length}, userCustom=${userCount}, total=${CUSTOM_PRONUNCIATIONS.length}`
     );
     for (let ci = 0; ci < allChunks.length; ci++) {
       const chunk = allChunks[ci].text;
