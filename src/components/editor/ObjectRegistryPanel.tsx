@@ -304,22 +304,23 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
 
   const uploadToStorage = useCallback(async (objectName: string, imageUrl: string, refIndex: number): Promise<string | null> => {
     try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) return null;
-      const blob = await response.blob();
-      const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+      // Determine extension from URL
+      const urlExt = imageUrl.split("/").pop()?.split("?")[0]?.split(".").pop()?.toLowerCase();
+      const ext = (urlExt === "png" || urlExt === "webp") ? urlExt : "jpg";
       const safeName = objectName.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
       const filePath = `${safeName}_ref_${refIndex}.${ext}`;
-      const { error } = await supabase.storage.from("reference-images").upload(filePath, blob, {
-        contentType: blob.type,
-        upsert: true,
+
+      // Use server-side proxy to avoid CORS issues
+      const { data, error } = await supabase.functions.invoke("proxy-download-image", {
+        body: { url: imageUrl, filePath },
       });
+
       if (error) {
-        console.error("Upload error:", error);
+        console.error("Proxy download error:", error);
         return null;
       }
-      const { data: publicUrlData } = supabase.storage.from("reference-images").getPublicUrl(filePath);
-      return `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+      return data?.publicUrl || null;
     } catch (e) {
       console.error("Upload failed:", e);
       return null;
