@@ -858,8 +858,7 @@ export default function PdfDocumentaryTab({
         });
         // Auto-trigger AI analysis after generation
         handleAnalyzeScript(full);
-        // Auto-trigger humanization after generation
-        setTimeout(() => handleHumanize(full), 1500);
+        // Humanization is manual only — triggered via the "Humaniser" button
       }
     });
     return unsub;
