@@ -432,7 +432,18 @@ export function runQaValidation(
 
   const issues = [...structureIssues, ...allocationIssues, ...redundancyIssues, ...lengthIssues, ...timingIssues];
 
-  const criticalCount = issues.filter((i) => i.level === "critical").length;
+  const criticalIssues = issues.filter((i) => i.level === "critical");
+  const criticalCount = criticalIssues.length;
+  if (criticalCount > 0) {
+    console.warn("[QA] Critical issues found:", criticalIssues.map(i => ({
+      category: i.category,
+      sceneOrder: i.sceneOrder,
+      shotOrder: i.shotOrder,
+      message: i.message,
+      expected: i.expectedText?.slice(0, 100),
+      actual: i.actualText?.slice(0, 100),
+    })));
+  }
   const warningCount = issues.filter((i) => i.level === "warning").length;
 
   return {
