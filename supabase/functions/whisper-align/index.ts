@@ -428,13 +428,10 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Clé API Groq non configurée." }, 500);
     }
 
-    // Force single pass for large WAV to avoid memory limit
-    const useTriplePass = !isLargeWav && triplePass === true;
-    const useDualPass = !isLargeWav && !useTriplePass && dualPass === true;
+    // Triple/dual pass now allowed for large WAV — passes run sequentially with chunking
+    const useTriplePass = triplePass === true;
+    const useDualPass = !useTriplePass && dualPass === true;
     const passCount = useTriplePass ? 3 : useDualPass ? 2 : 1;
-    if (isLargeWav && (dualPass || triplePass)) {
-      console.log(`[whisper-align] Large WAV detected (${audioBuffer.byteLength} bytes) — forcing single pass to stay within memory limits`);
-    }
     console.log(`[whisper-align] Mode: ${passCount} pass(es)`);
 
     // ── Prepare chunks (for WAV) or direct blob ──
