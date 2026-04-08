@@ -272,6 +272,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
       .from("vo_audio_history")
       .select("*")
       .eq("project_id", projectId)
+      .eq("style", "chirp3hd")
       .order("created_at", { ascending: false })
       .limit(1);
 
