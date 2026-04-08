@@ -127,13 +127,39 @@ Deno.serve(async (req) => {
       return chunks;
     }
 
+    // Step 0: Load and apply user custom TTS transforms from DB
+    let transformedText = text.trim();
+    try {
+      const { data: userTransforms } = await supabase
+        .from("custom_tts_transforms")
+        .select("pattern, replacement")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+
+      if (userTransforms && userTransforms.length > 0) {
+        for (const t of userTransforms) {
+          if (t.pattern) {
+            try {
+              const escaped = t.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              transformedText = transformedText.replace(new RegExp(escaped, "gi"), t.replacement ?? "");
+            } catch {
+              // skip invalid pattern
+            }
+          }
+        }
+        console.log(`[chirp3hd] Applied ${userTransforms.length} custom TTS transforms`);
+      }
+    } catch (e) {
+      console.warn("[chirp3hd] Failed to load custom TTS transforms:", e);
+    }
+
     // Step 1: normalize unicode quotes and punctuation spacing
     // Fuse French elisions (c', n', s', d', m', t', l', qu') so
     // the API never sees an apostrophe inside a word — which it rejects.
     // NOTE: j' is NOT fused — Google TTS handles j'en, j'ai etc. correctly
     // and fusing them (jen, jai) breaks pronunciation + gets rejected by customPronunciations.
     const ELISION_VOWELS = "aeéèêëiîïoôuùûüyàâæœ";
-    const preNormalized = text.trim()
+    const preNormalized = transformedText
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
