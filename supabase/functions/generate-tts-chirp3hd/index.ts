@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
         .replace(/^[\s"'«»“”()\[\]{}.,;:!?/\-]+|[\s"'«»“”()\[\]{}.,;:!?/\-]+$/g, "")
         .toLowerCase()
         // Fuse elisions same as text pre-normalization: c'était → cétait
-        .replace(/([cnsldjtm])['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "$1")
+        .replace(/([cnsldtm])['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "$1")
         .replace(/qu['’](?=[aeéèêëiîïoôuùûüyàâæœ])/g, "qu");
     }
 
