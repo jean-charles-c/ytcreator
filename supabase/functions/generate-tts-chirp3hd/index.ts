@@ -128,15 +128,17 @@ Deno.serve(async (req) => {
     }
 
     // Step 1: normalize unicode quotes and punctuation spacing
-    // Then fuse ALL French elisions (c', n', s', d', j', m', t', l', qu') so
+    // Fuse French elisions (c', n', s', d', m', t', l', qu') so
     // the API never sees an apostrophe inside a word — which it rejects.
+    // NOTE: j' is NOT fused — Google TTS handles j'en, j'ai etc. correctly
+    // and fusing them (jen, jai) breaks pronunciation + gets rejected by customPronunciations.
     const ELISION_VOWELS = "aeéèêëiîïoôuùûüyàâæœ";
     const preNormalized = text.trim()
       .replace(/[\u2018\u2019\u02BC]/g, "'")
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/\s+([.!?…,;:»\u00BB])/g, "$1")
-      // Fuse all single-letter elisions: c', n', s', d', j', m', t', l'
-      .replace(new RegExp(`\\b([cCnNsSlLdDjJmMtT])[''](?=[${ELISION_VOWELS}])`, "g"), "$1")
+      // Fuse single-letter elisions (excluding j'): c', n', s', d', m', t', l'
+      .replace(new RegExp(`\\b([cCnNsSlLdDmMtT])[''](?=[${ELISION_VOWELS}])`, "g"), "$1")
       // Fuse qu' elision
       .replace(/\bqu[''](?=[aeéèêëiîïoôuùûüyàâæœ])/gi, "qu")
       // Liaison "t" après c'est / n'est devant voyelle: "cest un" → "cest tun"
