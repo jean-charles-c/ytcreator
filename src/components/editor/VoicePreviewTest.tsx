@@ -16,6 +16,20 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [customPronunciations, setCustomPronunciations] = useState<{ phrase: string; pronunciation: string }[]>([]);
+
+  useEffect(() => {
+    const loadPronunciations = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("custom_pronunciations")
+        .select("phrase, pronunciation")
+        .eq("user_id", user.id);
+      if (data) setCustomPronunciations(data);
+    };
+    loadPronunciations();
+  }, []);
 
   const isChirpVoice = (name?: string) =>
     !!name && /chirp/i.test(name);
