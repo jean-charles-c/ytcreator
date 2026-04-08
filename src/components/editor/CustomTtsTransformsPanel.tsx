@@ -18,7 +18,7 @@ interface CustomTtsTransformsPanelProps {
   hideHeader?: boolean;
 }
 
-export default function CustomTtsTransformsPanel({ onTransformsChange }: CustomTtsTransformsPanelProps) {
+export default function CustomTtsTransformsPanel({ onTransformsChange, hideHeader }: CustomTtsTransformsPanelProps) {
   const [items, setItems] = useState<TtsTransform[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPattern, setNewPattern] = useState("");

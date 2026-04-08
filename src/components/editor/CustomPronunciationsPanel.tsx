@@ -33,7 +33,7 @@ const DEFAULT_ENTRIES: { phrase: string; pronunciation: string }[] = [
 
 const SEED_MARKER = "c'est"; // If this phrase exists, defaults were already seeded
 
-export default function CustomPronunciationsPanel({ onPronunciationsChange }: CustomPronunciationsPanelProps) {
+export default function CustomPronunciationsPanel({ onPronunciationsChange, hideHeader }: CustomPronunciationsPanelProps) {
   const [items, setItems] = useState<Pronunciation[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPhrase, setNewPhrase] = useState("");
