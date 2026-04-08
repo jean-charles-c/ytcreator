@@ -832,7 +832,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                         : "Générer la voix off"}
                   </Button>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
