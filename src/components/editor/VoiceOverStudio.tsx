@@ -60,6 +60,99 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [pipelineMode, setPipelineMode] = useState<"ssml" | "chirp3hd">("ssml");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [customPronunciations, setCustomPronunciations] = useState<{ phrase: string; pronunciation: string }[]>([]);
+
+  // ── Quick profile selector state ──
+  interface QuickProfile { id: string; profile_name: string; language_code: string; voice_gender: string; voice_name: string; style: string; speaking_rate: number; pitch: number; volume_gain_db: number; effects_profile_id: string; pause_between_paragraphs: number; pause_after_sentences: number; pause_after_comma: number; narration_profile: string; dynamic_pause_enabled: boolean; dynamic_pause_variation: number; sentence_start_boost: number; sentence_end_slow: number; }
+  const [quickProfiles, setQuickProfiles] = useState<QuickProfile[]>([]);
+  const [selectedQuickProfileId, setSelectedQuickProfileId] = useState<string>(() => {
+    return localStorage.getItem("vo-quick-profile-id") || "";
+  });
+
+  const loadQuickProfiles = useCallback(async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("favorite_voice_profile")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (!error && data) {
+        setQuickProfiles(data);
+        // If saved profile no longer exists, clear
+        if (selectedQuickProfileId && !data.some((p: QuickProfile) => p.id === selectedQuickProfileId)) {
+          setSelectedQuickProfileId("");
+          localStorage.removeItem("vo-quick-profile-id");
+        }
+      }
+    } catch (e) {
+      console.error("Load quick profiles error:", e);
+    }
+  }, [selectedQuickProfileId]);
+
+  useEffect(() => { loadQuickProfiles(); }, [loadQuickProfiles]);
+
+  const applyQuickProfile = useCallback((profileId: string) => {
+    setSelectedQuickProfileId(profileId);
+    localStorage.setItem("vo-quick-profile-id", profileId);
+    const p = quickProfiles.find((pr) => pr.id === profileId);
+    if (!p) return;
+    const rawStyle = p.style || "";
+    const parts = rawStyle.split(":");
+    const voiceType = ["Standard", "Wavenet", "Neural2", "Studio", "Chirp3-HD", "Chirp-HD", "Polyglot"].includes(parts[0]) ? parts[0] : "Standard";
+    const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
+    setSettings({
+      languageCode: p.language_code,
+      voiceGender: p.voice_gender as VoiceSettings["voiceGender"],
+      voiceType,
+      voiceName: p.voice_name || "",
+      style: tone,
+      narrationProfile: (p.narration_profile as VoiceSettings["narrationProfile"]) || "standard",
+      speakingRate: p.speaking_rate,
+      pitch: p.pitch ?? 0,
+      volumeGainDb: p.volume_gain_db ?? 0,
+      effectsProfileId: p.effects_profile_id ?? "none",
+      pauseBetweenParagraphs: p.pause_between_paragraphs ?? 500,
+      pauseAfterSentences: p.pause_after_sentences ?? 0,
+      pauseAfterComma: p.pause_after_comma ?? 0,
+      dynamicPauseEnabled: p.dynamic_pause_enabled ?? false,
+      dynamicPauseVariation: p.dynamic_pause_variation ?? 300,
+      sentenceStartBoost: p.sentence_start_boost ?? 0,
+      sentenceEndSlow: p.sentence_end_slow ?? 0,
+    });
+    setActiveProfileName(p.profile_name);
+    toast.success(`Profil « ${p.profile_name} » appliqué`);
+  }, [quickProfiles]);
+
+  // Auto-apply saved profile on mount when profiles load
+  useEffect(() => {
+    if (selectedQuickProfileId && quickProfiles.length > 0) {
+      const p = quickProfiles.find((pr) => pr.id === selectedQuickProfileId);
+      if (p) {
+        const rawStyle = p.style || "";
+        const parts = rawStyle.split(":");
+        const voiceType = ["Standard", "Wavenet", "Neural2", "Studio", "Chirp3-HD", "Chirp-HD", "Polyglot"].includes(parts[0]) ? parts[0] : "Standard";
+        const tone = parts[1] && STYLE_PRESETS[parts[1]] ? parts[1] : (STYLE_PRESETS[parts[0]] ? parts[0] : "neutral");
+        setSettings({
+          languageCode: p.language_code,
+          voiceGender: p.voice_gender as VoiceSettings["voiceGender"],
+          voiceType,
+          voiceName: p.voice_name || "",
+          style: tone,
+          narrationProfile: (p.narration_profile as VoiceSettings["narrationProfile"]) || "standard",
+          speakingRate: p.speaking_rate,
+          pitch: p.pitch ?? 0,
+          volumeGainDb: p.volume_gain_db ?? 0,
+          effectsProfileId: p.effects_profile_id ?? "none",
+          pauseBetweenParagraphs: p.pause_between_paragraphs ?? 500,
+          pauseAfterSentences: p.pause_after_sentences ?? 0,
+          pauseAfterComma: p.pause_after_comma ?? 0,
+          dynamicPauseEnabled: p.dynamic_pause_enabled ?? false,
+          dynamicPauseVariation: p.dynamic_pause_variation ?? 300,
+          sentenceStartBoost: p.sentence_start_boost ?? 0,
+          sentenceEndSlow: p.sentence_end_slow ?? 0,
+        });
+        setActiveProfileName(p.profile_name);
+      }
+    }
+  }, [quickProfiles.length]); // only on initial load
   /** Strip comma/dot thousand separators from numbers so TTS doesn't pronounce them */
   const stripThousandSeparators = (text: string): string =>
     text.replace(/\*/g, "")
