@@ -765,7 +765,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   <CollapsibleTrigger className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
                       <BookA className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées</span>
+                      <span className="text-xs font-semibold text-foreground">Prononciations IPA personnalisées ({customPronunciations.length})</span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]]:rotate-180" />
                   </CollapsibleTrigger>
