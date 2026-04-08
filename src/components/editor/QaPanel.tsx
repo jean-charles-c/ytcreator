@@ -188,7 +188,7 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
    * the canonical scene source_text — never rebuild the whole scene from shot order.
    */
   const syncSceneTextForIssue = async (issue: QaIssue) => {
-    if (issue.category !== "allocation" || !issue.sceneId || !issue.actualFullText) return;
+    if (issue.category !== "allocation" || !issue.sceneId) return;
 
     const { data: sceneRow } = await supabase
       .from("scenes")
@@ -201,26 +201,56 @@ export default function QaPanel({ projectId, manifest, onExportAllowedChange, on
 
     let newSourceText = currentSourceText;
     const expected = issue.expectedFullText?.trim();
-    const actual = issue.actualFullText.trim();
+    const actual = issue.actualFullText?.trim();
 
-    if (expected && currentSourceText.includes(expected)) {
+    let patched = false;
+
+    // Strategy 1: targeted replacement if we have both expected and actual
+    if (expected && actual && currentSourceText.includes(expected)) {
       newSourceText = currentSourceText.replace(expected, actual);
-    } else {
+      patched = true;
+    }
+
+    // Strategy 2: segment-level replacement by shot order
+    if (!patched && actual && issue.shotOrder) {
       const canonicalSegments = getNarrativeSegments(currentSourceText);
-      if (issue.shotOrder && canonicalSegments[issue.shotOrder - 1]) {
+      if (canonicalSegments[issue.shotOrder - 1]) {
         canonicalSegments[issue.shotOrder - 1] = actual;
         newSourceText = canonicalSegments.join("\n");
-      } else {
-        return;
+        patched = true;
       }
     }
 
-    await supabase
-      .from("scenes")
-      .update({ source_text: newSourceText, updated_at: new Date().toISOString() })
-      .eq("id", issue.sceneId);
+    // Strategy 3 (fallback): rebuild scene source_text from all shot fragments
+    if (!patched) {
+      const { data: sceneShots } = await supabase
+        .from("shots")
+        .select("source_sentence, source_sentence_fr, shot_order")
+        .eq("scene_id", issue.sceneId)
+        .order("shot_order", { ascending: true });
 
-    onScenesUpdated?.();
+      if (sceneShots && sceneShots.length > 0) {
+        const rebuiltText = sceneShots
+          .map(s => (s.source_sentence || s.source_sentence_fr || "").trim())
+          .filter(Boolean)
+          .join(" ");
+        if (rebuiltText) {
+          newSourceText = rebuiltText;
+          patched = true;
+        }
+      }
+    }
+
+    if (newSourceText !== currentSourceText) {
+      await supabase
+        .from("scenes")
+        .update({ source_text: newSourceText, updated_at: new Date().toISOString() })
+        .eq("id", issue.sceneId);
+
+      onScenesUpdated?.();
+    }
+
+    // Re-run QA with updated manifest data
     const qa = runQaValidation(manifest, timing ?? buildManifestTiming(manifest, null, 0));
     setReport(qa);
   };

@@ -57,56 +57,88 @@ export function validateAllocation(
   });
 
   // Find each fragment's position in scene text
+  // Strategy: first try sequential indexOf (fast path), then fallback to
+  // individual search without sequence constraint to avoid cascading false positives.
+  const fragmentPositions: Array<{ start: number; end: number; shotIndex: number } | null> = [];
   let lastEnd = -1;
+
   for (let idx = 0; idx < shotFragments.length; idx++) {
     const frag = shotFragments[idx];
-    if (!frag || !frag.trim()) continue;
+    if (!frag || !frag.trim()) {
+      fragmentPositions.push(null);
+      continue;
+    }
 
     const normalizedFrag = normalizeForMatch(frag);
     const searchStart = Math.max(0, lastEnd);
     const pos = normalizedScene.indexOf(normalizedFrag, searchStart);
 
-    if (pos === -1) {
-      const altPos = normalizedScene.indexOf(normalizedFrag);
-      if (altPos === -1) {
-        issues.push({
-          type: "orphan",
-          shotIndex: idx,
-          detail: `Shot ${idx + 1} fragment not found in scene text: "${frag.slice(0, 60)}..."`,
-        });
-      } else {
-        issues.push({
-          type: "order_violation",
-          shotIndex: idx,
-          detail: `Shot ${idx + 1} fragment found at position ${altPos} but expected after position ${lastEnd}`,
-        });
-        coveredRanges.push({ start: altPos, end: altPos + normalizedFrag.length, shotIndex: idx });
-      }
+    if (pos >= 0) {
+      fragmentPositions.push({ start: pos, end: pos + normalizedFrag.length, shotIndex: idx });
+      lastEnd = pos + normalizedFrag.length;
     } else {
-      if (lastEnd >= 0 && pos > lastEnd) {
-        const gapText = normalizedScene.slice(lastEnd, pos).trim();
-        if (gapText.length > 0) {
-          const significantGap = gapText.replace(/[\s.,;:!?'"()\-–—]/g, "");
-          if (significantGap.length > 0) {
-            issues.push({
-              type: "gap",
-              shotIndex: idx,
-              detail: `Uncovered text between shots ${idx} and ${idx + 1}: "${gapText.slice(0, 50)}"`,
-            });
-          }
+      fragmentPositions.push(null); // will be resolved in fallback pass
+    }
+  }
+
+  // Fallback pass: for fragments not found sequentially, search anywhere
+  for (let idx = 0; idx < shotFragments.length; idx++) {
+    if (fragmentPositions[idx] !== null) continue;
+    const frag = shotFragments[idx];
+    if (!frag || !frag.trim()) continue;
+
+    const normalizedFrag = normalizeForMatch(frag);
+    const pos = normalizedScene.indexOf(normalizedFrag);
+
+    if (pos >= 0) {
+      // Found but out of sequence — report as order_violation (warning-level), not orphan
+      fragmentPositions[idx] = { start: pos, end: pos + normalizedFrag.length, shotIndex: idx };
+      issues.push({
+        type: "order_violation",
+        shotIndex: idx,
+        detail: `Shot ${idx + 1} fragment found but out of expected sequence`,
+      });
+    } else {
+      issues.push({
+        type: "orphan",
+        shotIndex: idx,
+        detail: `Shot ${idx + 1} fragment not found in scene text: "${frag.slice(0, 60)}..."`,
+      });
+    }
+  }
+
+  // Build coveredRanges and detect gaps/overlaps from resolved positions
+  const resolvedPositions = fragmentPositions
+    .filter((p): p is { start: number; end: number; shotIndex: number } => p !== null)
+    .sort((a, b) => a.start - b.start);
+
+  for (const rp of resolvedPositions) {
+    coveredRanges.push(rp);
+  }
+
+  // Detect gaps between consecutive covered ranges
+  for (let i = 1; i < resolvedPositions.length; i++) {
+    const prev = resolvedPositions[i - 1];
+    const curr = resolvedPositions[i];
+    if (curr.start > prev.end) {
+      const gapText = normalizedScene.slice(prev.end, curr.start).trim();
+      if (gapText.length > 0) {
+        const significantGap = gapText.replace(/[\s.,;:!?'"()\-–—]/g, "");
+        if (significantGap.length > 0) {
+          issues.push({
+            type: "gap",
+            shotIndex: curr.shotIndex,
+            detail: `Uncovered text between shots: "${gapText.slice(0, 50)}"`,
+          });
         }
       }
-
-      if (lastEnd > pos) {
-        issues.push({
-          type: "overlap",
-          shotIndex: idx,
-          detail: `Shot ${idx + 1} overlaps with previous shot`,
-        });
-      }
-
-      coveredRanges.push({ start: pos, end: pos + normalizedFrag.length, shotIndex: idx });
-      lastEnd = pos + normalizedFrag.length;
+    }
+    if (prev.end > curr.start) {
+      issues.push({
+        type: "overlap",
+        shotIndex: curr.shotIndex,
+        detail: `Shot ${curr.shotIndex + 1} overlaps with previous shot`,
+      });
     }
   }
 
