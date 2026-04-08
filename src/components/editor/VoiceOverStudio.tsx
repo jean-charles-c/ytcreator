@@ -15,6 +15,13 @@ import MusicStudio from "./MusicStudio";
 import { buildExactShotScript, buildExactShotSentences, getShotFragmentText, normalizeExactSyncText } from "./voiceOverShotSync";
 import CustomPronunciationsPanel from "./CustomPronunciationsPanel";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface VoiceOverStudioProps {
   narration: string;
