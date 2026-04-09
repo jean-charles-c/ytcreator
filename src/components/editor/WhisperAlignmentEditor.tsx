@@ -344,8 +344,8 @@ export default function WhisperAlignmentEditor({
   }, [projectId, refreshKey, getSortedShots, loadStoredManualAnchors]);
 
   // ── Stats ──
-  const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
-  const manualCount = alignedShots.filter((s) => s.status === "manual").length;
+  const okCount = alignedShots.filter((s) => s.status === "ok").length;
+  const manualCount = alignedShots.filter((s) => s.isManualAnchor).length;
   const estimatedCount = alignedShots.filter((s) => s.status === "estimated").length;
   const blockedCount = alignedShots.filter((s) => s.status === "blocked").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
