@@ -1125,8 +1125,6 @@ export default function WhisperAlignmentEditor({
                     className={`rounded border text-[10px] ${
                       shot.status === "blocked"
                         ? "border-destructive bg-destructive/10 ring-2 ring-destructive/40"
-                        : shot.status === "manual"
-                        ? "border-orange-500/30 bg-orange-500/5"
                         : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
                         : shot.status === "estimated"
@@ -1144,14 +1142,15 @@ export default function WhisperAlignmentEditor({
                     >
                       {shot.status === "blocked" ? (
                         <XCircle className="h-3 w-3 text-destructive shrink-0 animate-pulse" />
-                      ) : shot.status === "manual" ? (
-                        <CheckCircle2 className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       ) : shot.status === "estimated" ? (
                         <Clock className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : (
                         <XCircle className="h-3 w-3 text-destructive shrink-0" />
+                      )}
+                      {shot.isManualAnchor && (
+                        <span className="text-[8px] shrink-0" title="Calé manuellement">📌</span>
                       )}
                       <span className="font-mono font-medium text-muted-foreground shrink-0">
                         #{shot.globalIndex}
