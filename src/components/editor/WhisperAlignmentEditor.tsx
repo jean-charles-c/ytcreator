@@ -91,7 +91,7 @@ export default function WhisperAlignmentEditor({
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-  const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
+  const [expandedShotIds, setExpandedShotIds] = useState<Set<string>>(new Set());
   const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   
@@ -361,11 +361,20 @@ export default function WhisperAlignmentEditor({
   }, [whisperWords]);
 
   // ── Manual selection handlers ──
+  const toggleExpanded = (shotId: string) => {
+    setExpandedShotIds(prev => {
+      const next = new Set(prev);
+      if (next.has(shotId)) next.delete(shotId);
+      else next.add(shotId);
+      return next;
+    });
+  };
+
   const startEditing = (shotId: string) => {
     setEditingShotId(shotId);
     setSelectionStart(null);
     setSelectionEnd(null);
-    setExpandedShotId(shotId);
+    setExpandedShotIds(prev => new Set(prev).add(shotId));
   };
 
   const handleWordClick = (idx: number) => {
