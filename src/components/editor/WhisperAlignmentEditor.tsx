@@ -308,8 +308,8 @@ export default function WhisperAlignmentEditor({
             status = "manual";
           } else if (isBlocked) {
             status = "blocked";
-          } else if (whisperStartIdx !== null) {
-            status = "ok";
+          } else if (whisperStartIdx !== null && matchResult) {
+            status = coverageStatus(matchResult, text);
           } else if (startTime !== null) {
             status = "estimated";
           } else {
@@ -459,8 +459,8 @@ export default function WhisperAlignmentEditor({
         status = "manual";
       } else if (isBlocked) {
         status = "blocked";
-      } else if (whisperStartIdx !== null) {
-        status = "ok";
+      } else if (whisperStartIdx !== null && matchResult) {
+        status = coverageStatus(matchResult, text);
       } else {
         status = "missing";
       }
@@ -742,8 +742,8 @@ export default function WhisperAlignmentEditor({
                         status = "manual";
                       } else if (isBlocked) {
                         status = "blocked";
-                      } else if (whisperStartIdx !== null) {
-                        status = "ok";
+                      } else if (whisperStartIdx !== null && strictMatch) {
+                        status = coverageStatus(strictMatch, s.shotText);
                       } else if (startTime !== null) {
                         status = "estimated";
                       } else {
@@ -966,7 +966,7 @@ export default function WhisperAlignmentEditor({
                             let status: AlignedShot["status"];
                             if (manualAnchors.has(shot.id)) status = "manual";
                             else if (isBlocked) status = "blocked";
-                            else if (wsi !== null) status = "ok";
+                            else if (wsi !== null && matchResult) status = coverageStatus(matchResult, text);
                             else if (startTime !== null) status = "estimated";
                             else status = "missing";
 
