@@ -90,14 +90,45 @@ export function matchShotsStrictSequential(
       const manualIdx = anchors.get(shot.id);
       if (manualIdx !== undefined && manualIdx !== null) {
         // Resume from manual anchor
+        results.push({
+          shotId: shot.id,
+          whisperStartIdx: manualIdx,
+          matchedWords: REQUIRED_MATCH_COUNT,
+          blocked: false,
+        });
+        const shotWc = shot.text.split(/\s+/).filter(w => w.length > 0).length;
+        searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc * 0.5), 3);
+        blocked = false;
+        continue;
+      }
+      // Still blocked
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: false });
+      continue;
+    }
+
+    // First shot: anchor at word 0
+    if (shotIdx === 0) {
+      results.push({
+        shotId: shot.id,
+        whisperStartIdx: 0,
+        matchedWords: REQUIRED_MATCH_COUNT,
+        blocked: false,
+      });
+      searchFrom = 1;
+      continue;
+    }
+
+    // Check for manual anchor first
+    const manualIdx = anchors.get(shot.id);
+    if (manualIdx !== undefined && manualIdx !== null) {
       results.push({
         shotId: shot.id,
         whisperStartIdx: manualIdx,
         matchedWords: REQUIRED_MATCH_COUNT,
         blocked: false,
       });
-      const shotWordCount = shot.text.split(/\s+/).filter(w => w.length > 0).length;
-      searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWordCount * 0.5), 3);
+      const shotWc2 = shot.text.split(/\s+/).filter(w => w.length > 0).length;
+      searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc2 * 0.5), 3);
       continue;
     }
 
