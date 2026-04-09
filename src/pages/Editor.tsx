@@ -1115,6 +1115,47 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
     setShots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   };
 
+  /** Auto-regenerate visual prompts for a scene after structural changes (split/merge/delete) */
+  const regeneratePromptsForScene = async (sceneId: string) => {
+    try {
+      toast.info("Régénération des prompts visuels en cours...");
+      const session = (await supabase.auth.getSession()).data.session;
+      const { data, error } = await supabase.functions.invoke("generate-storyboard", {
+        body: {
+          project_id: projectId,
+          scene_id: sceneId,
+          prompt_only: true,
+          visual_style: visualStyle.globalStyleId,
+        },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (error) {
+        console.error("Prompt regeneration error:", error);
+        toast.warning("Les prompts visuels n'ont pas pu être mis à jour automatiquement.");
+        return;
+      }
+      // Refresh shots from DB for this scene
+      const { data: freshShots } = await supabase
+        .from("shots")
+        .select("*")
+        .eq("scene_id", sceneId)
+        .order("shot_order");
+      if (freshShots) {
+        setShots((prev) => {
+          const otherShots = prev.filter((s) => s.scene_id !== sceneId);
+          return [...otherShots, ...freshShots].sort((a, b) => {
+            const so = (scenes.find((sc) => sc.id === a.scene_id)?.scene_order ?? 0) - (scenes.find((sc) => sc.id === b.scene_id)?.scene_order ?? 0);
+            return so !== 0 ? so : a.shot_order - b.shot_order;
+          });
+        });
+      }
+      toast.success(`Prompts visuels mis à jour (${data?.shots_count ?? 0} shots)`);
+    } catch (e) {
+      console.error("Prompt regeneration exception:", e);
+      toast.warning("Les prompts visuels n'ont pas pu être mis à jour automatiquement.");
+    }
+  };
+
   const handleShotDelete = async (shotId: string) => {
     try {
       const deletedShot = shots.find((s) => s.id === shotId);
@@ -1161,6 +1202,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       }
 
       toast.success("Shot supprimé — fragments redistribués");
+      // Auto-regenerate prompts for affected scene
+      regeneratePromptsForScene(deletedShot.scene_id);
     } catch (e) {
       console.error("Delete exception:", e);
       toast.error("Erreur de suppression");
@@ -1224,6 +1267,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       setManifestHistory((prev) => [...prev, action]);
       toast.success("Shots fusionnés — fragments combinés");
+      // Auto-regenerate prompts for affected scene
+      regeneratePromptsForScene(shot.scene_id);
     } catch (e) {
       console.error("Merge exception:", e);
       toast.error("Erreur lors de la fusion");
@@ -1293,6 +1338,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       setManifestHistory((prev) => [...prev, action]);
       toast.success("Shot scindé en deux !");
+      // Auto-regenerate prompts for affected scene
+      regeneratePromptsForScene(shot.scene_id);
     } catch (e) {
       console.error("Split exception:", e);
       toast.error("Erreur lors de la scission");
