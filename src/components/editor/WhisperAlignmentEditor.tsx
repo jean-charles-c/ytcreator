@@ -15,8 +15,15 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
 import { recalculateWhisperShotEndTimes } from "./whisperAlignmentTiming";
-import { matchShotsStrictSequential } from "./whisperTextMatcher";
+import { matchShotsStrictSequential, type StrictMatchResult } from "./whisperTextMatcher";
 import { buildRepairedShotTimepoints } from "./whisperTimepointRepair";
+
+/** Determine status from coverage ratio: ≥4 words need 80%, <4 words need 100% */
+function coverageStatus(matchResult: StrictMatchResult, shotText: string): "ok" | "estimated" {
+  const wordCount = shotText.split(/\s+/).filter((w) => w.length > 0).length;
+  const requiredRatio = wordCount < 4 ? 1.0 : 0.8;
+  return matchResult.coverageRatio >= requiredRatio ? "ok" : "estimated";
+}
 
 // ── Types ──
 
