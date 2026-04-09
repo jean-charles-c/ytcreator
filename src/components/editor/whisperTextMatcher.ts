@@ -57,6 +57,36 @@ export interface StrictMatchResult {
   matchedWords: number;
   /** True if this shot blocked the sequential chain */
   blocked: boolean;
+  /** Ratio of shot words confirmed in whisper (0.0–1.0) */
+  coverageRatio: number;
+}
+
+/**
+ * Compute coverage ratio: compare all normalised words in the shot text
+ * against the whisper words starting from the anchor index.
+ * Uses sequential comparison (order matters).
+ */
+function computeCoverageRatio(
+  shotText: string,
+  whisperWords: WhisperWordLike[],
+  anchorIdx: number
+): number {
+  const shotWords = shotText
+    .split(/\s+/)
+    .map(norm)
+    .filter((w) => w.length > 0);
+  if (shotWords.length === 0) return 0;
+
+  let confirmed = 0;
+  let wIdx = anchorIdx;
+  for (const sw of shotWords) {
+    if (wIdx >= whisperWords.length) break;
+    if (norm(whisperWords[wIdx].word) === sw) {
+      confirmed++;
+    }
+    wIdx++;
+  }
+  return confirmed / shotWords.length;
 }
 
 /**
@@ -90,19 +120,20 @@ export function matchShotsStrictSequential(
       const manualIdx = anchors.get(shot.id);
       if (manualIdx !== undefined && manualIdx !== null) {
         // Resume from manual anchor
-        results.push({
-          shotId: shot.id,
-          whisperStartIdx: manualIdx,
-          matchedWords: REQUIRED_MATCH_COUNT,
-          blocked: false,
-        });
-        const shotWc = shot.text.split(/\s+/).filter(w => w.length > 0).length;
-        searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc * 0.5), 3);
-        blocked = false;
-        continue;
+      results.push({
+        shotId: shot.id,
+        whisperStartIdx: manualIdx,
+        matchedWords: REQUIRED_MATCH_COUNT,
+        blocked: false,
+        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualIdx),
+      });
+      const shotWc = shot.text.split(/\s+/).filter(w => w.length > 0).length;
+      searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc * 0.5), 3);
+      blocked = false;
+      continue;
       }
       // Still blocked
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: false });
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: false, coverageRatio: 0 });
       continue;
     }
 
@@ -113,6 +144,7 @@ export function matchShotsStrictSequential(
         whisperStartIdx: 0,
         matchedWords: REQUIRED_MATCH_COUNT,
         blocked: false,
+        coverageRatio: computeCoverageRatio(shot.text, whisperWords, 0),
       });
       searchFrom = 1;
       continue;
@@ -126,6 +158,7 @@ export function matchShotsStrictSequential(
         whisperStartIdx: manualIdx,
         matchedWords: REQUIRED_MATCH_COUNT,
         blocked: false,
+        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualIdx),
       });
       const shotWc2 = shot.text.split(/\s+/).filter(w => w.length > 0).length;
       searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc2 * 0.5), 3);
@@ -136,7 +169,7 @@ export function matchShotsStrictSequential(
 
     if (leadWords.length < FALLBACK_MATCH_COUNT) {
       // Not enough words to match — block
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true });
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
       blocked = true;
       continue;
     }
@@ -176,6 +209,7 @@ export function matchShotsStrictSequential(
         whisperStartIdx: foundIdx,
         matchedWords: matchedCount,
         blocked: false,
+        coverageRatio: computeCoverageRatio(shot.text, whisperWords, foundIdx),
       });
       // Advance past the matched words + a minimum gap to avoid false-positive
       // matches on the very next word that cause near-zero durations
@@ -184,7 +218,7 @@ export function matchShotsStrictSequential(
       searchFrom = foundIdx + minAdvance;
     } else {
       // Blocked!
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true });
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
       blocked = true;
     }
   }
