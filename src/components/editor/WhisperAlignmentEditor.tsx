@@ -91,7 +91,7 @@ export default function WhisperAlignmentEditor({
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-  const [expandedShotId, setExpandedShotId] = useState<string | null>(null);
+  const [expandedShotIds, setExpandedShotIds] = useState<Set<string>>(new Set());
   const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   
@@ -361,11 +361,20 @@ export default function WhisperAlignmentEditor({
   }, [whisperWords]);
 
   // ── Manual selection handlers ──
+  const toggleExpanded = (shotId: string) => {
+    setExpandedShotIds(prev => {
+      const next = new Set(prev);
+      if (next.has(shotId)) next.delete(shotId);
+      else next.add(shotId);
+      return next;
+    });
+  };
+
   const startEditing = (shotId: string) => {
     setEditingShotId(shotId);
     setSelectionStart(null);
     setSelectionEnd(null);
-    setExpandedShotId(shotId);
+    setExpandedShotIds(prev => new Set(prev).add(shotId));
   };
 
   const handleWordClick = (idx: number) => {
@@ -485,7 +494,7 @@ export default function WhisperAlignmentEditor({
       const newBlocked = recalculated.find((s) => s.status === "blocked");
       if (newBlocked) {
         toast.success(`Shot calé — matching repris jusqu'au shot #${newBlocked.globalIndex} (bloqué)`);
-        setExpandedShotId(newBlocked.shotId);
+        setExpandedShotIds(prev => new Set(prev).add(newBlocked.shotId));
       } else {
         toast.success(`Shot calé — ${newOk}/${recalculated.length} shots matchés ✓`);
       }
@@ -1092,7 +1101,7 @@ export default function WhisperAlignmentEditor({
             {/* Shot list */}
             <div className="space-y-1">
               {alignedShots.map((shot) => {
-                const isExpanded = expandedShotId === shot.shotId;
+                const isExpanded = expandedShotIds.has(shot.shotId);
                 const isEditing = editingShotId === shot.shotId;
                 return (
                   <div
@@ -1113,7 +1122,7 @@ export default function WhisperAlignmentEditor({
                     <button
                       onClick={() => {
                         if (isEditing) return;
-                        setExpandedShotId(isExpanded ? null : shot.shotId);
+                        toggleExpanded(shot.shotId);
                       }}
                       className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left min-h-[36px]"
                     >
@@ -1135,6 +1144,24 @@ export default function WhisperAlignmentEditor({
                         {shot.shotText.slice(0, 60)}
                         {shot.shotText.length > 60 ? "…" : ""}
                       </span>
+                      {/* Whisper word range indices */}
+                      {shot.whisperStartIdx !== null && (
+                        <span className="font-mono text-[8px] text-muted-foreground shrink-0" title="Rang mot début → fin dans Whisper">
+                          W{shot.whisperStartIdx}→{shot.whisperEndIdx ?? "?"}
+                        </span>
+                      )}
+                      {/* Duration badge - red if < 1s */}
+                      {shot.startTime !== null && shot.endTime !== null && (() => {
+                        const dur = shot.endTime! - shot.startTime!;
+                        const isShort = dur < 1;
+                        return (
+                          <span className={`font-mono text-[8px] px-1 py-0.5 rounded shrink-0 ${
+                            isShort ? "bg-destructive/20 text-destructive font-bold" : "text-muted-foreground"
+                          }`}>
+                            {dur.toFixed(1)}s
+                          </span>
+                        );
+                      })()}
                       {shot.startTime !== null && (
                         <span
                           className="font-mono text-muted-foreground shrink-0"

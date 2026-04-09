@@ -96,7 +96,8 @@ export function matchShotsStrictSequential(
           matchedWords: REQUIRED_MATCH_COUNT,
           blocked: false,
         });
-        searchFrom = manualIdx + 1;
+        const shotWc = shot.text.split(/\s+/).filter(w => w.length > 0).length;
+        searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc * 0.5), 3);
         blocked = false;
         continue;
       }
@@ -126,7 +127,8 @@ export function matchShotsStrictSequential(
         matchedWords: REQUIRED_MATCH_COUNT,
         blocked: false,
       });
-      searchFrom = manualIdx + 1;
+      const shotWc2 = shot.text.split(/\s+/).filter(w => w.length > 0).length;
+      searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc2 * 0.5), 3);
       continue;
     }
 
@@ -175,7 +177,11 @@ export function matchShotsStrictSequential(
         matchedWords: matchedCount,
         blocked: false,
       });
-      searchFrom = foundIdx + 1;
+      // Advance past the matched words + a minimum gap to avoid false-positive
+      // matches on the very next word that cause near-zero durations
+      const shotWordCount = shot.text.split(/\s+/).filter(w => w.length > 0).length;
+      const minAdvance = Math.max(matchedCount, Math.floor(shotWordCount * 0.5), 3);
+      searchFrom = foundIdx + minAdvance;
     } else {
       // Blocked!
       results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true });
