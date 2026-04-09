@@ -1125,7 +1125,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
           project_id: projectId,
           scene_id: sceneId,
           prompt_only: true,
-          visual_style: visualStyle.currentStyle?.id,
+          visual_style: visualStyle.globalStyleId,
         },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
