@@ -1144,6 +1144,24 @@ export default function WhisperAlignmentEditor({
                         {shot.shotText.slice(0, 60)}
                         {shot.shotText.length > 60 ? "…" : ""}
                       </span>
+                      {/* Whisper word range indices */}
+                      {shot.whisperStartIdx !== null && (
+                        <span className="font-mono text-[8px] text-muted-foreground shrink-0" title="Rang mot début → fin dans Whisper">
+                          W{shot.whisperStartIdx}→{shot.whisperEndIdx ?? "?"}
+                        </span>
+                      )}
+                      {/* Duration badge - red if < 1s */}
+                      {shot.startTime !== null && shot.endTime !== null && (() => {
+                        const dur = shot.endTime! - shot.startTime!;
+                        const isShort = dur < 1;
+                        return (
+                          <span className={`font-mono text-[8px] px-1 py-0.5 rounded shrink-0 ${
+                            isShort ? "bg-destructive/20 text-destructive font-bold" : "text-muted-foreground"
+                          }`}>
+                            {dur.toFixed(1)}s
+                          </span>
+                        );
+                      })()}
                       {shot.startTime !== null && (
                         <span
                           className="font-mono text-muted-foreground shrink-0"
