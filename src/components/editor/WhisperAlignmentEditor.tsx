@@ -971,14 +971,15 @@ export default function WhisperAlignmentEditor({
                             }
                             if (endTime === null) endTime = audioDuration;
 
+                            const isManual = manualAnchors.has(shot.id);
                             let status: AlignedShot["status"];
-                            if (manualAnchors.has(shot.id)) status = "manual";
+                            if (isManual) status = "ok";
                             else if (isBlocked) status = "blocked";
                             else if (wsi !== null && matchResult) status = coverageStatus(matchResult, text);
                             else if (startTime !== null) status = "estimated";
                             else status = "missing";
 
-                            return { shotId: shot.id, globalIndex: idx + 1, shotText: text, whisperStartIdx: wsi, whisperEndIdx: null, startTime, endTime, status, editing: false };
+                            return { shotId: shot.id, globalIndex: idx + 1, shotText: text, whisperStartIdx: wsi, whisperEndIdx: null, startTime, endTime, status, isManualAnchor: isManual, editing: false };
                           });
 
                           const recalculated = recalculateWhisperShotEndTimes(newAligned, audioDuration);
