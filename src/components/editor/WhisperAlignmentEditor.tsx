@@ -576,7 +576,7 @@ export default function WhisperAlignmentEditor({
             }`}
           >
             {okCount}/{totalCount}
-            {manualCount > 0 && <span className="text-orange-500 ml-1">({manualCount} manuels)</span>}
+            {manualCount > 0 && <span className="text-emerald-500 ml-1">(📌{manualCount} manuels)</span>}
             {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
             {blockedCount > 0 && <span className="text-destructive ml-1">⛔ bloqué shot #{firstBlockedShot?.globalIndex}</span>}
           </span>
