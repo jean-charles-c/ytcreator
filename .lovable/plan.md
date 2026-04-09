@@ -1,64 +1,46 @@
 
 
-# Validation de match Whisper par ratio dynamique
+# Régénération automatique des prompts après split/merge/delete
 
-## Problème actuel
-Le statut vert ("ok") est attribué dès qu'un match de 2 ou 3 mots est trouvé, sans vérifier que le reste des mots du shot correspondent aussi. Un shot de 20 mots avec seulement 2 mots matchés apparaît en vert.
+## Problème identifié
 
-## Nouvelle règle
-- Shots de **4 mots ou plus** : au moins **80%** des mots doivent être confirmés dans les mots Whisper à partir du point d'ancrage
-- Shots de **moins de 4 mots** : **100%** des mots doivent correspondre
-- Si le ratio est insuffisant → statut **"estimated"** (orange) au lieu de "ok" (vert)
+Quand on scinde (split), fusionne (merge) ou supprime un shot, seul le champ `source_sentence` est mis à jour. Les champs `description` et `prompt_export` restent inchangés (ou hérités de l'ancien shot). Résultat : des descriptions de type fallback ("Description visuelle du segment narratif...") persistent même après avoir cliqué sur "Générer tous les prompts", car ces opérations se font *après* la génération.
+
+## Solution
+
+Après chaque opération de split, merge ou delete, déclencher automatiquement une régénération du prompt pour les shots affectés via un appel à `generate-storyboard` en mode `prompt_only` ciblé sur la scène concernée.
 
 ## Changements
 
-### 1. `whisperTextMatcher.ts` — Ajouter une validation de couverture post-match
+### 1. `src/pages/Editor.tsx` — Nouvelle fonction utilitaire
 
-Après avoir trouvé un point d'ancrage (ligne 173), comparer **tous** les mots normalisés du shot avec les mots Whisper à partir de `foundIdx`. Compter combien correspondent (dans l'ordre, tolérance sur la ponctuation). Stocker ce ratio dans un nouveau champ `coverageRatio` dans `StrictMatchResult`.
+Créer une fonction `regeneratePromptsForScene(sceneId: string)` qui appelle la edge function `generate-storyboard` avec `{ project_id, scene_id, prompt_only: true }`. Cette fonction sera appelée à la fin des handlers `handleShotMerge`, `handleShotSplit` et `handleShotDelete`, après la mise à jour locale du state.
 
-```typescript
-export interface StrictMatchResult {
-  shotId: string;
-  whisperStartIdx: number | null;
-  matchedWords: number;
-  blocked: boolean;
-  coverageRatio: number; // 0.0 à 1.0 — nouveau champ
-}
-```
+### 2. `handleShotMerge` (ligne ~1226)
 
-Logique de calcul :
-```
-allShotWords = norm(shot.text).split → tous les mots
-whisperSlice = whisperWords[foundIdx ... foundIdx + allShotWords.length]
-confirmedCount = nombre de mots identiques (comparaison séquentielle)
-coverageRatio = confirmedCount / allShotWords.length
-```
+Après le toast de succès, appeler `regeneratePromptsForScene(shot.scene_id)` pour que le shot fusionné obtienne une description riche correspondant à son nouveau texte combiné.
 
-### 2. `WhisperAlignmentEditor.tsx` — Utiliser `coverageRatio` pour le statut
+### 3. `handleShotSplit` (ligne ~1295)
 
-Aux ~4 endroits où le statut est déterminé (lignes 304, 455, 738, 962), remplacer :
-```typescript
-// Avant
-status = "ok";
+Après le toast de succès, appeler `regeneratePromptsForScene(shot.scene_id)` pour que les deux shots issus de la scission obtiennent chacun une description riche.
 
-// Après
-const wordCount = shotText.split(/\s+/).filter(w => w.length > 0).length;
-const requiredRatio = wordCount < 4 ? 1.0 : 0.8;
-status = (matchResult.coverageRatio >= requiredRatio) ? "ok" : "estimated";
-```
+### 4. `handleShotDelete` (dans le handler de suppression existant)
 
-### 3. Tests — `whisperTextMatcher.test.ts`
+Après la redistribution du texte, appeler `regeneratePromptsForScene(scene.id)` pour que les shots restants aient des descriptions cohérentes avec leur nouveau texte.
 
-Ajouter des tests pour vérifier :
-- Un shot de 10 mots avec 9/10 confirmés → `coverageRatio = 0.9` → vert
-- Un shot de 5 mots avec 3/5 confirmés → `coverageRatio = 0.6` → orange
-- Un shot de 3 mots avec 3/3 confirmés → `coverageRatio = 1.0` → vert
-- Un shot de 3 mots avec 2/3 confirmés → `coverageRatio = 0.67` → orange
+### 5. Feedback utilisateur
+
+Afficher un toast informatif "Régénération des prompts visuels en cours..." pendant l'appel, puis "Prompts visuels mis à jour" au retour. En cas d'erreur, afficher un avertissement non bloquant (le split/merge reste valide, seuls les prompts n'ont pas été mis à jour).
+
+### 6. Rafraîchissement des shots
+
+Après le retour de l'appel `prompt_only`, recharger les shots de la scène depuis la DB pour mettre à jour `description`, `prompt_export`, `shot_type` et `guardrails` dans le state local.
 
 ## Résumé
+
 | Fichier | Modification |
 |---------|-------------|
-| `whisperTextMatcher.ts` | Ajout champ `coverageRatio` + calcul post-match |
-| `WhisperAlignmentEditor.tsx` | Statut basé sur le ratio dynamique (4 endroits) |
-| `whisperTextMatcher.test.ts` | Tests du ratio de couverture |
+| `src/pages/Editor.tsx` | Ajout `regeneratePromptsForScene()` + appel après merge/split/delete |
+
+Aucune modification de la edge function n'est nécessaire — le mode `prompt_only` avec `scene_id` fonctionne déjà correctement pour cibler une seule scène.
 
