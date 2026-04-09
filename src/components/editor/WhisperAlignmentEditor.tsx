@@ -58,6 +58,8 @@ interface AlignedShot {
   startTime: number | null;
   endTime: number | null;
   status: "ok" | "missing" | "manual" | "estimated" | "blocked";
+  /** Was this shot manually anchored? */
+  isManualAnchor: boolean;
   /** Is user currently editing this? */
   editing: boolean;
 }
@@ -303,9 +305,10 @@ export default function WhisperAlignmentEditor({
             }
           }
 
+          const isManual = storedManualAnchors.has(shot.id);
           let status: AlignedShot["status"];
-          if (storedManualAnchors.has(shot.id)) {
-            status = "manual";
+          if (isManual) {
+            status = "ok"; // manually confirmed → always green
           } else if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null && matchResult) {
@@ -325,6 +328,7 @@ export default function WhisperAlignmentEditor({
             startTime,
             endTime,
             status,
+            isManualAnchor: isManual,
             editing: false,
           };
         });
@@ -340,8 +344,8 @@ export default function WhisperAlignmentEditor({
   }, [projectId, refreshKey, getSortedShots, loadStoredManualAnchors]);
 
   // ── Stats ──
-  const okCount = alignedShots.filter((s) => s.status === "ok" || s.status === "manual").length;
-  const manualCount = alignedShots.filter((s) => s.status === "manual").length;
+  const okCount = alignedShots.filter((s) => s.status === "ok").length;
+  const manualCount = alignedShots.filter((s) => s.isManualAnchor).length;
   const estimatedCount = alignedShots.filter((s) => s.status === "estimated").length;
   const blockedCount = alignedShots.filter((s) => s.status === "blocked").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
@@ -403,7 +407,7 @@ export default function WhisperAlignmentEditor({
     const manualAnchors = new Map<string, number>();
     const existingManualStartTimes = new Map<string, number>();
     for (const s of alignedShots) {
-      if (s.status === "manual" && s.whisperStartIdx !== null) {
+      if (s.isManualAnchor && s.whisperStartIdx !== null) {
         manualAnchors.set(s.shotId, s.whisperStartIdx);
         if (s.startTime !== null) {
           existingManualStartTimes.set(s.shotId, s.startTime);
@@ -454,9 +458,10 @@ export default function WhisperAlignmentEditor({
         }
       }
 
+      const isManual = manualAnchors.has(shot.id);
       let status: AlignedShot["status"];
-      if (manualAnchors.has(shot.id)) {
-        status = "manual";
+      if (isManual) {
+        status = "ok"; // manually confirmed → always green
       } else if (isBlocked) {
         status = "blocked";
       } else if (whisperStartIdx !== null && matchResult) {
@@ -474,6 +479,7 @@ export default function WhisperAlignmentEditor({
         startTime,
         endTime,
         status,
+        isManualAnchor: isManual,
         editing: false,
       };
     });
@@ -497,7 +503,7 @@ export default function WhisperAlignmentEditor({
 
       if (error) throw error;
 
-      const newOk = recalculated.filter((s) => s.status === "ok" || s.status === "manual").length;
+      const newOk = recalculated.filter((s) => s.status === "ok").length;
       const newBlocked = recalculated.find((s) => s.status === "blocked");
       if (newBlocked) {
         toast.success(`Shot calé — matching repris jusqu'au shot #${newBlocked.globalIndex} (bloqué)`);
@@ -521,7 +527,7 @@ export default function WhisperAlignmentEditor({
     setSaving(true);
     try {
       const timepoints = alignedShots
-        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -553,7 +559,7 @@ export default function WhisperAlignmentEditor({
   };
 
   const hasChanges = useMemo(() => {
-    return alignedShots.some((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null);
+    return alignedShots.some((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null);
   }, [alignedShots]);
 
   if (totalCount === 0 && !loading && !multiPassData) return null;
@@ -570,7 +576,7 @@ export default function WhisperAlignmentEditor({
             }`}
           >
             {okCount}/{totalCount}
-            {manualCount > 0 && <span className="text-orange-500 ml-1">({manualCount} manuels)</span>}
+            {manualCount > 0 && <span className="text-emerald-500 ml-1">(📌{manualCount} manuels)</span>}
             {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
             {blockedCount > 0 && <span className="text-destructive ml-1">⛔ bloqué shot #{firstBlockedShot?.globalIndex}</span>}
           </span>
@@ -644,7 +650,7 @@ export default function WhisperAlignmentEditor({
                       setAlignedShots(recalculated);
 
                       const timepoints = recalculated
-                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
                         .map((s, idx) => ({
                           shotId: s.shotId,
                           shotIndex: idx,
@@ -705,7 +711,7 @@ export default function WhisperAlignmentEditor({
 
                   const manualAnchors = new Map<string, number>();
                   for (const s of alignedShots) {
-                    if (s.status === "manual" && s.whisperStartIdx !== null) {
+                    if (s.isManualAnchor && s.whisperStartIdx !== null) {
                       manualAnchors.set(s.shotId, s.whisperStartIdx);
                     }
                   }
@@ -737,9 +743,10 @@ export default function WhisperAlignmentEditor({
                         ? whisperWords[whisperStartIdx]?.start ?? repairedMap.get(s.shotId) ?? s.startTime
                         : repairedMap.get(s.shotId) ?? null;
 
+                      const isManual = manualAnchors.has(s.shotId);
                       let status: AlignedShot["status"];
-                      if (manualAnchors.has(s.shotId)) {
-                        status = "manual";
+                      if (isManual) {
+                        status = "ok"; // manually confirmed → always green
                       } else if (isBlocked) {
                         status = "blocked";
                       } else if (whisperStartIdx !== null && strictMatch) {
@@ -755,6 +762,7 @@ export default function WhisperAlignmentEditor({
                         whisperStartIdx,
                         startTime,
                         status,
+                        isManualAnchor: isManual,
                       };
                     }),
                     audioDuration
@@ -963,14 +971,15 @@ export default function WhisperAlignmentEditor({
                             }
                             if (endTime === null) endTime = audioDuration;
 
+                            const isManual = manualAnchors.has(shot.id);
                             let status: AlignedShot["status"];
-                            if (manualAnchors.has(shot.id)) status = "manual";
+                            if (isManual) status = "ok";
                             else if (isBlocked) status = "blocked";
                             else if (wsi !== null && matchResult) status = coverageStatus(matchResult, text);
                             else if (startTime !== null) status = "estimated";
                             else status = "missing";
 
-                            return { shotId: shot.id, globalIndex: idx + 1, shotText: text, whisperStartIdx: wsi, whisperEndIdx: null, startTime, endTime, status, editing: false };
+                            return { shotId: shot.id, globalIndex: idx + 1, shotText: text, whisperStartIdx: wsi, whisperEndIdx: null, startTime, endTime, status, isManualAnchor: isManual, editing: false };
                           });
 
                           const recalculated = recalculateWhisperShotEndTimes(newAligned, audioDuration);
@@ -982,7 +991,7 @@ export default function WhisperAlignmentEditor({
                             .map((s, i) => ({ shotId: s.shotId, shotIndex: i, timeSeconds: s.startTime }));
                           await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
 
-                          const okN = recalculated.filter((s) => s.status === "ok" || s.status === "manual").length;
+                          const okN = recalculated.filter((s) => s.status === "ok").length;
                           toast.success(`Passe ${passLabel} appliquée comme référence — ${okN}/${recalculated.length} shots matchés`);
                         } catch (e: any) {
                           console.error("[WhisperAlignmentEditor] apply pass error:", e);
@@ -1116,8 +1125,6 @@ export default function WhisperAlignmentEditor({
                     className={`rounded border text-[10px] ${
                       shot.status === "blocked"
                         ? "border-destructive bg-destructive/10 ring-2 ring-destructive/40"
-                        : shot.status === "manual"
-                        ? "border-orange-500/30 bg-orange-500/5"
                         : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
                         : shot.status === "estimated"
@@ -1135,14 +1142,15 @@ export default function WhisperAlignmentEditor({
                     >
                       {shot.status === "blocked" ? (
                         <XCircle className="h-3 w-3 text-destructive shrink-0 animate-pulse" />
-                      ) : shot.status === "manual" ? (
-                        <CheckCircle2 className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       ) : shot.status === "estimated" ? (
                         <Clock className="h-3 w-3 text-orange-500 shrink-0" />
                       ) : (
                         <XCircle className="h-3 w-3 text-destructive shrink-0" />
+                      )}
+                      {shot.isManualAnchor && (
+                        <span className="text-[8px] shrink-0" title="Calé manuellement">📌</span>
                       )}
                       <span className="font-mono font-medium text-muted-foreground shrink-0">
                         #{shot.globalIndex}
@@ -1288,7 +1296,7 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+                                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
                                         .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
@@ -1317,7 +1325,7 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+                                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
                                         .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
