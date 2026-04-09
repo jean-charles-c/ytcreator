@@ -122,3 +122,68 @@ describe("enforceMonotonicTimestamps", () => {
     expect(fixed[3].whisperStartIdx).toBeNull();
   });
 });
+
+describe("coverageRatio", () => {
+  const words = [
+    { word: "Maranello,", start: 0.0, end: 0.5 },
+    { word: "juillet", start: 0.5, end: 1.0 },
+    { word: "1987.", start: 1.0, end: 1.5 },
+    { word: "Sous", start: 1.5, end: 2.0 },
+    { word: "une", start: 2.0, end: 2.5 },
+    { word: "laque", start: 2.5, end: 3.0 },
+    { word: "rouge", start: 3.0, end: 3.5 },
+    { word: "si", start: 3.5, end: 4.0 },
+    { word: "fine", start: 4.0, end: 4.5 },
+    { word: "que", start: 4.5, end: 5.0 },
+  ];
+
+  it("returns high coverage when all words match (10/10)", () => {
+    const shots = [
+      { id: "s1", text: "Maranello, juillet 1987. Sous une laque rouge si fine que" },
+    ];
+    const results = matchShotsStrictSequential(shots, words);
+    expect(results[0].coverageRatio).toBe(1.0);
+  });
+
+  it("returns partial coverage when whisper diverges (e.g. 9/10)", () => {
+    // Shot text has a word that doesn't match whisper
+    const modifiedWords = [...words];
+    modifiedWords[7] = { word: "très", start: 3.5, end: 4.0 }; // "très" instead of "si"
+    const shots = [
+      { id: "s1", text: "Maranello, juillet 1987. Sous une laque rouge si fine que" },
+    ];
+    const results = matchShotsStrictSequential(shots, modifiedWords);
+    // 9 out of 10 words match
+    expect(results[0].coverageRatio).toBeCloseTo(0.9, 1);
+  });
+
+  it("short shot (3 words) needs 100% for ok status", () => {
+    const shots = [
+      { id: "s1", text: "Maranello juillet 1987" },
+    ];
+    const results = matchShotsStrictSequential(shots, words);
+    expect(results[0].coverageRatio).toBe(1.0);
+  });
+
+  it("5-word shot with 3/5 match gives 0.6 coverage", () => {
+    // Whisper has different words at positions 3 and 4
+    const modWords = [...words];
+    modWords[3] = { word: "Dans", start: 1.5, end: 2.0 };
+    modWords[4] = { word: "la", start: 2.0, end: 2.5 };
+    const shots = [
+      { id: "s1", text: "Maranello juillet 1987 Sous une" },
+    ];
+    const results = matchShotsStrictSequential(shots, modWords);
+    expect(results[0].coverageRatio).toBeCloseTo(0.6, 1);
+  });
+
+  it("blocked shots have coverageRatio 0", () => {
+    const shots = [
+      { id: "s1", text: "Maranello juillet 1987" },
+      { id: "s2", text: "" },
+    ];
+    const results = matchShotsStrictSequential(shots, words);
+    expect(results[1].blocked).toBe(true);
+    expect(results[1].coverageRatio).toBe(0);
+  });
+});
