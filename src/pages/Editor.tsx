@@ -1161,6 +1161,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       }
 
       toast.success("Shot supprimé — fragments redistribués");
+      // Auto-regenerate prompts for affected scene
+      regeneratePromptsForScene(deletedShot.scene_id);
     } catch (e) {
       console.error("Delete exception:", e);
       toast.error("Erreur de suppression");
@@ -1224,6 +1226,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       setManifestHistory((prev) => [...prev, action]);
       toast.success("Shots fusionnés — fragments combinés");
+      // Auto-regenerate prompts for affected scene
+      regeneratePromptsForScene(shot.scene_id);
     } catch (e) {
       console.error("Merge exception:", e);
       toast.error("Erreur lors de la fusion");
@@ -1293,6 +1297,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       setManifestHistory((prev) => [...prev, action]);
       toast.success("Shot scindé en deux !");
+      // Auto-regenerate prompts for affected scene
+      regeneratePromptsForScene(shot.scene_id);
     } catch (e) {
       console.error("Split exception:", e);
       toast.error("Erreur lors de la scission");
