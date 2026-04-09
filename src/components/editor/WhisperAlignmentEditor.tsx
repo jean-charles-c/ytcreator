@@ -305,9 +305,10 @@ export default function WhisperAlignmentEditor({
             }
           }
 
+          const isManual = storedManualAnchors.has(shot.id);
           let status: AlignedShot["status"];
-          if (storedManualAnchors.has(shot.id)) {
-            status = "manual";
+          if (isManual) {
+            status = "ok"; // manually confirmed → always green
           } else if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null && matchResult) {
@@ -327,6 +328,7 @@ export default function WhisperAlignmentEditor({
             startTime,
             endTime,
             status,
+            isManualAnchor: isManual,
             editing: false,
           };
         });
@@ -456,9 +458,10 @@ export default function WhisperAlignmentEditor({
         }
       }
 
+      const isManual = manualAnchors.has(shot.id);
       let status: AlignedShot["status"];
-      if (manualAnchors.has(shot.id)) {
-        status = "manual";
+      if (isManual) {
+        status = "ok"; // manually confirmed → always green
       } else if (isBlocked) {
         status = "blocked";
       } else if (whisperStartIdx !== null && matchResult) {
@@ -476,6 +479,7 @@ export default function WhisperAlignmentEditor({
         startTime,
         endTime,
         status,
+        isManualAnchor: isManual,
         editing: false,
       };
     });
@@ -739,9 +743,10 @@ export default function WhisperAlignmentEditor({
                         ? whisperWords[whisperStartIdx]?.start ?? repairedMap.get(s.shotId) ?? s.startTime
                         : repairedMap.get(s.shotId) ?? null;
 
+                      const isManual = manualAnchors.has(s.shotId);
                       let status: AlignedShot["status"];
-                      if (manualAnchors.has(s.shotId)) {
-                        status = "manual";
+                      if (isManual) {
+                        status = "ok"; // manually confirmed → always green
                       } else if (isBlocked) {
                         status = "blocked";
                       } else if (whisperStartIdx !== null && strictMatch) {
@@ -757,6 +762,7 @@ export default function WhisperAlignmentEditor({
                         whisperStartIdx,
                         startTime,
                         status,
+                        isManualAnchor: isManual,
                       };
                     }),
                     audioDuration
