@@ -407,7 +407,7 @@ export default function WhisperAlignmentEditor({
     const manualAnchors = new Map<string, number>();
     const existingManualStartTimes = new Map<string, number>();
     for (const s of alignedShots) {
-      if (s.status === "manual" && s.whisperStartIdx !== null) {
+      if (s.isManualAnchor && s.whisperStartIdx !== null) {
         manualAnchors.set(s.shotId, s.whisperStartIdx);
         if (s.startTime !== null) {
           existingManualStartTimes.set(s.shotId, s.startTime);
@@ -503,7 +503,7 @@ export default function WhisperAlignmentEditor({
 
       if (error) throw error;
 
-      const newOk = recalculated.filter((s) => s.status === "ok" || s.status === "manual").length;
+      const newOk = recalculated.filter((s) => s.status === "ok").length;
       const newBlocked = recalculated.find((s) => s.status === "blocked");
       if (newBlocked) {
         toast.success(`Shot calé — matching repris jusqu'au shot #${newBlocked.globalIndex} (bloqué)`);
@@ -527,7 +527,7 @@ export default function WhisperAlignmentEditor({
     setSaving(true);
     try {
       const timepoints = alignedShots
-        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
@@ -559,7 +559,7 @@ export default function WhisperAlignmentEditor({
   };
 
   const hasChanges = useMemo(() => {
-    return alignedShots.some((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null);
+    return alignedShots.some((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null);
   }, [alignedShots]);
 
   if (totalCount === 0 && !loading && !multiPassData) return null;
@@ -650,7 +650,7 @@ export default function WhisperAlignmentEditor({
                       setAlignedShots(recalculated);
 
                       const timepoints = recalculated
-                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
                         .map((s, idx) => ({
                           shotId: s.shotId,
                           shotIndex: idx,
@@ -711,7 +711,7 @@ export default function WhisperAlignmentEditor({
 
                   const manualAnchors = new Map<string, number>();
                   for (const s of alignedShots) {
-                    if (s.status === "manual" && s.whisperStartIdx !== null) {
+                    if (s.isManualAnchor && s.whisperStartIdx !== null) {
                       manualAnchors.set(s.shotId, s.whisperStartIdx);
                     }
                   }
@@ -991,7 +991,7 @@ export default function WhisperAlignmentEditor({
                             .map((s, i) => ({ shotId: s.shotId, shotIndex: i, timeSeconds: s.startTime }));
                           await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
 
-                          const okN = recalculated.filter((s) => s.status === "ok" || s.status === "manual").length;
+                          const okN = recalculated.filter((s) => s.status === "ok").length;
                           toast.success(`Passe ${passLabel} appliquée comme référence — ${okN}/${recalculated.length} shots matchés`);
                         } catch (e: any) {
                           console.error("[WhisperAlignmentEditor] apply pass error:", e);
@@ -1296,7 +1296,7 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+                                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
                                         .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
@@ -1325,7 +1325,7 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "manual" || s.status === "estimated") && s.startTime !== null)
+                                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
                                         .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
