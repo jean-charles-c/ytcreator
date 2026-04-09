@@ -58,6 +58,8 @@ interface AlignedShot {
   startTime: number | null;
   endTime: number | null;
   status: "ok" | "missing" | "manual" | "estimated" | "blocked";
+  /** Was this shot manually anchored? */
+  isManualAnchor: boolean;
   /** Is user currently editing this? */
   editing: boolean;
 }
