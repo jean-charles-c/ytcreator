@@ -494,7 +494,7 @@ export default function WhisperAlignmentEditor({
       const newBlocked = recalculated.find((s) => s.status === "blocked");
       if (newBlocked) {
         toast.success(`Shot calé — matching repris jusqu'au shot #${newBlocked.globalIndex} (bloqué)`);
-        setExpandedShotId(newBlocked.shotId);
+        setExpandedShotIds(prev => new Set(prev).add(newBlocked.shotId));
       } else {
         toast.success(`Shot calé — ${newOk}/${recalculated.length} shots matchés ✓`);
       }
@@ -1101,7 +1101,7 @@ export default function WhisperAlignmentEditor({
             {/* Shot list */}
             <div className="space-y-1">
               {alignedShots.map((shot) => {
-                const isExpanded = expandedShotId === shot.shotId;
+                const isExpanded = expandedShotIds.has(shot.shotId);
                 const isEditing = editingShotId === shot.shotId;
                 return (
                   <div
@@ -1122,7 +1122,7 @@ export default function WhisperAlignmentEditor({
                     <button
                       onClick={() => {
                         if (isEditing) return;
-                        setExpandedShotId(isExpanded ? null : shot.shotId);
+                        toggleExpanded(shot.shotId);
                       }}
                       className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left min-h-[36px]"
                     >
