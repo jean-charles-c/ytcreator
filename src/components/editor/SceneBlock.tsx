@@ -262,7 +262,7 @@ export default function SceneBlock({
             return (
               <details className="mb-3 rounded border border-accent/30 bg-accent/5 group/ctx" open>
                 <summary className="flex items-center gap-1.5 p-2.5 sm:p-3 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden min-h-[40px]">
-                  <BookOpen className="h-3 w-3 text-accent-foreground/70 shrink-0" />
+                  <BookOpen className="h-3 w-3 text-white shrink-0" />
                   <span className="text-[10px] font-semibold text-white uppercase tracking-wider">Contexte</span>
                   {!editingContext && !scene.validated && (
                     <button onClick={(e) => { e.preventDefault(); startEditContext(); }} className="ml-1 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Modifier le contexte">
