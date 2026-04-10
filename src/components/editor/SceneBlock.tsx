@@ -9,7 +9,7 @@ import {
   Scissors,
   Merge,
   CheckCircle2,
-  Loader2
+  Loader2,
   MapPin,
   Users,
   Clapperboard,
