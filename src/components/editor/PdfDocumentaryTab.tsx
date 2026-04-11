@@ -1371,14 +1371,26 @@ export default function PdfDocumentaryTab({
             )}
             <input
               type="number"
+              min={3000}
+              max={25000}
+              step={1000}
+              value={charMin}
+              onChange={(e) => setCharMin(Number(e.target.value))}
+              className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              title="Min caractères"
+            />
+            <span className="text-[10px] text-muted-foreground">/</span>
+            <input
+              type="number"
               min={5000}
               max={30000}
               step={1000}
-              value={targetChars}
-              onChange={(e) => setTargetChars(Number(e.target.value))}
+              value={charMax}
+              onChange={(e) => setCharMax(Number(e.target.value))}
               className="h-8 w-20 rounded border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              title="Max caractères"
             />
-            <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+            <span className="text-[10px] text-muted-foreground">car.</span>
             <div className="flex items-center gap-1.5 ml-2">
               <label className="text-[10px] text-muted-foreground whitespace-nowrap" title="Pourcentage de phrases courtes (2-6 mots). 0% = rédaction libre.">
                 Phrases courtes
