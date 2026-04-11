@@ -1459,6 +1459,7 @@ function buildUserMessage(
   charMin: number,
   charMax: number,
   charTarget: number,
+  previousScript?: string | null,
 ): string {
   const a = analysis as {
     central_mystery?: string;
@@ -1492,6 +1493,21 @@ function buildUserMessage(
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
+  if (previousScript) {
+    parts.push(`REGENERATION MODE — MANDATORY VARIATION:
+You are rewriting a script that already exists. Your new version MUST:
+- Choose a DIFFERENT narrative angle or entry point
+- Use DIFFERENT vocabulary, metaphors, and sentence structures
+- Restructure the information flow (different order of revelations)
+- Change the opening hook strategy completely
+- Find NEW connections in the source material that the previous version missed
+
+HERE IS THE PREVIOUS SCRIPT (use it as an ANTI-MODEL — diverge from it maximally):
+${previousScript}
+
+Do NOT produce a slightly reworded version. The reader must feel this is a completely different documentary about the same subject.`);
+  }
+
   parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. Allowed range for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total. You choose the optimal length within this range based on the source material's density. Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
 
   return parts.join("\n\n");
@@ -1516,7 +1532,7 @@ serve(async (req) => {
 
       try {
         const body = await req.json();
-        const { analysis, structure, text, language, narrativeStyle, shortSentencePct } = body;
+        const { analysis, structure, text, language, narrativeStyle, shortSentencePct, existingScript, isRegenerate } = body;
         if (!analysis) {
           controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
           controller.close();
@@ -1550,7 +1566,7 @@ serve(async (req) => {
             max_completion_tokens: 24000,
             messages: [
               { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle, pct) },
-              { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget) },
+              { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget, isRegenerate ? (existingScript || null) : null) },
             ],
             stream: true,
           }),

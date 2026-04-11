@@ -122,9 +122,9 @@ OUTPUT RULES:
 
     const userMessage = [
       contextParts.length > 0 ? `SURROUNDING SECTIONS (for context and continuity — do NOT repeat their content):\n\n${contextParts.join("\n\n")}` : "",
-      currentContent ? `CURRENT CONTENT OF "${sectionLabel}" (to be rewritten/improved):\n${currentContent}` : `The "${sectionLabel}" section is currently empty. Write it from scratch.`,
+      currentContent ? `PREVIOUS VERSION OF "${sectionLabel}" (use as ANTI-MODEL — your new version MUST differ completely):\n- Choose a DIFFERENT angle or entry point\n- Use DIFFERENT words, metaphors, and sentence structures\n- Reorganize the information in a different order\n- The reader must feel this is written by a different narrator\n\nPREVIOUS TEXT TO REPLACE:\n${currentContent}` : `The "${sectionLabel}" section is currently empty. Write it from scratch.`,
       sourceText ? `SOURCE MATERIAL (factual reference):\n${sourceText.slice(0, 10000)}` : "",
-      `REGENERATE the "${sectionLabel}" section now. Output ONLY the narration text, nothing else.`,
+      `REGENERATE the "${sectionLabel}" section now with a COMPLETELY DIFFERENT approach. Output ONLY the narration text, nothing else.`,
     ].filter(Boolean).join("\n\n");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

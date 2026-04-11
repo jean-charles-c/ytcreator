@@ -247,6 +247,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               charMax: params.charMax,
               narrativeStyle: params.narrativeStyle,
               shortSentencePct: params.shortSentencePct ?? 0,
+              existingScript: params.existingScript || null,
+              isRegenerate: params.isRegenerate || false,
             }),
             signal: ac.signal,
           }
