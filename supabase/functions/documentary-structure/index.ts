@@ -19,7 +19,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const context = text ? text.slice(0, 15000) : "";
+    const context = text || "";
 
     const systemPrompt = `Tu es un scénariste documentaire expert spécialisé dans les documentaires mystères/histoire/science pour YouTube.
 
