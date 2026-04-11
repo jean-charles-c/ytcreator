@@ -661,18 +661,8 @@ const CORE_BUDGETS: SectionBudget[] = [
     longNote: "Add historical depth, geographic precision, key actor backgrounds" },
   { tag: "PROMISE",    label: "Curiosity contract",
     pct: [0.05, 0.05, 0.04],
-    shortNote: "6-8 lines max, sell the discovery experience not its content",
-    longNote: `6-8 lines maximum. Sell the EXPERIENCE of discovery, never its content.
-STRICT RULES:
-- Never name what will be revealed. Sell the atmosphere of the revelation, not the revelations themselves.
-- Announce that a received idea or an official image will be questioned, WITHOUT saying which one.
-- End on a short, incomplete sentence that opens toward the next section without unveiling it.
-- Choose ONE single register among: investigation, emotion, or rupture. Never all three together.
-- No lists. No "we will discover that". No summary. No roadmap.
-STRUCTURE TO FOLLOW:
-1. The investigative gesture: show the act of digging, tracing back, following a lead.
-2. The promise of rupture: what it will change in the way of seeing, without saying what.
-3. The final tension: a door ajar, not a door wide open.` },
+    shortNote: "Ultra-concise but STILL no spoilers — sell the experience, never the content.",
+    longNote: "Reinforce: absolutely NO content spoilers. The strict rules above are non-negotiable even at longer length." },
   { tag: "ACT1",       label: "Origins & setup",
     pct: [0.14, 0.15, 0.14],
     shortNote: "Focus on ONE key origin scene with essentials",
@@ -944,12 +934,16 @@ End the context by implicitly raising a question the viewer now wants answered.
 
 ### [[PROMISE]] — The Curiosity Contract (~5%)
 
-Short and punchy — this is the retention moment. In 2-4 sentences:
-- Tease the KEY DISCOVERIES ahead without spoiling them.
-- Plant curiosity hooks: "What they found changes everything we thought we knew."
-- Create OPEN LOOPS that pull the viewer toward ACT1.
+2-4 lines MAXIMUM. This is the shortest section of the script.
 
-Do NOT repeat the context. Do NOT summarize the video. Do NOT list topics ("We'll explore X, Y, Z").
+Pick the ONE most powerful element from your source material — the single discovery, contradiction, or reversal that will hit hardest — and BUILD ANTICIPATION around it without EVER naming it.
+
+STRICT RULES:
+- Never name what will be revealed. Sell the atmosphere, not the revelation.
+- ONE element only. No lists, no "we will discover that", no roadmap.
+- Choose ONE register: investigation, emotion, or rupture. Never mix.
+- End on an incomplete sentence — a door ajar, not a door wide open.
+- Do NOT repeat the context. Do NOT summarize the video.
 
 ### [[ACT1]] — Dynamic Foundations (~15%)
 
