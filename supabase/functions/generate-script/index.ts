@@ -855,8 +855,9 @@ ${cadenceSection}
 ## PLANNING PHASE (mandatory, internal)
 
 Before writing narration, output an internal plan inside <plan>...</plan> tags (these will be stripped from the final output). Your plan must include:
-- Total target: ~${charTarget.toLocaleString()} characters / ~${wordTarget.toLocaleString()} words
-- Allowed range: ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters
+- Allowed range: ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters (~${wordMin.toLocaleString()}–${wordMax.toLocaleString()} words)
+- Source density: count of key facts, narrative tensions, and key actors in the source
+- Your chosen target length and WHY (based on the source material's richness)
 - A brief outline per section with approximate word budget (see VolumeAllocator table below)
 - The central mystery / contradiction you will open in the HOOK
 - Key narrative beats and revelation moments you intend to place
@@ -1375,17 +1376,35 @@ Your script must sound like it was written by a PASSIONATE HUMAN EXPERT, not by 
 
 ---
 
-## LENGTH — HARD CONSTRAINT
+## LENGTH — ADAPTIVE CONSTRAINT
 
-Your CORE SCRIPT (blocks 1-10) MUST be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (~${wordMin.toLocaleString()}–${wordMax.toLocaleString()} words).
-Target: ${charTarget.toLocaleString()} characters (~${wordTarget.toLocaleString()} words).
+You decide the optimal script length within the allowed range. There is no fixed target.
 
-⚠️ Under ${charMin.toLocaleString()} characters = FAILURE. Aim to slightly exceed the target rather than fall short.
-⚠️ Over ${charMax.toLocaleString()} characters = FAILURE. You MUST stay within the upper limit. If your draft exceeds the maximum, CUT secondary examples and supporting details until you are within range. NEVER exceed the maximum.
+### Range
+Your CORE SCRIPT (blocks 1-10) must be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (~${wordMin.toLocaleString()}–${wordMax.toLocaleString()} words).
+The maximum (${charMax.toLocaleString()}) is a HARD LIMIT. Never exceed it.
+The minimum (${charMin.toLocaleString()}) is a SOFT FLOOR. You may go slightly below if the source material genuinely doesn't justify more, but you must justify it in your [[STYLE CHECK]].
+
 ⚠️ The section tags ([[HOOK]], [[CONTEXT]], etc.) do NOT count toward the character limit.
 ⚠️ The editorial blocks (11-13) do NOT count toward the character limit.
 
-CRITICAL LENGTH ENFORCEMENT: Before outputting your final script, COUNT the total characters of blocks 1-10 (excluding tags). If the count exceeds ${charMax.toLocaleString()}, you MUST revise and compress until you are within range. Exceeding the maximum is as serious a failure as falling short of the minimum.
+### Proportionality Rule
+Never generate a script significantly longer than the source text unless narrative reformulation genuinely requires it. A short source does not justify a long script. Let the richness, complexity, and factual density of the source guide your length within the allowed range.
+
+### The Cut Test
+Every paragraph must survive this test: "If I remove this paragraph, does the viewer lose something essential that they cannot infer from the remaining sections?" If the answer is no, the paragraph must not exist. Density over padding. Always.
+
+### The Expansion Test
+After planning your script structure, ask yourself: "Is there a factual claim, a nuance, or a counter-argument in the source that I skipped but that would genuinely strengthen the script?" If yes, add it. This test ensures you never sacrifice substance for brevity. Density means including everything that matters, not just cutting.
+
+### How to decide your length (mandatory in <plan>)
+In your <plan>, you MUST state:
+- "Source density: [X] key facts, [Y] narrative tensions, [Z] key actors identified"
+- "Chosen target: [N] characters. Reason: [why this length fits the material]"
+Then distribute across sections using the VolumeAllocator ratios based on your chosen target.
+The length tier (SHORT/MEDIUM/LONG) is determined by your chosen target.
+
+CRITICAL: Before outputting your final script, COUNT the total characters of blocks 1-10 (excluding tags). If the count exceeds ${charMax.toLocaleString()}, you MUST revise and compress until you are within range.
 
 ---
 
@@ -1425,7 +1444,7 @@ CRITICAL LENGTH ENFORCEMENT: Before outputting your final script, COUNT the tota
 23. No sequence of 3+ facts presented as a list without narrative connection.
 
 ### Volume Compliance
-24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters. If OVER the max, compress NOW before outputting.
+24. Estimated core script (blocks 1-10) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters. Length is adapted to source density. If OVER the max, compress NOW before outputting.
 25. Each section approximately respects its VolumeAllocator budget (±30% tolerance).
 
 ### Forbidden Punctuation
@@ -1479,7 +1498,7 @@ function buildUserMessage(
     parts.push(`SOURCE TEXT (factual reference — use for details, never invent):\n${sourceText}`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. HARD LIMIT for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total (aim for ${charTarget.toLocaleString()}). Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
+  parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. Allowed range for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total. You choose the optimal length within this range based on the source material's density. Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
 
   return parts.join("\n\n");
 }
@@ -1502,7 +1521,8 @@ serve(async (req) => {
       }, 15000);
 
       try {
-        const { analysis, structure, text, language, targetChars, narrativeStyle, shortSentencePct } = await req.json();
+        const body = await req.json();
+        const { analysis, structure, text, language, narrativeStyle, shortSentencePct } = body;
         if (!analysis) {
           controller.enqueue(encodeSseData(JSON.stringify({ error: "Analyse narrative requise." })));
           controller.close();
@@ -1517,12 +1537,13 @@ serve(async (req) => {
         const langLabels: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German", pt: "Portuguese", it: "Italian" };
         const langLabel = langLabels[scriptLang] || "English";
         const sourceText = text || "";
-        const charTarget = targetChars ? Number(targetChars) : 15000;
-        const charMin = Math.round(charTarget * 0.9);
-        const charMax = Math.round(charTarget * 1.1);
+        // Support both old targetChars and new charMin/charMax
+        const charMin = body.charMin ? Number(body.charMin) : body.targetChars ? Math.round(Number(body.targetChars) * 0.9) : 8000;
+        const charMax = body.charMax ? Number(body.charMax) : body.targetChars ? Math.round(Number(body.targetChars) * 1.1) : 18000;
+        const charTarget = Math.round((charMin + charMax) / 2);
         const activeStyle = narrativeStyle || "documentary";
         const pct = typeof shortSentencePct === "number" ? shortSentencePct : 0;
-        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, target=${charTarget}, shortPct=${pct}`);
+        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, range=${charMin}-${charMax}, shortPct=${pct}`);
 
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",

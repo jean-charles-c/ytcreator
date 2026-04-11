@@ -84,7 +84,8 @@ export interface ScriptGenParams {
   analysis: any;
   extractedText: string;
   scriptLanguage: string;
-  targetChars: number;
+  charMin: number;
+  charMax: number;
   narrativeStyle?: string;
   existingScript?: string | null;
   isRegenerate?: boolean;
@@ -242,7 +243,8 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               structure: sections,
               text: params.extractedText,
               language: params.scriptLanguage,
-              targetChars: params.targetChars,
+              charMin: params.charMin,
+              charMax: params.charMax,
               narrativeStyle: params.narrativeStyle,
               shortSentencePct: params.shortSentencePct ?? 0,
             }),

@@ -156,7 +156,8 @@ export default function PdfDocumentaryTab({
   const chapterHydratedRef = useRef(false);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [targetChars, setTargetChars] = useState(15000);
+  const [charMin, setCharMin] = useState(8000);
+  const [charMax, setCharMax] = useState(18000);
   const [narrativeStyleId, setNarrativeStyleId] = useState(DEFAULT_NARRATIVE_STYLE_ID);
   const [customStyleLabel, setCustomStyleLabel] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -883,13 +884,14 @@ export default function PdfDocumentaryTab({
       analysis,
       extractedText,
       scriptLanguage,
-      targetChars,
+      charMin,
+      charMax,
       narrativeStyle: narrativeStyleId === "custom" ? customStyleLabel || "documentary" : narrativeStyleId,
       existingScript: script,
       isRegenerate,
       shortSentencePct,
     });
-  }, [analysis, extractedText, scriptLanguage, script, targetChars, narrativeStyleId, customStyleLabel, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange, shortSentencePct]);
+  }, [analysis, extractedText, scriptLanguage, script, charMin, charMax, narrativeStyleId, customStyleLabel, projectId, startScriptGeneration, onScriptChange, onScriptVersionsChange, shortSentencePct]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -1249,17 +1251,27 @@ export default function PdfDocumentaryTab({
               />
             )}
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">Objectif :</label>
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Min :</label>
+              <input
+                type="number"
+                min={3000}
+                max={25000}
+                step={1000}
+                value={charMin}
+                onChange={(e) => setCharMin(Number(e.target.value))}
+                className="h-9 w-20 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Max :</label>
               <input
                 type="number"
                 min={5000}
                 max={30000}
                 step={1000}
-                value={targetChars}
-                onChange={(e) => setTargetChars(Number(e.target.value))}
-                className="h-9 w-24 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                value={charMax}
+                onChange={(e) => setCharMax(Number(e.target.value))}
+                className="h-9 w-20 rounded border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
-              <span className="text-[10px] text-muted-foreground">car. (±10%)</span>
+              <span className="text-[10px] text-muted-foreground">car.</span>
             </div>
             <Button variant="hero" disabled={generatingScript} onClick={() => runFullScriptGeneration()} className="min-h-[44px]">
               {generatingScript ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération en cours...</> : <><ScrollText className="h-4 w-4" /> Créer le script narratif</>}
