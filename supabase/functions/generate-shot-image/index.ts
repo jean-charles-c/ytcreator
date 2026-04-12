@@ -368,7 +368,21 @@ serve(async (req) => {
       enrichedPrompt = custom_prompt.trim();
       console.log("Using custom_prompt from client (user-edited full prompt)");
     } else {
-      const rawPrompt = shot.prompt_export || shot.description;
+      // Merge prompt_export and description: the description often contains richer
+      // visual details (camera angle, textures, materials) that prompt_export may lack
+      // when it was built only from the abstract source_sentence.
+      let rawPrompt: string;
+      if (shot.prompt_export && shot.description && shot.description.length > 30) {
+        // Check if description content is already present in prompt_export
+        const descSnippet = shot.description.slice(0, 60).toLowerCase();
+        if (shot.prompt_export.toLowerCase().includes(descSnippet)) {
+          rawPrompt = shot.prompt_export;
+        } else {
+          rawPrompt = shot.prompt_export + "\n\nDETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description;
+        }
+      } else {
+        rawPrompt = shot.prompt_export || shot.description;
+      }
       if (!rawPrompt) throw new Error("No prompt available for this shot");
 
       // Apply sensitive mode transformation with structured scene context
