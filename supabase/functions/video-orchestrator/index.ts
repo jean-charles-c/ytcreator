@@ -73,7 +73,7 @@ function tryParseProviderJson(rawMessage: string): Record<string, unknown> | nul
 function normalizeProviderError(provider: string, error: unknown): NormalizedProviderError {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const parsed = tryParseProviderJson(rawMessage);
-  const code = parsed?.code ?? null;
+  const code = (parsed?.code as string | number | null) ?? null;
   const requestId = typeof parsed?.request_id === "string" ? parsed.request_id : null;
   const providerMessage = typeof parsed?.message === "string" ? parsed.message : rawMessage;
 

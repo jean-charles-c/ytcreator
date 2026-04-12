@@ -20,7 +20,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const langLabel = { en: "English", fr: "French", es: "Spanish", de: "German" }[language || "en"] || "English";
+    const langMap: Record<string, string> = { en: "English", fr: "French", es: "Spanish", de: "German" };
+    const langLabel = langMap[language || "en"] || "English";
 
     const systemPrompt = `You are a narrative structure analyst. You receive a complete YouTube documentary script written in ${langLabel}.
 

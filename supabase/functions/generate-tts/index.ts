@@ -1322,7 +1322,10 @@ serve(async (req) => {
       projectId,
       shotSentences,
       syncMode = "standard",
-      forceSync = false,
+    } = body;
+    const forceSync = (body as Record<string, unknown>).forceSync === true;
+    // dummy block to keep destructuring clean
+    {
     } = body;
 
     // Apply narration profile modulation on top of user settings

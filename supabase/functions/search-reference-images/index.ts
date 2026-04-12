@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error searching images:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to search images" }),
+      JSON.stringify({ error: (error as Error).message || "Failed to search images" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

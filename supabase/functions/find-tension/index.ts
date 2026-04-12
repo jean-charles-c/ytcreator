@@ -37,7 +37,7 @@ serve(async (req) => {
     const truncatedText = text.slice(0, 12000);
     const existingList = existingTensions
       .slice(0, 20)
-      .map((t, i) => `${i + 1}. ${t.title}: ${t.description}`)
+      .map((t: { title: string; description: string }, i: number) => `${i + 1}. ${t.title}: ${t.description}`)
       .join("\n");
 
     const systemPrompt = `Tu es un analyste narratif expert en documentaires. Trouve exactement UNE nouvelle tension narrative originale, différente des tensions déjà listées.
