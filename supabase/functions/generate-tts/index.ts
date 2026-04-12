@@ -1322,8 +1322,8 @@ serve(async (req) => {
       projectId,
       shotSentences,
       syncMode = "standard",
-      forceSync = false,
     } = body;
+    const forceSync = (body as Record<string, unknown>).forceSync === true;
 
     // Apply narration profile modulation on top of user settings
     const mod = NARRATION_MODULATION[narrationProfile] ?? NARRATION_MODULATION.standard;

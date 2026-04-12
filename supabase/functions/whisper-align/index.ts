@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Le champ 'projectId' est requis." }, 400);
     }
 
-    const orderedShots = await loadOrderedShotSources(supabaseService, projectId, user.id);
+    const orderedShots = await loadOrderedShotSources(supabaseService as any, projectId, user.id);
 
     // ── Download audio ──
     console.log(`[whisper-align] Downloading audio: ${audioUrl.slice(0, 80)}…`);
