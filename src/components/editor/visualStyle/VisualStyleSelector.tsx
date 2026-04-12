@@ -3,7 +3,7 @@
  * No inheritance labels — just shows the effective style applied.
  */
 
-import { VISUAL_STYLES, getVisualStyleById, type VisualStyleValue, computeEffective } from "./types";
+import { VISUAL_STYLES, getVisualStyleById, type VisualStyleValue, computeEffective, DEFAULT_VISUAL_STYLE_ID } from "./types";
 import { Palette } from "lucide-react";
 
 interface VisualStyleSelectorProps {
@@ -39,7 +39,9 @@ export default function VisualStyleSelector({
           className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[220px]"
         >
           <option value="">
-            {parentLabel ? `Par défaut (${parentLabel})` : "Aucun style imposé"}
+            {value.inheritedStyleId && value.inheritedStyleId !== DEFAULT_VISUAL_STYLE_ID
+              ? `↑ ${getVisualStyleById(value.inheritedStyleId)?.label || "Hérité"}`
+              : "Aucun style imposé"}
           </option>
           {VISUAL_STYLES.map((s) => (
             <option key={s.id} value={s.id}>
