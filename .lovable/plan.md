@@ -1,20 +1,12 @@
 
 
-## Plan: Redeploy generate-shot-image Edge Function
+## Plan: Redeploy generate-shot-image
 
-The edge function code is already in the project. I will deploy the `generate-shot-image` function using the deployment tool, which will push the latest code from the codebase.
-
-Additionally, I will fix the 9 TypeScript errors in other edge functions that are currently blocking the build, as the deployment type-checks all functions together.
+The latest code from commit a62cf53d should already be synced to the project via GitHub's bidirectional integration. The function just needs to be redeployed.
 
 ### Steps
 
-1. **Fix TypeScript errors** in the following files:
-   - `analyze-script/index.ts` — add type assertion for language indexing
-   - `find-tension/index.ts` — add types for `t` and `i` parameters
-   - `generate-tts/index.ts` — remove or fix `forceSync` property reference
-   - `search-reference-images/index.ts` — type `error` as `Error`
-   - `video-orchestrator/index.ts` — fix `code` type to accept `{}`
-   - `whisper-align/index.ts` — fix Supabase client type mismatch
+1. **Deploy `generate-shot-image`** using the edge function deployment tool to push the current codebase version to production.
 
-2. **Deploy** `generate-shot-image` (and all functions will be type-checked together)
+No code changes needed -- this is a redeployment of existing code.
 
