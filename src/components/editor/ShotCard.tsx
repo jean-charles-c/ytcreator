@@ -147,8 +147,14 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     // 3. Generation frame
     parts.push("Generate one single cinematic image.\nMandatory aspect ratio: 16:9.\nCompose the framing to work natively in that ratio without letterboxing or white borders.");
 
-    // 4. Base prompt
+    // 4. Base prompt — merge with description if it adds visual details not in prompt_export
     parts.push(basePrompt);
+    if (shot.description && shot.description.length > 30) {
+      const descSnippet = shot.description.slice(0, 60).toLowerCase();
+      if (!basePrompt.toLowerCase().includes(descSnippet)) {
+        parts.push("DETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description);
+      }
+    }
 
     // 5. Anti-text-leak
     parts.push(ANTI_TEXT_LEAK);
