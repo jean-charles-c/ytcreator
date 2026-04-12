@@ -1,21 +1,20 @@
 
 
-# Supprimer la troncature du texte source lors de la création du script
+## Plan: Redeploy generate-shot-image Edge Function
 
-## Problème
-Le texte source est tronqué à deux endroits dans les Edge Functions :
-1. **`documentary-structure/index.ts`** (ligne 22) : `text.slice(0, 15000)` — troncature à 15 000 caractères
-2. **`generate-script/index.ts`** (ligne 1519) : `text.slice(0, 25000)` — troncature à 25 000 caractères
+The edge function code is already in the project. I will deploy the `generate-shot-image` function using the deployment tool, which will push the latest code from the codebase.
 
-## Solution
-Supprimer les deux appels `.slice()` pour envoyer le texte source complet à l'IA. Les modèles utilisés (Gemini 2.5 Flash Lite et Gemini 2.5 Pro) supportent des contextes largement suffisants (1M+ tokens).
+Additionally, I will fix the 9 TypeScript errors in other edge functions that are currently blocking the build, as the deployment type-checks all functions together.
 
-## Changements
+### Steps
 
-| Fichier | Ligne | Modification |
-|---------|-------|-------------|
-| `supabase/functions/documentary-structure/index.ts` | 22 | `text.slice(0, 15000)` → `text` (texte complet) |
-| `supabase/functions/generate-script/index.ts` | 1519 | `text.slice(0, 25000)` → `text` (texte complet) |
+1. **Fix TypeScript errors** in the following files:
+   - `analyze-script/index.ts` — add type assertion for language indexing
+   - `find-tension/index.ts` — add types for `t` and `i` parameters
+   - `generate-tts/index.ts` — remove or fix `forceSync` property reference
+   - `search-reference-images/index.ts` — type `error` as `Error`
+   - `video-orchestrator/index.ts` — fix `code` type to accept `{}`
+   - `whisper-align/index.ts` — fix Supabase client type mismatch
 
-Deux lignes modifiées, aucun autre impact.
+2. **Deploy** `generate-shot-image` (and all functions will be type-checked together)
 
