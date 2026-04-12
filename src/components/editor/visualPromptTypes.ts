@@ -421,7 +421,9 @@ export function computeSplit(
       source_sentence_fr: frAfter,
       shot_order: newShotOrder,
       shot_type: shot.shot_type,
-      description: shot.description,
+      description: shot.description?.startsWith("Description visuelle du segment narratif")
+        ? `Description visuelle du segment narratif : "${textAfter}"`
+        : shot.description,
     },
     orderUpdates,
     action: {

@@ -393,10 +393,14 @@ const buildSegmentShot = (
     ? baseShot?.source_sentence_fr?.trim() || inheritedSceneTranslation
     : inheritedSceneTranslation;
 
+  // Determine if baseShot has a real description (not fallback)
+  const hasRealDescription = baseShot?.description
+    && !baseShot.description.startsWith("Description visuelle du segment narratif");
+
   return {
     shot_type: shotType,
-    description: reuseGeneratedContent
-      ? baseShot?.description || fallbackDescription(segment)
+    description: (reuseGeneratedContent && hasRealDescription)
+      ? baseShot.description
       : fallbackDescription(segment),
     source_sentence: segment,
     source_sentence_fr: sourceSentenceFr,
@@ -1061,7 +1065,23 @@ serve(async (req) => {
           const payload: any = {
             prompt_export: promptExport,
           };
-          if (aiShot?.description) payload.description = aiShot.description;
+          // Always replace fallback descriptions — never keep "Description visuelle du segment narratif"
+          if (aiShot?.description) {
+            payload.description = aiShot.description;
+          } else {
+            const currentDesc = existingShot.description || "";
+            if (currentDesc.startsWith("Description visuelle du segment narratif")) {
+              // Extract a rich description from prompt_export by removing style/quality suffixes
+              const cleanPrompt = promptExport
+                .replace(/^.*?(?:Style\s*:|Cinematic film)/i, "")
+                .replace(/Qualité visuelle\s*:.*$/i, "")
+                .replace(/Any visible writing.*$/is, "")
+                .trim();
+              if (cleanPrompt.length > 50) {
+                payload.description = cleanPrompt.slice(0, 500);
+              }
+            }
+          }
           if (aiShot?.shot_type) payload.shot_type = aiShot.shot_type;
           if (aiShot?.guardrails) payload.guardrails = aiShot.guardrails;
 
