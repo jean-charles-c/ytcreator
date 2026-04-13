@@ -242,16 +242,21 @@ Deno.serve(async (req) => {
     ];
 
     for (const source of pronunciationSources) {
-      const phrase = normalizeCustomPronunciationPhrase(source.phrase ?? "");
+      const key = normalizeCustomPronunciationPhrase(source.phrase ?? "");
+      // Preserve original case for Google API (case-sensitive matching)
+      const phrase = (source.phrase ?? "").trim()
+        .replace(/[''ʼ]/g, "'")
+        .replace(/[""]/g, '"')
+        .replace(/^[\s"'«»""()\[\]{}.,;:!?/\-]+|[\s"'«»""()\[\]{}.,;:!?/\-]+$/g, "");
       const pronunciation = source.pronunciation?.trim();
 
-      if (!phrase || !pronunciation) continue;
+      if (!key || !phrase || !pronunciation) continue;
       if (!CHIRP_PRONUNCIATION_PHRASE_PATTERN.test(phrase)) {
         console.warn(`[chirp3hd] Skipping unsupported custom pronunciation phrase: ${source.phrase}`);
         continue;
       }
 
-      mergedMap.set(phrase, { phrase, pronunciation });
+      mergedMap.set(key, { phrase, pronunciation });
     }
 
     const CUSTOM_PRONUNCIATIONS = Array.from(mergedMap.values()).map((p) => ({
