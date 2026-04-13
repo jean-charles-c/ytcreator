@@ -1323,7 +1323,7 @@ serve(async (req) => {
       shotSentences,
       syncMode = "standard",
     } = body;
-    const forceSync = (body as Record<string, unknown>).forceSync === true;
+    const forceSync = (body as unknown as Record<string, unknown>).forceSync === true;
 
     // Apply narration profile modulation on top of user settings
     const mod = NARRATION_MODULATION[narrationProfile] ?? NARRATION_MODULATION.standard;
