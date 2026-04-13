@@ -17,92 +17,27 @@ export function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
   return (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
 }
 
-function normalizeForMatch(text: string): string {
-  return text.replace(/\s+/g, " ").trim().toLowerCase();
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
-function findFragmentInSource(sourceText: string, fragment: string, fromIndex: number): number {
-  // Try exact match first
-  const exactIdx = sourceText.indexOf(fragment, fromIndex);
-  if (exactIdx >= 0) return exactIdx;
-
-  // Fuzzy: walk through sourceText matching normalized characters
-  const normFrag = normalizeForMatch(fragment);
-  if (!normFrag) return -1;
-
-  for (let start = fromIndex; start < sourceText.length; start++) {
-    let si = start;
-    let fi = 0;
-    while (si < sourceText.length && fi < normFrag.length) {
-      const sc = sourceText[si].toLowerCase();
-      const fc = normFrag[fi];
-      if (sc === fc) {
-        si++;
-        fi++;
-      } else if (/\s/.test(sourceText[si])) {
-        si++;
-      } else if (/\s/.test(normFrag[fi])) {
-        fi++;
-      } else {
-        break;
-      }
-    }
-    if (fi >= normFrag.length) return start;
+function joinFragmentsPreservingBreaks(fragments: string[], sourceText: string): string {
+  const joined = fragments.join(" ");
+  const normJoined = normalizeWhitespace(joined);
+  const normSource = normalizeWhitespace(sourceText);
+  if (normJoined === normSource) {
+    return sourceText;
   }
-  return -1;
-}
-
-function findFragmentEnd(sourceText: string, fragment: string, startIdx: number): number {
-  // Try exact match length first
-  if (sourceText.substring(startIdx, startIdx + fragment.length) === fragment) {
-    return startIdx + fragment.length;
-  }
-  // Fuzzy: walk to consume the whole fragment
-  const normFrag = normalizeForMatch(fragment);
-  let si = startIdx;
-  let fi = 0;
-  while (si < sourceText.length && fi < normFrag.length) {
-    const sc = sourceText[si].toLowerCase();
-    const fc = normFrag[fi];
-    if (sc === fc) {
-      si++;
-      fi++;
-    } else if (/\s/.test(sourceText[si])) {
-      si++;
-    } else if (/\s/.test(normFrag[fi])) {
-      fi++;
-    } else {
+  // DEBUG: log differences to help diagnose mismatch
+  console.log("[VO sync] mismatch for scene — fragments length:", normJoined.length, "source length:", normSource.length);
+  const minLen = Math.min(normJoined.length, normSource.length);
+  for (let i = 0; i < minLen; i++) {
+    if (normJoined[i] !== normSource[i]) {
+      console.log("[VO sync] first diff at index", i, "fragment char:", JSON.stringify(normJoined.substring(i, i + 20)), "source char:", JSON.stringify(normSource.substring(i, i + 20)));
       break;
     }
   }
-  return si;
-}
-
-function joinFragmentsWithOriginalBreaks(fragments: string[], sourceText: string): string {
-  if (fragments.length === 0) return "";
-  if (fragments.length === 1) return fragments[0];
-
-  const parts: string[] = [fragments[0]];
-  let cursor = 0;
-
-  const firstIdx = findFragmentInSource(sourceText, fragments[0], 0);
-  if (firstIdx >= 0) {
-    cursor = findFragmentEnd(sourceText, fragments[0], firstIdx);
-  }
-
-  for (let i = 1; i < fragments.length; i++) {
-    const nextIdx = findFragmentInSource(sourceText, fragments[i], cursor);
-    if (nextIdx >= 0) {
-      const between = sourceText.substring(cursor, nextIdx);
-      const sep = between.includes("\n") ? "\n" : " ";
-      parts.push(sep, fragments[i]);
-      cursor = findFragmentEnd(sourceText, fragments[i], nextIdx);
-    } else {
-      parts.push(" ", fragments[i]);
-    }
-  }
-
-  return parts.join("");
+  return joined;
 }
 
 export function buildExactShotScript(
@@ -117,7 +52,7 @@ export function buildExactShotScript(
     if (currentSceneFragments.length === 0) return;
     const sourceText = currentSceneId ? sceneTextMap?.get(currentSceneId) : undefined;
     const joined = sourceText
-      ? joinFragmentsWithOriginalBreaks(currentSceneFragments, sourceText)
+      ? joinFragmentsPreservingBreaks(currentSceneFragments, sourceText)
       : currentSceneFragments.join(" ");
     sceneBlocks.push(joined);
   };
