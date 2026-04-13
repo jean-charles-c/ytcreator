@@ -17,28 +17,6 @@ export function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
   return (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
 }
 
-function normalizeWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
-
-function joinFragmentsPreservingBreaks(fragments: string[], sourceText: string): string {
-  const joined = fragments.join(" ");
-  const normJoined = normalizeWhitespace(joined);
-  const normSource = normalizeWhitespace(sourceText);
-  if (normJoined === normSource) {
-    return sourceText;
-  }
-  // DEBUG: log differences to help diagnose mismatch
-  console.log("[VO sync] mismatch for scene — fragments length:", normJoined.length, "source length:", normSource.length);
-  const minLen = Math.min(normJoined.length, normSource.length);
-  for (let i = 0; i < minLen; i++) {
-    if (normJoined[i] !== normSource[i]) {
-      console.log("[VO sync] first diff at index", i, "fragment char:", JSON.stringify(normJoined.substring(i, i + 20)), "source char:", JSON.stringify(normSource.substring(i, i + 20)));
-      break;
-    }
-  }
-  return joined;
-}
 
 export function buildExactShotScript(
   sortedShots: VoiceOverShotSyncSource[],
@@ -50,10 +28,8 @@ export function buildExactShotScript(
 
   const flushScene = () => {
     if (currentSceneFragments.length === 0) return;
-    const sourceText = currentSceneId ? sceneTextMap?.get(currentSceneId) : undefined;
-    const joined = sourceText
-      ? joinFragmentsPreservingBreaks(currentSceneFragments, sourceText)
-      : currentSceneFragments.join(" ");
+    const sourceText = currentSceneId ? sceneTextMap?.get(currentSceneId)?.trim() : undefined;
+    const joined = sourceText || currentSceneFragments.join(" ");
     sceneBlocks.push(joined);
   };
 
