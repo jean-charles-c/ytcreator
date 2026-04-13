@@ -3126,7 +3126,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
                                   {/* Scene source text */}
                                   <div className="rounded border border-border bg-background p-2.5 sm:p-4">
-                                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed italic break-words">"{scene.source_text}"</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed italic break-words whitespace-pre-line">"{scene.source_text}"</p>
                                     {(scene as any).source_text_fr && (
                                       <p className="text-xs sm:text-sm text-muted-foreground/70 leading-relaxed mt-2 italic border-l-2 border-primary/20 pl-3 break-words">🇫🇷 "{(scene as any).source_text_fr}"</p>
                                     )}
