@@ -30,7 +30,7 @@ export default function ManifestTimingPanel({ projectId, manifest }: ManifestTim
         .from("vo_audio_history")
         .select("*")
         .eq("project_id", projectId)
-        .eq("style", "chirp3hd")
+        .in("style", ["chirp3hd", "chirp3hd-assembled"])
         .order("created_at", { ascending: false })
         .limit(1);
 

@@ -62,7 +62,7 @@ export default function ChirpAlignmentReview({ projectId, shots, scenesForSort, 
           .from("vo_audio_history")
           .select("id, shot_timepoints, duration_estimate, created_at, file_name")
           .eq("project_id", projectId)
-          .eq("style", "chirp3hd")
+          .in("style", ["chirp3hd", "chirp3hd-assembled"])
           .order("created_at", { ascending: false })
           .limit(1);
 

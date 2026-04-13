@@ -228,7 +228,7 @@ export default function WhisperAlignmentEditor({
           .from("vo_audio_history")
           .select("id, whisper_words, shot_timepoints, duration_estimate")
           .eq("project_id", projectId)
-          .eq("style", "chirp3hd")
+          .in("style", ["chirp3hd", "chirp3hd-assembled"])
           .order("created_at", { ascending: false })
           .limit(1);
 
@@ -834,7 +834,7 @@ export default function WhisperAlignmentEditor({
                     .from("vo_audio_history")
                     .select("file_path")
                     .eq("project_id", projectId)
-                    .eq("style", "chirp3hd")
+                    .in("style", ["chirp3hd", "chirp3hd-assembled"])
                     .order("created_at", { ascending: false })
                     .limit(1);
                   if (!audioData?.[0]?.file_path) {
