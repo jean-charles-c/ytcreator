@@ -17,19 +17,56 @@ export function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
   return (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
 }
 
-export function buildExactShotScript(sortedShots: VoiceOverShotSyncSource[]): string {
+function joinFragmentsWithOriginalBreaks(fragments: string[], sourceText: string): string {
+  if (fragments.length === 0) return "";
+  if (fragments.length === 1) return fragments[0];
+
+  const parts: string[] = [fragments[0]];
+  let cursor = 0;
+
+  const firstIdx = sourceText.indexOf(fragments[0]);
+  if (firstIdx >= 0) {
+    cursor = firstIdx + fragments[0].length;
+  }
+
+  for (let i = 1; i < fragments.length; i++) {
+    const nextIdx = sourceText.indexOf(fragments[i], cursor);
+    if (nextIdx >= 0) {
+      const between = sourceText.substring(cursor, nextIdx);
+      const sep = between.includes("\n") ? "\n" : " ";
+      parts.push(sep, fragments[i]);
+      cursor = nextIdx + fragments[i].length;
+    } else {
+      parts.push(" ", fragments[i]);
+    }
+  }
+
+  return parts.join("");
+}
+
+export function buildExactShotScript(
+  sortedShots: VoiceOverShotSyncSource[],
+  sceneTextMap?: Map<string, string>,
+): string {
   const sceneBlocks: string[] = [];
   let currentSceneId: string | null = null;
   let currentSceneFragments: string[] = [];
+
+  const flushScene = () => {
+    if (currentSceneFragments.length === 0) return;
+    const sourceText = currentSceneId ? sceneTextMap?.get(currentSceneId) : undefined;
+    const joined = sourceText
+      ? joinFragmentsWithOriginalBreaks(currentSceneFragments, sourceText)
+      : currentSceneFragments.join(" ");
+    sceneBlocks.push(joined);
+  };
 
   for (const shot of sortedShots) {
     const fragment = getShotFragmentText(shot);
     if (!fragment) continue;
 
     if (currentSceneId !== null && shot.scene_id !== currentSceneId) {
-      if (currentSceneFragments.length > 0) {
-        sceneBlocks.push(currentSceneFragments.join(" "));
-      }
+      flushScene();
       currentSceneFragments = [];
     }
 
@@ -37,9 +74,7 @@ export function buildExactShotScript(sortedShots: VoiceOverShotSyncSource[]): st
     currentSceneFragments.push(fragment);
   }
 
-  if (currentSceneFragments.length > 0) {
-    sceneBlocks.push(currentSceneFragments.join(" "));
-  }
+  flushScene();
 
   return sceneBlocks.join("\n\n");
 }
