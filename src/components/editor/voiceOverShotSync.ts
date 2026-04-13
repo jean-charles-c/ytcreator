@@ -17,6 +17,67 @@ export function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
   return (shot.source_sentence || shot.source_sentence_fr || shot.description || "").trim();
 }
 
+function normalizeForMatch(text: string): string {
+  return text.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function findFragmentInSource(sourceText: string, fragment: string, fromIndex: number): number {
+  // Try exact match first
+  const exactIdx = sourceText.indexOf(fragment, fromIndex);
+  if (exactIdx >= 0) return exactIdx;
+
+  // Fuzzy: walk through sourceText matching normalized characters
+  const normFrag = normalizeForMatch(fragment);
+  if (!normFrag) return -1;
+
+  for (let start = fromIndex; start < sourceText.length; start++) {
+    let si = start;
+    let fi = 0;
+    while (si < sourceText.length && fi < normFrag.length) {
+      const sc = sourceText[si].toLowerCase();
+      const fc = normFrag[fi];
+      if (sc === fc) {
+        si++;
+        fi++;
+      } else if (/\s/.test(sourceText[si])) {
+        si++;
+      } else if (/\s/.test(normFrag[fi])) {
+        fi++;
+      } else {
+        break;
+      }
+    }
+    if (fi >= normFrag.length) return start;
+  }
+  return -1;
+}
+
+function findFragmentEnd(sourceText: string, fragment: string, startIdx: number): number {
+  // Try exact match length first
+  if (sourceText.substring(startIdx, startIdx + fragment.length) === fragment) {
+    return startIdx + fragment.length;
+  }
+  // Fuzzy: walk to consume the whole fragment
+  const normFrag = normalizeForMatch(fragment);
+  let si = startIdx;
+  let fi = 0;
+  while (si < sourceText.length && fi < normFrag.length) {
+    const sc = sourceText[si].toLowerCase();
+    const fc = normFrag[fi];
+    if (sc === fc) {
+      si++;
+      fi++;
+    } else if (/\s/.test(sourceText[si])) {
+      si++;
+    } else if (/\s/.test(normFrag[fi])) {
+      fi++;
+    } else {
+      break;
+    }
+  }
+  return si;
+}
+
 function joinFragmentsWithOriginalBreaks(fragments: string[], sourceText: string): string {
   if (fragments.length === 0) return "";
   if (fragments.length === 1) return fragments[0];
@@ -24,18 +85,18 @@ function joinFragmentsWithOriginalBreaks(fragments: string[], sourceText: string
   const parts: string[] = [fragments[0]];
   let cursor = 0;
 
-  const firstIdx = sourceText.indexOf(fragments[0]);
+  const firstIdx = findFragmentInSource(sourceText, fragments[0], 0);
   if (firstIdx >= 0) {
-    cursor = firstIdx + fragments[0].length;
+    cursor = findFragmentEnd(sourceText, fragments[0], firstIdx);
   }
 
   for (let i = 1; i < fragments.length; i++) {
-    const nextIdx = sourceText.indexOf(fragments[i], cursor);
+    const nextIdx = findFragmentInSource(sourceText, fragments[i], cursor);
     if (nextIdx >= 0) {
       const between = sourceText.substring(cursor, nextIdx);
       const sep = between.includes("\n") ? "\n" : " ";
       parts.push(sep, fragments[i]);
-      cursor = nextIdx + fragments[i].length;
+      cursor = findFragmentEnd(sourceText, fragments[i], nextIdx);
     } else {
       parts.push(" ", fragments[i]);
     }
