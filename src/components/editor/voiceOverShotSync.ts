@@ -18,27 +18,19 @@ export function getShotFragmentText(shot: VoiceOverShotSyncSource): string {
 }
 
 
-export function buildExactShotScript(
-  sortedShots: VoiceOverShotSyncSource[],
-  sceneTextMap?: Map<string, string>,
-): string {
+export function buildExactShotScript(sortedShots: VoiceOverShotSyncSource[]): string {
   const sceneBlocks: string[] = [];
   let currentSceneId: string | null = null;
   let currentSceneFragments: string[] = [];
-
-  const flushScene = () => {
-    if (currentSceneFragments.length === 0) return;
-    const sourceText = currentSceneId ? sceneTextMap?.get(currentSceneId)?.trim() : undefined;
-    const joined = sourceText || currentSceneFragments.join(" ");
-    sceneBlocks.push(joined);
-  };
 
   for (const shot of sortedShots) {
     const fragment = getShotFragmentText(shot);
     if (!fragment) continue;
 
     if (currentSceneId !== null && shot.scene_id !== currentSceneId) {
-      flushScene();
+      if (currentSceneFragments.length > 0) {
+        sceneBlocks.push(currentSceneFragments.join(" "));
+      }
       currentSceneFragments = [];
     }
 
@@ -46,7 +38,9 @@ export function buildExactShotScript(
     currentSceneFragments.push(fragment);
   }
 
-  flushScene();
+  if (currentSceneFragments.length > 0) {
+    sceneBlocks.push(currentSceneFragments.join(" "));
+  }
 
   return sceneBlocks.join("\n\n");
 }

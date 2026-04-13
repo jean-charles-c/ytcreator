@@ -58,22 +58,6 @@ describe("voiceOverShotSync", () => {
     ]);
   });
 
-  it("preserves line breaks from original source_text when sceneTextMap is provided", () => {
-    const sceneTextMap = new Map([
-      [
-        "scene-a",
-        "Across the Zimbabwean plateau, from Great Zimbabwe to Khami, Dhlo Dhlo, and Naletale,\nmore than 200 dry-stone complexes testify to a civilization that prospered between the 11th and 15th centuries.",
-      ],
-      ["scene-b", "Another scene begins."],
-    ]);
-    expect(buildExactShotScript(shots, sceneTextMap)).toBe(
-      [
-        "Across the Zimbabwean plateau, from Great Zimbabwe to Khami, Dhlo Dhlo, and Naletale,\nmore than 200 dry-stone complexes testify to a civilization that prospered between the 11th and 15th centuries.",
-        "Another scene begins.",
-      ].join("\n\n")
-    );
-  });
-
   it("normalizes spacing and thousand separators for strict comparison", () => {
     expect(normalizeExactSyncText("There are 2,000 stones.\n\nAnother line.")).toBe(
       "There are 2000 stones. Another line."

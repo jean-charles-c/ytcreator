@@ -164,11 +164,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     const sorted = getSortedShots();
     if (sorted.length === 0) return "";
 
-    const sceneTextMap = new Map(
-      (scenes || []).map(s => [s.id, s.source_text])
-    );
-
-    return stripThousandSeparators(buildExactShotScript(sorted, sceneTextMap));
+    return stripThousandSeparators(buildExactShotScript(sorted));
   };
 
   const handlePasteFromScript = () => {
