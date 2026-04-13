@@ -441,6 +441,72 @@ export type Database = {
           },
         ]
       }
+      scene_vo_audio: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          project_id: string
+          sample_rate: number | null
+          scene_id: string
+          scene_order: number
+          speaking_rate: number | null
+          text_hash: string | null
+          user_id: string
+          voice_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          project_id: string
+          sample_rate?: number | null
+          scene_id: string
+          scene_order: number
+          speaking_rate?: number | null
+          text_hash?: string | null
+          user_id: string
+          voice_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          project_id?: string
+          sample_rate?: number | null
+          scene_id?: string
+          scene_order?: number
+          speaking_rate?: number | null
+          text_hash?: string | null
+          user_id?: string
+          voice_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scene_vo_audio_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scene_vo_audio_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenes: {
         Row: {
           characters: string | null
