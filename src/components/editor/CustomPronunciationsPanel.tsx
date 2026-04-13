@@ -99,9 +99,11 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange, hide
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  const stripIpaSlashes = (s: string) => s.replace(/^\/+|\/+$/g, "").trim();
+
   const handleAdd = async () => {
     const phrase = newPhrase.trim();
-    const pronunciation = newPronunciation.trim();
+    const pronunciation = stripIpaSlashes(newPronunciation.trim());
     if (!phrase || !pronunciation) {
       toast.error("Remplissez le mot et sa prononciation IPA.");
       return;
@@ -145,7 +147,7 @@ export default function CustomPronunciationsPanel({ onPronunciationsChange, hide
   const handleSaveEdit = async () => {
     if (!editingId) return;
     const phrase = editPhrase.trim();
-    const pronunciation = editPronunciation.trim();
+    const pronunciation = stripIpaSlashes(editPronunciation.trim());
     if (!phrase || !pronunciation) {
       toast.error("Les deux champs sont requis.");
       return;

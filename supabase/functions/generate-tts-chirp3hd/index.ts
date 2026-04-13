@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
         .replace(/[''ʼ]/g, "'")
         .replace(/[""]/g, '"')
         .replace(/^[\s"'«»""()\[\]{}.,;:!?/\-]+|[\s"'«»""()\[\]{}.,;:!?/\-]+$/g, "");
-      const pronunciation = source.pronunciation?.trim();
+      const pronunciation = source.pronunciation?.trim().replace(/^\/+|\/+$/g, "").trim();
 
       if (!key || !phrase || !pronunciation) continue;
       if (!CHIRP_PRONUNCIATION_PHRASE_PATTERN.test(phrase)) {
@@ -264,6 +264,9 @@ Deno.serve(async (req) => {
       phoneticEncoding: "PHONETIC_ENCODING_IPA" as const,
       pronunciation: p.pronunciation,
     }));
+    if (CUSTOM_PRONUNCIATIONS.length > 0) {
+      console.log("[chirp3hd] Custom pronunciations:", JSON.stringify(CUSTOM_PRONUNCIATIONS));
+    }
 
     // ── Split by paragraphs first, then by byte-size chunks within each paragraph ──
     const paragraphs = preNormalized.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
