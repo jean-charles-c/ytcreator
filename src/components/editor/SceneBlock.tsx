@@ -340,7 +340,7 @@ export default function SceneBlock({
           )}
 
           {/* Source text */}
-          <p className="text-sm text-muted-foreground leading-relaxed mb-1">{scene.source_text}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-1 whitespace-pre-line">{scene.source_text}</p>
           {scene.source_text_fr && (
             <p className="text-sm text-muted-foreground/70 leading-relaxed mb-3 italic border-l-2 border-primary/20 pl-3">🇫🇷 {scene.source_text_fr}</p>
           )}
