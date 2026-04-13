@@ -1238,7 +1238,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                     {generating
                       ? assembling ? "Assemblage…" : "Génération..."
                       : pipelineMode === "chirp3hd"
-                        ? scenes && scenes.length > 0 ? `Générer par scène (${scenes.length})` : "Générer (Chirp 3 HD)"
+                        ? `Générer par scène (${scenes?.length ?? 0} sc.)`
                         : "Générer la voix off"}
                   </Button>
                 </div>
