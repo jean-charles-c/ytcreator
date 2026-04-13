@@ -118,6 +118,12 @@ function buildLinear16Wav(
   return output;
 }
 
+export function createSilenceWav(durationMs: number, sampleRate: number): Uint8Array {
+  const numSamples = Math.round((durationMs / 1000) * sampleRate);
+  const silencePayload = new Uint8Array(numSamples * 2);
+  return buildLinear16Wav(silencePayload, sampleRate, 1, 16);
+}
+
 export function concatLinear16Wavs(wavChunks: Uint8Array[]): { wav: Uint8Array; durationSeconds: number } {
   if (wavChunks.length === 0) {
     return { wav: buildLinear16Wav(new Uint8Array(0), 24000, 1, 16), durationSeconds: 0 };

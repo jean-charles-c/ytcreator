@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace, RefreshCw } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -61,6 +61,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [pipelineMode, setPipelineMode] = useState<"ssml" | "chirp3hd">("ssml");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [customPronunciations, setCustomPronunciations] = useState<{ phrase: string; pronunciation: string }[]>([]);
+
+  // ── Per-scene generation state ──
+  type SceneGenStatus = "pending" | "generating" | "done" | "error";
+  const [sceneStatuses, setSceneStatuses] = useState<Map<string, SceneGenStatus>>(new Map());
+  const [sceneErrors, setSceneErrors] = useState<Map<string, string>>(new Map());
+  const [assembling, setAssembling] = useState(false);
 
   // ── Quick profile selector state ──
   interface QuickProfile { id: string; profile_name: string; language_code: string; voice_gender: string; voice_name: string; style: string; speaking_rate: number; pitch: number; volume_gain_db: number; effects_profile_id: string; pause_between_paragraphs: number; pause_after_sentences: number; pause_after_comma: number; narration_profile: string; dynamic_pause_enabled: boolean; dynamic_pause_variation: number; sentence_start_boost: number; sentence_end_slow: number; }
@@ -228,6 +234,382 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     if (shotEntries.length === 0) return null;
 
     return shotEntries;
+  };
+
+  // ── Generate a single scene's audio via chirp3hd ──
+  const generateSceneAudio = async (
+    scene: { id: string; source_text: string; title: string },
+    sceneOrder: number,
+    session: { access_token: string }
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const sceneText = stripThousandSeparators(scene.source_text || "").trim();
+    if (!sceneText) return { ok: true }; // skip empty scenes
+
+    setSceneStatuses((prev) => new Map(prev).set(scene.id, "generating"));
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tts-chirp3hd`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            text: sceneText,
+            projectId,
+            sceneId: scene.id,
+            sceneOrder,
+            voiceName: settings.voiceName || undefined,
+            customFileName: customFileName.trim() || undefined,
+            speakingRate: settings.speakingRate + (STYLE_PRESETS[settings.style]?.rateOffset || 0),
+            customPronunciations: customPronunciations.length > 0 ? customPronunciations : undefined,
+            pauseBetweenParagraphs: settings.pauseBetweenParagraphs ?? 0,
+            pauseAfterSentences: settings.pauseAfterSentences ?? 0,
+            pauseAfterComma: settings.pauseAfterComma ?? 0,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData?.error || `Erreur ${response.status}`;
+        setSceneStatuses((prev) => new Map(prev).set(scene.id, "error"));
+        setSceneErrors((prev) => new Map(prev).set(scene.id, errMsg));
+        return { ok: false, error: errMsg };
+      }
+
+      await response.json();
+      setSceneStatuses((prev) => new Map(prev).set(scene.id, "done"));
+      return { ok: true };
+    } catch (e: any) {
+      const errMsg = e?.message || "Erreur réseau";
+      setSceneStatuses((prev) => new Map(prev).set(scene.id, "error"));
+      setSceneErrors((prev) => new Map(prev).set(scene.id, errMsg));
+      return { ok: false, error: errMsg };
+    }
+  };
+
+  // ── Assemble all scene audio files into final audio ──
+  const assembleSceneAudio = async (session: { access_token: string }): Promise<any | null> => {
+    setAssembling(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/assemble-scene-audio`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            projectId,
+            pauseBetweenScenes: settings.pauseBetweenParagraphs ?? 0,
+            customFileName: customFileName.trim() || undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData?.error || `Erreur ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (e: any) {
+      toast.error(`Assemblage échoué : ${e?.message || "erreur"}`);
+      return null;
+    } finally {
+      setAssembling(false);
+    }
+  };
+
+  // ── Generate all scenes then assemble ──
+  const handleGenerateAllScenes = async () => {
+    if (!scenes || scenes.length === 0 || !projectId) return;
+
+    setGenerating(true);
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session) {
+      toast.error("Vous devez être connecté.");
+      setGenerating(false);
+      return;
+    }
+
+    // Sort scenes by scene_order
+    const sortedScenes = [...scenes].sort((a, b) => {
+      const orderA = scenesForSort?.find((s) => s.id === a.id)?.scene_order ?? 0;
+      const orderB = scenesForSort?.find((s) => s.id === b.id)?.scene_order ?? 0;
+      return orderA - orderB;
+    });
+
+    // Initialize statuses
+    const initStatuses = new Map<string, SceneGenStatus>();
+    sortedScenes.forEach((s) => initStatuses.set(s.id, "pending"));
+    setSceneStatuses(initStatuses);
+    setSceneErrors(new Map());
+
+    // Generate each scene sequentially (to maintain consistent voice)
+    let allOk = true;
+    for (let i = 0; i < sortedScenes.length; i++) {
+      const scene = sortedScenes[i];
+      const sceneOrder = scenesForSort?.find((s) => s.id === scene.id)?.scene_order ?? i;
+      toast.info(`Génération scène ${i + 1}/${sortedScenes.length} : ${scene.title || "Sans titre"}…`);
+
+      const result = await generateSceneAudio(scene, sceneOrder, session);
+      if (!result.ok) {
+        allOk = false;
+        toast.error(`Scène ${i + 1} échouée : ${result.error}`);
+        break;
+      }
+    }
+
+    if (!allOk) {
+      toast.error("Génération interrompue. Corrigez les erreurs puis régénérez les scènes en échec.");
+      setGenerating(false);
+      return;
+    }
+
+    toast.success(`${sortedScenes.length} scènes générées. Assemblage en cours…`);
+
+    // Assemble
+    const assembled = await assembleSceneAudio(session);
+    if (!assembled) {
+      setGenerating(false);
+      return;
+    }
+
+    setPlayerState({
+      audioUrl: assembled.audioUrl,
+      fileName: assembled.fileName,
+      durationEstimate: assembled.durationEstimate,
+      realDuration: null,
+    });
+    setHistoryRefreshKey((k) => k + 1);
+
+    toast.success(
+      `Audio assemblé — ${assembled.fileName} • ${formatSize(assembled.fileSize)} • ~${assembled.durationEstimate.toFixed(1)}s (${assembled.sceneCount} scènes)`
+    );
+
+    // Whisper alignment + shot mapping (same as existing flow)
+    if (!freeMode) {
+      toast.info("Alignement audio en cours via Whisper…");
+      try {
+        const alignResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              audioUrl: assembled.audioUrl,
+              projectId,
+              dualPass: true,
+            }),
+          }
+        );
+
+        if (!alignResponse.ok) {
+          const alignErr = await alignResponse.json().catch(() => ({}));
+          toast.warning(`Alignement échoué : ${alignErr?.error || "erreur"}`);
+        } else {
+          const alignData = await alignResponse.json();
+
+          if (alignData.passA && alignData.passB && alignData.dualPassComparison) {
+            await supabase
+              .from("vo_audio_history")
+              .update({ whisper_words: alignData.alignmentRun.words })
+              .eq("project_id", projectId)
+              .eq("style", "chirp3hd-assembled")
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            localStorage.setItem(
+              `whisper-dual-${projectId}`,
+              JSON.stringify({
+                passA: alignData.passA,
+                passB: alignData.passB,
+                comparison: alignData.dualPassComparison,
+                timestamp: new Date().toISOString(),
+              })
+            );
+            window.dispatchEvent(new CustomEvent("whisper-dual-updated", { detail: { projectId } }));
+
+            toast.success(
+              `Alignement — ${alignData.wordCount} mots, écart moyen: ${alignData.dualPassComparison.avgDeltaMs}ms`
+            );
+          } else {
+            toast.success(`Alignement terminé — ${alignData.wordCount} mots`);
+          }
+
+          // Shot mapping
+          if (alignData.alignmentRun && shots && shots.length > 0) {
+            toast.info("Mapping des timecodes vers les shots…");
+            const sortedShots = getSortedShots();
+            const shotSources = sortedShots.map((s) => ({
+              shotId: s.id,
+              text: getShotFragmentText(s),
+            })).filter((s) => s.text.length > 0);
+
+            const { data: latestAudio } = await supabase
+              .from("vo_audio_history")
+              .select("id")
+              .eq("project_id", projectId)
+              .eq("style", "chirp3hd-assembled")
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            const mapResponse = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chirp-shot-mapping`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  alignmentRun: alignData.alignmentRun,
+                  shots: shotSources,
+                  projectId,
+                  audioHistoryId: latestAudio?.[0]?.id,
+                }),
+              }
+            );
+
+            if (!mapResponse.ok) {
+              const mapErr = await mapResponse.json().catch(() => ({}));
+              toast.warning(`Mapping shots échoué : ${mapErr?.error || "erreur"}`);
+            } else {
+              const mapData = await mapResponse.json();
+              const exactShots = mapData.shotTimelines?.filter((s: any) => s.status === "exact").length ?? 0;
+              const total = mapData.shotTimelines?.length ?? 0;
+              if (exactShots === total) {
+                toast.success(`Mapping parfait — ${exactShots}/${total} shots calés.`);
+              } else {
+                toast.warning(`Mapping partiel — ${exactShots}/${total} shots calés précisément.`);
+              }
+              setHistoryRefreshKey((k) => k + 1);
+            }
+          }
+        }
+      } catch (alignErr: any) {
+        toast.warning("Alignement Whisper échoué.");
+      }
+    }
+
+    setGenerating(false);
+  };
+
+  // ── Regenerate a single scene then reassemble ──
+  const handleRegenerateScene = async (sceneId: string) => {
+    if (!scenes || !projectId) return;
+    const scene = scenes.find((s) => s.id === sceneId);
+    if (!scene) return;
+
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session) {
+      toast.error("Vous devez être connecté.");
+      return;
+    }
+
+    const sceneOrder = scenesForSort?.find((s) => s.id === sceneId)?.scene_order ?? 0;
+    setGenerating(true);
+
+    toast.info(`Régénération scène "${scene.title || "Sans titre"}"…`);
+    const result = await generateSceneAudio(scene, sceneOrder, session);
+
+    if (!result.ok) {
+      toast.error(`Régénération échouée : ${result.error}`);
+      setGenerating(false);
+      return;
+    }
+
+    toast.success("Scène régénérée. Réassemblage…");
+    const assembled = await assembleSceneAudio(session);
+    if (!assembled) {
+      setGenerating(false);
+      return;
+    }
+
+    setPlayerState({
+      audioUrl: assembled.audioUrl,
+      fileName: assembled.fileName,
+      durationEstimate: assembled.durationEstimate,
+      realDuration: null,
+    });
+    setHistoryRefreshKey((k) => k + 1);
+    toast.success(`Audio réassemblé — ${assembled.durationEstimate.toFixed(1)}s`);
+
+    // Re-run whisper + shot mapping
+    if (!freeMode && shots && shots.length > 0) {
+      toast.info("Réalignement Whisper…");
+      try {
+        const alignResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ audioUrl: assembled.audioUrl, projectId, dualPass: true }),
+          }
+        );
+
+        if (alignResponse.ok) {
+          const alignData = await alignResponse.json();
+
+          if (alignData.alignmentRun) {
+            const sortedShots = getSortedShots();
+            const shotSources = sortedShots.map((s) => ({
+              shotId: s.id,
+              text: getShotFragmentText(s),
+            })).filter((s) => s.text.length > 0);
+
+            const { data: latestAudio } = await supabase
+              .from("vo_audio_history")
+              .select("id")
+              .eq("project_id", projectId)
+              .eq("style", "chirp3hd-assembled")
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chirp-shot-mapping`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  alignmentRun: alignData.alignmentRun,
+                  shots: shotSources,
+                  projectId,
+                  audioHistoryId: latestAudio?.[0]?.id,
+                }),
+              }
+            );
+          }
+
+          toast.success("Réalignement terminé.");
+          setHistoryRefreshKey((k) => k + 1);
+        }
+      } catch {
+        toast.warning("Réalignement Whisper échoué.");
+      }
+    }
+
+    setGenerating(false);
   };
 
   const handleGenerate = async () => {
@@ -848,15 +1230,15 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   />
                   <Button
                     variant="hero"
-                    disabled={!voScript.trim() || generating}
+                    disabled={!voScript.trim() || generating || assembling}
                     className="min-h-[48px] sm:min-h-[44px] gap-2 w-full sm:w-auto shrink-0"
-                    onClick={handleGenerate}
+                    onClick={pipelineMode === "chirp3hd" && scenes && scenes.length > 0 ? handleGenerateAllScenes : handleGenerate}
                   >
-                    {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                    {generating || assembling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                     {generating
-                      ? "Génération..."
+                      ? assembling ? "Assemblage…" : "Génération..."
                       : pipelineMode === "chirp3hd"
-                        ? "Générer (Chirp 3 HD)"
+                        ? scenes && scenes.length > 0 ? `Générer par scène (${scenes.length})` : "Générer (Chirp 3 HD)"
                         : "Générer la voix off"}
                   </Button>
                 </div>
@@ -951,6 +1333,65 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                     {voScript.length.toLocaleString()} caractères
                   </span>
                 </div>
+
+                {/* Per-scene generation status */}
+                {pipelineMode === "chirp3hd" && scenes && scenes.length > 0 && sceneStatuses.size > 0 && (
+                  <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
+                      <AudioLines className="h-3.5 w-3.5 text-primary" />
+                      Statut par scène
+                    </h4>
+                    <div className="space-y-1.5">
+                      {[...scenes]
+                        .sort((a, b) => {
+                          const oA = scenesForSort?.find((s) => s.id === a.id)?.scene_order ?? 0;
+                          const oB = scenesForSort?.find((s) => s.id === b.id)?.scene_order ?? 0;
+                          return oA - oB;
+                        })
+                        .map((scene, idx) => {
+                          const status = sceneStatuses.get(scene.id) || "pending";
+                          const error = sceneErrors.get(scene.id);
+                          return (
+                            <div key={scene.id} className="flex items-center gap-2 text-xs">
+                              <span className="w-5 text-muted-foreground text-right">{idx + 1}.</span>
+                              {status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                              {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                              {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
+                              {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
+                              <span className={`flex-1 truncate ${status === "error" ? "text-destructive" : "text-foreground"}`}>
+                                {scene.title || "Sans titre"}
+                              </span>
+                              {error && <span className="text-[10px] text-destructive truncate max-w-[200px]">{error}</span>}
+                              {status === "done" && !generating && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => handleRegenerateScene(scene.id)}
+                                  disabled={generating || assembling}
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                  Régénérer
+                                </Button>
+                              )}
+                              {status === "error" && !generating && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1 text-destructive"
+                                  onClick={() => handleRegenerateScene(scene.id)}
+                                  disabled={generating || assembling}
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                  Réessayer
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Bottom row under script: Test rapide | Player + History — 2 columns */}

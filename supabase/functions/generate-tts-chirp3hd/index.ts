@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { concatLinear16Wavs, parseLinear16WavFormat } from "../_shared/linear16-wav.ts";
+import { concatLinear16Wavs, parseLinear16WavFormat, createSilenceWav } from "../_shared/linear16-wav.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { text, projectId, voiceName, customFileName, speakingRate, pitch, customPronunciations: userPronunciations, pauseBetweenParagraphs, pauseAfterSentences, pauseAfterComma } = body as {
+    const { text, projectId, voiceName, customFileName, speakingRate, pitch, customPronunciations: userPronunciations, pauseBetweenParagraphs, pauseAfterSentences, pauseAfterComma, sceneId, sceneOrder } = body as {
       text?: string;
       projectId?: string;
       voiceName?: string;
@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
       pauseBetweenParagraphs?: number;
       pauseAfterSentences?: number;
       pauseAfterComma?: number;
+      sceneId?: string;
+      sceneOrder?: number;
     };
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -412,34 +414,6 @@ Deno.serve(async (req) => {
     }
 
     // ── Assemble WAVs with silence between paragraphs ──
-    function createSilenceWav(durationMs: number, sampleRate: number): Uint8Array {
-      const numSamples = Math.round((durationMs / 1000) * sampleRate);
-      // 16-bit mono silence = zero bytes
-      const silencePayload = new Uint8Array(numSamples * 2);
-      // Build a minimal WAV
-      const header = new Uint8Array(44);
-      const byteRate = sampleRate * 2;
-      // RIFF header
-      const dv = new DataView(header.buffer);
-      header.set([0x52, 0x49, 0x46, 0x46], 0); // "RIFF"
-      dv.setUint32(4, 36 + silencePayload.length, true);
-      header.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
-      header.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
-      dv.setUint32(16, 16, true);
-      dv.setUint16(20, 1, true); // PCM
-      dv.setUint16(22, 1, true); // mono
-      dv.setUint32(24, sampleRate, true);
-      dv.setUint32(28, byteRate, true);
-      dv.setUint16(32, 2, true); // block align
-      dv.setUint16(34, 16, true); // bits per sample
-      header.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
-      dv.setUint32(40, silencePayload.length, true);
-      const wav = new Uint8Array(44 + silencePayload.length);
-      wav.set(header, 0);
-      wav.set(silencePayload, 44);
-      return wav;
-    }
-
     // Build final WAV array with silence injected between paragraph boundaries
     const finalWavParts: Uint8Array[] = [];
     let sampleRateForSilence = 24000; // will be updated from first chunk
@@ -469,7 +443,10 @@ Deno.serve(async (req) => {
       ? customFileName.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
       : "chirp3hd";
     const fileName = `${safeName}_${timestamp}.wav`;
-    const storagePath = `${user.id}/${projectId}/${fileName}`;
+    // Per-scene mode: store in scenes/ subfolder
+    const storagePath = sceneId
+      ? `${user.id}/${projectId}/scenes/${sceneId}_${timestamp}.wav`
+      : `${user.id}/${projectId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("vo-audio")
@@ -487,28 +464,59 @@ Deno.serve(async (req) => {
       data: { publicUrl },
     } = supabase.storage.from("vo-audio").getPublicUrl(storagePath);
 
-    const { error: insertError } = await supabase.from("vo_audio_history").insert({
-      project_id: projectId,
-      user_id: user.id,
-      file_name: fileName,
-      file_path: storagePath,
-      file_size: fileSize,
-      duration_estimate: durationEstimate,
-      language_code: languageCode,
-      voice_gender: resolvedVoice.toLowerCase().includes("féminin") ? "FEMALE" : "MALE",
-      speaking_rate: null,
-      style: "chirp3hd",
-      text_length: text.length,
-      shot_timepoints: null,
-    });
+    // Per-scene mode: upsert into scene_vo_audio instead of vo_audio_history
+    if (sceneId) {
+      const textHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(
+        (buf) => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("")
+      );
 
-    if (insertError) {
-      console.error("[chirp3hd] DB insert error:", insertError);
+      const { error: upsertError } = await supabase.from("scene_vo_audio").upsert({
+        project_id: projectId,
+        scene_id: sceneId,
+        user_id: user.id,
+        file_name: fileName,
+        file_path: storagePath,
+        file_size: fileSize,
+        duration_seconds: durationEstimate,
+        sample_rate: sampleRateForSilence,
+        scene_order: sceneOrder ?? 0,
+        voice_name: resolvedVoice,
+        speaking_rate: speakingRate ?? null,
+        text_hash: textHash,
+      }, { onConflict: "project_id,scene_id" });
+
+      if (upsertError) {
+        console.error("[chirp3hd] scene_vo_audio upsert error:", upsertError);
+      }
+
+      console.log(
+        `[chirp3hd] Scene ${sceneOrder ?? "?"} success: ${fileName}, ${fileSize} bytes WAV, ${durationEstimate.toFixed(3)}s`
+      );
+    } else {
+      // Legacy full-script mode
+      const { error: insertError } = await supabase.from("vo_audio_history").insert({
+        project_id: projectId,
+        user_id: user.id,
+        file_name: fileName,
+        file_path: storagePath,
+        file_size: fileSize,
+        duration_estimate: durationEstimate,
+        language_code: languageCode,
+        voice_gender: resolvedVoice.toLowerCase().includes("féminin") ? "FEMALE" : "MALE",
+        speaking_rate: null,
+        style: "chirp3hd",
+        text_length: text.length,
+        shot_timepoints: null,
+      });
+
+      if (insertError) {
+        console.error("[chirp3hd] DB insert error:", insertError);
+      }
+
+      console.log(
+        `[chirp3hd] Success: ${fileName}, ${fileSize} bytes WAV, ${durationEstimate.toFixed(3)}s`
+      );
     }
-
-    console.log(
-      `[chirp3hd] Success: ${fileName}, ${fileSize} bytes WAV, ${durationEstimate.toFixed(3)}s`
-    );
 
     return jsonResponse({
       audioUrl: publicUrl,
@@ -519,6 +527,7 @@ Deno.serve(async (req) => {
       pipeline: "chirp3hd",
       chunks: allChunks.length,
       audioFormat: "wav",
+      ...(sceneId ? { sceneId, sceneOrder } : {}),
     });
   } catch (err) {
     console.error("[chirp3hd] Unexpected error:", err);
