@@ -842,6 +842,48 @@ ${cadenceSection}
 
 ---
 
+## NARRATOR CONSISTENCY — HARD RULE
+
+This script uses DOCUMENTARY DISTANT mode by default.
+This means. NO first-person narrator.
+
+BANNED phrases (search and destroy before output):
+- "I found", "I read", "I verified", "I crossed"
+- "Je les ai croisés", "Je l'ai vu", "Je comprends"
+- "I refuse to simplify", "Je refuse la simplification"
+- "I pose this question as a professional"
+- Any sentence starting with "Je " or "J'ai " or "I "
+
+If first-person appears in the source material or dossier, PARAPHRASE it in third person or attribute it to a source.
+BAD. "I saw this in every expertise room."
+GOOD. "Every expertise room tells the same story."
+GOOD. "Experts who worked these cases describe the same pattern."
+
+EXCEPTION. If the chosen StyleAdapter explicitly calls for a first-person narrator (e.g., "opinion", "interview"), then first person must appear consistently from HOOK through CONCLUSION, never just in one section.
+
+---
+
+## VISUAL ILLUSTRABILITY PASS — MANDATORY
+
+Every sentence in this script will be used to generate an AI image prompt. Before finalizing each section, apply this test to every sentence.
+
+TEST. "Can an image generator produce a concrete visual from this sentence?"
+- If YES, keep it
+- If NO, rewrite with a concrete anchor (place, object, gesture, person, action) or delete it
+
+SENTENCES THAT ALWAYS FAIL THIS TEST:
+- Metaphorical abstractions. "The frame collapses", "Value migrates toward competencies", "The narrative fabric unravels"
+- Meta-commentary. "At this point, the picture seems clear", "Three counterpoints force us to reconsider"
+- Editorial comments. "This is different. And far more formidable.", "Uncomfortable paradox. Verifiable finding."
+- Pure narrative connectors standing alone. "And that's where things get interesting"
+
+REWRITE PATTERNS:
+Instead of "The frame collapses" → "Group B cars disappear from circuits"
+Instead of "Value migrates toward competencies" → "Engineers who worked on this project find the same problems on the next program"
+Instead of "Uncomfortable paradox" → "A copy that preserves the original, the history of the 356 is full of these reversals"
+
+---
+
 ## PLANNING PHASE (mandatory, internal)
 
 Before writing narration, output an internal plan inside <plan>...</plan> tags (these will be stripped from the final output). Your plan must include:
@@ -930,19 +972,25 @@ Transition from the abstract hook to CONCRETE reality. The viewer needs orientat
 
 The context must be HIERARCHIZED — most important framing first, supporting details second. Do NOT deliver an encyclopedic overview. Select only what the viewer needs to understand the story ahead.
 
-STRICT RULE — NEVER ANNOUNCE THE SCRIPT'S CONTENT:
-The CONTEXT grounds the viewer in the WORLD of the subject. It must NOT preview, summarize, or enumerate what the script will cover. After reading this section, the viewer should know WHERE they are, not WHAT is coming. Building anticipation about what's next is the job of [[PROMISE]] — never CONTEXT.
+STRICT RULE — CONTEXT CONTENT FILTER:
+After writing the CONTEXT, the model MUST apply this test to every sentence.
+"Will this information be developed in ACT1, ACT2, or ACT2B?"
+If YES, delete it from CONTEXT. It belongs to the act where it has causal context.
 
-Anti-patterns (NEVER do):
-- "Dans cette vidéo, nous allons voir / examiner / découvrir…" — meta roadmap, kills suspense.
-- "We will explore X, then Y, then Z." — enumeration of upcoming topics.
-- "Cette histoire va nous mener de A à B en passant par C." — preview of the narrative arc.
-- Naming the key discovery, twist, or conclusion the script will reveal.
-- Listing the themes, chapters, or questions the script will address.
-- Any first-person-plural construction ("nous verrons", "on va comprendre", "we'll find out", "on découvrira").
-- Mentioning characters, events, or concepts that only belong to ACT1/ACT2/CLIMAX.
+The CONTEXT contains ONLY:
+- The era, location, and economic/political pressure
+- The central character or institution
+- The founding tension (the problem that generates the story)
+- A closing question that pulls toward the PROMISE
 
-End the context by implicitly raising a question the viewer now wants answered — WITHOUT naming the answer, the topics to come, or the script's structure.
+The CONTEXT NEVER contains:
+- Technical specifications (engine, transmission, materials)
+- Names of documents, archives, or sources
+- Revelations or angles developed in later acts
+- The thesis or conclusion
+- Any information that requires the acts to make sense
+
+Maximum length. 10 lines.
 
 ### [[PROMISE]] — The Curiosity Contract (~5%)
 
@@ -954,8 +1002,35 @@ STRICT RULES:
 - Never name what will be revealed. Sell the atmosphere, not the revelation.
 - ONE element only. No lists, no "we will discover that", no roadmap.
 - Choose ONE register: investigation, emotion, or rupture. Never mix.
-- End on an incomplete sentence — a door ajar, not a door wide open.
+- End on an incomplete sentence, a door ajar, not a door wide open.
 - Do NOT repeat the context. Do NOT summarize the video.
+
+HARD PROHIBITION — PROMISE SOURCE LISTING:
+The PROMISE must NEVER contain:
+- A list of sources, archives, documents, or references
+- Named experts, institutions, or publications
+- Specific revelations that will appear in the acts
+- First-person claims ("I found", "I read", "I verified")
+- Enumeration of topics that will be covered
+
+SELF-CHECK before writing PROMISE:
+"Does this sentence name something the viewer will discover in the acts?"
+If YES, delete or replace with an atmospheric equivalent.
+
+PROMISE target structure (4-6 lines max):
+Line 1-2. The act of investigation (gesture, not content)
+Line 3-4. The promise of rupture (what will change, not what it is)
+Line 5-6. An incomplete sentence that opens, not reveals
+
+EXAMPLE OF WHAT NOT TO WRITE:
+BAD. "We cross-referenced CHP reports, Barris registries, SCCA programs, metallographic analyses..."
+BAD. "You will discover why the single mirror was not a designer's choice..."
+
+EXAMPLE OF WHAT TO WRITE:
+GOOD. "Behind the reputation, there are files that brochures never open.
+We followed them.
+What they say, nobody mentions in the official story.
+And it changes how you look at the car."
 
 ### [[ACT1]] — Dynamic Foundations (~15%)
 
@@ -1079,6 +1154,28 @@ Anti-patterns:
 - Repeating the climax in different words — the insight must ADD a new layer of meaning.
 - An insight disconnected from the narrative — if it doesn't flow from ACT1-CLIMAX, it feels pasted on.
 
+INSIGHT — STRICT CONSTRAINTS:
+
+Maximum. 3-4 lines.
+
+The INSIGHT must NOT:
+- Paraphrase or summarize the CLIMAX thesis
+- Tell the viewer what to do or think (no "next time you...", no "you should...", no "remember to...")
+- Use consulting or academic register ("In an industry constrained by...", "The paradigm reveals that...")
+- List elements already presented
+
+The INSIGHT MUST:
+- Elevate the subject to something universal beyond the specific topic
+- End with an open sentence, not a closed conclusion
+- Sound contemplative, not prescriptive
+- Leave the viewer to make the final connection themselves
+
+SELF-CHECK.
+"Does this INSIGHT say something the viewer hasn't already understood from the CLIMAX?"
+If NO, rewrite from scratch.
+"Does it tell the viewer what to do?"
+If YES, remove the directive and replace with an observation.
+
 ### [[CONCLUSION]] — The Resonant Closing Image (~4%)
 
 The CONCLUSION is the LAST THING the viewer hears. It must linger.
@@ -1097,6 +1194,27 @@ Anti-patterns:
 - A generic philosophical closing ("And so the mystery of humanity continues…") — too vague.
 - A call to action or channel plug — this is narration, not a YouTube outro.
 - An abrupt stop without any resonance — the viewer should feel the ending was crafted, not that you ran out of things to say.
+
+CONCLUSION — STRICT CONSTRAINTS:
+
+The CONCLUSION must:
+- Return to the image, place, or object from the HOOK (close the circle)
+- Stay in the concrete. an object, a sound, a light, a gesture
+- End with a short, open sentence, not a question addressed to the viewer
+
+The CONCLUSION must NOT:
+- Ask the viewer a direct question ("What part of your default life are you leaving behind tonight?")
+- Summarize what was just seen
+- Give advice or instructions
+- End with an abstract formulation
+
+BANNED CONCLUSION ENDINGS:
+- Any sentence ending with "?" addressed to the viewer
+- "Now you know the truth beneath the legend"
+- "And that changes everything"
+- Any call to action
+
+TARGET. The last sentence should be 5-10 words, sensory, and leave a trace without closing the thought completely.
 
 ---
 
@@ -1261,6 +1379,31 @@ Redundancy is the primary enemy of narrative momentum. Enforce these rules:
 
 5. **CROSS-SCRIPT DEDUP**: No sentence in the script should express the same idea as another sentence elsewhere. Each sentence must advance understanding — if removing it loses nothing, it shouldn't exist.
 
+#### C-BIS. ANTI-REDUNDANCY CONTRACTS — MANDATORY AUDIT
+
+Before finalizing the script, run this audit.
+
+CONTRACT 1 — Each piece of information appears exactly once.
+If a fact, technical detail, or revelation appears in the CONTEXT, it cannot reappear in ACT1 or ACT2.
+If it's in ACT2, it cannot be re-listed in the CLIMAX.
+
+CONTRACT 2 — The CLIMAX does not recap.
+The CLIMAX resolves. It does not re-list what was presented in ACT2. The viewer just heard it. The CLIMAX draws the conclusion, not the inventory.
+
+CONTRACT 3 — Repeated key words.
+If a strong image word (e.g., "mirror", "scar", "shadow") appears more than twice, two occurrences must be removed or replaced. Intentional echo (HOOK→CONCLUSION) = maximum 2 occurrences total.
+
+CONTRACT 4 — The INSIGHT does not restate the CLIMAX.
+The CLIMAX closes the specific story.
+The INSIGHT opens toward the universal.
+They must not say the same thing with different words.
+
+SELF-CHECK SEQUENCE (run in this order):
+1. Read CONTEXT → does it contain anything from ACT1/ACT2? Delete if yes.
+2. Read CLIMAX → does it list elements from ACT2? Delete the list, keep only the resolution.
+3. Read INSIGHT → could it be a sentence from CLIMAX with synonyms? Rewrite if yes.
+4. Search for the 5 most frequent non-trivial words → if any appears 4+ times, reduce.
+
 #### D. PROGRESSIVE ENGAGEMENT CURVE
 
 The script must follow this emotional/intellectual trajectory:
@@ -1300,6 +1443,26 @@ Insert a short transition that relaunches curiosity. Adapt to ${langLabel}.
 ---
 
 ## SCRIPT QUALITY AUDIT (ScriptQualityAudit) — MANDATORY GUARDRAILS
+
+### CATEGORY 0: AI VOICE RHYTHM — CRITICAL
+
+This script will be read by an AI voice-over (no natural intonation). Rhythm must be carried ENTIRELY by sentence length variation.
+
+HARD RULE. Never more than 2 consecutive sentences of similar length (±15 characters).
+
+SENTENCE LENGTH CATEGORIES:
+- Short. 15–40 characters → creates impact and pause
+- Medium. 41–90 characters → carries information
+- Long. 91–130 characters → creates flow and development
+
+REQUIRED PATTERN. Short and long sentences must alternate. No section can contain 3+ consecutive sentences in the same length category.
+
+SELF-CHECK. After writing each paragraph, count the words in each sentence. If 3 sentences in a row have similar word counts → restructure before continuing.
+
+COMMON VIOLATIONS TO AVOID:
+BAD. "Not a defect. Not an intention. Not an accident." (three shorts)
+BAD. Three consecutive 8-word sentences
+GOOD. "She calls. She says sorry. She says I love you, speaking in her own language for the first time in years."
 
 ### CATEGORY 1: AI WRITING TICS (hard ban)
 
