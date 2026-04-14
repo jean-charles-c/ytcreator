@@ -1,12 +1,6 @@
 
 
-## Plan: Redeploy generate-shot-image
+## Plan: Redeploy generate-script edge function
 
-The repo code at line 381 contains the `DETAILED VISUAL DESCRIPTION` merge logic, but the deployed version likely doesn't have it — recent logs show no evidence of the merge path being hit.
-
-### Steps
-
-1. **Redeploy `generate-shot-image`** to push the current codebase (with the description merge logic) to production.
-
-No code changes needed.
+Single step: deploy `generate-script` using the edge function deployment tool. The diff shows the added STRICT RULE block in the CONTEXT section prompt — no schema or other file changes needed.
 
