@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace, RefreshCw } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace, RefreshCw, Download } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -67,6 +67,53 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [sceneStatuses, setSceneStatuses] = useState<Map<string, SceneGenStatus>>(new Map());
   const [sceneErrors, setSceneErrors] = useState<Map<string, string>>(new Map());
   const [assembling, setAssembling] = useState(false);
+
+  // ── Per-scene audio data (persisted in DB) ──
+  interface SceneAudioInfo {
+    filePath: string;
+    fileName: string;
+    durationSeconds: number;
+    createdAt: string;
+  }
+  const [sceneAudioMap, setSceneAudioMap] = useState<Map<string, SceneAudioInfo>>(new Map());
+
+  // Load existing scene audio from DB on mount / projectId change
+  useEffect(() => {
+    if (!projectId || !scenes || scenes.length === 0) {
+      setSceneAudioMap(new Map());
+      return;
+    }
+    let cancelled = false;
+
+    const loadSceneAudio = async () => {
+      const { data, error } = await supabase
+        .from("scene_vo_audio")
+        .select("scene_id, file_path, file_name, duration_seconds, created_at")
+        .eq("project_id", projectId);
+
+      if (cancelled || error || !data) return;
+
+      const audioMap = new Map<string, SceneAudioInfo>();
+      const statusMap = new Map<string, SceneGenStatus>();
+      for (const row of data) {
+        audioMap.set(row.scene_id, {
+          filePath: row.file_path,
+          fileName: row.file_name,
+          durationSeconds: row.duration_seconds ?? 0,
+          createdAt: row.created_at,
+        });
+        statusMap.set(row.scene_id, "done");
+      }
+      setSceneAudioMap(audioMap);
+      // Only set statuses if not currently generating
+      if (!generating) {
+        setSceneStatuses(statusMap);
+      }
+    };
+
+    loadSceneAudio();
+    return () => { cancelled = true; };
+  }, [projectId, scenes, historyRefreshKey]);
 
   // ── Quick profile selector state ──
   interface QuickProfile { id: string; profile_name: string; language_code: string; voice_gender: string; voice_name: string; style: string; speaking_rate: number; pitch: number; volume_gain_db: number; effects_profile_id: string; pause_between_paragraphs: number; pause_after_sentences: number; pause_after_comma: number; narration_profile: string; dynamic_pause_enabled: boolean; dynamic_pause_variation: number; sentence_start_boost: number; sentence_end_slow: number; }
@@ -1334,12 +1381,17 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                   </span>
                 </div>
 
-                {/* Per-scene generation status */}
-                {pipelineMode === "chirp3hd" && scenes && scenes.length > 0 && sceneStatuses.size > 0 && (
+                {/* Per-scene generation status — visible when audio exists OR generation in progress */}
+                {pipelineMode === "chirp3hd" && scenes && scenes.length > 0 && (sceneStatuses.size > 0 || sceneAudioMap.size > 0) && (
                   <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                     <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
                       <AudioLines className="h-3.5 w-3.5 text-primary" />
-                      Statut par scène
+                      Audio par scène
+                      {sceneAudioMap.size > 0 && (
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          ({sceneAudioMap.size}/{scenes.length} scènes)
+                        </span>
+                      )}
                     </h4>
                     <div className="space-y-1.5">
                       {[...scenes]
@@ -1349,8 +1401,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                           return oA - oB;
                         })
                         .map((scene, idx) => {
-                          const status = sceneStatuses.get(scene.id) || "pending";
+                          const status = sceneStatuses.get(scene.id) || (sceneAudioMap.has(scene.id) ? "done" : undefined);
                           const error = sceneErrors.get(scene.id);
+                          const audioInfo = sceneAudioMap.get(scene.id);
+                          if (!status && !audioInfo) return null;
                           return (
                             <div key={scene.id} className="flex items-center gap-2 text-xs">
                               <span className="w-5 text-muted-foreground text-right">{idx + 1}.</span>
@@ -1361,7 +1415,31 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                               <span className={`flex-1 truncate ${status === "error" ? "text-destructive" : "text-foreground"}`}>
                                 {scene.title || "Sans titre"}
                               </span>
+                              {audioInfo && (
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                  {audioInfo.durationSeconds > 0 ? `${audioInfo.durationSeconds.toFixed(1)}s` : ""}
+                                </span>
+                              )}
                               {error && <span className="text-[10px] text-destructive truncate max-w-[200px]">{error}</span>}
+                              {/* Download button */}
+                              {audioInfo && !generating && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  title={`Télécharger ${audioInfo.fileName}`}
+                                  onClick={() => {
+                                    const { data: { publicUrl } } = supabase.storage.from("vo-audio").getPublicUrl(audioInfo.filePath);
+                                    const a = document.createElement("a");
+                                    a.href = publicUrl;
+                                    a.download = audioInfo.fileName;
+                                    a.click();
+                                  }}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {/* Regenerate button */}
                               {status === "done" && !generating && (
                                 <Button
                                   variant="ghost"
