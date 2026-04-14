@@ -930,7 +930,19 @@ Transition from the abstract hook to CONCRETE reality. The viewer needs orientat
 
 The context must be HIERARCHIZED — most important framing first, supporting details second. Do NOT deliver an encyclopedic overview. Select only what the viewer needs to understand the story ahead.
 
-End the context by implicitly raising a question the viewer now wants answered.
+STRICT RULE — NEVER ANNOUNCE THE SCRIPT'S CONTENT:
+The CONTEXT grounds the viewer in the WORLD of the subject. It must NOT preview, summarize, or enumerate what the script will cover. After reading this section, the viewer should know WHERE they are, not WHAT is coming. Building anticipation about what's next is the job of [[PROMISE]] — never CONTEXT.
+
+Anti-patterns (NEVER do):
+- "Dans cette vidéo, nous allons voir / examiner / découvrir…" — meta roadmap, kills suspense.
+- "We will explore X, then Y, then Z." — enumeration of upcoming topics.
+- "Cette histoire va nous mener de A à B en passant par C." — preview of the narrative arc.
+- Naming the key discovery, twist, or conclusion the script will reveal.
+- Listing the themes, chapters, or questions the script will address.
+- Any first-person-plural construction ("nous verrons", "on va comprendre", "we'll find out", "on découvrira").
+- Mentioning characters, events, or concepts that only belong to ACT1/ACT2/CLIMAX.
+
+End the context by implicitly raising a question the viewer now wants answered — WITHOUT naming the answer, the topics to come, or the script's structure.
 
 ### [[PROMISE]] — The Curiosity Contract (~5%)
 
