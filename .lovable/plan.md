@@ -1,6 +1,17 @@
 
 
-## Plan: Redeploy generate-script edge function
+## Plan : Redéploiement de generate-script et humanize-script
 
-Single step: deploy `generate-script` using the edge function deployment tool. The diff shows the added STRICT RULE block in the CONTEXT section prompt — no schema or other file changes needed.
+**Action unique** : Déployer les deux Edge Functions depuis la branche `main` de GitHub.
+
+```
+supabase--deploy_edge_functions(["generate-script", "humanize-script"])
+```
+
+**Vérifications incluses** :
+- Synchronisation avec le code le plus récent sur GitHub
+- Pas de modification locale de fichiers
+- Pas de changement de schéma base de données
+
+**Résultat attendu** : Les deux fonctions seront mises à jour en production avec leur dernière version GitHub.
 
