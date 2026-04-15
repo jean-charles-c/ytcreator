@@ -2,6 +2,17 @@
 
 Post-generation correction passes triggered by validation checks in `script-validation-spec.md`.
 
+## Priority order (run in this sequence — fix at first failure)
+
+1. **Truncated words** (7.23) — if the generation was cut mid-stream, nothing else matters; rewrite the affected sentence first.
+2. **CTA vocabulary containment** (7.18) — any CTA word outside END_SCREEN must be stripped before any other correction.
+3. **First-person narrator** (7.11) — rewrite every core block to third person / impersonal.
+4. **HOOK closure** (7.20) — every HOOK tension must be explicitly resolved in CLIMAX.
+5. **CLIMAX min length** (7.19) — CLIMAX must contain ≥ 6 sentences.
+6. **Paragraph labels / list structure** (7.12, 7.16) — delete labels and rewrite paragraph openings.
+7. **Rhythm** — break any run of 3+ similar-length sentences.
+8. **Spoken test** — rewrite anything that sounds like Wikipedia or an essay.
+
 ## 2. PARAGRAPH LABEL REMOVAL
 
 **Trigger**: Validation check 7.16 (also 7.12 when pillar/list structure is detected)
@@ -215,4 +226,84 @@ REWRITE RULES:
 - Write in {langLabel}.
 
 Output ONLY the rewritten section. No tags, no explanation.
+```
+
+## 9. CLIMAX DEVELOPMENT
+
+**Trigger**: Validation checks 7.19 (min length), 7.20 (HOOK closure)
+
+**Scope**: Expand CLIMAX to at least 6 sentences AND ensure every HOOK element is explicitly resolved.
+**Rule**: CLIMAX resolves the HOOK contract. No inventory of ACT2. No recap. Pure resolution.
+
+### Correction prompt template
+
+```
+You are repairing the [[CLIMAX]] block of a documentary script.
+
+The current CLIMAX is incomplete. It either is too short (< 6 sentences)
+or it fails to explicitly resolve every tension opened in [[HOOK]].
+
+CURRENT [[HOOK]]:
+{hook_text}
+
+HOOK ELEMENTS THAT MUST BE RESOLVED (list):
+{list_of_hook_tensions_and_images}
+
+CURRENT [[CLIMAX]]:
+{climax_text}
+
+REWRITE RULES:
+- Output MUST contain at least 6 full sentences.
+- Every item in the HOOK elements list above must have an explicit resolution.
+- Return to the concrete image/object/place of the HOOK with new meaning.
+- Do NOT list or inventory facts from ACT2/ACT2B/ACT3.
+- Do NOT recap. The CLIMAX draws ONE conclusion from the accumulated evidence.
+- Do NOT invent new facts. Use only material already present in the script.
+- Target 6–10 sentences of concentrated resolution.
+- Write in {langLabel}.
+
+Output ONLY the rewritten CLIMAX body. No tags, no explanation.
+```
+
+## 10. INSIGHT DEVELOPMENT
+
+**Trigger**: Validation check 7.21 (min length)
+
+**Scope**: Expand INSIGHT to 3–4 sentences with S1 universal / S2 demonstration / S3 implication structure.
+**Rule**: INSIGHT is contemplative observation, never directive. No viewer-addressed questions.
+
+### Correction prompt template
+
+```
+You are repairing the [[INSIGHT]] block of a documentary script.
+
+The current INSIGHT is too short or too shallow to carry the required
+three-beat structure.
+
+CURRENT [[CLIMAX]] (do not repeat):
+{climax_text}
+
+CURRENT [[INSIGHT]]:
+{insight_text}
+
+STRUCTURE TO PRODUCE:
+- S1. Universal framing — elevate the specific subject to something bigger.
+- S2. Demonstration — connect that universal back to the concrete material
+  of the script, without re-listing facts.
+- S3. Implication — what stays true after the film ends. Observation only,
+  never a directive.
+- S4 (optional). A short sensory close echoing the concrete world of the
+  script.
+
+REWRITE RULES:
+- Output MUST contain 3 or 4 sentences.
+- NO question mark. No sentence ending with "?".
+- NO directive ("next time you…", "remember that…", "you should…").
+- NO paraphrase of the CLIMAX thesis.
+- NO academic abstractions ("l'organe qui écrit", "le pouvoir symbolique",
+  "les structures narratives", "la force des récits").
+- Do NOT invent new facts.
+- Write in {langLabel}.
+
+Output ONLY the rewritten INSIGHT body. No tags, no explanation.
 ```

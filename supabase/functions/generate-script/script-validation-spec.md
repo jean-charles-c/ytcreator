@@ -152,6 +152,36 @@ This document defines validation checks for scripts produced by `generate-script
 - **Detection**: Character count, sentence split on `[.!?]`, regex for subscription and comment vocabulary, `?` count.
 - **Feedback**: "END_SCREEN must be 3-4 conversational sentences containing a subscription CTA, a comment invitation (exactly one `?`), and optionally a next-episode tease."
 
+### 7.19 CLIMAX MIN LENGTH
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: CLIMAX contains fewer than 6 sentences
+- **Detection**: Split CLIMAX body on `[.!?]` followed by whitespace or end of block. Count non-empty segments.
+- **Feedback**: "CLIMAX must contain at least 6 sentences to properly resolve every HOOK element. Rewrite longer."
+
+### 7.20 CLIMAX HOOK CLOSURE
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: CLIMAX does not explicitly close every tension/image/contradiction opened in HOOK
+- **Detection**: Extract non-trivial nouns and named entities from HOOK. Verify at least 60% of them (or their explicit pronominal reference) reappear in CLIMAX. If HOOK contains a question or contradiction, CLIMAX must contain a declarative resolution of that tension.
+- **Feedback**: "CLIMAX fails the HOOK closure contract. Every tension/image opened in HOOK must have an explicit resolution in CLIMAX."
+
+### 7.21 INSIGHT MIN LENGTH
+- **Severity**: 🟡 MEDIUM
+- **Fail criteria**: INSIGHT contains fewer than 3 sentences (cannot carry S1 universal / S2 demonstration / S3 implication structure)
+- **Detection**: Sentence count on INSIGHT body. Flag if < 3.
+- **Feedback**: "INSIGHT must be 3–4 sentences to build universal → demonstration → implication."
+
+### 7.22 END_SCREEN UNCONFIRMED TEASE
+- **Severity**: 🟡 MEDIUM
+- **Fail criteria**: END_SCREEN contains a specific next-episode subject (named topic, specific title) when no `{next_episode_subject}` was provided in the user message
+- **Detection**: Regex scan for "prochain épisode", "next episode", "la semaine prochaine", "next week", followed by a named topic. If the user message did not supply a confirmed next subject, flag any concrete topic tease. A generic fallback like "D'autres enquêtes dans ce style arrivent." passes.
+- **Feedback**: "END_SCREEN teases a next episode that was not confirmed in the input. Use the generic fallback instead."
+
+### 7.23 TRUNCATED WORD DETECTION
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: Any core narration block starts a sentence with a 1–3 letter word fragment followed by an unrelated longer word (generation truncation artifact)
+- **Detection**: Regex `/(?<=[.!?]\s|^)[a-zà-ü]{1,3}\s+[a-zà-ü]{4,}/im` on each block. Common false positives ("le chat", "un homme", "la main", "de la", "et ils", "il y a") must be whitelisted.
+- **Feedback**: "Truncated word fragment detected — the generation was cut mid-stream. Rewrite the affected sentence."
+
 ### 7.18 CTA VOCABULARY CONTAINMENT
 - **Severity**: 🔴 CRITICAL
 - **Fail criteria**: Any CTA vocabulary (the full banned list from 7.14) appears in ANY block OTHER than `[[END_SCREEN]]`. This is the corollary of 7.14, extended to all narration blocks.

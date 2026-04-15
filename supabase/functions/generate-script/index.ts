@@ -1076,7 +1076,7 @@ Maximum length. 10 lines.
 
 ### [[PROMISE]] — The Curiosity Contract (~5%)
 
-2-4 lines MAXIMUM. This is the shortest section of the script.
+MAX 6 lines. This is one of the shortest sections of the script. One register only — investigation OR emotion OR rupture — never mix two.
 
 Pick the ONE most powerful element from your source material — the single discovery, contradiction, or reversal that will hit hardest — and BUILD ANTICIPATION around it without EVER naming it.
 
@@ -1317,6 +1317,23 @@ Anti-patterns:
 
 Structural rule: ACT3 must end on a moment of MAXIMUM TENSION — the question is fully formed, the stakes are clear, and the resolution is imminent.
 
+---
+
+## HOOK CLOSURE CONTRACT — HARD RULE
+
+Before writing [[CLIMAX]], list EVERY tension, image, contradiction, or unresolved question you opened in [[HOOK]]. State that list inside your <plan> block as "HOOK elements to close:".
+
+Every single HOOK element must have an EXPLICIT resolution inside CLIMAX. Missing even one = incomplete CLIMAX = rewrite from scratch.
+
+The narrative contract is binary:
+- If HOOK opened 3 tensions, CLIMAX closes 3 tensions. No fewer.
+- If HOOK featured a specific image/object/place, CLIMAX returns to it with new meaning.
+- If HOOK posed a contradiction, CLIMAX must state the reconciliation explicitly.
+
+A CLIMAX that introduces a nice "resolution" but leaves one HOOK thread hanging is a BROKEN narrative contract. Fix it before output.
+
+---
+
 ### [[CLIMAX]] — Convergence & Resolution (~8%)
 
 SECTION ROLE CONTRACT — CLIMAX:
@@ -1324,6 +1341,10 @@ CLIMAX owns EXCLUSIVELY. the resolution of the tension established in the HOOK.
 CLIMAX must NOT list or inventory elements from ACT2/ACT2B/ACT3.
 It draws ONE conclusion from ALL the evidence.
 If the CLIMAX contains more than 2 references to specific facts from previous acts, it is recapping, rewrite it as a resolution.
+
+CLIMAX HARD LENGTH RULE. MINIMUM 6 sentences. A 1–3 sentence "mic drop" climax is a FAILURE, it cannot possibly resolve every HOOK element. Target 6–10 sentences of concentrated resolution.
+
+CLIMAX MUST close EVERY element listed in the HOOK CLOSURE CONTRACT above. Before finalizing CLIMAX, re-read HOOK and verify point-by-point. Any uncovered element = rewrite.
 
 The CLIMAX is the PAYOFF of the entire script. It is where the narrative contract made in the HOOK is honored.
 
@@ -1365,7 +1386,20 @@ Anti-patterns:
 
 INSIGHT — STRICT CONSTRAINTS:
 
-Maximum. 3-4 lines.
+MINIMUM 3 sentences. MAXIMUM 4 sentences. A 1–2 sentence INSIGHT is automatically a failure — it cannot build S1 universal → S2 demonstration → S3 implication. Rewrite until it has at least 3 full sentences.
+
+STRUCTURE (mandatory):
+- S1. Universal framing — elevate the subject to something bigger than the specific topic.
+- S2. Demonstration — connect that universal to the concrete material of the script, without re-listing it.
+- S3. Implication — what stays true after the film ends. Observation, not directive.
+- S4 (optional). A short sensory close that echoes the concrete world of the script.
+
+BANNED PHRASES inside INSIGHT (instant rewrite if found):
+- "l'organe qui écrit"
+- "le pouvoir symbolique"
+- "les structures narratives"
+- "la force des récits"
+- any academic/consulting abstraction that could appear in a TED talk on any subject
 
 The INSIGHT must NOT:
 - Paraphrase or summarize the CLIMAX thesis
@@ -1541,7 +1575,7 @@ HARD CONSTRAINTS:
 - Must include exactly:
   a) One subscription or notification CTA
   b) One comment invitation echoing the OUTRO question (must contain exactly one "?")
-  c) Optional: one next-episode tease (one sentence max, only if next subject is confirmed — otherwise omit)
+  c) Optional: one next-episode tease — ONLY if a confirmed next subject exists in the user message. If no confirmed next subject, use a GENERIC fallback such as "D'autres enquêtes dans ce style arrivent." / "More investigations in this style are coming." NEVER invent a fake next episode title, NEVER tease a subject that is not explicitly confirmed in the input.
 
 ALLOWED VOCABULARY (END_SCREEN only):
 "abonnez", "subscribe", "partagez", "share", "likez", "like", "notification", "cloche", "bell", "newsletter", "inscrivez", "prochain épisode", "semaine prochaine", "notre chaîne", "soutenez", "envoyez", "si vous avez aimé", "merci d'avoir", "rendez-vous bientôt", "je reviendrai", "je publierai"
@@ -1964,6 +1998,16 @@ CRITICAL: Before outputting your final script, COUNT the total characters of blo
 ---
 
 ## FINAL SELF-CHECK (execute ALL checks before outputting)
+
+### Priority sequence (run in this order, fix at first failure)
+1. TRUNCATED WORDS. Scan every sentence for broken words cut mid-stream (a short 1–3 letter fragment at sentence start followed by an unrelated longer word, e.g. "de ivoire", "te corpus"). If ANY match, the generation was truncated — rewrite that sentence completely.
+2. CTA CONTAINMENT. Grep the full script for banned CTA vocabulary (abonnez, subscribe, partagez, share, like, notification, cloche, newsletter, inscrivez, prochain épisode, semaine prochaine, notre chaîne, soutenez, commentaire, comment, merci d'avoir, bell). If found in ANY block other than [[END_SCREEN]], delete and rewrite.
+3. FIRST PERSON. Grep for "je ", "j'", " i ", "i've", "my ", "mon ", "ma ", "mes " in blocks HOOK through CONCLUSION (OUTRO exempt for the question form, END_SCREEN exempt entirely). Rewrite to third person / impersonal.
+4. HOOK CLOSURE. Re-read HOOK, list every tension/image/contradiction. Verify EACH one is explicitly resolved in CLIMAX. If even one is missing → rewrite CLIMAX.
+5. CLIMAX LENGTH. Count CLIMAX sentences. If < 6 → rewrite longer.
+6. LIST / PARAGRAPH LABELS. Scan ACT2/ACT2B/ACT3 for numbered/pillar/thematic labels. Delete and rewrite paragraph openings as concrete anchors.
+7. RHYTHM. No 3+ consecutive sentences of similar length in any block.
+8. SPOKEN TEST. Read every sentence internally. If it sounds like a Wikipedia line or an essay, rewrite it.
 
 ### Structural Integrity
 1. All 15 tags present in correct order (12 core + 3 editorial).
