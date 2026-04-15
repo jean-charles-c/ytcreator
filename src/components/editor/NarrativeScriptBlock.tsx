@@ -348,7 +348,7 @@ export default function NarrativeScriptBlock({
                 </div>
               )}
 
-              {/* Core narrative sections (1-10) */}
+              {/* Core narrative sections (1-11) */}
               <div className="space-y-2">
                 {sections.filter((s) => !isEditorialSection(s.key as any)).map((section, idx) => (
                   <SectionCard
@@ -371,7 +371,7 @@ export default function NarrativeScriptBlock({
                 ))}
               </div>
 
-              {/* Editorial assist blocks (11-13) — collapsible */}
+              {/* Editorial assist blocks (12-14) — collapsible */}
               {(() => {
                 const editorialWithContent = sections.filter(
                   (s) => isEditorialSection(s.key as any) && s.content.trim()

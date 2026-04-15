@@ -370,6 +370,7 @@ export default function PdfDocumentaryTab({
           climax: { label: "Climax", icon: "💡" },
           insight: { label: "Insight", icon: "🧠" },
           conclusion: { label: "Conclusion", icon: "🎬" },
+          outro: { label: "Outro — Engagement", icon: "💬" },
           transitions: { label: "Transitions", icon: "🔗" },
           style_check: { label: "Style Check", icon: "🎨" },
           risk_check: { label: "Risk Check", icon: "⚠️" },
@@ -606,7 +607,7 @@ export default function PdfDocumentaryTab({
       hook: "[[HOOK]]", context: "[[CONTEXT]]", promise: "[[PROMISE]]",
       act1: "[[ACT1]]", act2: "[[ACT2]]", act2b: "[[ACT2B]]",
       act3: "[[ACT3]]", climax: "[[CLIMAX]]", insight: "[[INSIGHT]]",
-      conclusion: "[[CONCLUSION]]",
+      conclusion: "[[CONCLUSION]]", outro: "[[OUTRO]]",
     };
     const coreSections = sections.filter(
       (s) => !["transitions", "style_check", "risk_check"].includes(s.key) && s.content.trim().length > 10
