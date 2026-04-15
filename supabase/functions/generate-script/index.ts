@@ -1034,6 +1034,10 @@ And it changes how you look at the car."
 
 ### [[ACT1]] — Dynamic Foundations (~15%)
 
+SECTION ROLE CONTRACT — ACT1:
+ACT1 owns EXCLUSIVELY. the founding choices, the original constraints, the decisions made before the product existed.
+If a piece of information belongs to ACT1, it must NOT reappear in ACT2, ACT2B, ACT3, or CLIMAX, not even as a summary or reference.
+
 ACT1 is NOT a history lesson. It is the LAUNCHPAD for the analytical engine of the script.
 
 Mission: establish the starting conditions of the subject — its origin point, its first concrete manifestation, and the initial forces that set the story in motion.
@@ -1052,6 +1056,10 @@ Anti-patterns:
 Structural rule: ACT1's LAST PARAGRAPH must create a clear pull toward ACT2. The viewer should feel that the story is about to get bigger.
 
 ### [[ACT2]] — Analytical Core (~20% — THE LONGEST BLOCK)
+
+SECTION ROLE CONTRACT — ACT2:
+ACT2 owns EXCLUSIVELY. the concrete evidence of what went wrong or was hidden. First-time revelations. Primary sources.
+If a fact is introduced in ACT2, it is CLOSED. ACT2B, ACT3, and CLIMAX must not re-introduce it, they can only reference it in one word maximum ("the lag", "the recall", "the replica").
 
 ACT2 is the INTELLECTUAL ENGINE of the entire script. It carries the heaviest analytical load.
 
@@ -1074,6 +1082,12 @@ Structural rule: ACT2 must end with a moment of apparent clarity — the viewer 
 
 ### [[ACT2B]] — Essential Complication (~10%)
 
+SECTION ROLE CONTRACT — ACT2B:
+ACT2B owns EXCLUSIVELY. elements that CONTRADICT or COMPLICATE the picture drawn by ACT2.
+ACT2B must introduce NEW information that was not in ACT2.
+It must NOT be a different angle on the same facts.
+If ACT2B does not introduce at least 2 facts absent from ACT2, it is not doing its job, rewrite it.
+
 ACT2B exists for ONE reason: to prevent the script from being intellectually predictable.
 
 Mission: introduce a NECESSARY DIMENSION that genuinely complicates the viewer's understanding — not a minor footnote, but something that forces a re-evaluation of what ACT2 established.
@@ -1095,6 +1109,12 @@ Structural rule: ACT2B must CREATE NARRATIVE PRESSURE toward ACT3. The complicat
 
 ### [[ACT3]] — The Tipping Point (~15%)
 
+SECTION ROLE CONTRACT — ACT3:
+ACT3 owns EXCLUSIVELY. what changed AFTER, consequences in time, corrections made, transfers of value, lasting impact.
+ACT3 must not re-explain why things happened (that was ACT2).
+It must only show what happened next.
+Every sentence in ACT3 must describe a state AFTER the events of ACT2.
+
 ACT3 is where the story TILTS. Everything built in ACT1-ACT2-ACT2B now produces consequences.
 
 Mission: show the TRANSFORMATION — what broke, what shifted, what could no longer remain as it was. ACT3 is not "more analysis"; it is the moment where analysis meets reality.
@@ -1115,6 +1135,12 @@ Anti-patterns:
 Structural rule: ACT3 must end on a moment of MAXIMUM TENSION — the question is fully formed, the stakes are clear, and the resolution is imminent.
 
 ### [[CLIMAX]] — Convergence & Resolution (~8%)
+
+SECTION ROLE CONTRACT — CLIMAX:
+CLIMAX owns EXCLUSIVELY. the resolution of the tension established in the HOOK.
+CLIMAX must NOT list or inventory elements from ACT2/ACT2B/ACT3.
+It draws ONE conclusion from ALL the evidence.
+If the CLIMAX contains more than 2 references to specific facts from previous acts, it is recapping, rewrite it as a resolution.
 
 The CLIMAX is the PAYOFF of the entire script. It is where the narrative contract made in the HOOK is honored.
 
@@ -1354,6 +1380,29 @@ Each pair of consecutive blocks has a SPECIFIC narrative contract:
 8. **CLIMAX → INSIGHT**: The climax resolves the narrative; the insight extracts what it MEANS. The insight must feel like a natural consequence of the climax, not a separate thought.
 
 9. **INSIGHT → CONCLUSION**: The insight is intellectual; the conclusion is SENSORY/EMOTIONAL. Together they provide closure on two planes.
+
+#### A-BIS. TRANSITION CONTRACTS — MANDATORY CONTENT SHIFT
+
+Each section transition must represent a genuine change of information layer, not a change of angle on the same information.
+
+**ACT1 → ACT2 transition contract.**
+ACT2 must open with information that was IMPOSSIBLE to know from ACT1 alone. If the first sentence of ACT2 could have been in ACT1, rewrite it.
+
+**ACT2 → ACT2B transition contract.**
+ACT2B must open with a contradiction, not a continuation.
+The first word or phrase of ACT2B must signal rupture.
+"But", "Except", "Sauf que", "Mais", "Ce que personne ne dit", "Sauf que le tableau se fissure ici."
+If ACT2B opens with an affirmation that continues ACT2, it is not a real ACT2B. Rewrite the opening.
+
+**ACT2B → ACT3 transition contract.**
+ACT3 must open with a time marker, a word that signals movement forward in time.
+"After", "From then on", "These complications", "In the years that followed", "Après", "Dans les années qui suivent", "Ces corrections."
+If ACT3 opens by re-explaining something from ACT2, delete that sentence and start from the consequence.
+
+**ACT3 → CLIMAX transition contract.**
+The last sentence of ACT3 must be a question or an open tension that the CLIMAX will resolve.
+The CLIMAX must open with the resolution, not a recap.
+The first sentence of CLIMAX must be a statement of resolution, not a list.
 
 #### B. HOOK-CLIMAX ARC (the narrative contract)
 
@@ -1599,6 +1648,26 @@ CRITICAL: Before outputting your final script, COUNT the total characters of blo
 13. ACT2 and ACT2B serve DIFFERENT analytical functions.
 14. CLIMAX and CONCLUSION provide DIFFERENT types of closure.
 15. No sentence in the script expresses the same idea as another sentence elsewhere.
+
+### Inter-Section Redundancy Self-Check (HIGH PRIORITY — run before finalizing)
+
+Step 1. Extract the 10 most important nouns/concepts from ACT2 (the primary revelation layer).
+
+Step 2. Check ACT2B.
+Does ACT2B introduce at least 2 concepts NOT in that list?
+If NO, ACT2B is just a mirror of ACT2. Rewrite with genuinely new information.
+
+Step 3. Check ACT3.
+Does every sentence in ACT3 describe a consequence or a change that occurred AFTER the events of ACT2?
+If a sentence explains why something happened, it belongs in ACT2, not ACT3. Move or delete it.
+
+Step 4. Check CLIMAX.
+Count how many sentences in CLIMAX re-state a fact already presented in full in ACT2 or ACT2B.
+If more than 2, delete them from CLIMAX.
+The CLIMAX should be readable even if the viewer skipped ACT2, it resolves, it does not remind.
+
+Step 5. Check the word "because" and its equivalents (car, parce que, because, since, due to).
+If "because" appears in ACT3 or CLIMAX to explain something introduced in ACT2, that sentence is redundant explanation. Delete or move to ACT2.
 
 ### Factual Integrity
 16. No fabricated facts, no broken dates, no placeholder attributions.
