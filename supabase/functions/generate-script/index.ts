@@ -758,6 +758,7 @@ function buildSystemPrompt(
   charTarget: number,
   narrativeStyle: string,
   shortSentencePct: number = 0,
+  forcedAngle: string | null = null,
 ): string {
   const wordTarget = Math.round(charTarget / 5.5);
   const wordMin = Math.round(charMin / 5.5);
@@ -839,6 +840,14 @@ CRITICAL STYLE RULES:
 4. STYLE ≠ QUALITY SUBSTITUTE: a "dramatic" style does NOT excuse vague claims. A "humorous" style does NOT excuse shallow analysis. A "documentary" style does NOT excuse empty atmosphere. Every stylistic choice must CARRY analytical content.
 
 ${cadenceSection}
+${forcedAngle ? `
+
+---
+
+## REGENERATION ANGLE LOCK
+
+This is a REGENERATION. You are bound by a MANDATORY ANGLE (${forcedAngle}) specified in the user message. The HOOK, CONTEXT, and ACT1 opening MUST enter the subject through this axis. Soft reformulation of the previous script is FORBIDDEN. Every section must reflect the chosen angle's entry point, not just the stylistic surface.
+` : ""}
 
 ---
 
@@ -1704,6 +1713,7 @@ function buildUserMessage(
   charMax: number,
   charTarget: number,
   previousScript?: string | null,
+  forcedAngle?: string | null,
 ): string {
   const a = analysis as {
     central_mystery?: string;
@@ -1738,18 +1748,45 @@ function buildUserMessage(
   }
 
   if (previousScript) {
-    parts.push(`REGENERATION MODE — MANDATORY VARIATION:
-You are rewriting a script that already exists. Your new version MUST:
-- Choose a DIFFERENT narrative angle or entry point
-- Use DIFFERENT vocabulary, metaphors, and sentence structures
-- Restructure the information flow (different order of revelations)
-- Change the opening hook strategy completely
-- Find NEW connections in the source material that the previous version missed
+    const angleLine = forcedAngle
+      ? `Your new version MUST enter the subject through this axis. ${forcedAngle}.`
+      : `Your new version MUST enter the subject through a different axis than the previous version.`;
+    parts.push(`REGENERATION MODE — HARD VARIATION CONTRACT:
 
-HERE IS THE PREVIOUS SCRIPT (use it as an ANTI-MODEL — diverge from it maximally):
+You are rewriting a script that already exists. Soft reformulation is FORBIDDEN.
+This is not a style pass. This is a complete re-angle of the same source material.
+
+MANDATORY ANGLE LOCK:
+${angleLine}
+- technical            → open on materials, mechanisms, measurements, numbers
+- human                → open on one named actor's trajectory and motivations
+- economic             → open on money, markets, incentives, costs
+- political            → open on power, institutions, decisions
+- moral                → open on ethical stakes, who pays the price
+- counter-factual      → "what if it had gone the other way"
+- outsider             → open via someone peripheral who saw it clearly
+- chronological-reverse → start from the final consequence, work backwards
+- material-object      → open via one physical artifact that condenses the whole story
+- forgotten-detail     → open via a secondary fact from the source nobody emphasized
+If the previous script already used this axis, SHIFT to the next most different one and state in your <plan> which axis you picked and why.
+
+FORBIDDEN REUSE FROM THE PREVIOUS SCRIPT:
+- The same central HOOK image or object
+- The same opening time/place anchor
+- The same first 3 named entities as the narrative spine
+- The same order of revelations
+- The same chronological entry point
+
+BEFORE WRITING, in your <plan> block, explicitly state:
+1. "Previous angle was. [infer from the script below]"
+2. "New angle (locked). ${forcedAngle || "[your choice — justify]"}"
+3. "Elements I will NOT reuse. [3 bullets]"
+4. "New connections I found in the source that the previous version missed. [2-3 bullets]"
+
+PREVIOUS SCRIPT (ANTI-MODEL, diverge from it maximally):
 ${previousScript}
 
-Do NOT produce a slightly reworded version. The reader must feel this is a completely different documentary about the same subject.`);
+Do NOT produce a reworded version. The viewer must feel this is a completely different documentary about the same subject, opening through a different door.`);
   }
 
   parts.push(`CRITICAL REMINDER: Output the script with ALL 13 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. Allowed range for core script (blocks 1-10): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total. You choose the optimal length within this range based on the source material's density. Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
@@ -1797,7 +1834,25 @@ serve(async (req) => {
         const charTarget = Math.round((charMin + charMax) / 2);
         const activeStyle = narrativeStyle || "documentary";
         const pct = typeof shortSentencePct === "number" ? shortSentencePct : 0;
-        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, range=${charMin}-${charMax}, shortPct=${pct}`);
+
+        // On regeneration, force a random alternative entry angle to maximize variation
+        const REGEN_ANGLES = [
+          "technical",
+          "human",
+          "economic",
+          "political",
+          "moral",
+          "counter-factual",
+          "outsider",
+          "chronological-reverse",
+          "material-object",
+          "forgotten-detail",
+        ];
+        const forcedAngle = isRegenerate
+          ? REGEN_ANGLES[Math.floor(Math.random() * REGEN_ANGLES.length)]
+          : null;
+
+        console.log(`[generate-script] NarrativeEngineExpert | style=${activeStyle}, lang=${scriptLang}, range=${charMin}-${charMax}, shortPct=${pct}, regen=${!!isRegenerate}, forcedAngle=${forcedAngle ?? "-"}`);
 
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -1808,9 +1863,10 @@ serve(async (req) => {
           body: JSON.stringify({
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
+            temperature: isRegenerate ? 1.0 : 0.7,
             messages: [
-              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle, pct) },
-              { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget, isRegenerate ? (existingScript || null) : null) },
+              { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle, pct, forcedAngle) },
+              { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget, isRegenerate ? (existingScript || null) : null, forcedAngle) },
             ],
             stream: true,
           }),
