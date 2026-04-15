@@ -70,7 +70,7 @@ describe("parseTaggedScript", () => {
     const keys = parseTaggedScript(SAMPLE_TAGGED).sections.map((s) => s.key);
     expect(keys).toEqual([
       "hook", "context", "promise", "act1", "act2", "act2b",
-      "act3", "climax", "insight", "conclusion",
+      "act3", "climax", "insight", "conclusion", "outro",
       "transitions", "style_check", "risk_check",
     ]);
   });
@@ -78,7 +78,7 @@ describe("parseTaggedScript", () => {
   it("handles empty input", () => {
     const result = parseTaggedScript("");
     expect(result.tagged).toBe(false);
-    expect(result.emptySections).toHaveLength(13);
+    expect(result.emptySections).toHaveLength(14);
   });
 
   it("handles untagged script as preamble", () => {

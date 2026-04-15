@@ -11,7 +11,7 @@ export interface NarrativeSection {
   content: string;
 }
 
-/** Core narrative blocks (1-10) — the actual script */
+/** Core narrative blocks (1-11) — the actual script + engagement outro */
 export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "hook", label: "Hook", icon: "🎣" },
   { key: "context", label: "Context", icon: "📖" },
@@ -23,16 +23,17 @@ export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] 
   { key: "climax", label: "Climax", icon: "💡" },
   { key: "insight", label: "Insight", icon: "🧠" },
   { key: "conclusion", label: "Conclusion", icon: "🎬" },
+  { key: "outro", label: "Outro — Engagement", icon: "💬" },
 ];
 
-/** Editorial assist blocks (11-13) — optional quality layer */
+/** Editorial assist blocks (12-14) — optional quality layer */
 export const EDITORIAL_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "transitions", label: "Transitions", icon: "🔗" },
   { key: "style_check", label: "Style Check", icon: "🎨" },
   { key: "risk_check", label: "Risk Check", icon: "⚠️" },
 ];
 
-/** All 13 sections for parsing */
+/** All 14 sections for parsing */
 export const ALL_SECTIONS = [...NARRATIVE_SECTIONS, ...EDITORIAL_SECTIONS];
 
 export function parseScriptIntoSections(script: string): NarrativeSection[] {

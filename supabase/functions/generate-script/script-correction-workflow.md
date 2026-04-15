@@ -41,3 +41,68 @@ REWRITE RULES:
 
 Output ONLY the rewritten section. No tags, no explanation.
 ```
+
+## 7. FIRST PERSON NARRATOR DETECTED
+
+**Trigger**: Validation check 7.11
+
+**Scope**: Rewrite every core narration block (HOOK → CONCLUSION) where first-person pronouns were detected. OUTRO is exempt.
+**Rule**: Narrator is invisible. Third person or impersonal only.
+
+### Correction prompt template
+
+```
+You are repairing a documentary script that mistakenly uses a first-person narrator.
+The narrator must be INVISIBLE. No "I", no "me", no "mine", no "je", no "moi", no "mes".
+
+CURRENT [[{section_tag}]]:
+{section_text}
+
+DETECTED FIRST-PERSON OCCURRENCES:
+{list_of_matches}
+
+REWRITE RULES:
+- Replace every first-person construction with an impersonal, third-person,
+  or direct-descriptive phrasing.
+- "Je connais ce son" → "Ce son est reconnaissable / Ce son se reconnaît"
+- "Je les trouve incroyables" → "Ils sont incroyables / Ils impressionnent"
+- "Mon grand-père disait…" → "Les anciens disaient…" (unless a named witness)
+- Do NOT invent new facts. Only rephrase the existing material.
+- Keep the same rhythm, the same length (±10%), the same narrative intent.
+- Write in {langLabel}.
+
+Output ONLY the rewritten section. No tags, no explanation.
+```
+
+## 8. MISSING OR INVALID OUTRO
+
+**Trigger**: Validation checks 1.2, 7.14
+
+**Scope**: Generate or repair the OUTRO block.
+**Rule**: Exactly ONE short question directed at the viewer, maximum 100 characters, ending with `?`.
+
+### Correction prompt template
+
+```
+You are writing (or repairing) the [[OUTRO]] block of a documentary script.
+
+The OUTRO is ONE short question directed at the viewer, designed to trigger
+a YouTube comment. It is the only place in the entire script where the
+fourth wall is broken.
+
+SCRIPT SUBJECT: {subject}
+CENTRAL TENSION / MYSTERY: {central_mystery}
+INSIGHT (intellectual takeaway): {insight_text}
+CONCLUSION (sensory closing): {conclusion_text}
+
+RULES:
+- Output MUST be a single interrogative sentence ending with `?`.
+- Maximum 15 words, maximum 100 characters.
+- No narration bridge, no "and you, …", no "let me know in the comments".
+- The question must hook a real opinion, memory, or choice from the viewer,
+  tied to the specific subject of this script — not a generic closer.
+- No "what do you think?" alone. It must carry the subject.
+- Write in {langLabel}.
+
+Output ONLY the question. No tag, no explanation.
+```

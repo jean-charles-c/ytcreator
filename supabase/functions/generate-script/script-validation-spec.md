@@ -2,6 +2,19 @@
 
 This document defines validation checks for scripts produced by `generate-script`. Each rule has a severity, fail criteria, and a detection method.
 
+## 1. STRUCTURE
+
+### 1.1 ALL TAGS PRESENT
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: Fewer than all 14 section tags present, or tags out of canonical order
+- **Canonical order**: `[[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[OUTRO]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]`
+- **Detection**: Tag regex scan; compare indices to canonical order.
+
+### 1.2 OUTRO LENGTH
+- **Severity**: 🟡 MEDIUM
+- **Fail criteria**: OUTRO exceeds 100 characters or contains more than one sentence before the question
+- **Detection**: Character count of OUTRO section; split on `?` and check that at most one sentence precedes it.
+
 ## 7. NARRATIVE INTEGRITY
 
 ### 7.1 PROMISE SOURCE LISTING
@@ -65,3 +78,33 @@ This document defines validation checks for scripts produced by `generate-script
 - **Fail criteria**: No rupture marker in first sentence of ACT2B
 - **Detection**: Check first 100 characters of ACT2B for: "but", "except", "however", "yet", "sauf", "mais", "pourtant", "or"
 - **Feedback**: "ACT2B should open with a rupture signal to clearly separate it from ACT2."
+
+### 7.11 NO FIRST PERSON NARRATOR
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: Any core narration block (HOOK…CONCLUSION, excluding OUTRO) contains first-person singular pronouns
+- **Detection**: Regex on core blocks for (case-insensitive, word boundary): `\bje\b`, `\bj'`, `\bmoi\b`, `\bme\b`, `\bma\b`, `\bmon\b`, `\bmes\b`, `\bmien`, `\bi\b`, `\bi'(m|ve|d|ll)`, `\bmy\b`, `\bmine\b`, `\bmyself\b`
+- **Feedback**: "First-person narration detected. The narrator is invisible — rewrite in third person or impersonal form."
+
+### 7.12 NO PILLAR/LIST STRUCTURE IN ACT2
+- **Severity**: 🟡 MEDIUM
+- **Fail criteria**: ACT2 contains enumeration markers such as "trois piliers", "deux axes", "premièrement", "deuxièmement", "first / second / third", "pillar", "axis", "axes", or numbered list patterns
+- **Detection**: Regex scan of ACT2 for these markers (case-insensitive); also flag patterns like `^\d+\.\s` at sentence start.
+- **Feedback**: "ACT2 reads like a list. Rewrite as a continuous escalation of reveals using temporal/causal/contrastive connectors."
+
+### 7.13 NO VIEWER-DIRECTED QUESTION IN INSIGHT/CONCLUSION
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: INSIGHT or CONCLUSION contains any `?` character
+- **Detection**: Simple substring check for `?` in INSIGHT and CONCLUSION sections.
+- **Feedback**: "Questions directed at the viewer belong only in OUTRO. Rewrite the INSIGHT/CONCLUSION as a declarative statement."
+
+### 7.14 OUTRO CONTAINS EXACTLY ONE QUESTION
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: OUTRO contains 0 or ≥2 `?` characters, OR the OUTRO does not end with `?`
+- **Detection**: Count `?` in OUTRO; check last non-whitespace character.
+- **Feedback**: "OUTRO must be exactly ONE short question directed at the viewer."
+
+### 7.15 ILLUSTRABILITY — EDITORIAL COMMENTARY DETECTION
+- **Severity**: 🟡 MEDIUM
+- **Fail criteria**: Any core narration block contains abstract editorial commentary that cannot be illustrated (phrases like "ce n'est pas un détail", "ce qui est fascinant", "il faut le comprendre", "c'est exactement ce qui", "ce qu'il faut retenir", "on ne peut pas ignorer")
+- **Detection**: Regex scan for a dictionary of FR/EN editorial-commentary phrases. Flag if ≥ 2 hits across the narration.
+- **Feedback**: "Replace editorial commentary with concrete, illustrable facts, actions, or objects."

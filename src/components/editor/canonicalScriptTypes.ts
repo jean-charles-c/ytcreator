@@ -2,9 +2,9 @@
  * CanonicalScript — Modèle de données stable pour un script narratif
  * segmenté, versionnable et traduisible.
  *
- * V4 — NarrativeEngineExpert : 13 blocs
- *   • NarrativeCoreBlocks  (1-10) : script principal
- *   • EditorialAssistBlocks (11-13) : assistance éditoriale optionnelle
+ * V4 — NarrativeEngineExpert : 14 blocs
+ *   • NarrativeCoreBlocks  (1-11) : script principal + OUTRO engagement
+ *   • EditorialAssistBlocks (12-14) : assistance éditoriale optionnelle
  *
  * Règles :
  * - Les sections sont fixes et ordonnées par `order`.
@@ -17,7 +17,7 @@
 
 /* ── Section types ─────────────────────────────────── */
 
-/** Core narrative blocks (1-10) — the actual script */
+/** Core narrative blocks (1-11) — the actual script + engagement outro */
 export const CORE_SECTION_TYPES = [
   "hook",
   "context",
@@ -29,16 +29,17 @@ export const CORE_SECTION_TYPES = [
   "climax",
   "insight",
   "conclusion",
+  "outro",
 ] as const;
 
-/** Editorial assist blocks (11-13) — optional quality layer */
+/** Editorial assist blocks (12-14) — optional quality layer */
 export const EDITORIAL_SECTION_TYPES = [
   "transitions",
   "style_check",
   "risk_check",
 ] as const;
 
-/** All 13 section types */
+/** All 14 section types */
 export const SECTION_TYPES = [
   ...CORE_SECTION_TYPES,
   ...EDITORIAL_SECTION_TYPES,
@@ -65,6 +66,7 @@ export const SECTION_TAGS: Record<SectionType, string> = {
   climax:       "[[CLIMAX]]",
   insight:      "[[INSIGHT]]",
   conclusion:   "[[CONCLUSION]]",
+  outro:        "[[OUTRO]]",
   transitions:  "[[TRANSITIONS]]",
   style_check:  "[[STYLE CHECK]]",
   risk_check:   "[[RISK CHECK]]",
@@ -83,6 +85,7 @@ export const SECTION_META: Record<SectionType, { label: string; icon: string; ed
   climax:       { label: "Climax",                     icon: "💡" },
   insight:      { label: "Insight",                    icon: "🧠" },
   conclusion:   { label: "Conclusion",                 icon: "🎬" },
+  outro:        { label: "Outro — Engagement",         icon: "💬" },
   transitions:  { label: "Transitions",                icon: "🔗", editorial: true },
   style_check:  { label: "Style Check",                icon: "🎨", editorial: true },
   risk_check:   { label: "Risk Check",                 icon: "⚠️", editorial: true },
@@ -104,7 +107,7 @@ export interface SectionHistoryEntry {
 export interface CanonicalSection {
   /** Fixed section identifier */
   type: SectionType;
-  /** Explicit render order (0-12) */
+  /** Explicit render order (0-13) */
   order: number;
   /** Original text from AI segmentation (immutable after initial parse) */
   originalText: string;
@@ -127,7 +130,7 @@ export type SegmentationStatus =
 /* ── Global canonical script ───────────────────────── */
 
 export interface CanonicalScript {
-  /** The 13 fixed narrative sections, always ordered by `order` */
+  /** The 14 fixed narrative sections, always ordered by `order` */
   sections: CanonicalSection[];
 
   /** Full reassembled source text (kept for reference / re-segmentation) */
@@ -149,7 +152,7 @@ export interface CanonicalScript {
 
 /* ── Factory ───────────────────────────────────────── */
 
-/** Create an empty CanonicalScript with all 13 sections initialized */
+/** Create an empty CanonicalScript with all 14 sections initialized */
 export function createEmptyCanonicalScript(): CanonicalScript {
   return {
     sections: SECTION_TYPES.map((type, order) => ({
