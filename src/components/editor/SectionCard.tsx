@@ -11,7 +11,7 @@ export interface NarrativeSection {
   content: string;
 }
 
-/** Core narrative blocks (1-11) — the actual script + engagement outro */
+/** Core narrative blocks (1-12) — the actual script + engagement outro + end screen CTAs */
 export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "hook", label: "Hook", icon: "🎣" },
   { key: "context", label: "Context", icon: "📖" },
@@ -24,16 +24,17 @@ export const NARRATIVE_SECTIONS: { key: string; label: string; icon: string }[] 
   { key: "insight", label: "Insight", icon: "🧠" },
   { key: "conclusion", label: "Conclusion", icon: "🎬" },
   { key: "outro", label: "Outro — Engagement", icon: "💬" },
+  { key: "end_screen", label: "End Screen — CTAs", icon: "📺" },
 ];
 
-/** Editorial assist blocks (12-14) — optional quality layer */
+/** Editorial assist blocks (13-15) — optional quality layer */
 export const EDITORIAL_SECTIONS: { key: string; label: string; icon: string }[] = [
   { key: "transitions", label: "Transitions", icon: "🔗" },
   { key: "style_check", label: "Style Check", icon: "🎨" },
   { key: "risk_check", label: "Risk Check", icon: "⚠️" },
 ];
 
-/** All 14 sections for parsing */
+/** All 15 sections for parsing */
 export const ALL_SECTIONS = [...NARRATIVE_SECTIONS, ...EDITORIAL_SECTIONS];
 
 export function parseScriptIntoSections(script: string): NarrativeSection[] {
@@ -84,7 +85,7 @@ export function parseScriptIntoSections(script: string): NarrativeSection[] {
   // Final fallback: proportional split (core blocks only)
   const paragraphs = cleaned.split(/\n\s*\n/).filter((p) => p.trim());
   const total = paragraphs.length;
-  const ratios = [0.02, 0.10, 0.05, 0.15, 0.20, 0.10, 0.15, 0.08, 0.05, 0.04, 0.005];
+  const ratios = [0.02, 0.10, 0.05, 0.15, 0.20, 0.10, 0.15, 0.08, 0.05, 0.04, 0.005, 0.005];
   const counts = ratios.map((r) => Math.max(1, Math.round(r * total)));
 
   let sum = counts.reduce((a, b) => a + b, 0);
@@ -122,6 +123,7 @@ function resolveKey(headerText: string): string {
   if (/climax|révélation|revelation/i.test(headerText)) return "climax";
   if (/insight/i.test(headerText)) return "insight";
   if (/conclusion/i.test(headerText)) return "conclusion";
+  if (/end.?screen|cta/i.test(headerText)) return "end_screen";
   if (/outro|engagement/i.test(headerText)) return "outro";
   if (/transition/i.test(headerText)) return "transitions";
   if (/style\s*check/i.test(headerText)) return "style_check";
@@ -142,6 +144,7 @@ const SECTION_TAG_MAP: Record<string, string> = {
   insight: "[[INSIGHT]]",
   conclusion: "[[CONCLUSION]]",
   outro: "[[OUTRO]]",
+  end_screen: "[[END_SCREEN]]",
   transitions: "[[TRANSITIONS]]",
   style_check: "[[STYLE CHECK]]",
   risk_check: "[[RISK CHECK]]",
@@ -213,6 +216,7 @@ const SECTION_ACCENTS: Record<string, { border: string; bg: string; badge: strin
   insight:      { border: "border-l-teal-500",    bg: "bg-teal-500/5",    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400" },
   conclusion:   { border: "border-l-indigo-500",  bg: "bg-indigo-500/5",  badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" },
   outro:        { border: "border-l-fuchsia-500", bg: "bg-fuchsia-500/5", badge: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400" },
+  end_screen:   { border: "border-l-lime-500",    bg: "bg-lime-500/5",    badge: "bg-lime-500/10 text-lime-700 dark:text-lime-400" },
   transitions:  { border: "border-l-slate-400",   bg: "bg-slate-400/5",   badge: "bg-slate-400/10 text-slate-600 dark:text-slate-400" },
   style_check:  { border: "border-l-pink-400",    bg: "bg-pink-400/5",    badge: "bg-pink-400/10 text-pink-600 dark:text-pink-400" },
   risk_check:   { border: "border-l-yellow-500",  bg: "bg-yellow-500/5",  badge: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" },

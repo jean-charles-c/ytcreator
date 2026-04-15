@@ -6,14 +6,22 @@ This document defines validation checks for scripts produced by `generate-script
 
 ### 1.1 ALL TAGS PRESENT
 - **Severity**: 🔴 CRITICAL
-- **Fail criteria**: Fewer than all 14 section tags present, or tags out of canonical order
-- **Canonical order**: `[[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[OUTRO]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]`
+- **Fail criteria**: Fewer than all 15 section tags present, or tags out of canonical order
+- **Canonical order**: `[[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[OUTRO]], [[END_SCREEN]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]`
 - **Detection**: Tag regex scan; compare indices to canonical order.
 
 ### 1.2 OUTRO LENGTH
 - **Severity**: 🟡 MEDIUM
 - **Fail criteria**: OUTRO exceeds 100 characters or contains more than one sentence before the question
 - **Detection**: Character count of OUTRO section; split on `?` and check that at most one sentence precedes it.
+
+### 1.4 OUTRO & END_SCREEN CHAR RANGES
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**:
+  - OUTRO outside 20-100 characters (excluding the `[[OUTRO]]` tag)
+  - END_SCREEN outside 80-400 characters (excluding the `[[END_SCREEN]]` tag)
+- **Detection**: Character count of each block's body (trimmed, tag excluded).
+- **Feedback**: "OUTRO must be 20-100 chars. END_SCREEN must be 80-400 chars (3-4 conversational sentences with CTAs)."
 
 ## 7. NARRATIVE INTEGRITY
 
@@ -87,9 +95,14 @@ This document defines validation checks for scripts produced by `generate-script
 
 ### 7.12 NO PILLAR/LIST STRUCTURE IN ACT2
 - **Severity**: 🟡 MEDIUM
-- **Fail criteria**: ACT2 contains enumeration markers such as "trois piliers", "deux axes", "premièrement", "deuxièmement", "first / second / third", "pillar", "axis", "axes", or numbered list patterns
-- **Detection**: Regex scan of ACT2 for these markers (case-insensitive); also flag patterns like `^\d+\.\s` at sentence start.
-- **Feedback**: "ACT2 reads like a list. Rewrite as a continuous escalation of reveals using temporal/causal/contrastive connectors."
+- **Fail criteria**: ACT2, ACT2B, or ACT3 contains enumeration markers such as:
+  - Numeric: "premièrement", "deuxièmement", "troisièmement", "first", "second", "third", "one:", "two:", "three:"
+  - Pillar/axis: "pilier", "piliers", "axe", "axes", "pillar", "pillars", "axis", "volet", "facette"
+  - Categorical: "on one hand / on the other hand", "d'une part / d'autre part", "catégorie", "category", "type", "form"
+  - Transitional labels: "moreover", "furthermore", "additionally", "in addition", "par ailleurs", "de plus", "en outre"
+  - Numbered list patterns: `^\s*\d+[\.\)]\s`, `^\s*[-•]\s` at sentence/paragraph start
+- **Detection**: Regex scan of ACT2, ACT2B, ACT3 for these markers (case-insensitive). Flag on ANY occurrence.
+- **Feedback**: "Enumeration detected. Rewrite as a continuous escalation of reveals using temporal/causal/contrastive connectors. See rule 7.16 for paragraph-label detection."
 
 ### 7.13 NO VIEWER-DIRECTED QUESTION IN INSIGHT/CONCLUSION
 - **Severity**: 🔴 CRITICAL
@@ -97,14 +110,50 @@ This document defines validation checks for scripts produced by `generate-script
 - **Detection**: Simple substring check for `?` in INSIGHT and CONCLUSION sections.
 - **Feedback**: "Questions directed at the viewer belong only in OUTRO. Rewrite the INSIGHT/CONCLUSION as a declarative statement."
 
-### 7.14 OUTRO CONTAINS EXACTLY ONE QUESTION
+### 7.14 OUTRO VALIDITY (ONE QUESTION, NO CTA VOCABULARY)
 - **Severity**: 🔴 CRITICAL
-- **Fail criteria**: OUTRO contains 0 or ≥2 `?` characters, OR the OUTRO does not end with `?`
-- **Detection**: Count `?` in OUTRO; check last non-whitespace character.
-- **Feedback**: "OUTRO must be exactly ONE short question directed at the viewer."
+- **Fail criteria**:
+  - OUTRO contains 0 or ≥2 `?` characters, OR
+  - OUTRO does not end with `?`, OR
+  - OUTRO contains ANY CTA vocabulary (these belong in END_SCREEN)
+- **Banned CTA vocabulary in OUTRO** (case-insensitive, word-boundary):
+  - FR: `abonnez`, `abonne`, `partagez`, `partage`, `likez`, `like`, `notification`, `cloche`, `newsletter`, `inscrivez`, `prochain épisode`, `semaine prochaine`, `chaîne`, `soutenez`, `envoyez`, `si vous avez aimé`, `merci d'avoir`, `rendez-vous bientôt`, `je reviendrai`, `je publierai`, `soutenez-nous`, `commentaire`, `commentez`
+  - EN: `subscribe`, `share`, `like`, `notification`, `bell`, `newsletter`, `sign up`, `next episode`, `next week`, `channel`, `support`, `if you enjoyed`, `thanks for watching`, `see you soon`, `comment`
+- **Detection**: Count `?` in OUTRO; check last non-whitespace character; regex scan for any banned CTA word.
+- **Feedback**: "OUTRO must be exactly ONE short question directed at the viewer and must contain ZERO CTA vocabulary. Move all CTAs to END_SCREEN."
 
 ### 7.15 ILLUSTRABILITY — EDITORIAL COMMENTARY DETECTION
 - **Severity**: 🟡 MEDIUM
-- **Fail criteria**: Any core narration block contains abstract editorial commentary that cannot be illustrated (phrases like "ce n'est pas un détail", "ce qui est fascinant", "il faut le comprendre", "c'est exactement ce qui", "ce qu'il faut retenir", "on ne peut pas ignorer")
+- **Fail criteria**: Any core narration block (HOOK through OUTRO) contains abstract editorial commentary that cannot be illustrated (phrases like "ce n'est pas un détail", "ce qui est fascinant", "il faut le comprendre", "c'est exactement ce qui", "ce qu'il faut retenir", "on ne peut pas ignorer")
 - **Detection**: Regex scan for a dictionary of FR/EN editorial-commentary phrases. Flag if ≥ 2 hits across the narration.
 - **Feedback**: "Replace editorial commentary with concrete, illustrable facts, actions, or objects."
+
+### 7.16 ACT2 PARAGRAPH LABEL DETECTION
+- **Severity**: 🔴 CRITICAL
+- **Applies to**: ACT2, ACT2B, ACT3
+- **Fail criteria**: A paragraph opens with a line that functions as a label — a short isolated phrase that names the topic of the following paragraph rather than being part of the narrative flow. Three detectable patterns:
+  1. **Short isolated line followed by a paragraph break**: a line ≤ 60 characters not ending with `.`, `?`, `!` before a `\n\n` break.
+  2. **Thematic/descriptive noun phrase at paragraph start**: pattern like `^[A-Z][a-zéèêàâîôûç ]{2,60}\.\s*\n` where the phrase names a theme (e.g. "Les conséquences économiques.", "The political fallout.", "Le tournant décisif.").
+  3. **"The X of Y" / "Les X de Y" constructions as standalone openers**: noun-phrase titles with no verb, functioning as a header.
+- **Detection**:
+  - For each paragraph in ACT2/ACT2B/ACT3, extract the first line.
+  - Remove-and-check test: if removing the first line leaves a grammatically/narratively complete paragraph, the line is a label.
+  - Flag any match.
+- **Feedback**: "Paragraph label detected at the start of '[paragraph]'. Remove the label and rewrite the paragraph so it opens directly with a date+place, name+action, or concrete fact. See generate-script §PARAGRAPH LABEL PROHIBITION."
+
+### 7.17 END_SCREEN VALIDITY
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: END_SCREEN fails ANY of:
+  - Not present, or outside 80-400 character range (see 1.4)
+  - Fewer than 2 or more than 5 sentences
+  - Does NOT contain a subscription CTA (subscribe/abonnez/abonne)
+  - Does NOT contain a comment invitation (comment/commentaire/commentez or a `?` inviting feedback)
+  - Contains 0 or ≥2 `?` characters (must contain exactly one `?`, the comment invitation)
+- **Detection**: Character count, sentence split on `[.!?]`, regex for subscription and comment vocabulary, `?` count.
+- **Feedback**: "END_SCREEN must be 3-4 conversational sentences containing a subscription CTA, a comment invitation (exactly one `?`), and optionally a next-episode tease."
+
+### 7.18 CTA VOCABULARY CONTAINMENT
+- **Severity**: 🔴 CRITICAL
+- **Fail criteria**: Any CTA vocabulary (the full banned list from 7.14) appears in ANY block OTHER than `[[END_SCREEN]]`. This is the corollary of 7.14, extended to all narration blocks.
+- **Detection**: For each block in {HOOK, CONTEXT, PROMISE, ACT1, ACT2, ACT2B, ACT3, CLIMAX, INSIGHT, CONCLUSION, OUTRO}, regex scan for any banned CTA word from 7.14.
+- **Feedback**: "CTA vocabulary '[word]' found in [[BLOCK]]. CTAs belong ONLY in END_SCREEN. Remove from narration and move to END_SCREEN."

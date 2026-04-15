@@ -36,6 +36,12 @@ Insight takeaway.
 [[CONCLUSION]]
 Final thought.
 
+[[OUTRO]]
+And you, what would you have done ?
+
+[[END_SCREEN]]
+Subscribe for more documentaries. What part surprised you the most ? Tell me in the comments. See you next week.
+
 [[TRANSITIONS]]
 HOOK→CONTEXT: Seamless.
 
@@ -46,10 +52,10 @@ Style is consistent.
 No factual issues found.`;
 
 describe("parseTaggedScript", () => {
-  it("extracts all 13 sections from a tagged script", () => {
+  it("extracts all 15 sections from a tagged script", () => {
     const result = parseTaggedScript(SAMPLE_TAGGED);
     expect(result.tagged).toBe(true);
-    expect(result.sections).toHaveLength(13);
+    expect(result.sections).toHaveLength(15);
     expect(result.emptySections).toHaveLength(0);
     expect(result.preamble).toBe("");
   });
@@ -70,7 +76,7 @@ describe("parseTaggedScript", () => {
     const keys = parseTaggedScript(SAMPLE_TAGGED).sections.map((s) => s.key);
     expect(keys).toEqual([
       "hook", "context", "promise", "act1", "act2", "act2b",
-      "act3", "climax", "insight", "conclusion", "outro",
+      "act3", "climax", "insight", "conclusion", "outro", "end_screen",
       "transitions", "style_check", "risk_check",
     ]);
   });
@@ -78,7 +84,7 @@ describe("parseTaggedScript", () => {
   it("handles empty input", () => {
     const result = parseTaggedScript("");
     expect(result.tagged).toBe(false);
-    expect(result.emptySections).toHaveLength(14);
+    expect(result.emptySections).toHaveLength(15);
   });
 
   it("handles untagged script as preamble", () => {
@@ -94,6 +100,7 @@ describe("parseTaggedScript", () => {
     expect(result.sections.find((s) => s.key === "hook")!.content).toBe("Hook text.");
     expect(result.sections.find((s) => s.key === "conclusion")!.content).toBe("End.");
     expect(result.emptySections).toContain("act1");
+    expect(result.emptySections).toContain("end_screen");
   });
 
   it("parses space-separated tags like STYLE CHECK", () => {
@@ -101,6 +108,13 @@ describe("parseTaggedScript", () => {
     const result = parseTaggedScript(text);
     expect(result.tagged).toBe(true);
     expect(result.sections.find((s) => s.key === "style_check")!.content).toBe("Style notes here.");
+  });
+
+  it("parses END_SCREEN with underscore", () => {
+    const text = "[[END_SCREEN]]\nSubscribe and comment ?";
+    const result = parseTaggedScript(text);
+    expect(result.tagged).toBe(true);
+    expect(result.sections.find((s) => s.key === "end_screen")!.content).toBe("Subscribe and comment ?");
   });
 });
 
@@ -120,6 +134,8 @@ describe("reassembleWithTags", () => {
     const text = reassembleWithTags(result.sections);
     expect(text).toContain("[[HOOK]]");
     expect(text).toContain("[[CONCLUSION]]");
+    expect(text).toContain("[[OUTRO]]");
+    expect(text).toContain("[[END_SCREEN]]");
     expect(text).toContain("[[STYLE CHECK]]");
     expect(text).toContain("[[RISK CHECK]]");
   });
@@ -161,7 +177,7 @@ Context line 2.`;
     expect(hook.content).toContain("Line 3 of hook.");
   });
 
-  it("handles a full 13-block French script", () => {
+  it("handles a full 15-block French script", () => {
     const frScript = `[[HOOK]]
 En 1347, un navire fantôme accoste à Messine.
 
@@ -192,6 +208,12 @@ Ce que cette histoire nous enseigne.
 [[CONCLUSION]]
 Le port de Messine existe toujours.
 
+[[OUTRO]]
+Et vous, qu'auriez-vous fait à leur place ?
+
+[[END_SCREEN]]
+Abonnez-vous pour la suite. Quel détail vous a le plus marqué ? Dites-le en commentaire. À la semaine prochaine.
+
 [[TRANSITIONS]]
 HOOK→CONTEXT: ✅ SEAMLESS
 
@@ -203,26 +225,27 @@ Ton documentaire cohérent. Rating: STRONG.
 
     const result = parseTaggedScript(frScript);
     expect(result.tagged).toBe(true);
-    expect(result.sections).toHaveLength(13);
+    expect(result.sections).toHaveLength(15);
     expect(result.emptySections).toHaveLength(0);
     expect(result.sections[0].content).toContain("navire fantôme");
-    expect(result.sections[10].content).toContain("SEAMLESS");
-    expect(result.sections[11].content).toContain("STRONG");
-    expect(result.sections[12].content).toContain("SOLID");
+    expect(result.sections.find(s => s.key === "end_screen")!.content).toContain("commentaire");
+    expect(result.sections.find(s => s.key === "transitions")!.content).toContain("SEAMLESS");
+    expect(result.sections.find(s => s.key === "style_check")!.content).toContain("STRONG");
+    expect(result.sections.find(s => s.key === "risk_check")!.content).toContain("SOLID");
   });
 
   it("handles a short script (all sections present but minimal)", () => {
-    const tags = ["HOOK","CONTEXT","PROMISE","ACT1","ACT2","ACT2B","ACT3","CLIMAX","INSIGHT","CONCLUSION","TRANSITIONS","STYLE CHECK","RISK CHECK"];
+    const tags = ["HOOK","CONTEXT","PROMISE","ACT1","ACT2","ACT2B","ACT3","CLIMAX","INSIGHT","CONCLUSION","OUTRO","END_SCREEN","TRANSITIONS","STYLE CHECK","RISK CHECK"];
     const shortScript = tags.map(t => `[[${t}]]\nMinimal ${t.toLowerCase()} content.`).join("\n\n");
     const result = parseTaggedScript(shortScript);
     expect(result.tagged).toBe(true);
     expect(result.emptySections).toHaveLength(0);
-    expect(result.sections).toHaveLength(13);
+    expect(result.sections).toHaveLength(15);
   });
 
   it("handles a long script with extensive ACT2 content", () => {
     const longAct2 = Array.from({length: 20}, (_, i) => `Evidence paragraph ${i+1} with detailed analysis.`).join("\n\n");
-    const text = `[[HOOK]]\nShort hook.\n[[CONTEXT]]\nBrief context.\n[[PROMISE]]\nPromise.\n[[ACT1]]\nSetup.\n[[ACT2]]\n${longAct2}\n[[ACT2B]]\nComplication.\n[[ACT3]]\nStakes.\n[[CLIMAX]]\nResolution.\n[[INSIGHT]]\nTakeaway.\n[[CONCLUSION]]\nFinal image.\n[[TRANSITIONS]]\nAudit.\n[[STYLE CHECK]]\nCheck.\n[[RISK CHECK]]\nRisks.`;
+    const text = `[[HOOK]]\nShort hook.\n[[CONTEXT]]\nBrief context.\n[[PROMISE]]\nPromise.\n[[ACT1]]\nSetup.\n[[ACT2]]\n${longAct2}\n[[ACT2B]]\nComplication.\n[[ACT3]]\nStakes.\n[[CLIMAX]]\nResolution.\n[[INSIGHT]]\nTakeaway.\n[[CONCLUSION]]\nFinal image.\n[[OUTRO]]\nWhat now ?\n[[END_SCREEN]]\nSubscribe ?\n[[TRANSITIONS]]\nAudit.\n[[STYLE CHECK]]\nCheck.\n[[RISK CHECK]]\nRisks.`;
     const result = parseTaggedScript(text);
     expect(result.tagged).toBe(true);
     const act2 = result.sections.find(s => s.key === "act2")!;
@@ -234,7 +257,7 @@ Ton documentaire cohérent. Rating: STRONG.
     const result = parseTaggedScript(SAMPLE_TAGGED);
     const coreKeys = result.sections.filter(s => !["transitions","style_check","risk_check"].includes(s.key));
     const editorialKeys = result.sections.filter(s => ["transitions","style_check","risk_check"].includes(s.key));
-    expect(coreKeys).toHaveLength(10);
+    expect(coreKeys).toHaveLength(12);
     expect(editorialKeys).toHaveLength(3);
   });
 

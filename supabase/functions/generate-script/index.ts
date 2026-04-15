@@ -695,6 +695,10 @@ const CORE_BUDGETS: SectionBudget[] = [
     pct: [0.005, 0.005, 0.005],
     shortNote: "One short question, max 15 words, max 100 characters",
     longNote: "Still ONE short question — OUTRO length is fixed regardless of tier" },
+  { tag: "END_SCREEN", label: "Post-film engagement layer",
+    pct: [0.01, 0.01, 0.01],
+    shortNote: "3-4 sentences, conversational register, contains ALL CTAs",
+    longNote: "Still 3-4 sentences — END_SCREEN length is fixed regardless of tier" },
 ];
 
 function buildVolumeTable(charTarget: number): string {
@@ -728,7 +732,7 @@ function buildVolumeGuidance(charTarget: number): string {
 
   const tierGuidance: Record<LengthTier, string> = {
     short: `LENGTH TIER: SHORT (~${wordTarget} words)
-STRATEGY: Every sentence must earn its place. Reduce EXAMPLES, not SECTIONS — all 11 core blocks must appear.
+STRATEGY: Every sentence must earn its place. Reduce EXAMPLES, not SECTIONS — all 12 core blocks must appear.
 - Cut secondary examples and supporting details first.
 - Keep the strongest evidence in ACT2 — compress by removing the second-best example, not by weakening the best one.
 - Transitions between blocks can be tighter — the viewer accepts faster pacing in short formats.
@@ -822,7 +826,7 @@ You are NOT translating from English. You are THINKING and WRITING directly in $
    - Revelations: the "aha moment" phrasing must feel native, not imported.
    - Closings: final resonance depends on ${langLabel}'s specific rhythm for memorable endings.
 
-4. **REGISTER CONSISTENCY**: Maintain a UNIFORM register (educated, articulate, accessible) across ALL 14 blocks. The tone should not suddenly shift between sections. The voice must feel like ONE narrator speaking throughout — not different authors per block.
+4. **REGISTER CONSISTENCY**: Maintain a UNIFORM register (educated, articulate, accessible) across narration blocks 1-11 (HOOK through OUTRO). Block 12 ([[END_SCREEN]]) is the ONE exception — it deliberately ruptures the register to a conversational post-film voice. The 15 blocks total must feel like ONE documentary project, not different authors.
 
 5. **CULTURAL ADAPTATION**: References, analogies, and examples should resonate with a ${langLabel}-speaking audience. If a cultural reference only works in English, find an equivalent that carries the same intellectual or emotional weight in ${langLabel}.
 
@@ -840,7 +844,7 @@ ${styleInstruction}
 CRITICAL STYLE RULES:
 1. The style is an EXPRESSIVE LAYER — it modulates tone, rhythm, and vocabulary. It must NEVER weaken the narrative structure, dilute factual precision, or replace argumentation with decoration.
 2. VARY the style intensity per block: the HOOK and CLIMAX can be more stylistically charged; ACT2 (analytical core) must remain substance-first regardless of style.
-3. TONAL CONSISTENCY: the style must feel like ONE voice throughout — not 14 different authors. Variations in intensity are fine; contradictions in tone are not.
+3. TONAL CONSISTENCY: the narration (blocks 1-11) must feel like ONE voice throughout — not 15 different authors. Variations in intensity are fine; contradictions in tone are not. Block 12 ([[END_SCREEN]]) is the only deliberate register rupture and is exempt from this rule.
 4. STYLE ≠ QUALITY SUBSTITUTE: a "dramatic" style does NOT excuse vague claims. A "humorous" style does NOT excuse shallow analysis. A "documentary" style does NOT excuse empty atmosphere. Every stylistic choice must CARRY analytical content.
 
 ${cadenceSection}
@@ -885,6 +889,21 @@ Search the full script for: "je ", "j'", " i ", "i've" (case insensitive, with s
 If ANY match found, rewrite the sentence in third person or passive voice before continuing.
 
 NO EXCEPTIONS. This rule overrides any StyleAdapter preference.
+
+---
+
+## ELLIPSIS PROHIBITION — HARD RULE, ALL SECTIONS
+
+Any sentence ending with "…" (points de suspension / ellipsis, U+2026 or three dots) is STRICTLY FORBIDDEN in every core section (HOOK through END_SCREEN).
+Ellipses create false drama and weaken strong sentences. Always replace with a period.
+
+BAD. "Ce qu'elle révèle modifie la 356, sans toucher à une seule vis…"
+GOOD. "Ce qu'elle révèle modifie la 356, sans toucher à une seule vis."
+
+BAD. "Le reste glisse encore…"
+GOOD. "Le reste glisse."
+
+SELF-CHECK. Search the full script for "…" and for "..." (three consecutive dots). Any match means rewrite the sentence to end with a period.
 
 ---
 
@@ -960,11 +979,11 @@ After </plan>, write the full narration with section tags.
 
 ---
 
-## OUTPUT FORMAT — 14 MANDATORY BLOCKS
+## OUTPUT FORMAT — 15 MANDATORY BLOCKS
 
-### NarrativeCoreBlocks (1-11): The Script
+### NarrativeCoreBlocks (1-12): The Script
 
-Output the script with EXACTLY these 11 tags, in this exact order, each on its own line:
+Output the script with EXACTLY these 12 tags, in this exact order, each on its own line:
 
 [[HOOK]]
 [[CONTEXT]]
@@ -977,8 +996,9 @@ Output the script with EXACTLY these 11 tags, in this exact order, each on its o
 [[INSIGHT]]
 [[CONCLUSION]]
 [[OUTRO]]
+[[END_SCREEN]]
 
-### EditorialAssistBlocks (12-14): Quality Audit
+### EditorialAssistBlocks (13-15): Quality Audit
 
 After the script, output these 3 editorial blocks:
 
@@ -987,12 +1007,12 @@ After the script, output these 3 editorial blocks:
 [[RISK CHECK]]
 
 Rules:
-- All 14 tags must appear in order. No text before [[HOOK]] (except <plan>).
+- All 15 tags must appear in order. No text before [[HOOK]] (except <plan>).
 - CRITICAL: [[ACT2B]] is MANDATORY. It must ALWAYS be present with substantial content (minimum 3 paragraphs). NEVER skip or merge it into ACT2 or ACT3. If you omit [[ACT2B]], the entire script is INVALID.
-- Between core tags (1-11): pure narration only. No titles, headers, "---", "###", "**", or meta-commentary. The exception is [[OUTRO]], which may break the fourth wall with a single engagement question.
-- The narration must flow seamlessly across section boundaries — the tags are invisible to the viewer.
-- No meta-commentary like "In this video…" or "Let's explore…".
-- Editorial blocks (12-14) contain structured analysis, NOT narration.
+- Between core tags (1-12): pure narration only. No titles, headers, "---", "###", "**", or meta-commentary. The exceptions are [[OUTRO]] (single engagement question, breaks the fourth wall) and [[END_SCREEN]] (conversational post-film CTAs, register rupture allowed and expected).
+- The narration must flow seamlessly across section boundaries from HOOK through OUTRO — the tags are invisible to the viewer. [[END_SCREEN]] is the ONLY permitted rupture: it is a separate post-film layer, not part of the continuous narration.
+- No meta-commentary like "In this video…" or "Let's explore…" inside blocks 1-11.
+- Editorial blocks (13-15) contain structured analysis, NOT narration.
 
 ---
 
@@ -1123,29 +1143,87 @@ SECTION ROLE CONTRACT — ACT2:
 ACT2 owns EXCLUSIVELY. the concrete evidence of what went wrong or was hidden. First-time revelations. Primary sources.
 If a fact is introduced in ACT2, it is CLOSED. ACT2B, ACT3, and CLIMAX must not re-introduce it, they can only reference it in one word maximum ("the lag", "the recall", "the replica").
 
-ACT2 — ANTI-LIST RULE — HARD:
+ACT2 — PARAGRAPH LABEL PROHIBITION — HARD RULE:
 
-ACT2 must NEVER use visible structural markers such as:
-- "Pilier un / deux / trois"
-- "Premier point / Deuxième point"
-- "First / Second / Third"
-- "Point one / Point two"
-- "Élément un / Élément deux"
-- Numbered sentences. "1.", "2.", "3."
-- Lettered sentences. "A.", "B.", "C."
+The model has a systematic tendency to organize ACT2 using paragraph labels that function as mini-titles. This is STRICTLY FORBIDDEN in all its forms.
 
-These structures make the script sound like a presentation slide deck, not a documentary narration.
+WHAT A PARAGRAPH LABEL IS:
+Any word, phrase, or sentence that:
+- Announces the topic of the paragraph instead of starting the paragraph
+- Could be replaced by a section header
+- Contains no narrative information on its own
+- Sits alone on a line before the actual content
 
-REPLACEMENT RULE. Each new revelation in ACT2 must be introduced by a narrative connector that creates flow, not a label that creates a list.
+BANNED PATTERNS — all variations of the same problem:
 
-APPROVED CONNECTORS FOR ACT2:
-- Temporal. "Le [date]...", "Pendant ce temps...", "Dans les années qui suivent...", "Dès [année]..."
-- Spatial. "Sur la côte ouest...", "Dans les ateliers...", "À Stuttgart...", "Across the Atlantic..."
-- Causal. "Face à cette réalité...", "En réponse...", "Cette pression génère..."
-- Contrastive. "Mais une autre réalité...", "À l'écart de ce récit..."
-- Sequential without numbering. "Un premier fait s'impose.", "Une deuxième piste s'ouvre." Only if used once per section and not as a running series of 4+.
+Version 1 — Numbered labels:
+BAD. "Pilier un. Vérifiable."
+BAD. "Premier faisceau. Documenté."
+BAD. "Point one. Solid."
+BAD. "Élément un."
 
-SELF-CHECK. After writing ACT2, search for any word from this list. "pilier", "premier point", "deuxième", "troisième", "quatrième", "cinquième", "first", "second", "third", "fourth", "fifth", "pillar", "point one", "point two". If found, replace with a narrative connector.
+Version 2 — Thematic labels:
+BAD. "Point dur, public."
+BAD. "Registres sportifs."
+BAD. "Culture de bord de piste."
+BAD. "Marché parallèle."
+BAD. "Cœur d'usine."
+
+Version 3 — Descriptive labels:
+BAD. "Fait établi."
+BAD. "Zone documentée."
+BAD. "Élément technique."
+BAD. "Donnée vérifiable."
+
+Version 4 — Transition labels:
+BAD. "Autre élément."
+BAD. "Troisième couche."
+BAD. "Côté technique."
+BAD. "Sur le plan juridique."
+BAD. "Côté mécanique."
+
+Also banned: numbered sentences ("1.", "2.", "3."), lettered sentences ("A.", "B.", "C."), "First / Second / Third", "Pilier un / deux / trois".
+
+THE FUNDAMENTAL TEST:
+Before writing each paragraph in ACT2, ask:
+"Does my opening sentence contain actual narrative information, or does it only announce what's coming?"
+If it only announces, it is a label. Delete it. Start directly with the information.
+
+CORRECT OPENING PATTERNS (replace every label with one of these):
+- A date and place: "Le 30 septembre 1955, la California Highway Patrol..."
+- A name and action: "À Sebring, Denise McCluggage prend le départ en 356."
+- A concrete object or document: "Les catalogues de kit cars des années 1970 listent..."
+- A geographical anchor: "Sur la côte ouest, des ateliers photographient..."
+- A temporal shift: "À partir des années 1970, les tribunaux s'en mêlent."
+- A direct factual statement: "Les listes d'engagement du SCCA affichent des équipages féminins à côté du mot 356."
+
+TRANSITION BETWEEN ACT2 PARAGRAPHS:
+Each new paragraph must begin with a connector that creates narrative flow, not a label that creates a table of contents.
+
+APPROVED TRANSITION OPENERS:
+- Temporal: "Pendant ce temps...", "Dans les années 1960...", "Dès 1955...", "À partir des années 1970..."
+- Spatial: "Sur la côte ouest...", "Dans les salles d'expertise...", "À Stuttgart..."
+- Causal: "En réponse...", "Face à cette demande...", "Cette pression génère..."
+- Contrastive: "Un autre courant...", "Une autre réalité...", "À l'écart de ce récit..."
+
+SELF-CHECK 1 — mandatory before finalizing ACT2:
+Read each paragraph opening sentence.
+Ask: "If I remove this sentence, does the paragraph still make complete sense?"
+If YES, the opening sentence is a label. Delete it.
+If NO, the opening sentence carries real information. Keep it.
+
+SELF-CHECK 2:
+Search ACT2 for any line that:
+- Is 5 words or fewer AND
+- Is followed by a longer sentence on a new line AND
+- Contains no proper noun, date, number, or named source
+If all three conditions are true, delete it.
+
+SELF-CHECK 3 — vocabulary scan:
+Search ACT2 for any of these words: "pilier", "faisceau", "volet", "premier point", "deuxième point", "point dur", "registres sportifs", "marché parallèle", "cœur d'usine", "côté technique", "côté juridique", "fait établi", "zone documentée", "élément technique", "donnée vérifiable", "first", "second", "third", "fourth", "fifth", "pillar", "point one", "point two".
+If found, rewrite the paragraph to start with a concrete anchor.
+
+The same paragraph label prohibition applies to ACT2B and ACT3.
 
 ACT2 is the INTELLECTUAL ENGINE of the entire script. It carries the heaviest analytical load.
 
@@ -1377,21 +1455,47 @@ The last sentence of CONCLUSION must be:
 
 TARGET. The last sentence should be 5-10 words, sensory, and leave a trace without closing the thought completely.
 
-### [[OUTRO]] — Engagement Question (MANDATORY 11th section)
+### [[OUTRO]] — Narrative Engagement Question (MANDATORY 11th section)
 
-The [[OUTRO]] appears AFTER [[CONCLUSION]]. It contains exactly ONE question designed to drive YouTube comment engagement.
+The [[OUTRO]] appears AFTER [[CONCLUSION]]. It bridges the film and the audience while STAYING inside the documentary register. It contains exactly ONE question designed to drive YouTube comment engagement.
 
 PURPOSE.
 The CONCLUSION closes the film emotionally.
-The OUTRO opens a conversation with the audience.
-These two functions must NEVER be mixed in the same section.
+The OUTRO opens a conversation with the audience — but still in documentary voice.
+END_SCREEN (the 12th section) is the ONLY place where calls to action live.
+These three functions must NEVER be mixed.
+
+HARD CONSTRAINTS:
+- Exactly ONE sentence. Exactly ONE "?"
+- Between 20 and 100 characters total
+- Anchored in the documentary subject
+- Open, no obvious answer
+- Creates potential disagreement in comments
+- Stays in documentary register
+
+WHAT THE OUTRO IS NOT:
+BAD. A call to subscribe, share, or like
+BAD. A promise of future content
+BAD. A thank you message
+BAD. Multiple questions
+BAD. Anything breaking the documentary tone
+
+BANNED WORDS IN OUTRO (and in every core section 1–11):
+"abonnez", "subscribe", "partagez", "share", "likez", "like", "notification", "cloche", "bell", "newsletter", "inscrivez", "prochain épisode", "semaine prochaine", "notre chaîne", "soutenez", "envoyez", "si vous avez aimé", "merci d'avoir", "rendez-vous bientôt", "je reviendrai", "je publierai", "soutenez-nous"
+These words belong EXCLUSIVELY in [[END_SCREEN]].
+
+SELF-CHECK before output:
+1. Count sentences. If > 1, rewrite from scratch.
+2. Count "?". If > 1, rewrite from scratch.
+3. Count characters. If > 100 or < 20, rewrite from scratch.
+4. Search for banned CTA vocabulary. If any found, rewrite from scratch.
 
 RULES:
 - One sentence maximum. One question mark.
 - The question must be OPEN, multiple valid answers exist.
 - The question must create POTENTIAL DISAGREEMENT, people comment when they have a different opinion.
 - The question must be anchored in the SUBJECT, not in the viewer's personal life.
-- The question must be SHORT, under 15 words, maximum 100 characters.
+- The question must be SHORT, under 15 words, maximum 100 characters, minimum 20 characters.
 - The question must NOT have an obvious answer.
 - The question must NOT summarize the video.
 - The question must NOT be rhetorical.
@@ -1419,6 +1523,58 @@ Philosophy/human. "La peur de mourir ou la peur d'avoir mal vécu, laquelle vous
 
 OUTRO is tag-only. No paragraph, no buildup, no explanation. Just the question.
 
+### [[END_SCREEN]] — Post-Film Engagement Layer (MANDATORY 12th section)
+
+The [[END_SCREEN]] appears AFTER [[OUTRO]]. It is NOT part of the documentary script. It is a short conversational layer added after the film ends — DIFFERENT tone, DIFFERENT register.
+
+PURPOSE.
+Drive subscriptions, shares, and comments. This is where ALL CTAs live. Never anywhere else in the entire script.
+
+REGISTER RUPTURE.
+The boundary between OUTRO and END_SCREEN is the boundary between documentary register and conversational register. Cross it cleanly. No bridging sentence, no narration bleed.
+
+HARD CONSTRAINTS:
+- Maximum 4 sentences
+- Between 80 and 400 characters total
+- Conversational tone — NOT documentary
+- First person is ALLOWED here ("je", "I")
+- Must include exactly:
+  a) One subscription or notification CTA
+  b) One comment invitation echoing the OUTRO question (must contain exactly one "?")
+  c) Optional: one next-episode tease (one sentence max, only if next subject is confirmed — otherwise omit)
+
+ALLOWED VOCABULARY (END_SCREEN only):
+"abonnez", "subscribe", "partagez", "share", "likez", "like", "notification", "cloche", "bell", "newsletter", "inscrivez", "prochain épisode", "semaine prochaine", "notre chaîne", "soutenez", "envoyez", "si vous avez aimé", "merci d'avoir", "rendez-vous bientôt", "je reviendrai", "je publierai"
+
+END_SCREEN TEMPLATE:
+\`\`\`
+Si cette enquête vous a parlé, abonnez-vous, il y en a d'autres dans ce style.
+Dites-moi en commentaire. {echo of OUTRO question rephrased as comment invitation}.
+{Optional: one sentence teasing next episode if subject is confirmed.}
+\`\`\`
+
+CORRECT END_SCREEN EXAMPLE:
+\`\`\`
+Si cette enquête vous a parlé, abonnez-vous, il y en a d'autres dans ce style.
+Dites-moi en commentaire. Scellé ou cartel, qu'est-ce qui fait autorité pour vous sur l'histoire d'une voiture ?
+\`\`\`
+
+SELF-CHECK before output:
+1. Count sentences. If > 4, compress.
+2. Count characters. If > 400 or < 80, rewrite.
+3. Search for at least one "?". If none found, add a comment invitation.
+4. Confirm the register is conversational, not documentary.
+5. Confirm END_SCREEN does NOT repeat any fact, source, or narrative detail already in the script.
+
+END_SCREEN — FORBIDDEN CONTENT:
+- Repeating facts or sources from the script
+- Multiple CTAs of the same type
+- Documentary register prose
+- More than 4 sentences
+- Any reference to "nos experts", "nos recherches", "dans cette enquête nous avons vu que..."
+
+Remember: the BOUNDARY between OUTRO and END_SCREEN is the BOUNDARY between film and audience. These two boundaries must never be crossed inward.
+
 ---
 
 ## SECTION ARCHITECTURE — EditorialAssistBlocks
@@ -1427,7 +1583,7 @@ IMPORTANT: These 3 blocks are NOT narration. They are STRUCTURED EDITORIAL ANALY
 
 ### [[TRANSITIONS]] — Inter-Block Continuity Audit
 
-For EACH of the 10 boundaries between core blocks (HOOK→CONTEXT, CONTEXT→PROMISE, PROMISE→ACT1, ACT1→ACT2, ACT2→ACT2B, ACT2B→ACT3, ACT3→CLIMAX, CLIMAX→INSIGHT, INSIGHT→CONCLUSION, CONCLUSION→OUTRO):
+For EACH of the 11 boundaries between core blocks (HOOK→CONTEXT, CONTEXT→PROMISE, PROMISE→ACT1, ACT1→ACT2, ACT2→ACT2B, ACT2B→ACT3, ACT3→CLIMAX, CLIMAX→INSIGHT, INSIGHT→CONCLUSION, CONCLUSION→OUTRO, OUTRO→END_SCREEN):
 
 1. **Quote** the LAST sentence of the outgoing block and the FIRST sentence of the incoming block.
 2. **Rate** the transition using this scale:
@@ -1437,6 +1593,7 @@ For EACH of the 10 boundaries between core blocks (HOOK→CONTEXT, CONTEXT→PRO
    - ❌ BROKEN — disconnection that would confuse a listener.
 3. **If ABRUPT or BROKEN**: write a SPECIFIC rewrite suggestion (1-2 sentences) that would fix the transition. Do NOT suggest vague improvements — provide the actual bridging sentence.
 4. **Identify scale shifts**: flag any transition where the narrative jumps between micro (specific detail) and macro (broad context) without preparation. These are the most common causes of listener disorientation.
+5. **EXCEPTION — boundary #11 (OUTRO → END_SCREEN)**: this boundary is NOT a narrative transition. It is an intentional register rupture: the film ends at OUTRO, and [[END_SCREEN]] is a post-film conversational layer. Rate this boundary as ✅ SEAMLESS only if the OUTRO cleanly closes the narration and the END_SCREEN clearly signals a new, conversational register. Do NOT suggest bridging narration between them.
 
 Format example:
 \`\`\`
@@ -1463,7 +1620,7 @@ Verify the script against the chosen style ("${narrativeStyle}"). Analyze system
    - List-like enumeration disguised as narration
 
 3. **TONAL CONSISTENCY**:
-   - Rate tone consistency across all 11 core blocks: CONSISTENT / MINOR DRIFT / INCONSISTENT
+   - Rate tone consistency across the 11 narration core blocks (HOOK through OUTRO): CONSISTENT / MINOR DRIFT / INCONSISTENT. Block 12 ([[END_SCREEN]]) is exempt — it is a deliberate register rupture.
    - If drift detected: identify WHICH blocks deviate and HOW (e.g., "ACT2B suddenly becomes more formal than ACT2")
 
 4. **DOCUMENTARY CLICHÉS** — Flag any instance of:
@@ -1530,11 +1687,11 @@ This is a voice-over script meant to be READ ALOUD. Sentence length must serve o
 ### 3b. PUNCTUATION RULES (mandatory)
 - NEVER use colons (:) in narration text. Replace every colon with a period (.).
 - FRENCH TYPOGRAPHY: Always insert a space BEFORE the following punctuation marks: ? ! ; (write "question ?" not "question?", "incroyable !" not "incroyable!")
-- These rules apply to ALL narration blocks (1-11). Editorial blocks (12-14) are exempt.
+- These rules apply to ALL narration blocks (1-11, HOOK through OUTRO). Block 12 ([[END_SCREEN]]) is a post-film conversational layer and is exempt. Editorial blocks (13-15) are also exempt.
 
 ### 4. NARRATIVE COHERENCE LAYER (NarrativeCoherenceLayer)
 
-The 11 core blocks must function as a SINGLE CONTINUOUS MOVEMENT (with the exception of [[OUTRO]], which is a direct break from narration into viewer engagement). The tags are invisible to the viewer — what they hear is one uninterrupted story followed by a single engagement question.
+The 11 narration blocks (HOOK through OUTRO) must function as a SINGLE CONTINUOUS MOVEMENT (with [[OUTRO]] as the final breakpoint into a single engagement question). The tags are invisible to the viewer — what they hear is one uninterrupted story followed by a single engagement question. Block 12 ([[END_SCREEN]]) is then a separate post-film layer, conversational in register, containing the CTAs — it is NOT part of the continuous narration and must not be read as one with the film.
 
 #### A. MANDATORY THREAD CONNECTIONS
 
@@ -1737,7 +1894,7 @@ REPLACEMENT STRATEGY: Instead of flagging and leaving gaps, REWRITE using concre
 - Instead of "—", use a comma, a period, a semicolon, or restructure the sentence.
 - Also avoid "–" (en dash, U+2013) for parenthetical insertions. Use commas or parentheses instead.
 - Hyphens "-" for compound words are fine (e.g., "well-known").
-- This rule applies to ALL 14 blocks including editorial blocks.
+- This rule applies to ALL 15 blocks including editorial blocks.
 
 ---
 
@@ -1778,12 +1935,13 @@ Your script must sound like it was written by a PASSIONATE HUMAN EXPERT, not by 
 You decide the optimal script length within the allowed range. There is no fixed target.
 
 ### Range
-Your CORE SCRIPT (blocks 1-11, including OUTRO) must be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (~${wordMin.toLocaleString()}–${wordMax.toLocaleString()} words).
+Your CORE SCRIPT (blocks 1-11, HOOK through OUTRO) must be between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters (~${wordMin.toLocaleString()}–${wordMax.toLocaleString()} words).
 The maximum (${charMax.toLocaleString()}) is a HARD LIMIT. Never exceed it.
 The minimum (${charMin.toLocaleString()}) is a SOFT FLOOR. You may go slightly below if the source material genuinely doesn't justify more, but you must justify it in your [[STYLE CHECK]].
 
 ⚠️ The section tags ([[HOOK]], [[CONTEXT]], etc.) do NOT count toward the character limit.
-⚠️ The editorial blocks (12-14) do NOT count toward the character limit.
+⚠️ Block 12 ([[END_SCREEN]]) does NOT count toward the character limit — it is a fixed 80-400 chars regardless of tier.
+⚠️ The editorial blocks (13-15) do NOT count toward the character limit.
 
 ### Proportionality Rule
 Never generate a script significantly longer than the source text unless narrative reformulation genuinely requires it. A short source does not justify a long script. Let the richness, complexity, and factual density of the source guide your length within the allowed range.
@@ -1801,14 +1959,14 @@ In your <plan>, you MUST state:
 Then distribute across sections using the VolumeAllocator ratios based on your chosen target.
 The length tier (SHORT/MEDIUM/LONG) is determined by your chosen target.
 
-CRITICAL: Before outputting your final script, COUNT the total characters of blocks 1-11 (excluding tags). If the count exceeds ${charMax.toLocaleString()}, you MUST revise and compress until you are within range.
+CRITICAL: Before outputting your final script, COUNT the total characters of blocks 1-11 (HOOK through OUTRO, excluding tags and excluding END_SCREEN). If the count exceeds ${charMax.toLocaleString()}, you MUST revise and compress until you are within range.
 
 ---
 
 ## FINAL SELF-CHECK (execute ALL checks before outputting)
 
 ### Structural Integrity
-1. All 14 tags present in correct order (11 core + 3 editorial).
+1. All 15 tags present in correct order (12 core + 3 editorial).
 2. No text before [[HOOK]] (except <plan>).
 3. No markdown formatting (###, **, ---) inside core blocks.
 
@@ -1861,14 +2019,14 @@ If "because" appears in ACT3 or CLIMAX to explain something introduced in ACT2, 
 23. No sequence of 3+ facts presented as a list without narrative connection.
 
 ### Volume Compliance
-24. Estimated core script (blocks 1-11) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters. Length is adapted to source density. If OVER the max, compress NOW before outputting.
+24. Estimated narration (blocks 1-11, HOOK through OUTRO, excluding END_SCREEN) within ${charMin.toLocaleString()}–${charMax.toLocaleString()} characters. Length is adapted to source density. If OVER the max, compress NOW before outputting.
 25. Each section approximately respects its VolumeAllocator budget (±30% tolerance).
 
 ### Forbidden Punctuation
 26. ZERO occurrences of "—" (em dash) or "–" (en dash used as parenthetical) in the entire output.
 
 ### Editorial Blocks
-26. TRANSITIONS audit covers all 10 boundaries with ratings.
+26. TRANSITIONS audit covers all 11 boundaries with ratings (boundary #11 OUTRO→END_SCREEN marked as register rupture).
 27. STYLE CHECK includes rhythm analysis and AI-detection scan.
 28. RISK CHECK classifies every significant claim by certainty level.`;
 }
@@ -1959,7 +2117,7 @@ ${previousScript}
 Do NOT produce a reworded version. The viewer must feel this is a completely different documentary about the same subject, opening through a different door.`);
   }
 
-  parts.push(`CRITICAL REMINDER: Output the script with ALL 14 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[OUTRO]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. Allowed range for core script (blocks 1-11): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total. You choose the optimal length within this range based on the source material's density. Tags do NOT count toward the limit. NEVER EXCEED ${charMax.toLocaleString()} characters. NEVER use the em dash "—" character anywhere.`);
+  parts.push(`CRITICAL REMINDER: Output the script with ALL 15 section tags in order: [[HOOK]], [[CONTEXT]], [[PROMISE]], [[ACT1]], [[ACT2]], [[ACT2B]], [[ACT3]], [[CLIMAX]], [[INSIGHT]], [[CONCLUSION]], [[OUTRO]], [[END_SCREEN]], [[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]]. Allowed range for narration (blocks 1-11, HOOK through OUTRO, excluding END_SCREEN): between ${charMin.toLocaleString()} and ${charMax.toLocaleString()} characters total. You choose the optimal length within this range based on the source material's density. Tags do NOT count toward the limit. END_SCREEN is fixed at 80-400 chars and is NOT counted in the narration budget. NEVER EXCEED ${charMax.toLocaleString()} characters for the narration. NEVER use the em dash "—" character anywhere.`);
 
   return parts.join("\n\n");
 }

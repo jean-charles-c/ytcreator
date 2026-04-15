@@ -13,7 +13,7 @@ export interface ParsedSection {
 export interface TagParseResult {
   /** Whether [[TAG]] markers were found and used */
   tagged: boolean;
-  /** 13 sections in canonical order, empty string if missing */
+  /** 15 sections in canonical order, empty string if missing */
   sections: ParsedSection[];
   /** Keys of sections that had no content */
   emptySections: SectionType[];
@@ -33,7 +33,7 @@ const TAG_REGEX = new RegExp(
 );
 
 /**
- * Parse a tagged script into 13 canonical sections.
+ * Parse a tagged script into 15 canonical sections.
  * - Deterministic: regex only, zero AI.
  * - Strips tags from content.
  * - Preserves all text between tags verbatim.

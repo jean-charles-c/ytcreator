@@ -158,14 +158,15 @@ Examples of section function to preserve:
 - [[CLIMAX]] should feel earned
 - [[INSIGHT]] should clarify meaning without sounding preachy
 - [[CONCLUSION]] should land cleanly without cliché
-- [[OUTRO]] is ONE short engagement question directed at the viewer (max 100 characters, ends with "?"). Do NOT split it into multiple sentences. Do NOT remove the question mark. Do NOT rewrite it into narration. You may only sharpen its wording while keeping it a single interrogative sentence.
+- [[OUTRO]] is ONE short engagement question directed at the viewer (20-100 characters, ends with "?"). Do NOT split it into multiple sentences. Do NOT remove the question mark. Do NOT rewrite it into narration. You may only sharpen its wording while keeping it a single interrogative sentence. Do NOT insert any subscription/share/notification/comment vocabulary — those belong to END_SCREEN.
+- [[END_SCREEN]] is a post-film conversational layer (3-4 sentences, 80-400 characters). It contains the CTAs (subscription, comment invitation, optional next-episode tease). Register is deliberately conversational and different from the narration above. Preserve its conversational tone, its CTA vocabulary, and its single "?" (comment invitation). Do NOT merge it with OUTRO. Do NOT strip its CTAs. Do NOT rewrite it into narrative prose. You may only sharpen its phrasing.
 
 EDITORIAL BLOCKS — DO NOT REWRITE
 The following blocks are analytical metadata, not narration. Leave them EXACTLY as written, character for character:
 - [[TRANSITIONS]]
 - [[STYLE CHECK]]
 - [[RISK CHECK]]
-Your humanization pass applies ONLY to blocks 1-11 ([[HOOK]] through [[OUTRO]]).
+Your humanization pass applies ONLY to blocks 1-12 ([[HOOK]] through [[END_SCREEN]]).
 
 TYPOGRAPHY AND PUNCTUATION
 - Keep the same language as the source text.
