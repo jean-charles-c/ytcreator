@@ -314,7 +314,7 @@ export default function WhisperAlignmentEditor({
         setWhisperWords(words);
 
         const rawTimepoints: ShotTimepoint[] = Array.isArray(entry.shot_timepoints)
-          ? (entry.shot_timepoints as ShotTimepoint[]).filter((tp) => tp && tp.shotId)
+          ? (entry.shot_timepoints as unknown as ShotTimepoint[]).filter((tp) => tp && tp.shotId)
           : [];
         const tpMap = new Map(rawTimepoints.map((tp) => [tp.shotId, tp.timeSeconds]));
         const storedManualAnchors = resolveManualAnchorsFromDb(rawTimepoints, words);
@@ -1014,8 +1014,9 @@ export default function WhisperAlignmentEditor({
                           const manualAnchors = resolveManualAnchorsFromDb(
                             alignedShots
                               .filter((s) => s.isManualAnchor && s.startTime !== null)
-                              .map((s) => ({
+                              .map((s, idx) => ({
                                 shotId: s.shotId,
+                                shotIndex: idx,
                                 isManual: true,
                                 timeSeconds: s.startTime!,
                                 manualEndTimeSeconds: getManualEndTimeSeconds(s, whisperWords) ?? null,
