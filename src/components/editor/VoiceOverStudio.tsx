@@ -1539,7 +1539,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                               </div>
                               {/* Transcription text */}
                               {scene.source_text && (
-                                <p className="pl-11 text-[10px] text-muted-foreground/70 leading-snug line-clamp-2 mt-0.5">
+                                <p className="pl-11 text-[11px] text-foreground/80 leading-relaxed mt-1 mb-1.5">
                                   {scene.source_text}
                                 </p>
                               )}
