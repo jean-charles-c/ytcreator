@@ -1,5 +1,6 @@
 import type { Tables } from "@/integrations/supabase/types";
 import { validateExactShotTimepoints } from "./exactShotSync";
+import { resolveShotTimingBoundaries } from "./shotTimingBoundaries";
 
 type Shot = Tables<"shots">;
 type Scene = Tables<"scenes">;
@@ -123,36 +124,16 @@ export function assembleTimeline(
     throw new Error(`Sync audio bloquée — ${validation.errors[0] ?? "shot_timepoints exacts invalides."}`);
   }
 
-  const realTimepoints = (shotTimepoints ?? []).filter((tp) => !tp.shotId.startsWith("_missing_"));
-  const timepointMap = new Map<string, number>(
-    realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
-  );
-  const manualEndMap = new Map<string, number>();
-  realTimepoints.forEach((tp) => {
-    if (typeof tp.manualEndTimeSeconds === "number" && tp.manualEndTimeSeconds > 0) {
-      manualEndMap.set(tp.shotId, tp.manualEndTimeSeconds);
-    }
-  });
-
-  const exactStarts = sortedShots.map((shot) => {
-    const start = timepointMap.get(shot.id);
-    if (start === undefined) {
-      throw new Error(`Sync audio bloquée — timepoint manquant pour le shot ${shot.id.slice(0, 8)}.`);
-    }
-    return start;
-  });
+  const resolvedBoundaries = resolveShotTimingBoundaries(expectedShotIds, shotTimepoints ?? null, audioDuration);
+  if (!resolvedBoundaries) {
+    throw new Error("Sync audio bloquée — impossible de résoudre les bornes exactes des shots.");
+  }
 
   const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
     const scene = sceneMap.get(shot.scene_id);
-    const startTime = exactStarts[idx];
-    const autoNextStart = idx < sortedShots.length - 1 ? exactStarts[idx + 1] : audioDuration;
-    const manualEnd = manualEndMap.get(shot.id);
-    // Manual end overrides the auto-derived next start (can shorten OR lengthen the segment).
-    // Bound to audioDuration to avoid overshoot beyond the audio track.
-    const effectiveEnd = manualEnd !== undefined
-      ? Math.min(manualEnd, audioDuration)
-      : autoNextStart;
-    const duration = effectiveEnd - startTime;
+    const resolvedBoundary = resolvedBoundaries[idx];
+    const startTime = resolvedBoundary.start;
+    const duration = resolvedBoundary.duration;
 
     if (!(duration > 0)) {
       throw new Error(`Sync audio bloquée — durée invalide entre les shots ${idx + 1}${idx < sortedShots.length - 1 ? ` et ${idx + 2}` : " et la fin audio"}.`);

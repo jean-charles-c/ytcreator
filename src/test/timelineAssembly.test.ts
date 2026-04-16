@@ -118,4 +118,62 @@ describe("assembleTimeline", () => {
     expect(timeline.videoTrack.segments[2].startTime).toBe(10.398);
     expect(timeline.videoTrack.segments[2].duration).toBeCloseTo(2.162, 10);
   });
+
+  it("aligns the next shot start with the previous manual end", () => {
+    const scenes = [
+      { id: "scene-1", scene_order: 1, title: "Scene 1" },
+    ] as any;
+
+    const shots = [
+      {
+        id: "shot-1",
+        scene_id: "scene-1",
+        shot_order: 1,
+        source_sentence: "A",
+        source_sentence_fr: null,
+        image_url: null,
+        shot_type: "Wide",
+        description: "A",
+      },
+      {
+        id: "shot-2",
+        scene_id: "scene-1",
+        shot_order: 2,
+        source_sentence: "B",
+        source_sentence_fr: null,
+        image_url: null,
+        shot_type: "Wide",
+        description: "B",
+      },
+      {
+        id: "shot-3",
+        scene_id: "scene-1",
+        shot_order: 3,
+        source_sentence: "C",
+        source_sentence_fr: null,
+        image_url: null,
+        shot_type: "Wide",
+        description: "C",
+      },
+    ] as any;
+
+    const audioFile = {
+      id: "audio-1",
+      file_name: "test.mp3",
+      file_path: "test.mp3",
+      duration_estimate: 12.56,
+    } as any;
+
+    const shotTimepoints: ShotTimepoint[] = [
+      { shotId: "shot-1", shotIndex: 0, timeSeconds: 0.015 },
+      { shotId: "shot-2", shotIndex: 1, timeSeconds: 5.276, manualEndTimeSeconds: 8.4 },
+      { shotId: "shot-3", shotIndex: 2, timeSeconds: 10.398 },
+    ];
+
+    const timeline = assembleTimeline(scenes, shots, audioFile, shotTimepoints);
+
+    expect(timeline.videoTrack.segments[1].duration).toBeCloseTo(3.124, 10);
+    expect(timeline.videoTrack.segments[2].startTime).toBeCloseTo(8.4, 10);
+    expect(timeline.videoTrack.segments[2].duration).toBeCloseTo(4.16, 10);
+  });
 });

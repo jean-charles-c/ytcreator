@@ -17,6 +17,7 @@
 import type { VisualPromptManifest, NormalisedShot } from "./visualPromptTypes";
 import type { ShotTimepoint } from "./timelineAssembly";
 import { validateExactShotTimepoints } from "./exactShotSync";
+import { resolveShotTimingBoundaries } from "./shotTimingBoundaries";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -227,32 +228,30 @@ export function buildManifestTiming(
     };
   }
 
-  const realTimepoints = (timepoints ?? []).filter((tp) => !tp.shotId.startsWith("_missing_"));
-  const timepointMap = new Map<string, number>(
-    realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
-  );
-  const manualEndMap = new Map<string, number>();
-  realTimepoints.forEach((tp) => {
-    if (typeof tp.manualEndTimeSeconds === "number" && tp.manualEndTimeSeconds > 0) {
-      manualEndMap.set(tp.shotId, tp.manualEndTimeSeconds);
-    }
-  });
   const exactAudioDuration = audioDuration;
+  const resolvedBoundaries = resolveShotTimingBoundaries(expectedShotIds, timepoints ?? null, exactAudioDuration);
 
-  const exactStarts = activeShots.map((item) => {
-    const start = timepointMap.get(item.shot.shotId);
-    return start ?? 0;
-  });
+  if (!resolvedBoundaries) {
+    pushUniqueIssue(issues, {
+      level: "error",
+      order: 0,
+      shotId: "__manifest__",
+      message: "Impossible de résoudre les bornes exactes du manifest timing.",
+    });
+
+    return {
+      entries: [],
+      totalDuration: exactAudioDuration,
+      issues,
+      builtAt: new Date().toISOString(),
+    };
+  }
 
   const entries: ManifestTimingEntry[] = activeShots.map((item, idx) => {
     const order = idx + 1;
-    const start = exactStarts[idx];
-    const autoNextStart = idx < activeShots.length - 1 ? exactStarts[idx + 1] : exactAudioDuration;
-    const manualEnd = manualEndMap.get(item.shot.shotId);
-    const effectiveEnd = manualEnd !== undefined
-      ? Math.min(manualEnd, exactAudioDuration)
-      : autoNextStart;
-    const duration = effectiveEnd - start;
+    const resolvedBoundary = resolvedBoundaries[idx];
+    const start = resolvedBoundary.start;
+    const duration = resolvedBoundary.duration;
 
     if (!(duration > 0)) {
       pushUniqueIssue(issues, {
