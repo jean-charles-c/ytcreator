@@ -1014,8 +1014,9 @@ export default function WhisperAlignmentEditor({
                           const manualAnchors = resolveManualAnchorsFromDb(
                             alignedShots
                               .filter((s) => s.isManualAnchor && s.startTime !== null)
-                              .map((s) => ({
+                              .map((s, idx) => ({
                                 shotId: s.shotId,
+                                shotIndex: idx,
                                 isManual: true,
                                 timeSeconds: s.startTime!,
                                 manualEndTimeSeconds: getManualEndTimeSeconds(s, whisperWords) ?? null,
