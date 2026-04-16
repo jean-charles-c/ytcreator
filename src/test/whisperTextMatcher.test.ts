@@ -77,6 +77,22 @@ describe("matchShotsStrictSequential", () => {
     expect(results[2].whisperStartIdx).toBe(15); // resumes matching
   });
 
+  it("resumes after the end of a manual selection range", () => {
+    const shots = [
+      { id: "shot-1", text: "Maranello, Juillet 1987." },
+      { id: "shot-2", text: "Sous une laque rouge si fine que la trame du carbone affleure," },
+      { id: "shot-3", text: "une voiture reçoit" },
+    ];
+
+    const manualAnchors = new Map([
+      ["shot-2", { startIdx: 3, endIdx: 14 }],
+    ]);
+    const results = matchShotsStrictSequential(shots, whisperWords, manualAnchors);
+
+    expect(results[1].whisperStartIdx).toBe(3);
+    expect(results[2].whisperStartIdx).toBe(15);
+  });
+
   it("handles empty shot text as blocked", () => {
     const shots = [
       { id: "shot-1", text: "Maranello, Juillet 1987." },
