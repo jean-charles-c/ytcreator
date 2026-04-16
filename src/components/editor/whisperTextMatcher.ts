@@ -15,6 +15,11 @@ interface WhisperWordLike {
   end: number;
 }
 
+export interface ManualAnchorRange {
+  startIdx: number;
+  endIdx: number | null;
+}
+
 /**
  * Normalise a word for comparison:
  * lowercase, strip punctuation, collapse whitespace.
@@ -89,6 +94,33 @@ function computeCoverageRatio(
   return confirmed / shotWords.length;
 }
 
+function resolveManualAnchorRange(
+  value: number | ManualAnchorRange | undefined
+): ManualAnchorRange | null {
+  if (typeof value === "number") {
+    return { startIdx: value, endIdx: null };
+  }
+
+  if (value && typeof value.startIdx === "number") {
+    return {
+      startIdx: value.startIdx,
+      endIdx: typeof value.endIdx === "number" ? value.endIdx : null,
+    };
+  }
+
+  return null;
+}
+
+function getManualResumeIndex(range: ManualAnchorRange, shotText: string): number {
+  if (range.endIdx !== null) {
+    return range.endIdx + 1;
+  }
+
+  const shotWordCount = shotText.split(/\s+/).filter((w) => w.length > 0).length;
+  const minAdvance = Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWordCount * 0.5), 3);
+  return range.startIdx + minAdvance;
+}
+
 /**
  * Strict sequential matching:
  * - Shot 0 → anchored at whisper word 0
@@ -101,12 +133,12 @@ function computeCoverageRatio(
 export function matchShotsStrictSequential(
   shots: { id: string; text: string }[],
   whisperWords: WhisperWordLike[],
-  manualAnchors?: Map<string, number>
+  manualAnchors?: Map<string, number | ManualAnchorRange>
 ): StrictMatchResult[] {
   const results: StrictMatchResult[] = [];
   if (shots.length === 0) return results;
 
-  const anchors = manualAnchors ?? new Map<string, number>();
+  const anchors = manualAnchors ?? new Map<string, number | ManualAnchorRange>();
 
   // Shot 0 always anchors at word 0
   let searchFrom = 0;
@@ -117,18 +149,20 @@ export function matchShotsStrictSequential(
 
     // If we're blocked, check if this shot has a manual anchor to resume
     if (blocked) {
-      const manualIdx = anchors.get(shot.id);
-      if (manualIdx !== undefined && manualIdx !== null) {
+      const manualRange = resolveManualAnchorRange(anchors.get(shot.id));
+      if (manualRange) {
         // Resume from manual anchor
       results.push({
         shotId: shot.id,
-        whisperStartIdx: manualIdx,
-        matchedWords: REQUIRED_MATCH_COUNT,
+        whisperStartIdx: manualRange.startIdx,
+        matchedWords:
+          manualRange.endIdx !== null
+            ? Math.max(1, manualRange.endIdx - manualRange.startIdx + 1)
+            : REQUIRED_MATCH_COUNT,
         blocked: false,
-        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualIdx),
+        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualRange.startIdx),
       });
-      const shotWc = shot.text.split(/\s+/).filter(w => w.length > 0).length;
-      searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc * 0.5), 3);
+      searchFrom = getManualResumeIndex(manualRange, shot.text);
       blocked = false;
       continue;
       }
@@ -151,17 +185,19 @@ export function matchShotsStrictSequential(
     }
 
     // Check for manual anchor first
-    const manualIdx = anchors.get(shot.id);
-    if (manualIdx !== undefined && manualIdx !== null) {
+    const manualRange = resolveManualAnchorRange(anchors.get(shot.id));
+    if (manualRange) {
       results.push({
         shotId: shot.id,
-        whisperStartIdx: manualIdx,
-        matchedWords: REQUIRED_MATCH_COUNT,
+        whisperStartIdx: manualRange.startIdx,
+        matchedWords:
+          manualRange.endIdx !== null
+            ? Math.max(1, manualRange.endIdx - manualRange.startIdx + 1)
+            : REQUIRED_MATCH_COUNT,
         blocked: false,
-        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualIdx),
+        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualRange.startIdx),
       });
-      const shotWc2 = shot.text.split(/\s+/).filter(w => w.length > 0).length;
-      searchFrom = manualIdx + Math.max(REQUIRED_MATCH_COUNT, Math.floor(shotWc2 * 0.5), 3);
+      searchFrom = getManualResumeIndex(manualRange, shot.text);
       continue;
     }
 
