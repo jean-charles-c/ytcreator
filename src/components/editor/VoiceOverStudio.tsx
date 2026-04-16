@@ -66,6 +66,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   type SceneGenStatus = "pending" | "generating" | "done" | "error";
   const [sceneStatuses, setSceneStatuses] = useState<Map<string, SceneGenStatus>>(new Map());
   const [sceneErrors, setSceneErrors] = useState<Map<string, string>>(new Map());
+  const [playingSceneId, setPlayingSceneId] = useState<string | null>(null);
   const [assembling, setAssembling] = useState(false);
 
   // ── Per-scene audio data (persisted in DB) ──
@@ -1030,6 +1031,53 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     }, 100);
   };
 
+  // Play/pause a single scene's audio
+  const handlePlayScene = (sceneId: string) => {
+    const audioInfo = sceneAudioMap.get(sceneId);
+    if (!audioInfo) return;
+
+    // Toggle pause/play if same scene
+    if (playingSceneId === sceneId && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("vo-audio").getPublicUrl(audioInfo.filePath);
+
+    setPlayingSceneId(sceneId);
+    setPlayerState({ audioUrl: publicUrl, fileName: audioInfo.fileName, durationEstimate: audioInfo.durationSeconds, realDuration: null });
+    setIsPlaying(false);
+    setAudioProgress(0);
+
+    setTimeout(() => {
+      const audio = new Audio(publicUrl);
+      audioRef.current = audio;
+      audio.onloadedmetadata = () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          setPlayerState((prev) => prev ? { ...prev, realDuration: audio.duration } : prev);
+        }
+      };
+      audio.ontimeupdate = () => {
+        if (audio.duration) setAudioProgress((audio.currentTime / audio.duration) * 100);
+      };
+      audio.onended = () => { setIsPlaying(false); setAudioProgress(0); setPlayingSceneId(null); };
+      audio.play();
+      setIsPlaying(true);
+    }, 100);
+  };
+
   const handlePlayPause = () => {
     if (!playerState) return;
 
@@ -1059,6 +1107,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   useEffect(() => {
     return () => {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+      setPlayingSceneId(null);
     };
   }, []);
 
@@ -1066,6 +1115,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   useEffect(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     setIsPlaying(false);
+    setPlayingSceneId(null);
     setAudioProgress(0);
   }, [playerState?.audioUrl]);
 
@@ -1406,63 +1456,92 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                           const audioInfo = sceneAudioMap.get(scene.id);
                           if (!status && !audioInfo) return null;
                           return (
-                            <div key={scene.id} className="flex items-center gap-2 text-xs">
-                              <span className="w-5 text-muted-foreground text-right">{idx + 1}.</span>
-                              {status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                              {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                              {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
-                              {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
-                              <span className={`flex-1 truncate ${status === "error" ? "text-destructive" : "text-foreground"}`}>
-                                {scene.title || "Sans titre"}
-                              </span>
-                              {audioInfo && (
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                  {audioInfo.durationSeconds > 0 ? `${audioInfo.durationSeconds.toFixed(1)}s` : ""}
+                            <div key={scene.id} className="text-xs">
+                              <div className="flex items-center gap-2">
+                                {/* Play/Pause button */}
+                                {audioInfo && !generating ? (
+                                  <button
+                                    type="button"
+                                    className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-sm transition-colors ${
+                                      playingSceneId === scene.id && isPlaying
+                                        ? "text-primary"
+                                        : "text-muted-foreground hover:text-primary"
+                                    }`}
+                                    onClick={() => handlePlayScene(scene.id)}
+                                    title={playingSceneId === scene.id && isPlaying ? "Pause" : "Lire l'audio"}
+                                  >
+                                    {playingSceneId === scene.id && isPlaying ? (
+                                      <Pause className="h-3 w-3" />
+                                    ) : (
+                                      <Play className="h-3 w-3" />
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="w-4 flex-shrink-0" />
+                                )}
+                                <span className="w-5 text-muted-foreground text-right flex-shrink-0">{idx + 1}.</span>
+                                {status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                                {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
+                                {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
+                                <span className={`flex-1 truncate ${status === "error" ? "text-destructive" : "text-foreground"}`}>
+                                  {scene.title || "Sans titre"}
                                 </span>
-                              )}
-                              {error && <span className="text-[10px] text-destructive truncate max-w-[200px]">{error}</span>}
-                              {/* Download button */}
-                              {audioInfo && !generating && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  title={`Télécharger ${audioInfo.fileName}`}
-                                  onClick={() => {
-                                    const { data: { publicUrl } } = supabase.storage.from("vo-audio").getPublicUrl(audioInfo.filePath);
-                                    const a = document.createElement("a");
-                                    a.href = publicUrl;
-                                    a.download = audioInfo.fileName;
-                                    a.click();
-                                  }}
-                                >
-                                  <Download className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {/* Regenerate button */}
-                              {status === "done" && !generating && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-[10px] gap-1"
-                                  onClick={() => handleRegenerateScene(scene.id)}
-                                  disabled={generating || assembling}
-                                >
-                                  <RefreshCw className="h-3 w-3" />
-                                  Régénérer
-                                </Button>
-                              )}
-                              {status === "error" && !generating && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-[10px] gap-1 text-destructive"
-                                  onClick={() => handleRegenerateScene(scene.id)}
-                                  disabled={generating || assembling}
-                                >
-                                  <RefreshCw className="h-3 w-3" />
-                                  Réessayer
-                                </Button>
+                                {audioInfo && (
+                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                    {audioInfo.durationSeconds > 0 ? `${audioInfo.durationSeconds.toFixed(1)}s` : ""}
+                                  </span>
+                                )}
+                                {error && <span className="text-[10px] text-destructive truncate max-w-[200px]">{error}</span>}
+                                {/* Download button */}
+                                {audioInfo && !generating && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    title={`Télécharger ${audioInfo.fileName}`}
+                                    onClick={() => {
+                                      const { data: { publicUrl } } = supabase.storage.from("vo-audio").getPublicUrl(audioInfo.filePath);
+                                      const a = document.createElement("a");
+                                      a.href = publicUrl;
+                                      a.download = audioInfo.fileName;
+                                      a.click();
+                                    }}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {/* Regenerate button */}
+                                {status === "done" && !generating && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[10px] gap-1"
+                                    onClick={() => handleRegenerateScene(scene.id)}
+                                    disabled={generating || assembling}
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                    Régénérer
+                                  </Button>
+                                )}
+                                {status === "error" && !generating && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[10px] gap-1 text-destructive"
+                                    onClick={() => handleRegenerateScene(scene.id)}
+                                    disabled={generating || assembling}
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                    Réessayer
+                                  </Button>
+                                )}
+                              </div>
+                              {/* Transcription text */}
+                              {scene.source_text && (
+                                <p className="pl-11 text-[10px] text-muted-foreground/70 leading-snug line-clamp-2 mt-0.5">
+                                  {scene.source_text}
+                                </p>
                               )}
                             </div>
                           );
