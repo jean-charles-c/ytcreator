@@ -124,20 +124,6 @@ export default function WhisperAlignmentEditor({
     });
   }, [shots, scenesForSort]);
 
-  /** Load manual anchors from shot_timepoints in DB (entries with isManual: true) */
-  const loadManualAnchorsFromTimepoints = useCallback((timepoints: any[]): Map<string, number> => {
-    const anchors = new Map<string, number>();
-    if (!Array.isArray(timepoints)) return anchors;
-    for (const tp of timepoints) {
-      if (tp && tp.shotId && tp.isManual === true && typeof tp.timeSeconds === "number") {
-        // Find the whisper word index closest to this timeSeconds
-        // We store the word index for the matcher, not the raw time
-        anchors.set(tp.shotId, -1); // placeholder, will be resolved below
-      }
-    }
-    return anchors;
-  }, []);
-
   /** Resolve manual anchors from DB timepoints: find whisper word indices */
   const resolveManualAnchorsFromDb = useCallback(
     (timepoints: any[], words: WhisperWord[]): Map<string, number> => {
@@ -954,7 +940,10 @@ export default function WhisperAlignmentEditor({
 
                           // Re-run matching with new words
                           const sorted = getSortedShots();
-                          const manualAnchors = loadStoredManualAnchors(audioEntryId);
+                          const manualAnchors = resolveManualAnchorsFromDb(
+                            alignedShots.filter(s => s.isManualAnchor).map(s => ({ shotId: s.shotId, isManual: true, timeSeconds: s.startTime })),
+                            passWords
+                          );
                           const shotTexts = sorted.map((shot) => ({
                             id: shot.id,
                             text: getShotFragmentText(shot),
