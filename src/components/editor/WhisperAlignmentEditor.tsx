@@ -298,12 +298,12 @@ export default function WhisperAlignmentEditor({
 
           const isManual = storedManualAnchors.has(shot.id);
           let status: AlignedShot["status"];
-          if (isManual) {
-            status = "ok"; // manually confirmed → always green
-          } else if (isBlocked) {
+          if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null && matchResult) {
             status = coverageStatus(matchResult, text);
+          } else if (isManual && startTime !== null) {
+            status = "estimated"; // manual anchor but no whisper match data
           } else if (startTime !== null) {
             status = "estimated";
           } else {
@@ -451,12 +451,12 @@ export default function WhisperAlignmentEditor({
 
       const isManual = manualAnchors.has(shot.id);
       let status: AlignedShot["status"];
-      if (isManual) {
-        status = "ok"; // manually confirmed → always green
-      } else if (isBlocked) {
+      if (isBlocked) {
         status = "blocked";
       } else if (whisperStartIdx !== null && matchResult) {
         status = coverageStatus(matchResult, text);
+      } else if (isManual && startTime !== null) {
+        status = "estimated";
       } else {
         status = "missing";
       }
@@ -738,12 +738,12 @@ export default function WhisperAlignmentEditor({
 
                       const isManual = manualAnchors.has(s.shotId);
                       let status: AlignedShot["status"];
-                      if (isManual) {
-                        status = "ok"; // manually confirmed → always green
-                      } else if (isBlocked) {
+                      if (isBlocked) {
                         status = "blocked";
                       } else if (whisperStartIdx !== null && strictMatch) {
                         status = coverageStatus(strictMatch, s.shotText);
+                      } else if (isManual && startTime !== null) {
+                        status = "estimated";
                       } else if (startTime !== null) {
                         status = "estimated";
                       } else {
@@ -1320,10 +1320,10 @@ export default function WhisperAlignmentEditor({
                                     );
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
-                                      const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
-                                        .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
-                                      await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
+                      const timepoints = recalculated
+                        .filter((s) => (s.status === "ok" || s.status === "estimated" || s.isManualAnchor) && s.startTime !== null)
+                        .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime, isManual: s.isManualAnchor }));
+                      await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
                                   }}
                                 >
