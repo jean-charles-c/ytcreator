@@ -52,10 +52,7 @@ export function recalculateWhisperShotEndTimesWithManualRanges<
 
     return {
       ...shot,
-      endTime:
-        shot.endTime === null
-          ? boundedManualEndTime
-          : Math.max(shot.endTime, boundedManualEndTime),
+      endTime: boundedManualEndTime,
     } as T;
   });
 }
