@@ -231,6 +231,12 @@ export function buildManifestTiming(
   const timepointMap = new Map<string, number>(
     realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
   );
+  const manualEndMap = new Map<string, number>();
+  realTimepoints.forEach((tp) => {
+    if (typeof tp.manualEndTimeSeconds === "number" && tp.manualEndTimeSeconds > 0) {
+      manualEndMap.set(tp.shotId, tp.manualEndTimeSeconds);
+    }
+  });
   const exactAudioDuration = audioDuration;
 
   const exactStarts = activeShots.map((item) => {
@@ -241,8 +247,12 @@ export function buildManifestTiming(
   const entries: ManifestTimingEntry[] = activeShots.map((item, idx) => {
     const order = idx + 1;
     const start = exactStarts[idx];
-    const nextStart = idx < activeShots.length - 1 ? exactStarts[idx + 1] : exactAudioDuration;
-    const duration = nextStart - start;
+    const autoNextStart = idx < activeShots.length - 1 ? exactStarts[idx + 1] : exactAudioDuration;
+    const manualEnd = manualEndMap.get(item.shot.shotId);
+    const effectiveEnd = manualEnd !== undefined
+      ? Math.min(manualEnd, exactAudioDuration)
+      : autoNextStart;
+    const duration = effectiveEnd - start;
 
     if (!(duration > 0)) {
       pushUniqueIssue(issues, {
