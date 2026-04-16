@@ -14,7 +14,10 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getShotFragmentText } from "./voiceOverShotSync";
-import { recalculateWhisperShotEndTimes } from "./whisperAlignmentTiming";
+import {
+  getManualSelectionEndTime,
+  recalculateWhisperShotEndTimesWithManualRanges,
+} from "./whisperManualSelectionTiming";
 import {
   matchShotsStrictSequential,
   type ManualAnchorRange,
@@ -115,27 +118,6 @@ function findClosestWhisperWordIndex(
   return bestIdx;
 }
 
-function getManualEndTimeSeconds(
-  shot: Pick<AlignedShot, "isManualAnchor" | "manualSelectionEndIdx" | "whisperStartIdx" | "startTime">,
-  words: WhisperWord[]
-): number | undefined {
-  if (
-    !shot.isManualAnchor ||
-    shot.manualSelectionEndIdx === null ||
-    shot.whisperStartIdx === null ||
-    shot.startTime === null
-  ) {
-    return undefined;
-  }
-
-  const startWord = words[shot.whisperStartIdx];
-  const endWord = words[shot.manualSelectionEndIdx];
-  if (!startWord || !endWord) return undefined;
-
-  const offset = shot.startTime - startWord.start;
-  return Math.max(shot.startTime, endWord.end + offset);
-}
-
 export default function WhisperAlignmentEditor({
   projectId,
   shots,
@@ -207,7 +189,7 @@ export default function WhisperAlignmentEditor({
       return shotsToPersist
         .filter((s) => (s.status === "ok" || s.status === "estimated" || s.isManualAnchor) && s.startTime !== null)
         .map((s, idx) => {
-          const manualEndTimeSeconds = getManualEndTimeSeconds(s, whisperWords);
+          const manualEndTimeSeconds = getManualSelectionEndTime(s, whisperWords);
 
           return {
             shotId: s.shotId,
@@ -399,7 +381,13 @@ export default function WhisperAlignmentEditor({
           };
         });
 
-        setAlignedShots(recalculateWhisperShotEndTimes(aligned, resolvedAudioDuration));
+        setAlignedShots(
+          recalculateWhisperShotEndTimesWithManualRanges(
+            aligned,
+            words,
+            resolvedAudioDuration
+          )
+        );
       } catch (e) {
         console.error("[WhisperAlignmentEditor] load error:", e);
       } finally {
@@ -559,7 +547,11 @@ export default function WhisperAlignmentEditor({
       };
     });
 
-    const recalculated = recalculateWhisperShotEndTimes(newAligned, resolvedAudioDuration);
+    const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
+      newAligned,
+      whisperWords,
+      resolvedAudioDuration
+    );
     setAlignedShots(recalculated);
 
     try {
@@ -705,11 +697,15 @@ export default function WhisperAlignmentEditor({
                     setSaving(true);
                     try {
                       // Recalculate all shot start times with offset applied
-                      const recalculated = recalculateWhisperShotEndTimes(alignedShots.map((s) => {
-                        if (s.status === "missing" || s.startTime === null) return s;
-                        const newStart = Math.max(0, s.startTime + globalOffset);
-                        return { ...s, startTime: newStart };
-                      }), audioDuration);
+                      const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
+                        alignedShots.map((s) => {
+                          if (s.status === "missing" || s.startTime === null) return s;
+                          const newStart = Math.max(0, s.startTime + globalOffset);
+                          return { ...s, startTime: newStart };
+                        }),
+                        whisperWords,
+                        audioDuration
+                      );
                       setAlignedShots(recalculated);
 
                       const timepoints = buildTimepointsPayload(recalculated);
@@ -794,7 +790,7 @@ export default function WhisperAlignmentEditor({
                   });
 
                   const repairedMap = new Map(repairedTimepoints.map((tp) => [tp.shotId, tp.timeSeconds]));
-                  const recalculated = recalculateWhisperShotEndTimes(
+                  const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
                     alignedShots.map((s) => {
                       const strictMatch = strictMatchMap.get(s.shotId);
                       const whisperStartIdx = strictMatch?.whisperStartIdx ?? null;
@@ -828,6 +824,7 @@ export default function WhisperAlignmentEditor({
                         manualSelectionEndIdx,
                       };
                     }),
+                    whisperWords,
                     audioDuration
                   ).map((s) => {
                     let whisperEndIdx: number | null = s.manualSelectionEndIdx;
@@ -1019,7 +1016,7 @@ export default function WhisperAlignmentEditor({
                                 shotIndex: idx,
                                 isManual: true,
                                 timeSeconds: s.startTime!,
-                                manualEndTimeSeconds: getManualEndTimeSeconds(s, whisperWords) ?? null,
+                                manualEndTimeSeconds: getManualSelectionEndTime(s, whisperWords) ?? null,
                               })),
                             passWords
                           );
@@ -1070,7 +1067,11 @@ export default function WhisperAlignmentEditor({
                             };
                           });
 
-                          const recalculated = recalculateWhisperShotEndTimes(newAligned, audioDuration).map((s) => {
+                          const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
+                            newAligned,
+                            passWords,
+                            audioDuration
+                          ).map((s) => {
                             if (s.manualSelectionEndIdx !== null) {
                               return {
                                 ...s,
@@ -1393,12 +1394,13 @@ export default function WhisperAlignmentEditor({
                                   onClick={async () => {
                                     const frameOffset = delta / TIMECODE_FPS;
                                     const newStart = Math.max(0, (shot.startTime ?? 0) + frameOffset);
-                                    const recalculated = recalculateWhisperShotEndTimes(
+                                    const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
                                       alignedShots.map((s) =>
                                         s.shotId === shot.shotId
                                           ? { ...s, startTime: newStart, status: "estimated" as const, isManualAnchor: true }
                                           : s
                                       ),
+                                      whisperWords,
                                       audioDuration
                                     );
                                     setAlignedShots(recalculated);
@@ -1420,12 +1422,13 @@ export default function WhisperAlignmentEditor({
                                   onClick={async () => {
                                     const frameOffset = delta / TIMECODE_FPS;
                                     const newStart = Math.max(0, (shot.startTime ?? 0) + frameOffset);
-                                    const recalculated = recalculateWhisperShotEndTimes(
+                                    const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
                                       alignedShots.map((s) =>
                                         s.shotId === shot.shotId
                                           ? { ...s, startTime: newStart, status: "estimated" as const, isManualAnchor: true }
                                           : s
                                       ),
+                                      whisperWords,
                                       audioDuration
                                     );
                                     setAlignedShots(recalculated);
