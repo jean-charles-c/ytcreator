@@ -25,21 +25,61 @@ function getSafeTotalDuration(timeline: Timeline): number {
   );
 }
 
-function getBoundaryTimes(timeline: Timeline): number[] {
+function getExactClipTimes(timeline: Timeline): { start: number; end: number }[] | null {
   const segments = timeline.videoTrack.segments;
   if (segments.length === 0) return [];
 
   const totalDuration = getSafeTotalDuration(timeline);
   const timepoints = timeline.shotTimepoints ?? [];
 
-  if (timepoints.length > 0) {
-    const timepointMap = new Map(timepoints.map((tp) => [tp.shotId, tp.timeSeconds]));
-    const preciseStarts = segments.map((segment) => timepointMap.get(segment.id));
+  if (timepoints.length === 0) return null;
 
-    if (preciseStarts.every((time): time is number => typeof time === "number" && Number.isFinite(time))) {
-      return [...preciseStarts, totalDuration];
+  const timepointMap = new Map<string, number>();
+  const manualEndMap = new Map<string, number>();
+
+  for (const timepoint of timepoints) {
+    if (timepoint.shotId.startsWith("_missing_")) continue;
+    timepointMap.set(timepoint.shotId, timepoint.timeSeconds);
+    if (
+      typeof timepoint.manualEndTimeSeconds === "number" &&
+      Number.isFinite(timepoint.manualEndTimeSeconds)
+    ) {
+      manualEndMap.set(timepoint.shotId, timepoint.manualEndTimeSeconds);
     }
   }
+
+  const clipTimes: { start: number; end: number }[] = [];
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const start = timepointMap.get(segment.id);
+    if (typeof start !== "number" || !Number.isFinite(start)) {
+      return null;
+    }
+
+    const nextSegment = segments[index + 1];
+    const nextStart = nextSegment ? timepointMap.get(nextSegment.id) : totalDuration;
+    const rawEnd = manualEndMap.get(segment.id) ?? nextStart;
+    if (typeof rawEnd !== "number" || !Number.isFinite(rawEnd)) {
+      return null;
+    }
+
+    const end = Math.min(rawEnd, totalDuration);
+    if (!(end > start)) {
+      return null;
+    }
+
+    clipTimes.push({ start, end });
+  }
+
+  return clipTimes;
+}
+
+function getBoundaryTimes(timeline: Timeline): number[] {
+  const segments = timeline.videoTrack.segments;
+  if (segments.length === 0) return [];
+
+  const totalDuration = getSafeTotalDuration(timeline);
 
   return [...segments.map((segment) => segment.startTime), totalDuration];
 }
@@ -50,6 +90,19 @@ export function buildClipFrames(
 ): { start: number; end: number }[] {
   const segments = timeline.videoTrack.segments;
   if (segments.length === 0) return [];
+
+   const exactClipTimes = getExactClipTimes(timeline);
+   if (exactClipTimes) {
+    return exactClipTimes.map(({ start, end }) => {
+      const startFrame = Math.max(0, Math.round(start * fps));
+      const endFrame = Math.max(Math.round(end * fps), startFrame + 1);
+
+      return {
+        start: startFrame,
+        end: endFrame,
+      };
+    });
+  }
 
   const boundaryTimes = getBoundaryTimes(timeline);
   const boundaryFrames: number[] = [];

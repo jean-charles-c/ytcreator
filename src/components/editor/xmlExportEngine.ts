@@ -36,8 +36,8 @@ interface ClipFrame {
 /**
  * Build clip frame ranges directly from ManifestTiming entries.
  *
- * Key rule: endFrame of clip i = startFrame of clip i+1.
- * This avoids cumulative drift caused by rounding start+duration independently.
+ * Key rule: each clip uses its own exact end (= start + duration).
+ * This preserves manual shorten/extend overrides, including gaps between clips.
  */
 function buildClipFramesFromManifest(
   entries: ManifestTimingEntry[],
@@ -48,10 +48,7 @@ function buildClipFramesFromManifest(
   const frames: ClipFrame[] = [];
   for (let i = 0; i < entries.length; i++) {
     const startFrame = Math.max(0, Math.round(entries[i].start * fps));
-    // End = next entry's start frame, or last entry uses start+duration
-    const endFrame = i < entries.length - 1
-      ? Math.round(entries[i + 1].start * fps)
-      : Math.round((entries[i].start + entries[i].duration) * fps);
+    const endFrame = Math.round((entries[i].start + entries[i].duration) * fps);
     frames.push({
       start: startFrame,
       end: Math.max(endFrame, startFrame + 1),

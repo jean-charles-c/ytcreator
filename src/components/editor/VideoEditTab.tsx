@@ -53,6 +53,8 @@ interface VideoEditTabProps {
   musicTracks?: { url: string; name: string }[];
 }
 
+const VO_AUDIO_TIMEPOINTS_UPDATED_EVENT = "vo-audio-timepoints-updated";
+
 const STATUS_CONFIG = {
   valid: {
     icon: CheckCircle2,
@@ -272,6 +274,33 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
   const [loadingChapters, setLoadingChapters] = useState(true);
 
+  const refreshAudioFiles = useCallback(async () => {
+    if (!projectId) {
+      setLoadingAudio(false);
+      return;
+    }
+
+    setLoadingAudio(true);
+    const previousAudioFiles = previousAudioFilesRef.current;
+    const { data } = await supabase
+      .from("vo_audio_history")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+
+    const nextAudioFiles = data ?? [];
+    previousAudioFilesRef.current = nextAudioFiles;
+    setAudioFiles(nextAudioFiles);
+    setSelectedAudioId((currentSelectedId) =>
+      resolveSelectedAudioId({
+        currentSelectedAudioId: currentSelectedId,
+        previousAudioFiles,
+        nextAudioFiles,
+      })
+    );
+    setLoadingAudio(false);
+  }, [projectId]);
+
   const saveTimelineToDb = useCallback(async (tl: Timeline) => {
     if (!projectId) return;
     setSavingTimeline(true);
@@ -431,34 +460,22 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   }, [selectedAudioId, shots, audioFiles, scenes, timeline, saveTimelineToDb]);
 
   useEffect(() => {
-    if (!projectId) {
-      setLoadingAudio(false);
-      return;
-    }
+    void refreshAudioFiles();
+  }, [refreshAudioFiles]);
 
-    const fetchAudio = async () => {
-      setLoadingAudio(true);
-      const previousAudioFiles = previousAudioFilesRef.current;
-      const { data } = await supabase
-        .from("vo_audio_history")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-      const nextAudioFiles = data ?? [];
-      previousAudioFilesRef.current = nextAudioFiles;
-      setAudioFiles(nextAudioFiles);
-      setSelectedAudioId((currentSelectedId) =>
-        resolveSelectedAudioId({
-          currentSelectedAudioId: currentSelectedId,
-          previousAudioFiles,
-          nextAudioFiles,
-        })
-      );
-      setLoadingAudio(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleVoAudioUpdated = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : null;
+      if (detail?.projectId && detail.projectId !== projectId) return;
+
+      void refreshAudioFiles();
     };
 
-    fetchAudio();
-  }, [projectId]);
+    window.addEventListener(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, handleVoAudioUpdated);
+    return () => window.removeEventListener(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, handleVoAudioUpdated);
+  }, [projectId, refreshAudioFiles]);
 
   // ── Load chapter validation state ──
   useEffect(() => {
