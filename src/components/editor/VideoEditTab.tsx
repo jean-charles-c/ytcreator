@@ -540,19 +540,17 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
 
   const chapterCheckStatus: AssetCheck["status"] = loadingChapters
     ? "loading"
-    : totalChapters === 0
-      ? "warning"
-      : chaptersOk
-        ? "valid"
+    : chaptersOk
+      ? "valid"
+      : validatedChapters === 0
+        ? "missing"
         : "missing";
 
   const chapterCheckDetail = loadingChapters
     ? "Vérification…"
-    : totalChapters === 0
-      ? "Aucun chapitre détecté — générez les titres dans le tab Documentaire"
-      : chaptersOk
-        ? `${validatedChapters}/${totalChapters} titres validés ✓`
-        : `${validatedChapters}/${totalChapters} titres validés — minimum ${chapterMinThreshold}/${totalChapters} requis (90%)`;
+    : chaptersOk
+      ? `${validatedChapters}/${totalChapters} titres validés ✓`
+      : `${validatedChapters}/${totalChapters} titres validés — minimum ${chapterMinThreshold}/${totalChapters} requis (90%)`;
 
   const checks: AssetCheck[] = [
     {
