@@ -449,6 +449,7 @@ export default function WhisperAlignmentEditor({
         }
       }
 
+      const isManual = manualAnchors.has(shot.id);
       let status: AlignedShot["status"];
       if (isBlocked) {
         status = "blocked";
