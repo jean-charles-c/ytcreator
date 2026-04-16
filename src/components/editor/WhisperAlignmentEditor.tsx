@@ -643,11 +643,12 @@ export default function WhisperAlignmentEditor({
                       setAlignedShots(recalculated);
 
                       const timepoints = recalculated
-                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
+                        .filter((s) => (s.status === "ok" || s.status === "estimated" || s.isManualAnchor) && s.startTime !== null)
                         .map((s, idx) => ({
                           shotId: s.shotId,
                           shotIndex: idx,
                           timeSeconds: s.startTime,
+                          isManual: s.isManualAnchor,
                         }));
 
                       const { error } = await supabase
@@ -969,10 +970,9 @@ export default function WhisperAlignmentEditor({
 
                             const isManual = manualAnchors.has(shot.id);
                             let status: AlignedShot["status"];
-                            if (isManual) status = "ok";
-                            else if (isBlocked) status = "blocked";
+                            if (isBlocked) status = "blocked";
                             else if (wsi !== null && matchResult) status = coverageStatus(matchResult, text);
-                            else if (startTime !== null) status = "estimated";
+                            else if ((isManual || startTime !== null) && startTime !== null) status = "estimated";
                             else status = "missing";
 
                             return { shotId: shot.id, globalIndex: idx + 1, shotText: text, whisperStartIdx: wsi, whisperEndIdx: null, startTime, endTime, status, isManualAnchor: isManual, editing: false };
@@ -1292,8 +1292,8 @@ export default function WhisperAlignmentEditor({
                                     setAlignedShots(recalculated);
                                     if (audioEntryId) {
                                       const timepoints = recalculated
-                                        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
-                                        .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime }));
+                                        .filter((s) => (s.status === "ok" || s.status === "estimated" || s.isManualAnchor) && s.startTime !== null)
+                                        .map((s, idx) => ({ shotId: s.shotId, shotIndex: idx, timeSeconds: s.startTime, isManual: s.isManualAnchor }));
                                       await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
                                     }
                                   }}
