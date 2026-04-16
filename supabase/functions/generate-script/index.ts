@@ -1026,24 +1026,83 @@ ${volumeGuidance}
 |---------|---------|--------|----------|
 ${volumeTable}
 
-### [[HOOK]] — The Opening (STRICT: 100–200 characters, hard limit 90–250)
+### [[HOOK]] — The Opening (STRICT: 120–280 characters)
 
-The hook is the single most important moment. It must accomplish THREE things in 1–3 sentences:
-1. A CONCRETE striking image or fact — something specific, visual, and unexpected. Ground it in a real time, place, or object.
-2. A CONTRADICTION or unresolved tension — two things that shouldn't coexist but do. This creates cognitive friction.
-3. A SENSE that an explanation is coming — the viewer must feel a mystery has been opened that demands resolution.
+HOOK — EXCELLENCE STANDARD:
 
-All three elements are mandatory. A hook that is only mysterious but vague FAILS. A hook that states a cool fact but creates no tension FAILS. A hook that asks a generic question FAILS.
+The hook must create tension through the collision of two concrete scenes, not through explanation or a question that reveals the angle.
 
-Anti-patterns (NEVER do):
-- "Have you ever wondered…" — generic, passive, overused.
-- Greetings, channel names, "today we will talk about…" — meta, not narrative.
-- Abstract philosophical questions — not concrete enough.
-- Multiple unrelated facts crammed together — dilutes the opening punch.
+MANDATORY STRUCTURE — TWO-SCENE COLLISION:
 
-The hook tension MUST be resolved in [[CLIMAX]]. This is the narrative contract.
+Scene A. one specific image (place + object + detail)
+Scene B. a second image that contradicts or complicates A
+Bridge. 1-2 short sentences that name the paradox WITHOUT explaining it
+Pull. one final short sentence (5-8 words max) that signals an explanation exists
 
-Self-check: count your hook characters. Hard floor: 90. Hard ceiling: 250. If outside, rewrite.
+This structure is NON-NEGOTIABLE. A hook with only one scene is INCOMPLETE. A hook that explains the contradiction is FAILED.
+
+EACH SCENE MUST CONTAIN ALL THREE:
+- A specific place (city, building, room, track)
+- A named or datable object (document, car, date, person)
+- A concrete action or state (immobile, sealed, circled, printed)
+
+SCENE COLLISION TYPES — choose one:
+- Same object, opposite contexts. "X in a museum case / X in a police seizure warehouse"
+- Same institution, opposite verdicts. "A race program listing a name / a headline ignoring it"
+- Same moment, opposite records. "A police report stating facts / an exhibition selling a myth"
+- Counterfactual. "What if [specific event with date] had not happened? [Two concrete consequences that contradict each other]"
+
+PULL SENTENCE PATTERNS (final line):
+- "Il y a une explication."
+- "Les traces suffisent."
+- "La réponse existe."
+- "Ce que dit le papier change tout."
+Short. Declarative. No "?" in the final sentence. Must signal that an explanation is coming without giving it.
+
+SELF-CHECK — 5 questions before finalizing HOOK:
+1. Are there exactly 2 concrete scenes? NO → add second scene
+2. Does each scene contain place+object+action? NO → add missing element
+3. Does any sentence explain the contradiction? YES → delete it
+4. Does the last sentence end with "?"? YES → rewrite as declarative
+5. Does the hook reveal the film's thesis or angle? YES → remove
+
+CHARACTER LIMITS. Minimum 120 characters. Maximum 280 characters. If outside this range, rewrite.
+
+BANNED HOOK PATTERNS:
+- Single scene + rhetorical question
+- "Comment X a-t-il pu..." / "How could X..."
+- "Je pose la question..." / "I ask this as..."
+- "Cette vidéo explore..." / "In this video..."
+- Any sentence starting with "Imaginez" / "Imagine"
+- Any sentence that names the film's conclusion
+- Thesis statement disguised as a scene
+- "Have you ever wondered..." — generic, passive, overused
+- Greetings, channel names, "today we will talk about..." — meta, not narrative
+- Abstract philosophical questions — not concrete enough
+
+EXCELLENT HOOK EXAMPLES — study these:
+
+Example 1 — Same object, opposite contexts.
+"Vitrine éclairée. 1975. Une 930 noire, large aileron, immobile sous les néons. Dans un dossier scellé, des photos d'épaves noircies après un tête-à-queue brutal. La même voiture. Deux destins. Il y a une explication."
+Why it works. museum vitrine vs police file. Same car. Opposite fates. No explanation given. Pull sentence is declarative and short.
+
+Example 2 — Two institutions, opposite records.
+"Un programme SCCA punaisé à Watkins Glen affiche Ladies Prize en bas de page. À 5000 kilomètres, un juge californien impose la mention Réplique sur une Speedster. Même blason. Deux verdicts publics."
+Why it works. race program vs courtroom. Both are institutional documents. Both name the car. Both reach opposite verdicts. Zero explanation.
+
+Example 3 — Counterfactual with two concrete consequences.
+"Et si l'épave de la 550 de James Dean avait été broyée dès le 1er octobre 1955 ? Aucun conteneur scellé. Aucune tournée macabre. La 356 garderait-elle la même aura sombre ?"
+Why it works. removes the relic and immediately shows two concrete things that disappear with it. The question is anchored in a specific date and object.
+
+FAILED HOOK EXAMPLES — never do this:
+
+BAD. "Comment ce paradoxe n'a-t-il pas coulé Porsche ?"
+Why it fails. abstract question, reveals the angle, no concrete scene, no tension.
+
+BAD. "Une même 356 peut être célébrée et suspectée. Pourquoi faut-il l'auditer comme un faux et la célébrer comme un chef-d'oeuvre, vraiment ? Je pose la question en professionnel curieux."
+Why it fails. self-justification, no scene, abstract framing, first person.
+
+The hook tension MUST be resolved in [[CLIMAX]]. This is the narrative contract (see HOOK CLOSURE CONTRACT above).
 
 ### [[CONTEXT]] — Grounding the Viewer (~10%)
 

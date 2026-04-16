@@ -23,6 +23,49 @@ This document defines validation checks for scripts produced by `generate-script
 - **Detection**: Character count of each block's body (trimmed, tag excluded).
 - **Feedback**: "OUTRO must be 20-100 chars. END_SCREEN must be 80-400 chars (3-4 conversational sentences with CTAs)."
 
+## 2. HOOK QUALITY
+
+### 2.1 TWO-SCENE STRUCTURE
+- **Severity**: 🔴 CRITICAL
+- **Pass criteria**: Hook contains at least 2 distinct scenes (sentence groups introducing a new place OR a new object OR a new person)
+- **Fail criteria**: Only 1 such group found — hook has one scene only
+- **Detection**: Count sentence groups that introduce a new place OR a new object OR a new person. If only 1 group → FAIL.
+- **Feedback**: "Hook contains only one scene. Add a second concrete scene that contradicts or complicates the first."
+
+### 2.2 CONCRETE ANCHOR IN EACH SCENE
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: Each scene contains at least 2 of: specific place / datable object or event / named person / concrete action
+- **Fail criteria**: Any scene has only abstract language
+- **Detection**: Parse each scene for proper nouns, dates, place names, concrete action verbs. Flag if fewer than 2 concrete anchors.
+- **Feedback**: "Scene lacks concrete anchor. Add place, object, date, or named person."
+
+### 2.3 NO EXPLANATION IN HOOK
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: Hook contains no sentence that explains the paradox or names the film's thesis
+- **Fail criteria**: Any sentence that explains rather than shows
+- **Detection**: Flag sentences containing: "parce que" / "because" / "cela signifie" / "ce qui prouve" / "la raison est" / "c'est pourquoi" / "that's why"
+- **Feedback**: "Hook explains the contradiction. Remove the explanation — show it through images only."
+
+### 2.4 NO GENERIC OPENER
+- **Severity**: 🟡 MEDIUM
+- **Fail criteria**: Hook starts with a banned generic pattern
+- **Detection**: Regex at start of hook: `/^(welcome|today|in this video|have you ever|let me tell you|imagine|picture this|what if i told you|did you know|bonjour|bienvenue|aujourd'hui|avez-vous|imaginez|saviez-vous)/i`
+- **Feedback**: "Hook opens with a generic pattern. Start with a concrete scene instead."
+
+### 2.5 PULL SENTENCE IS DECLARATIVE
+- **Severity**: 🟢 MINOR
+- **Pass criteria**: Last sentence of hook does NOT end with "?"
+- **Fail criteria**: Last sentence ends with "?"
+- **Feedback**: "Hook ends with a question. Convert to a declarative pull sentence (e.g., 'Il y a une explication.' / 'Les traces suffisent.')"
+
+### 2.6 CHARACTER COUNT
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: Hook is 120-280 characters (excluding `[[HOOK]]` tag)
+- **Fail criteria**: Outside this range
+- **Detection**: Character count of HOOK body (trimmed, tag excluded).
+- **Feedback if short**: "Hook too short. Add a second scene."
+- **Feedback if long**: "Hook too long. Remove explanation or editorial commentary."
+
 ## 7. NARRATIVE INTEGRITY
 
 ### 7.1 PROMISE SOURCE LISTING

@@ -13,6 +13,47 @@ Post-generation correction passes triggered by validation checks in `script-vali
 7. **Rhythm** — break any run of 3+ similar-length sentences.
 8. **Spoken test** — rewrite anything that sounds like Wikipedia or an essay.
 
+## 1. HOOK REWRITE
+
+**Trigger**: Any check 2.1-2.6
+**Auto-triggered**: YES for 2.1 (CRITICAL) / offer choice for 2.2-2.6
+
+**Scope**: Rewrite the entire HOOK block to match the two-scene collision structure.
+**Rule**: Two concrete scenes in collision, bridge naming the paradox without explaining it, declarative pull sentence.
+
+### Correction prompt template
+
+```
+Rewrite [[HOOK]]. Subject: {subject}.
+Context first sentence: {first_sentence_of_context}.
+Problem: {list_of_failed_checks}.
+
+STRUCTURE REQUIRED:
+Scene A: place + named object + concrete action
+Scene B: different place + different object + contradicting or complicating action
+Bridge: 1-2 sentences naming the paradox, not explaining it
+Pull: 1 declarative sentence 5-8 words signaling an explanation exists
+
+HARD RULES:
+- 2 scenes minimum
+- No sentence that explains the contradiction
+- Last sentence: declarative, no "?"
+- 120-280 characters total
+- No first person
+- No thesis statement
+
+COLLISION TYPE for this subject: {collision_type}
+(same object opposite contexts / same institution opposite verdicts /
+counterfactual / two documents one contradiction)
+
+Lang: {langLabel}. Output: hook text only. No tags.
+```
+
+### Post-processing
+- Replace HOOK content
+- Re-run checks 2.1-2.6
+- If 2.1 still fails after 1 retry → flag for manual editing with examples shown
+
 ## 2. PARAGRAPH LABEL REMOVAL
 
 **Trigger**: Validation check 7.16 (also 7.12 when pillar/list structure is detected)
