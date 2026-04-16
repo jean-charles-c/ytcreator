@@ -81,6 +81,8 @@ interface WhisperAlignmentEditorProps {
   refreshKey?: number;
 }
 
+const VO_AUDIO_TIMEPOINTS_UPDATED_EVENT = "vo-audio-timepoints-updated";
+
 const TIMECODE_FPS = 24;
 
 function formatTimecode(sec: number, fps = TIMECODE_FPS): string {
@@ -202,6 +204,16 @@ export default function WhisperAlignmentEditor({
     },
     [whisperWords]
   );
+
+  const notifyTimepointsUpdated = useCallback(() => {
+    if (typeof window === "undefined" || !audioEntryId) return;
+
+    window.dispatchEvent(
+      new CustomEvent(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, {
+        detail: { projectId, audioEntryId },
+      })
+    );
+  }, [audioEntryId, projectId]);
 
   const loadMultiPassData = useCallback(() => {
     if (!projectId) {
@@ -563,6 +575,7 @@ export default function WhisperAlignmentEditor({
         .eq("id", audioEntryId);
 
       if (error) throw error;
+      notifyTimepointsUpdated();
 
       const newOk = recalculated.filter((s) => s.status === "ok").length;
       const newBlocked = recalculated.find((s) => s.status === "blocked");
@@ -580,7 +593,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots, buildTimepointsPayload]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots, buildTimepointsPayload, notifyTimepointsUpdated]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
@@ -595,6 +608,7 @@ export default function WhisperAlignmentEditor({
         .eq("id", audioEntryId);
 
       if (error) throw error;
+      notifyTimepointsUpdated();
       toast.success(`${timepoints.length} timepoints sauvegardés`);
     } catch (e: any) {
       console.error("[WhisperAlignmentEditor] save error:", e);
@@ -602,7 +616,7 @@ export default function WhisperAlignmentEditor({
     } finally {
       setSaving(false);
     }
-  }, [audioEntryId, alignedShots, buildTimepointsPayload]);
+  }, [audioEntryId, alignedShots, buildTimepointsPayload, notifyTimepointsUpdated]);
 
   // ── Whisper text for selection display ──
   const getWhisperSegment = (startIdx: number | null, endIdx: number | null) => {
@@ -1099,6 +1113,7 @@ export default function WhisperAlignmentEditor({
                           // Save timepoints
                           const timepoints = buildTimepointsPayload(recalculated);
                           await supabase.from("vo_audio_history").update({ shot_timepoints: timepoints as any }).eq("id", audioEntryId);
+                          notifyTimepointsUpdated();
 
                           const okN = recalculated.filter((s) => s.status === "ok").length;
                           toast.success(`Passe ${passLabel} appliquée comme référence — ${okN}/${recalculated.length} shots matchés`);
