@@ -55,4 +55,24 @@ describe("whisperManualSelectionTiming", () => {
     expect(recalculated[0].endTime).toBe(106.208);
     expect(recalculated[1].endTime).toBe(110);
   });
+
+  it("shortens the displayed shot end time when a manual selection is shorter than the auto timing", () => {
+    const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
+      [
+        {
+          shotId: "shot-29",
+          startTime: 105.326,
+          endTime: 106.5,
+          whisperStartIdx: 0,
+          manualSelectionEndIdx: 1,
+          isManualAnchor: true,
+        },
+      ],
+      words,
+      110
+    );
+
+    // endWord[1].end = 105.62, offset = 0, so manualEnd = 105.62
+    expect(recalculated[0].endTime).toBe(105.62);
+  });
 });
