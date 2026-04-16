@@ -517,6 +517,7 @@ Deno.serve(async (req) => {
           shotId: s.shotId,
           shotIndex: idx,
           timeSeconds: s.startTime,
+          isManual: false,
         }));
 
       // Persist whisper words for manual alignment editor

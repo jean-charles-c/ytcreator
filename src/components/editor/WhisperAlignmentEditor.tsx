@@ -124,39 +124,44 @@ export default function WhisperAlignmentEditor({
     });
   }, [shots, scenesForSort]);
 
-  const getManualAnchorsStorageKey = useCallback(
-    (audioId: string) => `whisper-manual-anchors-${projectId}-${audioId}`,
-    [projectId]
+  /** Load manual anchors from shot_timepoints in DB (entries with isManual: true) */
+  const loadManualAnchorsFromTimepoints = useCallback((timepoints: any[]): Map<string, number> => {
+    const anchors = new Map<string, number>();
+    if (!Array.isArray(timepoints)) return anchors;
+    for (const tp of timepoints) {
+      if (tp && tp.shotId && tp.isManual === true && typeof tp.timeSeconds === "number") {
+        // Find the whisper word index closest to this timeSeconds
+        // We store the word index for the matcher, not the raw time
+        anchors.set(tp.shotId, -1); // placeholder, will be resolved below
+      }
+    }
+    return anchors;
+  }, []);
+
+  /** Resolve manual anchors from DB timepoints: find whisper word indices */
+  const resolveManualAnchorsFromDb = useCallback(
+    (timepoints: any[], words: WhisperWord[]): Map<string, number> => {
+      const anchors = new Map<string, number>();
+      if (!Array.isArray(timepoints) || words.length === 0) return anchors;
+      for (const tp of timepoints) {
+        if (tp && tp.shotId && tp.isManual === true && typeof tp.timeSeconds === "number") {
+          // Find the whisper word whose start is closest to timeSeconds
+          let bestIdx = 0;
+          let bestDelta = Math.abs(words[0].start - tp.timeSeconds);
+          for (let i = 1; i < words.length; i++) {
+            const delta = Math.abs(words[i].start - tp.timeSeconds);
+            if (delta < bestDelta) {
+              bestDelta = delta;
+              bestIdx = i;
+            }
+          }
+          anchors.set(tp.shotId, bestIdx);
+        }
+      }
+      return anchors;
+    },
+    []
   );
-
-  const loadStoredManualAnchors = useCallback((audioId: string) => {
-    try {
-      const stored = localStorage.getItem(getManualAnchorsStorageKey(audioId));
-      if (!stored) return new Map<string, number>();
-      const parsed = JSON.parse(stored);
-      if (!Array.isArray(parsed)) return new Map<string, number>();
-
-      return new Map(
-        parsed.filter(
-          (entry): entry is [string, number] =>
-            Array.isArray(entry) &&
-            typeof entry[0] === "string" &&
-            typeof entry[1] === "number" &&
-            Number.isFinite(entry[1])
-        )
-      );
-    } catch {
-      return new Map<string, number>();
-    }
-  }, [getManualAnchorsStorageKey]);
-
-  const persistManualAnchors = useCallback((audioId: string, anchors: Map<string, number>) => {
-    try {
-      localStorage.setItem(getManualAnchorsStorageKey(audioId), JSON.stringify([...anchors.entries()]));
-    } catch {
-      // ignore local persistence failures
-    }
-  }, [getManualAnchorsStorageKey]);
 
   const loadMultiPassData = useCallback(() => {
     if (!projectId) {
@@ -250,11 +255,11 @@ export default function WhisperAlignmentEditor({
           : [];
         setWhisperWords(words);
 
-        const timepoints: ShotTimepoint[] = Array.isArray(entry.shot_timepoints)
+        const rawTimepoints = Array.isArray(entry.shot_timepoints)
           ? (entry.shot_timepoints as any[]).filter((tp) => tp && tp.shotId)
           : [];
-        const tpMap = new Map(timepoints.map((tp) => [tp.shotId, tp.timeSeconds as number]));
-        const storedManualAnchors = loadStoredManualAnchors(entry.id);
+        const tpMap = new Map(rawTimepoints.map((tp: any) => [tp.shotId, tp.timeSeconds as number]));
+        const storedManualAnchors = resolveManualAnchorsFromDb(rawTimepoints, words);
 
         const sorted = getSortedShots();
         const resolvedAudioDuration = entry.duration_estimate ?? 0;
@@ -341,7 +346,7 @@ export default function WhisperAlignmentEditor({
       }
     };
     load();
-  }, [projectId, refreshKey, getSortedShots, loadStoredManualAnchors]);
+  }, [projectId, refreshKey, getSortedShots, resolveManualAnchorsFromDb]);
 
   // ── Stats ──
   const okCount = alignedShots.filter((s) => s.status === "ok").length;
@@ -415,7 +420,7 @@ export default function WhisperAlignmentEditor({
       }
     }
     manualAnchors.set(editingShotId, selectionStart);
-    persistManualAnchors(audioEntryId, manualAnchors);
+    // Manual anchors will be persisted to DB via the auto-save below
 
     const sorted = getSortedShots();
     const shotTexts = sorted.map((shot) => ({
@@ -494,6 +499,7 @@ export default function WhisperAlignmentEditor({
           shotId: s.shotId,
           shotIndex: idx,
           timeSeconds: s.startTime,
+          isManual: s.isManualAnchor,
         }));
 
       const { error } = await supabase
@@ -519,7 +525,7 @@ export default function WhisperAlignmentEditor({
     setEditingShotId(null);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots, persistManualAnchors]);
+  }, [editingShotId, selectionStart, selectionEnd, whisperWords, audioEntryId, alignedShots, globalOffset, audioDuration, getSortedShots]);
 
   // ── Save all to DB ──
   const saveAllTimepoints = useCallback(async () => {
@@ -527,11 +533,12 @@ export default function WhisperAlignmentEditor({
     setSaving(true);
     try {
       const timepoints = alignedShots
-        .filter((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null)
+        .filter((s) => (s.status === "ok" || s.status === "estimated" || s.isManualAnchor) && s.startTime !== null)
         .map((s, idx) => ({
           shotId: s.shotId,
           shotIndex: idx,
           timeSeconds: s.startTime,
+          isManual: s.isManualAnchor,
         }));
 
       const { error } = await supabase
