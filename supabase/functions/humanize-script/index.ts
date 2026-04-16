@@ -28,20 +28,31 @@ Examples: "La réponse existe.", "Les traces suffisent.", "Il y a une explicatio
 Detection: any sentence under 6 words with no proper noun, date, or named object that ends a paragraph or section.
 
 PATTERN B — Meta-transition sentences:
-Sentences whose sole function is announcing that the next section will be interesting.
+Sentences whose sole function is announcing that the next section will be interesting, or bridging two sections with an abstract statement instead of a concrete image.
 Examples: "La suite se jouera...", "C'est là que tout commence.", "Et c'est là que les choses se compliquent.", "Ce décalage ouvre la porte à...", "Voilà pourquoi cette histoire...", "What happened next would change everything.", "But the story doesn't end there."
+Additional mandatory flags: "ouvre la porte aux", "ouvre alors la porte", "c'est là que tout bascule", "mais très vite, la marque se joue ailleurs", "cette naissance fixe un point de départ", "fixe un point de départ".
+Rule: ANY sentence containing "ouvre la porte" regardless of what follows is PATTERN B.
 
 PATTERN C — Editorial commentary:
 Sentences where the narrator steps outside the story to make a general observation about memory, history, or narrative.
 Examples: "Le sensationnel s'imprime mieux qu'il ne s'examine.", "L'histoire retient ce qu'elle veut.", "La mémoire est sélective.", "Ce n'est pas un détail.", "Ce qui est fascinant, c'est que...", "Il faut le comprendre."
+Additional mandatory flags: "s'imprime mieux qu'il ne s'examine", "s'échangent des idées sans toujours le dire", "l'orthodoxie et la subversion", "la mémoire retient ce qu'elle veut".
+Detection rule: any sentence where subject = abstract concept (memory, history, orthodoxy, subversion, sensationalism, narrative, legend) AND verb = cognitive or communicative action (imprime, retient, s'échange, apprend, dit, raconte, façonne, forge) is PATTERN C.
 
 PATTERN D — Over-resolved poster-quote closings:
-Last 2 sentences of CLIMAX, INSIGHT, or CONCLUSION that: both under 8 words AND contain no proper noun, date, or named object AND form an obvious A/B parallel opposition.
-Example: "La matière peut manquer. Les traces suffisent."
+Last 2 sentences of CLIMAX, INSIGHT, or CONCLUSION matching EITHER:
+- Both under 10 words AND form an A/B opposition, OR
+- Last sentence is under 8 words AND is an abstract declaration (no proper noun, date, or named object)
+Also flag any sentence pair ending a section where sentence 2 directly resolves sentence 1 with a neat inversion.
+Examples: "La matière peut manquer. Les traces suffisent.", "Même courbe. Deux verdicts qui ne se contredisent plus.", "La contrainte ne disparaît jamais. Elle attend.", "La vérité d'un objet n'habite pas un seul plan."
 
 PATTERN E — Abstract section summaries:
 Sentences that summarize the section just completed before moving on.
 Examples: "Pris ensemble, ces éléments...", "Mis bout à bout, ces indices...", "Tout cela forme un tableau...", "Trois éléments convergent.", "Tout cela mis ensemble."
+Additional mandatory flags: "ces strates racontent une chose simple", "tout cela forme un portrait", "le tableau se précise", "on commence à voir clair".
+Rule: any sentence containing "racontent une chose" or "disent une chose" followed by a summary is PATTERN E.
+
+THRESHOLD RULE: Flag ALL matches including ambiguous ones. Err on the side of catching more rather than missing borderline cases. When in doubt, flag the sentence and apply the fix. A false positive (concrete sentence flagged unnecessarily) costs less than a false negative (generated sentence left untouched).
 
 ═══ STEP 2 — REWRITE PASS ═══
 
@@ -58,23 +69,35 @@ FIX FOR PATTERN B (meta-transition):
 Delete entirely. The next section opens on its own first concrete image. No replacement needed.
 BEFORE: "La suite se jouera loin des établis."
 AFTER: [sentence deleted — next section opens directly]
+BEFORE: "Cette naissance fixe un point de départ matériel."
+AFTER: [sentence deleted — the concrete detail in the previous sentence already anchors the moment]
+BEFORE: "Le décalage entre ce que montre l'atelier et ce que retient le public ouvre la porte aux détours de l'histoire."
+AFTER: [sentence deleted — ACT2 opens directly on its first concrete scene without needing this bridge]
 
 FIX FOR PATTERN C (editorial commentary):
-Replace with a specific example that shows the same mechanism without naming it.
+Replace with a specific example that shows the same mechanism without naming it. If no concrete replacement is possible from context, DELETE the sentence.
 BEFORE: "Le sensationnel s'imprime mieux qu'il ne s'examine."
 AFTER: "L'épave tourne dans dix villes. Les quatre pages du rapport CHP restent dans un tiroir de Sacramento."
+BEFORE: "L'orthodoxie et la subversion s'échangent des idées sans toujours le dire."
+AFTER: [sentence deleted — the specific example in the previous sentence (e.g. prise d'air → option catalogue) already shows it without naming it]
 
 FIX FOR PATTERN D (over-resolved closing):
-Break the symmetry by replacing one of the two sentences with a concrete detail.
+Break the symmetry by replacing one of the two sentences with a concrete detail. For single abstract sentences, anchor in a specific object from the script.
 BEFORE: "La matière peut manquer. Les traces suffisent."
 AFTER: "La matière peut manquer. Le registre du SCCA, lui, ne brûle pas."
 BEFORE: "Même courbe. Deux verdicts qui ne se contredisent plus."
 AFTER: "L'autocollant rouge colle toujours. La plaque de Stuttgart a gagné une ligne."
+BEFORE: "La contrainte ne disparaît jamais. Elle attend."
+AFTER: "La contrainte ne disparaît jamais. Le turbo lag, lui, revient à chaque virage."
+BEFORE: "La vérité d'un objet n'habite pas un seul plan."
+AFTER: "Un longeron frappé, un nom de programme, une réplique déclarée. Trois plans. Aucun ne suffit seul."
 
 FIX FOR PATTERN E (abstract summary):
-Delete all but the last sentence if it functions as a genuine tension signal.
+Delete all but the last sentence if it functions as a genuine tension signal. If the last sentence is also abstract, delete the entire block.
 BEFORE: "Pris ensemble, ces strates racontent une chose simple. Le métal montre comment la 356 a été faite, les pages disent où elle a roulé, et la marge prouve comment elle a été réinventée. Tout semble aligné."
-AFTER: "Tout semble aligné."
+AFTER: "Tout semble aligné. En apparence."
+BEFORE: "Le tableau se précise. On commence à voir clair."
+AFTER: [both sentences deleted — the concrete evidence already speaks for itself]
 
 ═══ STEP 3 — HUMAN VOICE VERIFICATION ═══
 
