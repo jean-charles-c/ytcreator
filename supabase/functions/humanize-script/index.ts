@@ -59,11 +59,14 @@ THRESHOLD RULE: Flag ALL matches including ambiguous ones. Err on the side of ca
 For each flagged sentence, apply the appropriate fix:
 
 FIX FOR PATTERN A (sentencious pull):
-Replace with the last concrete detail from surrounding context that creates tension. Find the nearest specific fact and use it as the closing image.
+DEFAULT ACTION: DELETE the sentence. Do NOT replace it. The preceding concrete sentence is the natural ending.
 BEFORE: "La réponse existe."
-AFTER: "Le dossier CHP fait quatre pages. George Barris en a fait une tournée nationale."
+AFTER: [sentence deleted — the previous concrete sentence already closes the section]
 BEFORE: "Les traces suffisent."
-AFTER: "Le châssis n'existe plus. Le registre du SCCA, lui, est encore consultable."
+AFTER: [sentence deleted — the evidence presented before this line is the real ending]
+
+EXCEPTION — only if deletion would leave the section ending abruptly with no tension signal: replace with the nearest UNUSED concrete detail from the section (a detail not yet mentioned, never a repetition of what just appeared).
+ANTI-REDUNDANCY TEST before any replacement: "Does this replacement sentence repeat information already present in the previous 2 sentences?" YES → delete instead of replace.
 
 FIX FOR PATTERN B (meta-transition):
 Delete entirely. The next section opens on its own first concrete image. No replacement needed.
@@ -98,6 +101,24 @@ BEFORE: "Pris ensemble, ces strates racontent une chose simple. Le métal montre
 AFTER: "Tout semble aligné. En apparence."
 BEFORE: "Le tableau se précise. On commence à voir clair."
 AFTER: [both sentences deleted — the concrete evidence already speaks for itself]
+
+═══ STEP 2B — SENTENCE INTEGRITY CHECK (mandatory after every deletion) ═══
+
+After every deletion or modification, verify that remaining sentences are syntactically complete.
+
+A complete sentence MUST have: a subject (noun or pronoun) + a conjugated verb + a complete predicate.
+
+DETECTION: after each deletion, check the sentence immediately following the deleted content. If it starts with a preposition, conjunction, or relative pronoun without a preceding main clause → it is a FRAGMENT. Fix it.
+
+EXAMPLE OF THE BUG:
+BEFORE deletion: "Mais très vite, la marque se joue ailleurs. Sur des listes d'engagés, dans des coupures de presse, et au détour d'un drame qui ne touche pas la 356 mais assombrit l'aura de tout ce qui porte son écusson."
+AFTER incorrect deletion of first sentence: "Sur des listes d'engagés, dans des coupures de presse..." → FRAGMENT. No subject or verb.
+CORRECT FIX: delete both sentences together and reconstruct: "La suite se joue sur des listes d'engagés, dans des coupures de presse, et au détour d'un drame qui assombrit l'aura de tout ce qui porte son écusson."
+
+RULE: when deleting a sentence that has a dependent clause following it, you MUST either:
+1. Delete both the sentence and its dependent clause, then reconstruct a complete sentence from the remaining content, OR
+2. Rewrite the dependent clause into a standalone sentence with its own subject and verb.
+NEVER leave a prepositional phrase, relative clause, or adverbial fragment hanging without a main clause.
 
 ═══ STEP 3 — HUMAN VOICE VERIFICATION ═══
 
@@ -135,8 +156,15 @@ Moreover, Furthermore, Additionally, It's important to note, Interestingly, In f
 - [[OUTRO]]: ONE short question (20-100 chars, ends with "?"). Do NOT split, expand, or remove the "?". Do NOT insert CTA vocabulary.
 - [[END_SCREEN]]: Leave COMPLETELY untouched. Do not rewrite. Do not rephrase. Copy verbatim.
 
-EDITORIAL BLOCKS — DO NOT REWRITE:
-[[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]] — leave EXACTLY as written, character for character.
+EDITORIAL BLOCKS:
+[[STYLE CHECK]] and [[RISK CHECK]] — leave EXACTLY as written, character for character.
+
+[[TRANSITIONS]] — SYNCHRONIZATION REQUIRED:
+After all content corrections are applied, you MUST update [[TRANSITIONS]] to reflect modified sentences. For each boundary (HOOK→CONTEXT, CONTEXT→PROMISE, etc.):
+1. Find the actual last sentence of the outgoing section (OUT) and actual first sentence of the incoming section (IN) in the corrected script.
+2. If the OUT or IN sentence in [[TRANSITIONS]] no longer matches the actual section boundary → replace it with the correct sentence.
+3. Keep Rating and Note fields unchanged unless the transition quality has clearly changed due to your edits.
+This is a MANDATORY final step. Stale OUT/IN quotes in [[TRANSITIONS]] after a humanize pass is a bug.
 
 ═══ TYPOGRAPHY AND PUNCTUATION ═══
 
