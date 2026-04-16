@@ -80,15 +80,6 @@ function getBoundaryTimes(timeline: Timeline): number[] {
   if (segments.length === 0) return [];
 
   const totalDuration = getSafeTotalDuration(timeline);
-  const exactClipTimes = getExactClipTimes(timeline);
-
-  if (exactClipTimes) {
-    return exactClipTimes.flatMap((clipTime, index) =>
-      index === exactClipTimes.length - 1
-        ? [clipTime.start, clipTime.end]
-        : [clipTime.start]
-    );
-  }
 
   return [...segments.map((segment) => segment.startTime), totalDuration];
 }
@@ -99,6 +90,19 @@ export function buildClipFrames(
 ): { start: number; end: number }[] {
   const segments = timeline.videoTrack.segments;
   if (segments.length === 0) return [];
+
+   const exactClipTimes = getExactClipTimes(timeline);
+   if (exactClipTimes) {
+    return exactClipTimes.map(({ start, end }) => {
+      const startFrame = Math.max(0, Math.round(start * fps));
+      const endFrame = Math.max(Math.round(end * fps), startFrame + 1);
+
+      return {
+        start: startFrame,
+        end: endFrame,
+      };
+    });
+  }
 
   const boundaryTimes = getBoundaryTimes(timeline);
   const boundaryFrames: number[] = [];
