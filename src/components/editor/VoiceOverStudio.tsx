@@ -1479,12 +1479,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                 ) : (
                                   <span className="w-4 flex-shrink-0" />
                                 )}
-                                <span className="w-5 text-muted-foreground text-right flex-shrink-0">{idx + 1}.</span>
+                                <span className="w-5 text-white text-right flex-shrink-0 text-sm">{idx + 1}.</span>
                                 {status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                                 {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
                                 {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
                                 {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
-                                <span className={`flex-1 truncate ${status === "error" ? "text-destructive" : "text-foreground"}`}>
+                                <span className={`flex-1 truncate text-sm ${status === "error" ? "text-destructive" : "text-white"}`}>
                                   {scene.title || "Sans titre"}
                                 </span>
                                 {audioInfo && (
@@ -1539,7 +1539,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                               </div>
                               {/* Transcription text */}
                               {scene.source_text && (
-                                <p className="pl-11 text-[11px] text-foreground/80 leading-relaxed mt-1 mb-1.5">
+                                <p className="pl-11 text-sm text-white leading-relaxed mt-1 mb-1.5 font-body">
                                   {scene.source_text}
                                 </p>
                               )}
