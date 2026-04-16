@@ -348,3 +348,50 @@ REWRITE RULES:
 
 Output ONLY the rewritten INSIGHT body. No tags, no explanation.
 ```
+
+## 11. CONTEXT QUALITY REPAIR
+
+**Trigger**: Any check 8.1-8.6
+**Auto-triggered**: NO — offer choice (content changes are too significant for auto-correction)
+
+**Scope**: Rewrite the entire CONTEXT block to match the 4-beat structure.
+**Rule**: Era anchor + character/pressure + single founding tension + closing question. No specs, no sources, no thesis.
+
+### Correction prompt template
+
+```
+Rewrite [[CONTEXT]]. Subject: {subject}.
+Hook last sentence: {hook_last_sentence}.
+Promise first sentence: {promise_first_sentence}.
+Problems: {list_of_failed_checks}.
+
+REQUIRED STRUCTURE — 4 beats, max 200 words:
+
+Beat 1 (1-2 sentences): specific era + location +
+dominant force. Concrete and visual.
+
+Beat 2 (1-2 sentences): central character or
+institution + the pressure they face.
+No technical specs. No source names.
+
+Beat 3 (1-2 sentences): ONE founding tension only.
+A single contradiction that generates the story.
+
+Beat 4 (1 sentence): closing question about
+the tension. Must NOT name sources, technical
+details, or specific revelations from later acts.
+
+HARD RULES:
+- No technical specifications
+- No source or document names
+- No thesis or conclusion
+- No information that belongs in a later act
+- Must flow from HOOK and into PROMISE naturally
+
+Lang: {langLabel}. Output: CONTEXT text only. No tags.
+```
+
+### Post-processing
+- Replace CONTEXT content
+- Re-run checks 8.1-8.6
+- If 8.2 or 8.3 still fail → move flagged content to appropriate act rather than rewriting again

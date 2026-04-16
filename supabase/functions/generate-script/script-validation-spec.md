@@ -230,3 +230,47 @@ This document defines validation checks for scripts produced by `generate-script
 - **Fail criteria**: Any CTA vocabulary (the full banned list from 7.14) appears in ANY block OTHER than `[[END_SCREEN]]`. This is the corollary of 7.14, extended to all narration blocks.
 - **Detection**: For each block in {HOOK, CONTEXT, PROMISE, ACT1, ACT2, ACT2B, ACT3, CLIMAX, INSIGHT, CONCLUSION, OUTRO}, regex scan for any banned CTA word from 7.14.
 - **Feedback**: "CTA vocabulary '[word]' found in [[BLOCK]]. CTAs belong ONLY in END_SCREEN. Remove from narration and move to END_SCREEN."
+
+## 8. CONTEXT QUALITY
+
+### 8.1 ERA ANCHOR IN FIRST SENTENCE
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: First sentence of CONTEXT contains a specific decade or year + geographic location
+- **Detection**: Check first sentence for a year or decade (`/\b(19|20)\d{2}\b/` or `/(années|decade|siècle)/i`) AND a capitalized geographic noun.
+- **Fail criteria**: First sentence contains neither a time reference nor a place
+- **Feedback**: "CONTEXT must open with a specific era and location. Example: 'Fin des années 1940, l'Autriche et l'Allemagne redémarrent leurs usines.'"
+
+### 8.2 NO TECHNICAL SPECS IN CONTEXT
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: No component-level technical terms in CONTEXT
+- **Detection**: Flag any of these in CONTEXT text: engine displacement patterns (`/\d+[.,]\d+\s*litr/i`), component names (turbo, injection, boîte, suspension, carburateur, radiateur, moteur V), material specs (Kevlar, Nomex, composite, alliage).
+- **Fail criteria**: Any technical spec detected
+- **Feedback**: "Technical specifications detected in CONTEXT. Move to ACT1 or ACT2 where they have causal context."
+
+### 8.3 NO SOURCE NAMES IN CONTEXT
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: No named archives, publications, or documents in CONTEXT
+- **Detection**: Flag patterns like "archives de", "dossiers de", "rapports de", named institutions other than the subject brand, publication names (magazine titles, newspaper names).
+- **Fail criteria**: Any source name detected
+- **Feedback**: "Source names detected in CONTEXT. Move to PROMISE or the relevant act."
+
+### 8.4 SINGLE FOUNDING TENSION
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: CONTEXT contains exactly one central contradiction or problem
+- **Detection**: Count contrast markers ("mais", "pourtant", "sauf", "however", "yet", "but", "tandis que", "alors que"). Flag if 3+ markers suggest multiple tensions.
+- **Fail criteria**: 3+ contrast markers detected
+- **Feedback**: "CONTEXT appears to contain multiple tensions. Keep the strongest one. Delete the rest."
+
+### 8.5 CLOSING QUESTION DOES NOT REVEAL CONTENT
+- **Severity**: 🟡 MEDIUM
+- **Pass criteria**: Closing question of CONTEXT asks about the founding tension, not about specific revelations
+- **Detection**: Check last sentence of CONTEXT for named sources, specific technical terms, or specific events/names that appear in ACT2 or later.
+- **Fail criteria**: Closing question contains specific content that appears in ACT2 or later
+- **Feedback**: "Closing question reveals later content. Rewrite to ask about the tension, not the answer."
+
+### 8.6 CONTEXT LENGTH
+- **Severity**: 🟢 MINOR
+- **Pass criteria**: CONTEXT is 80-200 words
+- **Fail criteria**: Over 200 words
+- **Detection**: Word count of CONTEXT body.
+- **Feedback**: "CONTEXT is too long ({word_count} words, max 200). It is likely doing another section's job. Cut until each sentence serves only one of the 4 beats: era / character+pressure / tension / question."

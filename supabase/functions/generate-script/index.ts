@@ -1106,32 +1106,80 @@ The hook tension MUST be resolved in [[CLIMAX]]. This is the narrative contract 
 
 ### [[CONTEXT]] — Grounding the Viewer (~10%)
 
-Transition from the abstract hook to CONCRETE reality. The viewer needs orientation:
-- WHEN and WHERE: time period, geography, specific place.
-- WHO: key actors, institutions, or forces at play.
-- WHAT makes this difficult: why this subject resists easy answers.
+CONTEXT — EXCELLENCE STANDARD:
 
-The context must be HIERARCHIZED — most important framing first, supporting details second. Do NOT deliver an encyclopedic overview. Select only what the viewer needs to understand the story ahead.
+The CONTEXT has one function. establish the era, the pressure, and the founding tension. Nothing else.
 
-STRICT RULE — CONTEXT CONTENT FILTER:
-After writing the CONTEXT, the model MUST apply this test to every sentence.
-"Will this information be developed in ACT1, ACT2, or ACT2B?"
-If YES, delete it from CONTEXT. It belongs to the act where it has causal context.
+MANDATORY STRUCTURE — 4 BEATS:
 
-The CONTEXT contains ONLY:
-- The era, location, and economic/political pressure
-- The central character or institution
-- The founding tension (the problem that generates the story)
-- A closing question that pulls toward the PROMISE
+Beat 1 — Era anchor (1-2 sentences).
+A specific time period + geographic location + the dominant force shaping the world at that moment. Must be visual and concrete.
+Examples.
+- "Fin des années 1940, l'Autriche et l'Allemagne redémarrent leurs usines."
+- "1975. Les normes antipollution américaines étranglent les motoristes européens."
 
-The CONTEXT NEVER contains:
-- Technical specifications (engine, transmission, materials)
-- Names of documents, archives, or sources
-- Revelations or angles developed in later acts
-- The thesis or conclusion
-- Any information that requires the acts to make sense
+Beat 2 — Central character or institution (1-2 sentences).
+Who is at the center. What they face. Not what they will do — what pressure they are under.
+Examples.
+- "Porsche naît entre pénuries, un héritage familial lourd, et un marché américain décisif."
+- "À Weissach, Ernst Fuhrmann pousse un pari technologique que personne n'a encore tenté sur une voiture de route."
 
-Maximum length. 10 lines.
+Beat 3 — Founding tension (1-2 sentences).
+The single contradiction or problem that generates the entire story. One tension only. Not two. Not three.
+Examples.
+- "L'icône officielle avance ; des récits rivaux s'accrochent à elle."
+- "La presse la sacre. Les archives racontent autre chose."
+
+Beat 4 — Closing question (1 sentence).
+A question that pulls toward the PROMISE. Must be about the founding tension, not about what will be revealed. Must NOT name any specific fact, source, or revelation.
+Examples.
+- "Si la matière disparaît, qu'est-ce qui fixe encore l'aura d'une voiture ?"
+- "Pourquoi ces choix. Et ont-ils construit une réputation qui dépasse la seule technique ?"
+
+HARD RULES — CONTENT FILTER:
+
+The CONTEXT must NEVER contain.
+- Technical specifications (engine size, transmission type, materials, component names)
+- Source names (archives, documents, publications, named experts or institutions)
+- Revelations that will appear in ACT1, ACT2, or ACT2B
+- The film's thesis or conclusion
+- Any information that requires an act to make sense
+
+TEST for each CONTEXT sentence.
+"Will this information be developed in a later act?" YES → delete it. It belongs where it has causal context.
+"Does this sentence name a source or document?" YES → delete it. Sources belong in PROMISE or the acts.
+"Does this sentence state a conclusion?" YES → delete it. Conclusions belong in CLIMAX.
+
+LENGTH RULE. Maximum 10 lines. Maximum 200 words. If over these limits → the CONTEXT is doing another section's job. Cut until it fits.
+
+TONE RULE. The CONTEXT establishes stakes, not knowledge. It makes the viewer feel the pressure, not understand the answer. Every sentence should raise a question, not answer one.
+
+SELF-CHECK — 4 questions before finalizing CONTEXT.
+1. Does sentence 1 contain a specific era + location? NO → rewrite with concrete time and place anchor.
+2. Does any sentence name a technical detail, source, or document? YES → delete it.
+3. Is there exactly ONE founding tension? MORE THAN ONE → keep the strongest, delete the rest. ZERO → rewrite Beat 3.
+4. Does the closing question reveal what will be found? YES → rewrite to ask about the tension, not the answer.
+
+EXCELLENT CONTEXT EXAMPLE — study this.
+
+"Fin des années 1940, l'Autriche et l'Allemagne redémarrent leurs usines. Aux États-Unis, les clubs structurent la course, la presse forge l'imaginaire. Porsche naît entre pénuries, un héritage familial lourd, et un marché américain décisif. La 356 sort des ateliers, mais sa réputation se bâtit aussi sur les routes, dans les journaux, et devant les tribunaux. L'icône officielle avance ; des récits rivaux s'accrochent à elle. Une tension demeure. Si la matière disparaît, qu'est-ce qui fixe encore l'aura d'une voiture ?"
+
+Why it works.
+- Beat 1. "Fin des années 1940... redémarrent leurs usines" → era, location, dominant force
+- Beat 2. "Porsche naît entre pénuries..." → character + pressure, no technical details
+- Beat 3. "L'icône officielle avance ; des récits rivaux" → single founding tension
+- Beat 4. "Si la matière disparaît..." → question about tension, not about revelations
+- Zero sources. Zero specs. Zero thesis.
+
+FAILED CONTEXT EXAMPLES — never do this.
+
+BAD. Listing technical details that belong in ACT2. "La gestion Bosch K-Jetronic, le turbocompresseur KKK, la boîte 4 rapports, et les options de suspension sont au coeur du débat..." → These belong in ACT2 where they have causal context.
+
+BAD. Naming sources that belong in PROMISE. "Les archives de Pininfarina, les rapports NHTSA, les notes de l'ingénieur Contini..." → Sources belong in PROMISE or the acts.
+
+BAD. Anticipating revelations. "Des récits périphériques s'agrègent et troublent l'authenticité, déplacent la valeur et bousculent la mémoire." → This summarizes ACT2B before ACT1 has started.
+
+BAD. Stating the thesis. "La légende célèbre une perfection. Les papiers la contredisent." → This is the CLIMAX conclusion, not the CONTEXT setup.
 
 ### [[PROMISE]] — The Curiosity Contract (~5%)
 
