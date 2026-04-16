@@ -1,5 +1,6 @@
 import type { Timeline } from "./timelineAssembly";
 import type { ExportFps } from "./videoExportEngine";
+import { resolveShotTimingBoundaries } from "./shotTimingBoundaries";
 
 const XML_INVALID_CHAR_REGEX = /[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD]/g;
 
@@ -34,45 +35,17 @@ function getExactClipTimes(timeline: Timeline): { start: number; end: number }[]
 
   if (timepoints.length === 0) return null;
 
-  const timepointMap = new Map<string, number>();
-  const manualEndMap = new Map<string, number>();
+  const resolvedBoundaries = resolveShotTimingBoundaries(
+    segments.map((segment) => segment.id),
+    timepoints,
+    totalDuration
+  );
 
-  for (const timepoint of timepoints) {
-    if (timepoint.shotId.startsWith("_missing_")) continue;
-    timepointMap.set(timepoint.shotId, timepoint.timeSeconds);
-    if (
-      typeof timepoint.manualEndTimeSeconds === "number" &&
-      Number.isFinite(timepoint.manualEndTimeSeconds)
-    ) {
-      manualEndMap.set(timepoint.shotId, timepoint.manualEndTimeSeconds);
-    }
+  if (!resolvedBoundaries || resolvedBoundaries.some((boundary) => !(boundary.end > boundary.start))) {
+    return null;
   }
 
-  const clipTimes: { start: number; end: number }[] = [];
-
-  for (let index = 0; index < segments.length; index += 1) {
-    const segment = segments[index];
-    const start = timepointMap.get(segment.id);
-    if (typeof start !== "number" || !Number.isFinite(start)) {
-      return null;
-    }
-
-    const nextSegment = segments[index + 1];
-    const nextStart = nextSegment ? timepointMap.get(nextSegment.id) : totalDuration;
-    const rawEnd = manualEndMap.get(segment.id) ?? nextStart;
-    if (typeof rawEnd !== "number" || !Number.isFinite(rawEnd)) {
-      return null;
-    }
-
-    const end = Math.min(rawEnd, totalDuration);
-    if (!(end > start)) {
-      return null;
-    }
-
-    clipTimes.push({ start, end });
-  }
-
-  return clipTimes;
+  return resolvedBoundaries.map(({ start, end }) => ({ start, end }));
 }
 
 function getBoundaryTimes(timeline: Timeline): number[] {
@@ -91,8 +64,8 @@ export function buildClipFrames(
   const segments = timeline.videoTrack.segments;
   if (segments.length === 0) return [];
 
-   const exactClipTimes = getExactClipTimes(timeline);
-   if (exactClipTimes) {
+  const exactClipTimes = getExactClipTimes(timeline);
+  if (exactClipTimes) {
     return exactClipTimes.map(({ start, end }) => {
       const startFrame = Math.max(0, Math.round(start * fps));
       const endFrame = Math.max(Math.round(end * fps), startFrame + 1);

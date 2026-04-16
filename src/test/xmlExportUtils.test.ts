@@ -140,7 +140,7 @@ describe("buildClipFrames", () => {
     ]);
   });
 
-  it("preserves a manual shortened end time instead of extending to the next shot start", () => {
+  it("aligns the next shot start with the previous manual end", () => {
     const timeline = makeTimeline({
       videoTrack: {
         type: "video",
@@ -202,7 +202,7 @@ describe("buildClipFrames", () => {
     expect(buildClipFrames(timeline, 24)).toEqual([
       { start: 0, end: 24 },
       { start: 24, end: 36 },
-      { start: 48, end: 96 },
+      { start: 36, end: 96 },
     ]);
   });
 });
