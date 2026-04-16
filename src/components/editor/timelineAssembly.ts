@@ -11,6 +11,9 @@ export interface ShotTimepoint {
   shotIndex: number;
   timeSeconds: number;
   shotId: string;
+  /** Optional manual end time (seconds). When present, overrides the auto-derived end (= next shot's start). */
+  manualEndTimeSeconds?: number | null;
+  isManual?: boolean;
 }
 
 export interface ShotSegment {
@@ -124,6 +127,12 @@ export function assembleTimeline(
   const timepointMap = new Map<string, number>(
     realTimepoints.map((tp) => [tp.shotId, tp.timeSeconds])
   );
+  const manualEndMap = new Map<string, number>();
+  realTimepoints.forEach((tp) => {
+    if (typeof tp.manualEndTimeSeconds === "number" && tp.manualEndTimeSeconds > 0) {
+      manualEndMap.set(tp.shotId, tp.manualEndTimeSeconds);
+    }
+  });
 
   const exactStarts = sortedShots.map((shot) => {
     const start = timepointMap.get(shot.id);
@@ -136,8 +145,14 @@ export function assembleTimeline(
   const segments: ShotSegment[] = sortedShots.map((shot, idx) => {
     const scene = sceneMap.get(shot.scene_id);
     const startTime = exactStarts[idx];
-    const nextStart = idx < sortedShots.length - 1 ? exactStarts[idx + 1] : audioDuration;
-    const duration = nextStart - startTime;
+    const autoNextStart = idx < sortedShots.length - 1 ? exactStarts[idx + 1] : audioDuration;
+    const manualEnd = manualEndMap.get(shot.id);
+    // Manual end overrides the auto-derived next start (can shorten OR lengthen the segment).
+    // Bound to audioDuration to avoid overshoot beyond the audio track.
+    const effectiveEnd = manualEnd !== undefined
+      ? Math.min(manualEnd, audioDuration)
+      : autoNextStart;
+    const duration = effectiveEnd - startTime;
 
     if (!(duration > 0)) {
       throw new Error(`Sync audio bloquée — durée invalide entre les shots ${idx + 1}${idx < sortedShots.length - 1 ? ` et ${idx + 2}` : " et la fin audio"}.`);
