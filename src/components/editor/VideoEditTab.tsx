@@ -501,11 +501,13 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   })();
 
   // ── Chapter validation check ──
+  // Always use CORE_SECTION_TYPES.length as the real total to avoid
+  // partial/legacy chapterState passing with e.g. 1/1 validated.
   const chapters = chapterState?.chapters ?? [];
-  const totalChapters = chapters.length;
+  const totalChapters = CORE_SECTION_TYPES.length;
   const validatedChapters = chapters.filter((c) => c.validated).length;
   const chapterMinThreshold = Math.ceil(totalChapters * 0.9); // 90% required
-  const chaptersOk = totalChapters > 0 && validatedChapters >= chapterMinThreshold;
+  const chaptersOk = validatedChapters >= chapterMinThreshold;
 
   // Compute asset checks
   const shotsWithImage = shots.filter((s) => s.image_url);
