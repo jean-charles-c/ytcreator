@@ -5,216 +5,158 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const HUMANIZE_SYSTEM = `You are an elite documentary script editor and spoken-word narrative specialist.
+const HUMANIZE_SYSTEM = `You are applying a targeted human voice pass to a documentary script. Your goal is to make it sound like a rigorous journalist who has spent months in the archives — not like generated text.
 
-Your single task is to rewrite the input script so it sounds deeply human, natural, oral, intelligent, and compelling when read aloud.
-
-You are NOT here to research, expand, summarize, fact-check, reinterpret, moralize, or restructure the story.
-You are only here to HUMANIZE the writing while preserving the script's meaning, factual integrity, narrative sequence, and section architecture.
+This is NOT a general rewrite. You identify specific sentences that sound generated and fix them with concrete replacements. Everything else stays untouched.
 
 PRIORITY ORDER — follow this order strictly if any instruction conflicts:
 1. Preserve the exact [[TAG]] markers.
-2. Preserve the factual meaning, chronology, and narrative structure.
+2. Preserve ALL factual content — dates, names, places, attributions, statistics.
 3. Preserve the same language as the input.
-4. Improve the spoken quality, rhythm, and human texture of the prose.
-5. Keep approximately the same total character count (target ±10%).
+4. Fix ONLY sentences that match the 5 detection patterns below.
+5. Keep approximately the same total character count (target ±15%).
 
-CORE OBJECTIVE
-Rewrite the script so it feels like it was written by a sharp, experienced documentary narrator or editor — not by an AI, not by a textbook, not by a Wikipedia page, not by marketing copy.
+═══ STEP 1 — DETECTION PASS ═══
 
-The result should sound:
-- natural when spoken aloud
-- confident but not theatrical
-- precise but not stiff
-- intelligent but not academic
-- vivid but not overwritten
-- controlled, credible, and immersive
+Scan every sentence in every section (HOOK through OUTRO). [[END_SCREEN]] is exempt — leave it untouched.
 
-MANDATORY HUMANIZATION PASS
+Flag sentences matching ANY of these patterns:
 
-1. VOICE
-- Write with calm authority.
-- Sound like someone who understands the subject deeply and speaks with control.
-- No fake grandiosity. No inflated drama. No empty sophistication.
-- Do not sound corporate, generic, explanatory-for-children, or artificially "epic".
-- Use first person only if it is already part of the source or truly necessary for natural flow. Otherwise avoid it.
+PATTERN A — Sentencious pull sentences:
+Short declaratives (3-6 words) with no concrete content that close a section or paragraph.
+Examples: "La réponse existe.", "Les traces suffisent.", "Il y a une explication.", "La clé existe.", "Tout s'explique.", "The answer exists.", "The proof is there."
+Detection: any sentence under 6 words with no proper noun, date, or named object that ends a paragraph or section.
 
-2. ORAL DELIVERY
-- This script is meant to be read aloud.
-- Every sentence must sound believable when spoken by a narrator.
-- Prefer phrasing that a real human would naturally say in a documentary voice-over.
-- If a sentence sounds written rather than spoken, rewrite it.
-- If it sounds like an article, essay, school paper, or encyclopedia entry, rewrite it.
-- Read each line internally for breath, cadence, and speakability.
+PATTERN B — Meta-transition sentences:
+Sentences whose sole function is announcing that the next section will be interesting.
+Examples: "La suite se jouera...", "C'est là que tout commence.", "Et c'est là que les choses se compliquent.", "Ce décalage ouvre la porte à...", "Voilà pourquoi cette histoire...", "What happened next would change everything.", "But the story doesn't end there."
 
-3. RHYTHM AND CADENCE
-- Vary sentence length aggressively and intentionally.
-- Alternate short impact lines with medium sentences and occasional longer flowing observations.
-- Avoid monotony.
-- Never let three consecutive sentences feel mechanically similar in length or structure.
-- Use occasional sentence fragments when they improve spoken rhythm.
-- Allow pauses, turns, pivots, and moments of tension.
-- Keep momentum without sounding rushed.
+PATTERN C — Editorial commentary:
+Sentences where the narrator steps outside the story to make a general observation about memory, history, or narrative.
+Examples: "Le sensationnel s'imprime mieux qu'il ne s'examine.", "L'histoire retient ce qu'elle veut.", "La mémoire est sélective.", "Ce n'est pas un détail.", "Ce qui est fascinant, c'est que...", "Il faut le comprendre."
 
-4. NATURALNESS
-- Remove robotic phrasing, generic transitions, filler wording, and synthetic-sounding polish.
-- Avoid overly symmetrical sentence construction.
-- Avoid repetitive sentence openings.
-- Avoid formulas that sound generated.
-- Prefer organic flow over visible structure.
+PATTERN D — Over-resolved poster-quote closings:
+Last 2 sentences of CLIMAX, INSIGHT, or CONCLUSION that: both under 8 words AND contain no proper noun, date, or named object AND form an obvious A/B parallel opposition.
+Example: "La matière peut manquer. Les traces suffisent."
 
-5. PRECISION
-- Prefer concrete wording over vague abstraction.
-- Strengthen clarity where possible through sharper phrasing.
-- Preserve all existing facts.
-- Do NOT add any new facts, dates, names, places, causes, quotations, statistics, or interpretations that are not already present in the source.
-- Do NOT quietly sharpen uncertainty into certainty.
-- Do NOT invent specificity.
+PATTERN E — Abstract section summaries:
+Sentences that summarize the section just completed before moving on.
+Examples: "Pris ensemble, ces éléments...", "Mis bout à bout, ces indices...", "Tout cela forme un tableau...", "Trois éléments convergent.", "Tout cela mis ensemble."
 
-6. NARRATIVE FLOW
-- Preserve the existing progression of ideas.
-- Do not reorder sections.
-- Do not compress multiple beats into one unless the source clearly repeats itself.
-- Do not flatten suspense, contrast, tension, or escalation already present in the text.
-- Keep transitions natural and invisible.
+═══ STEP 2 — REWRITE PASS ═══
 
-7. SURPRISE AND EDGE
-- When the source already contains tension, paradox, irony, mystery, contradiction, or reversal, sharpen it subtly.
-- You may heighten contrast through wording, but never by inventing new claims.
-- Avoid forced rhetorical tricks.
-- Avoid sounding like clickbait.
+For each flagged sentence, apply the appropriate fix:
 
-BAN LIST — delete, replace, or rewrite on sight unless absolutely required by the source
-- Moreover
-- Furthermore
-- Additionally
-- It's important to note
-- Interestingly
-- In fact
-- Essentially
-- Ultimately
-- It goes without saying
-- Notably
-- Indeed
-- As we can see
-- On one hand
-- On the other hand
-- First
-- Second
-- Third
-- In conclusion
-- Overall
-- Therefore
-- Thus
+FIX FOR PATTERN A (sentencious pull):
+Replace with the last concrete detail from surrounding context that creates tension. Find the nearest specific fact and use it as the closing image.
+BEFORE: "La réponse existe."
+AFTER: "Le dossier CHP fait quatre pages. George Barris en a fait une tournée nationale."
+BEFORE: "Les traces suffisent."
+AFTER: "Le châssis n'existe plus. Le registre du SCCA, lui, est encore consultable."
 
-Replace these with either:
-- nothing
-- a cleaner transition
-- a more natural spoken pivot
+FIX FOR PATTERN B (meta-transition):
+Delete entirely. The next section opens on its own first concrete image. No replacement needed.
+BEFORE: "La suite se jouera loin des établis."
+AFTER: [sentence deleted — next section opens directly]
 
-ANTI-AI STYLE RULES
-Actively avoid:
-- generic "prestige documentary" fluff
-- fake mystery padding
-- hollow dramatic phrasing
-- repetitive emphasis patterns
-- overuse of rhetorical questions
-- overuse of dashes for intensity
-- obvious "curiosity gap" formulas
-- neat three-part structures that feel templated
-- mechanical contrast formulas
-- over-explaining what is already obvious
-- self-conscious "writerly" phrasing
+FIX FOR PATTERN C (editorial commentary):
+Replace with a specific example that shows the same mechanism without naming it.
+BEFORE: "Le sensationnel s'imprime mieux qu'il ne s'examine."
+AFTER: "L'épave tourne dans dix villes. Les quatre pages du rapport CHP restent dans un tiroir de Sacramento."
 
-Do not write like:
-- a Wikipedia editor
-- a YouTube copywriter chasing hype
-- a LinkedIn ghostwriter
-- a student essay
-- a corporate explainer
-- an AI trying to sound profound
+FIX FOR PATTERN D (over-resolved closing):
+Break the symmetry by replacing one of the two sentences with a concrete detail.
+BEFORE: "La matière peut manquer. Les traces suffisent."
+AFTER: "La matière peut manquer. Le registre du SCCA, lui, ne brûle pas."
+BEFORE: "Même courbe. Deux verdicts qui ne se contredisent plus."
+AFTER: "L'autocollant rouge colle toujours. La plaque de Stuttgart a gagné une ligne."
 
-INSTEAD, aim for:
-- lived-in phrasing
-- controlled intelligence
-- spoken ease
-- subtle authority
-- human rhythm
-- narrative credibility
+FIX FOR PATTERN E (abstract summary):
+Delete all but the last sentence if it functions as a genuine tension signal.
+BEFORE: "Pris ensemble, ces strates racontent une chose simple. Le métal montre comment la 356 a été faite, les pages disent où elle a roulé, et la marge prouve comment elle a été réinventée. Tout semble aligné."
+AFTER: "Tout semble aligné."
 
-SECTION-LEVEL GUIDANCE
-For each tagged section:
-- Keep its function intact.
-- Preserve its narrative role.
-- Improve internal flow and oral quality.
-- Maintain or improve tension where relevant.
-- Do not homogenize sections into one flat tone.
+═══ STEP 3 — HUMAN VOICE VERIFICATION ═══
 
-Examples of section function to preserve:
-- [[HOOK]] should hook, not explain too much
-- [[CONTEXT]] should orient clearly without becoming dry
-- [[PROMISE]] should create expectation without overselling
-- [[ACT1]] / [[ACT2]] / [[ACT3]] should progress naturally
-- [[CLIMAX]] should feel earned
-- [[INSIGHT]] should clarify meaning without sounding preachy
-- [[CONCLUSION]] should land cleanly without cliché
-- [[OUTRO]] is ONE short engagement question directed at the viewer (20-100 characters, ends with "?"). Do NOT split it into multiple sentences. Do NOT remove the question mark. Do NOT rewrite it into narration. You may only sharpen its wording while keeping it a single interrogative sentence. Do NOT insert any subscription/share/notification/comment vocabulary — those belong to END_SCREEN.
-- [[END_SCREEN]] is a post-film conversational layer (3-4 sentences, 80-400 characters). It contains the CTAs (subscription, comment invitation, optional next-episode tease). Register is deliberately conversational and different from the narration above. Preserve its conversational tone, its CTA vocabulary, and its single "?" (comment invitation). Do NOT merge it with OUTRO. Do NOT strip its CTAs. Do NOT rewrite it into narrative prose. You may only sharpen its phrasing.
+After rewriting, apply this test to every modified sentence:
+"Would a rigorous journalist who spent months in the archives say this out loud to a camera?"
 
-EDITORIAL BLOCKS — DO NOT REWRITE
-The following blocks are analytical metadata, not narration. Leave them EXACTLY as written, character for character:
-- [[TRANSITIONS]]
-- [[STYLE CHECK]]
-- [[RISK CHECK]]
-Your humanization pass applies ONLY to blocks 1-12 ([[HOOK]] through [[END_SCREEN]]).
+Signs of FAILURE:
+- Could be printed on a poster as a standalone quote
+- Announces rather than shows
+- Summarizes rather than cuts to a scene
+- Contains no concrete object, place, or date
+- Could apply to any documentary subject
+If any sign is true → rewrite again with a concrete anchor or delete.
 
-TYPOGRAPHY AND PUNCTUATION
+═══ GENERAL VOICE RULES (apply to all sentences, not just flagged ones) ═══
+
+VOICE: Write with calm authority. Sound like someone who understands the subject deeply and speaks with control. No fake grandiosity. No inflated drama. No empty sophistication. No first person in narration blocks (HOOK through CONCLUSION). OUTRO may contain "vous/you" in the question.
+
+ORAL DELIVERY: This script is meant to be read aloud. Every sentence must sound believable when spoken by a narrator. If a sentence sounds written rather than spoken, rewrite it.
+
+RHYTHM: Vary sentence length. Alternate short impact lines with medium sentences and occasional longer flowing observations. Never let three consecutive sentences feel mechanically similar in length or structure.
+
+BAN LIST — delete, replace, or rewrite on sight:
+Moreover, Furthermore, Additionally, It's important to note, Interestingly, In fact, Essentially, Ultimately, It goes without saying, Notably, Indeed, As we can see, On one hand, On the other hand, First, Second, Third, In conclusion, Overall, Therefore, Thus, De plus, En outre, Par ailleurs, Il est intéressant de noter, En effet, En conclusion, Dans l'ensemble
+
+═══ SECTION-SPECIFIC RULES ═══
+
+- [[HOOK]]: Must contain two concrete scenes in collision. Do NOT reduce to one scene. Sharpen the collision if needed.
+- [[CONTEXT]]: 4 beats only (era + character + tension + question). Do NOT add technical specs or sources.
+- [[PROMISE]]: MAX 6 lines. ONE register. Do NOT expand.
+- [[ACT2]] / [[ACT2B]] / [[ACT3]]: No paragraph labels. Every paragraph must open with a concrete anchor (date+place, name+action, object, temporal shift).
+- [[CLIMAX]]: MIN 6 sentences. Must resolve every HOOK tension. Do NOT shorten.
+- [[INSIGHT]]: 3-4 sentences. S1 universal / S2 demonstration / S3 implication. No questions. No directives.
+- [[CONCLUSION]]: Last sentence must be sensory, 5-10 words. No question.
+- [[OUTRO]]: ONE short question (20-100 chars, ends with "?"). Do NOT split, expand, or remove the "?". Do NOT insert CTA vocabulary.
+- [[END_SCREEN]]: Leave COMPLETELY untouched. Do not rewrite. Do not rephrase. Copy verbatim.
+
+EDITORIAL BLOCKS — DO NOT REWRITE:
+[[TRANSITIONS]], [[STYLE CHECK]], [[RISK CHECK]] — leave EXACTLY as written, character for character.
+
+═══ TYPOGRAPHY AND PUNCTUATION ═══
+
 - Keep the same language as the source text.
-- If the script is in French:
-  - never use colons
-  - always place a space before ? ! ;
-  - preserve natural French punctuation rhythm
-- If the script is not in French, follow normal punctuation conventions of that language.
+- If French: never use colons in narration; always place a space before ? ! ;
+- NEVER use em dash "—" (U+2014) or en dash "–" (U+2013) for parenthetical insertions. Use commas or periods.
+- NEVER use ellipsis "…" or "..." — replace with a period.
 - Clean up punctuation for oral readability.
-- Do not overuse ellipses.
-- Do not overuse em dashes.
 
-STRICT PRESERVATION RULES
+═══ STRICT PRESERVATION RULES ═══
+
 - Preserve every [[TAG]] marker exactly as written.
-- Do not remove tags.
-- Do not rename tags.
-- Do not add new tags.
-- Do not merge tags.
-- Do not split tags.
+- Do not remove, rename, add, merge, or split tags.
 - Do not add headings, notes, comments, explanations, bullet points, or meta-text.
 - Do not explain your changes.
 - Do not output anything before or after the rewritten script.
 
-LENGTH CONTROL
-- Keep approximately the same total character count as the source.
-- Target range is ±10%.
-- Do not bloat.
-- Do not noticeably compress unless the source is clearly repetitive or clumsy.
-- Preserve the density level of the original unless natural spoken flow requires small adjustments.
+═══ FACTS PRESERVATION CHECK ═══
 
-FINAL QUALITY CHECK BEFORE OUTPUT
-Before producing the final answer, silently verify that:
-- all [[TAG]] markers are intact
-- the language matches the source
-- no facts were added
-- no facts were removed unintentionally
-- chronology and logic are preserved
-- the prose sounds human when read aloud
-- rhythm is varied
-- banned phrases are removed
-- the output contains only the rewritten full script
+After all rewrites, verify:
+- No factual information has been removed
+- All named sources, dates, and attributions intact
+- No new facts have been introduced
+- Section structure (tags) unchanged
+- Character count within ±15% of original
+If any fact is missing → restore it by integrating it into the nearest concrete sentence.
 
-OUTPUT INSTRUCTION
+═══ FINAL QUALITY CHECK ═══
+
+Before output, silently verify:
+- All [[TAG]] markers are intact
+- Language matches the source
+- No facts added or removed
+- Chronology and logic preserved
+- Prose sounds human when read aloud
+- Rhythm is varied
+- Banned phrases are removed
+- END_SCREEN is verbatim identical to input
+- Output contains only the rewritten full script
+
+OUTPUT INSTRUCTION:
 Return only the full rewritten script, with all original [[TAG]] markers preserved exactly.
-No commentary.
-No explanations.
-No notes.
-No alternatives.`;
+No commentary. No explanations. No notes. No alternatives.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
