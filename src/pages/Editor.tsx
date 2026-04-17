@@ -2734,11 +2734,71 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                   const pv = shotVersions.find((v) => v.id === previewShotVersionId);
                   if (!pv) return null;
                   return (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      setShots(pv.shots ?? []);
-                      setCurrentShotVersionId(pv.id);
-                      setPreviewShotVersionId(null);
-                      toast.success(`VisualPrompts V${pv.id} restaurés`);
+                    <Button variant="outline" size="sm" onClick={async () => {
+                      const snapshotShots = (pv.shots ?? []) as Shot[];
+                      if (snapshotShots.length === 0) {
+                        toast.error("Cette version est vide");
+                        return;
+                      }
+                      // Verify scenes referenced by snapshot still exist in DB
+                      const { data: currentScenes, error: scErr } = await supabase
+                        .from("scenes")
+                        .select("id")
+                        .eq("project_id", projectId);
+                      if (scErr) {
+                        toast.error("Impossible de vérifier les scènes");
+                        return;
+                      }
+                      const validSceneIds = new Set((currentScenes ?? []).map((s) => s.id));
+                      const orphanCount = snapshotShots.filter((s) => !validSceneIds.has(s.scene_id)).length;
+                      if (orphanCount === snapshotShots.length) {
+                        toast.error(
+                          `Impossible de restaurer V${pv.id} : les scènes d'origine n'existent plus (re-segmentation détectée).`,
+                        );
+                        return;
+                      }
+                      const usableShots = snapshotShots.filter((s) => validSceneIds.has(s.scene_id));
+                      try {
+                        // Replace all shots in DB with the snapshot
+                        const { error: delErr } = await supabase
+                          .from("shots")
+                          .delete()
+                          .eq("project_id", projectId);
+                        if (delErr) throw delErr;
+                        const rowsToInsert = usableShots.map((s) => ({
+                          id: crypto.randomUUID(),
+                          project_id: projectId,
+                          scene_id: s.scene_id,
+                          shot_order: s.shot_order,
+                          shot_type: s.shot_type,
+                          description: s.description,
+                          source_sentence: s.source_sentence,
+                          source_sentence_fr: s.source_sentence_fr,
+                          prompt_export: s.prompt_export,
+                          guardrails: s.guardrails,
+                          image_url: s.image_url,
+                          generation_cost: s.generation_cost ?? 0,
+                        }));
+                        const { data: inserted, error: insErr } = await supabase
+                          .from("shots")
+                          .insert(rowsToInsert)
+                          .select("*");
+                        if (insErr) throw insErr;
+                        const { reordered } = reorderShotsByReadingPosition(
+                          (inserted ?? []) as Shot[],
+                          scenes,
+                        );
+                        setShots(reordered);
+                        setCurrentShotVersionId(pv.id);
+                        setPreviewShotVersionId(null);
+                        const skipped = snapshotShots.length - usableShots.length;
+                        toast.success(
+                          `VisualPrompts V${pv.id} restaurés${skipped > 0 ? ` (${skipped} shot(s) orphelin(s) ignoré(s))` : ""}`,
+                        );
+                      } catch (err: any) {
+                        console.error("Restore version error:", err);
+                        toast.error(err?.message || "Erreur lors de la restauration");
+                      }
                     }} className="h-6 text-[10px] px-2 ml-2">
                       <RotateCcw className="h-2.5 w-2.5" /> Restaurer V{pv.id}
                     </Button>
