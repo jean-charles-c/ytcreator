@@ -274,11 +274,14 @@ A narrative action is a coherent unit where:
 - The SAME time frame applies
 - The SAME narrative intent is at play (informing, arguing, describing, transitioning, etc.)
 
-RULES for identifying actions:
-- Create a NEW action when: a new physical/mental action begins, the subject/focus changes, the location changes, time shifts, or the narrative intent changes.
-- KEEP sentences in the SAME action if they describe one continuous event, even if there are many sentences.
-- Do NOT create micro-actions for individual sentences that are part of the same continuous event.
-- Aim for meaningful narrative beats, not sentence-by-sentence splitting.
+PARAGRAPH SIGNAL (CRITICAL):
+- Paragraph breaks ("\\n\\n") in the source narration are STRONG signals of a beat change written by the author.
+- DEFAULT: each paragraph is its OWN narrative action. Only merge two consecutive paragraphs into a single action when they unmistakably describe ONE continuous event with the same subject, location AND time frame.
+- Conversely, a single long paragraph (>4 sentences or >600 characters) describing several distinct moments MUST be split into multiple actions.
+
+TARGET COUNT:
+- Aim for roughly the same number of actions as paragraphs in the source text (±20%).
+- Avoid creating mega-actions that swallow 4+ paragraphs.
 
 Return a numbered list of actions with:
 - action_id: sequential number
@@ -370,10 +373,12 @@ ABSOLUTE RULES:
 2. Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
 3. Preserve exact narrative order.
 4. Each SceneBlock corresponds to ONE narrative action. A scene can contain ANY number of sentences — as many as needed to cover the full action. Do NOT split a continuous action into multiple scenes.
-5. If two consecutive actions are very short and closely related, you MAY merge them into one scene. Use your judgment.
-6. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
-7. Generate narrative_action IN FRENCH: what is the core narrative beat or event.
-8. Generate title IN FRENCH: short descriptive title for the scene.
+5. SOFT CAP: a single scene should rarely exceed ~600 characters or 4 sentences. If a "single action" exceeds this, it almost certainly contains multiple beats — split it.
+6. NEVER merge across paragraph breaks ("\\n\\n") unless the two paragraphs describe ONE strictly continuous event with the same subject, location AND time frame. Paragraph breaks from the source author are strong beat signals.
+7. Do NOT merge more than 2 short consecutive actions into one scene.
+8. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
+9. Generate narrative_action IN FRENCH: what is the core narrative beat or event.
+10. Generate title IN FRENCH: short descriptive title for the scene.
 
 CHARACTER TRACKING RULES:
 - "characters" must list ONLY characters/subjects PRESENT or ACTING in the scene, NOT merely mentioned or referenced historically.
