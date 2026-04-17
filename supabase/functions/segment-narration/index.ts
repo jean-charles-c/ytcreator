@@ -804,6 +804,13 @@ serve(async (req) => {
       throw new Error("Aucune scène générée. Veuillez réessayer.");
     }
 
+    // Post-processing safeguard: split scenes that exceed soft caps
+    const beforeSplit = allScenes.length;
+    allScenes = splitOversizeScenes(allScenes);
+    if (allScenes.length !== beforeSplit) {
+      console.log(`Oversize-scene safeguard: ${beforeSplit} → ${allScenes.length} SceneBlocks`);
+    }
+
     console.log(`Final result: ${allScenes.length} SceneBlocks (from ${wordCount} words)`);
 
     // ─── Fetch ContexteGlobal for inheritance ─────────────────────
