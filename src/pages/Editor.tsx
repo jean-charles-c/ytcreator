@@ -665,11 +665,43 @@ export default function Editor() {
         toast.error("Impossible de récupérer les scènes — réessayez");
         return;
       }
-      const sceneIds = (freshScenes ?? []).map((s) => s.id);
-      if (sceneIds.length === 0) {
+      const allSceneIds = (freshScenes ?? []).map((s) => s.id);
+      if (allSceneIds.length === 0) {
         toast.error("Aucune scène à traiter — relancez la segmentation");
         return;
       }
+
+      // ─── Skip scenes already complete in promptOnly mode ───
+      // A scene is "complete" if it has at least one shot AND every shot has a non-empty prompt_export.
+      let sceneIds = allSceneIds;
+      if (promptOnly) {
+        const { data: existingShots } = await supabase
+          .from("shots")
+          .select("scene_id, prompt_export")
+          .eq("project_id", projectId);
+        const shotsByScene = new Map<string, { prompt_export: string | null }[]>();
+        (existingShots ?? []).forEach((s: any) => {
+          const arr = shotsByScene.get(s.scene_id) ?? [];
+          arr.push(s);
+          shotsByScene.set(s.scene_id, arr);
+        });
+        const isComplete = (sid: string) => {
+          const arr = shotsByScene.get(sid);
+          if (!arr || arr.length === 0) return false;
+          return arr.every((sh) => typeof sh.prompt_export === "string" && sh.prompt_export.trim().length > 0);
+        };
+        const pending = allSceneIds.filter((sid) => !isComplete(sid));
+        const skipped = allSceneIds.length - pending.length;
+        if (pending.length === 0) {
+          toast.success("Toutes les scènes ont déjà des prompts générés — rien à faire");
+          return;
+        }
+        if (skipped > 0) {
+          toast.info(`${skipped} scène(s) déjà complète(s) ignorée(s) — génération des ${pending.length} restante(s)`);
+        }
+        sceneIds = pending;
+      }
+
       const globalStyleId = visualStyle.getGlobalValue()?.localStyleId ?? visualStyle.getGlobalValue()?.inheritedStyleId ?? undefined;
       bgStartStoryboard({ projectId, sceneIds, segmentOnly, promptOnly, visualStyle: globalStyleId, aspectRatio: imageAspectRatio });
     }
