@@ -2571,7 +2571,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                 />
 
                 {/* Actions globales shots — ordre : 1.Shots → 2.Objets → 3.Prompts → 4.Visuels */}
-                <div className="pt-2 border-t border-border/50 flex flex-col gap-3">
+                <div className="pt-2 border-t flex flex-col gap-3 border border-zinc-50 border-dotted">
                   {/* Step 1 — Création des shots */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">① Créer les shots</span>
