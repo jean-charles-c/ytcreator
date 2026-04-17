@@ -188,7 +188,10 @@ const CAMERA_TYPES = [
 
 const splitSentences = (text: string): string[] => splitTextIntoSentences(text);
 
-const TARGET_CHARS_PER_SHOT = 100;
+const TARGET_CHARS_PER_SHOT = 140;
+// Don't split unless the shot is significantly over the target — avoids
+// cutting 100–115-char shots into awkward 50-char halves.
+const SPLIT_TRIGGER_CHARS = 165;
 
 const normalizeNarrationText = (value: string): string =>
   value.trim().replace(/\s+/g, " ");
@@ -1221,11 +1224,11 @@ serve(async (req) => {
         console.log(`Scene ${scene.id}: diversity OK (score: ${redundancyReport.diversityScore}/100)`);
       }
 
-      // ── POST-SPLIT: scinder les shots dont source_sentence > 100 caractères ──
+      // ── POST-SPLIT: scinder uniquement les shots significativement trop longs ──
       const postSplitShots: any[] = [];
       for (const shot of sceneShots) {
         const sourceSentence = normalizeNarrationText(shot?.source_sentence || "");
-        if (sourceSentence.length > TARGET_CHARS_PER_SHOT) {
+        if (sourceSentence.length > SPLIT_TRIGGER_CHARS) {
           const subSegments = splitLongSentenceIntoSegments(sourceSentence, TARGET_CHARS_PER_SHOT);
           if (subSegments.length > 1) {
             console.log(`Scene ${scene.id}: splitting shot "${sourceSentence.slice(0, 50)}…" (${sourceSentence.length} chars) into ${subSegments.length} sub-shots`);
