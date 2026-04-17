@@ -119,7 +119,7 @@ describe("assembleTimeline", () => {
     expect(timeline.videoTrack.segments[2].duration).toBeCloseTo(2.162, 10);
   });
 
-  it("aligns the next shot start with the previous manual end", () => {
+  it("ignores manualEndTimeSeconds for displayed segment duration", () => {
     const scenes = [
       { id: "scene-1", scene_order: 1, title: "Scene 1" },
     ] as any;
@@ -172,8 +172,10 @@ describe("assembleTimeline", () => {
 
     const timeline = assembleTimeline(scenes, shots, audioFile, shotTimepoints);
 
-    expect(timeline.videoTrack.segments[1].duration).toBeCloseTo(3.124, 10);
-    expect(timeline.videoTrack.segments[2].startTime).toBeCloseTo(8.4, 10);
-    expect(timeline.videoTrack.segments[2].duration).toBeCloseTo(4.16, 10);
+    // L'image de shot-2 reste affichée jusqu'au début de shot-3 (10.398s),
+    // pas seulement jusqu'à la fin de parole manuelle (8.4s).
+    expect(timeline.videoTrack.segments[1].duration).toBeCloseTo(5.122, 10);
+    expect(timeline.videoTrack.segments[2].startTime).toBeCloseTo(10.398, 10);
+    expect(timeline.videoTrack.segments[2].duration).toBeCloseTo(2.162, 10);
   });
 });
