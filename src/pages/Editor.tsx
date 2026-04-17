@@ -2924,7 +2924,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                           const hasWarnings = !hasErrors && sceneIssues.some((i) => i.level === "warning");
 
                           return (
-                            <div key={scene.id} className={`rounded border border-solid ${hasErrors ? "border-destructive/60" : hasWarnings ? "border-amber-500/60" : "border-primary"} bg-card overflow-hidden`}>
+                            <div key={scene.id} className={`rounded border border-solid ${hasErrors ? "border-destructive/60" : hasWarnings ? "border-amber-500/60" : "border-slate-50"} bg-card overflow-hidden`}>
                                 <button
                                 onClick={() =>
                                   setOpenSceneIds((prev) =>
