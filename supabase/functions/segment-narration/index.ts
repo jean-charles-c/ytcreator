@@ -631,6 +631,83 @@ const mergeChunkBoundaryScenes = (
   return result;
 };
 
+// ─── Oversize-scene safeguard ─────────────────────────────────────
+//
+// If a scene exceeds the soft cap (>800 chars OR >3 paragraphs), split it
+// along paragraph boundaries so we never end up with mega-scenes
+// swallowing many beats.
+const SOFT_MAX_CHARS_PER_SCENE = 800;
+const SOFT_MAX_PARAGRAPHS_PER_SCENE = 3;
+
+const splitOversizeScenes = (
+  scenes: ReturnType<typeof validateSceneBlock>[]
+): ReturnType<typeof validateSceneBlock>[] => {
+  const out: ReturnType<typeof validateSceneBlock>[] = [];
+
+  for (const scene of scenes) {
+    const paragraphs = scene.source_text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+    const tooLong = scene.source_text.length > SOFT_MAX_CHARS_PER_SCENE;
+    const tooManyParagraphs = paragraphs.length > SOFT_MAX_PARAGRAPHS_PER_SCENE;
+
+    if ((!tooLong && !tooManyParagraphs) || paragraphs.length <= 1) {
+      out.push(scene);
+      continue;
+    }
+
+    const chunks: string[] = [];
+    let current: string[] = [];
+    let currentLen = 0;
+    for (const p of paragraphs) {
+      const wouldLen = currentLen + (current.length ? 2 : 0) + p.length;
+      const wouldCount = current.length + 1;
+      if (current.length > 0 && (wouldLen > SOFT_MAX_CHARS_PER_SCENE || wouldCount > SOFT_MAX_PARAGRAPHS_PER_SCENE)) {
+        chunks.push(current.join("\n\n"));
+        current = [p];
+        currentLen = p.length;
+      } else {
+        current.push(p);
+        currentLen = wouldLen;
+      }
+    }
+    if (current.length > 0) chunks.push(current.join("\n\n"));
+
+    if (chunks.length <= 1) {
+      out.push(scene);
+      continue;
+    }
+
+    console.log(`Splitting oversize scene "${scene.title}" (${scene.source_text.length} chars, ${paragraphs.length} paragraphs) into ${chunks.length} sub-scenes`);
+
+    let frChunks: string[] | null = null;
+    if (scene.source_text_fr) {
+      const frParas = scene.source_text_fr.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+      if (frParas.length === paragraphs.length) {
+        let pIdx = 0;
+        frChunks = chunks.map(c => {
+          const count = c.split(/\n\n+/).filter(Boolean).length;
+          const slice = frParas.slice(pIdx, pIdx + count).join("\n\n");
+          pIdx += count;
+          return slice;
+        });
+      }
+    }
+
+    chunks.forEach((chunk, i) => {
+      out.push({
+        ...scene,
+        title: i === 0 ? scene.title : `${scene.title} (suite ${i + 1})`,
+        source_text: chunk,
+        ...(frChunks ? { source_text_fr: frChunks[i] } : (scene.source_text_fr ? { source_text_fr: scene.source_text_fr } : {})),
+        locations_ordered: i === 0 ? scene.locations_ordered : [],
+        epochs_ordered: i === 0 ? scene.epochs_ordered : [],
+        continuity: i === 0 ? scene.continuity : "continues",
+      });
+    });
+  }
+
+  return out;
+};
+
 // ─── Main Handler ─────────────────────────────────────────────────
 
 serve(async (req) => {
