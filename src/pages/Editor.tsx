@@ -2756,7 +2756,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                     <span className="ml-auto text-[10px] text-muted-foreground">{scenes.length} scène{scenes.length > 1 ? "s" : ""} • {shots.length} shot{shots.length > 1 ? "s" : ""}</span>
                   </button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="border border-t-0 border-border rounded-b p-3 sm:p-4 space-y-4">
+                <CollapsibleContent className="border border-t-0 rounded-b p-3 sm:p-4 space-y-4 border-muted-foreground">
                 {generatingStoryboard && (
                   <div className="flex items-center gap-2 mb-6 p-3 rounded border border-primary/20 bg-primary/5">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -2924,7 +2924,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                           const hasWarnings = !hasErrors && sceneIssues.some((i) => i.level === "warning");
 
                           return (
-                            <div key={scene.id} className={`rounded border ${hasErrors ? "border-destructive/60" : hasWarnings ? "border-amber-500/60" : "border-border"} bg-card overflow-hidden`}>
+                            <div key={scene.id} className={`rounded border border-solid ${hasErrors ? "border-destructive/60" : hasWarnings ? "border-amber-500/60" : "border-primary"} bg-card overflow-hidden`}>
                                 <button
                                 onClick={() =>
                                   setOpenSceneIds((prev) =>
