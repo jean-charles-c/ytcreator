@@ -691,8 +691,8 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       usageMetadata: aiData?.usageMetadata ?? null,
       usage_metadata: aiData?.usage_metadata ?? null,
       cost_usd_root: aiData?.cost_usd ?? null,
-      refImagesCount: Array.isArray(referenceImages) ? referenceImages.length : 0,
-      hasInputImages: Array.isArray(referenceImages) && referenceImages.length > 0,
+      refImagesCount: Array.isArray(referenceImageInputs) ? referenceImageInputs.length : 0,
+      hasInputImages: Array.isArray(referenceImageInputs) && referenceImageInputs.length > 0,
     }));
 
     const exactOrFallbackCost = extractUsdCost(aiData, fallbackCost);
