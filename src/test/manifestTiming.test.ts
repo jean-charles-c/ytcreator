@@ -39,7 +39,7 @@ describe("buildManifestTiming", () => {
     expect(timing.entries[2].duration).toBeCloseTo(2.162, 6);
   });
 
-  it("aligns the next shot start with the previous manual end", () => {
+  it("ignores manualEndTimeSeconds for displayed duration (image stays until next shot starts)", () => {
     const manifest = {
       scenes: [
         {
@@ -67,8 +67,9 @@ describe("buildManifestTiming", () => {
     const timing = buildManifestTiming(manifest, timepoints, 12.56);
 
     expect(timing.issues).toEqual([]);
-    expect(timing.entries[1].duration).toBeCloseTo(3.124, 6);
-    expect(timing.entries[2].start).toBeCloseTo(8.4, 6);
-    expect(timing.entries[2].duration).toBeCloseTo(4.16, 6);
+    // shot-2 conserve sa durée d'affichage jusqu'au début de shot-3, malgré manualEnd=8.4
+    expect(timing.entries[1].duration).toBeCloseTo(5.122, 6);
+    expect(timing.entries[2].start).toBeCloseTo(10.398, 6);
+    expect(timing.entries[2].duration).toBeCloseTo(2.162, 6);
   });
 });

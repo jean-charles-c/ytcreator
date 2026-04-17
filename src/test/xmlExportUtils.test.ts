@@ -140,7 +140,7 @@ describe("buildClipFrames", () => {
     ]);
   });
 
-  it("aligns the next shot start with the previous manual end", () => {
+  it("ignores manualEndTimeSeconds so the image stays until the next shot starts", () => {
     const timeline = makeTimeline({
       videoTrack: {
         type: "video",
@@ -173,7 +173,7 @@ describe("buildClipFrames", () => {
             shotType: "Wide",
             description: "B",
             startTime: 1,
-            duration: 0.5,
+            duration: 1,
           },
           {
             id: "shot-3",
@@ -199,10 +199,11 @@ describe("buildClipFrames", () => {
       ],
     });
 
+    // shot-2 va de 1s (24) à 2s (48), pas seulement jusqu'à 1.5s (36)
     expect(buildClipFrames(timeline, 24)).toEqual([
       { start: 0, end: 24 },
-      { start: 24, end: 36 },
-      { start: 36, end: 96 },
+      { start: 24, end: 48 },
+      { start: 48, end: 96 },
     ]);
   });
 });
