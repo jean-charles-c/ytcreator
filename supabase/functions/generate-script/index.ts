@@ -2342,7 +2342,7 @@ serve(async (req) => {
           body: JSON.stringify({
             model: "openai/gpt-5",
             max_completion_tokens: 24000,
-            temperature: isRegenerate ? 1.0 : 0.7,
+            // GPT-5 only supports the default temperature (1) — do not override
             messages: [
               { role: "system", content: buildSystemPrompt(langLabel, charMin, charMax, charTarget, activeStyle, pct, forcedAngle) },
               { role: "user", content: buildUserMessage(analysis, structure || [], sourceText, charMin, charMax, charTarget, isRegenerate ? (existingScript || null) : null, forcedAngle) },
