@@ -1462,10 +1462,10 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                 {audioInfo && !generating ? (
                                   <button
                                     type="button"
-                                    className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-sm transition-colors ${
+                                    className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-sm transition-colors bg-primary-foreground ${
                                       playingSceneId === scene.id && isPlaying
                                         ? "text-primary"
-                                        : "text-muted-foreground hover:text-primary"
+                                        : "text-amber-400"
                                     }`}
                                     onClick={() => handlePlayScene(scene.id)}
                                     title={playingSceneId === scene.id && isPlaying ? "Pause" : "Lire l'audio"}
@@ -1484,7 +1484,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                 {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
                                 {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
                                 {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
-                                <span className={`flex-1 truncate text-sm ${status === "error" ? "text-destructive" : "text-white"}`}>
+                                <span className={`flex-1 truncate text-sm ${status === "error" ? "text-destructive" : "bg-primary-foreground text-primary"}`}>
                                   {scene.title || "Sans titre"}
                                 </span>
                                 {audioInfo && (
