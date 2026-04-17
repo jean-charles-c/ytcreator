@@ -178,8 +178,38 @@ const prepareReferenceImageDataUri = async (url: string) => {
   };
 };
 
+/**
+ * Extract the real USD cost charged by the Lovable AI gateway.
+ *
+ * Priority order (works for ALL selectable models — Nano Banana v1, Nano Banana 2,
+ * Gemini Pro Image, etc., whether routed through Lovable's catalog OR in BYOK passthrough mode):
+ *
+ *   1. cost_details.upstream_inference_cost      ← TRUE upstream cost (BYOK / passthrough)
+ *   2. usage.cost                                 ← Lovable catalog price (when > 0)
+ *   3. legacy fields (cost_usd, total_cost_usd, usd, costUsd)
+ *   4. fallbackCost (MODEL_COSTS table)           ← last-resort estimate
+ *
+ * Why this matters: when `is_byok = true` (which is the case for Nano Banana since
+ * the gateway switched to passthrough), `usage.cost` returns 0 and the real cost
+ * lives ONLY in `cost_details.upstream_inference_cost`. Without this fix, the DB
+ * was storing the static $0.02 fallback while the workspace was actually billed ~$0.04.
+ */
 const extractUsdCost = (payload: any, fallback: number) => {
-  const candidates = [
+  // 1. Real upstream cost (BYOK / passthrough rates) — highest priority
+  const upstream = payload?.cost_details?.upstream_inference_cost
+    ?? payload?.usage?.cost_details?.upstream_inference_cost;
+  if (typeof upstream === "number" && Number.isFinite(upstream) && upstream > 0) {
+    return upstream;
+  }
+
+  // 2. Lovable catalog price (only when > 0; BYOK responses report 0 here)
+  const catalogCost = payload?.usage?.cost;
+  if (typeof catalogCost === "number" && Number.isFinite(catalogCost) && catalogCost > 0) {
+    return catalogCost;
+  }
+
+  // 3. Legacy / alternative field names
+  const legacyCandidates = [
     payload?.usage?.cost_usd,
     payload?.usage?.total_cost_usd,
     payload?.usage?.usd,
@@ -187,9 +217,11 @@ const extractUsdCost = (payload: any, fallback: number) => {
     payload?.usage_metadata?.cost_usd,
     payload?.cost_usd,
   ];
+  const legacy = legacyCandidates.find((v) => typeof v === "number" && Number.isFinite(v) && v > 0);
+  if (typeof legacy === "number") return legacy;
 
-  const exact = candidates.find((value) => typeof value === "number" && Number.isFinite(value));
-  return typeof exact === "number" ? exact : fallback;
+  // 4. Fallback to static MODEL_COSTS estimate
+  return fallback;
 };
 
 const decodeGeneratedImage = async (imageData: string) => {
