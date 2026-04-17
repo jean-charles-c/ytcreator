@@ -82,7 +82,7 @@ export default function FragmentedSceneView({
                 {globalIdx}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="leading-relaxed italic break-words bg-primary text-primary-foreground font-bold text-base">"{frag.text}"</p>
+                <p className="leading-relaxed italic break-words text-base text-secondary-foreground font-light bg-zinc-700">"{frag.text}"</p>
                 {dbShot?.source_sentence_fr ? (
                   <div className="flex items-center gap-1 mt-0.5">
                     <p className="text-xs text-muted-foreground leading-relaxed italic break-words flex-1">🇫🇷 "{dbShot.source_sentence_fr}"</p>
