@@ -1,56 +1,34 @@
 
+## Problem
+Edge function `generate-script` fails on first generation with HTTP 400 from the AI gateway:
+> `Unsupported value: 'temperature' does not support 0.7 with this model. Only the default (1) value is supported.`
 
-## Plan : Persister les ancres manuelles Whisper en DB (+ push GitHub)
+GPT-5 (and other GPT-5 family models) only accept `temperature = 1`. Currently the code sends `0.7` for fresh generations, which is rejected → empty stream → frontend toast "le système n'a pas rendu de texte exploitable".
 
-**Problème** : Les recalages manuels sont stockés en `localStorage` et perdus au rechargement. Le matching automatique les écrase.
+Regeneration happens to work because it sends `1.0`.
 
-**Solution** : Enrichir `shot_timepoints` (jsonb) avec `isManual: boolean` — pas de migration SQL nécessaire.
+## Fix
+In `supabase/functions/generate-script/index.ts` (line 2345), remove the `temperature` parameter entirely from the GPT-5 call. With GPT-5 the default value is already `1` and any explicit override breaks the request.
 
----
-
-### Étape 1 — `saveAllTimepoints` : inclure les shots manuels + flag `isManual`
-
-**Fichier** : `src/components/editor/WhisperAlignmentEditor.tsx` (ligne ~525-550)
-
-- Modifier le filtre pour inclure aussi les shots avec `status === "manual"`
-- Ajouter `isManual: s.isManualAnchor` à chaque timepoint du payload
-
-### Étape 2 — Charger les ancres depuis la DB au lieu de localStorage
-
-**Fichier** : `src/components/editor/WhisperAlignmentEditor.tsx`
-
-- Au chargement (useEffect ~ligne 250), lire les `shot_timepoints` existants et reconstruire `manualAnchors` depuis les entrées ayant `isManual: true`
-- Supprimer `getManualAnchorsStorageKey`, `loadStoredManualAnchors`, `persistManualAnchors` et toutes les références à `localStorage`
-
-### Étape 3 — Auto-save après chaque recalage manuel
-
-**Fichier** : `src/components/editor/WhisperAlignmentEditor.tsx`
-
-- Dans `confirmSelection` (~ligne 520) : appeler `saveAllTimepoints()` automatiquement après mise à jour de l'état local
-- Toast de confirmation
-
-### Étape 4 — Cohérence Edge Function `chirp-shot-mapping`
-
-**Fichier** : `supabase/functions/chirp-shot-mapping/index.ts`
-
-- Ajouter `isManual: false` à chaque timepoint généré automatiquement
-
-### Étape 5 — Push GitHub
-
-Les modifications seront automatiquement synchronisées vers GitHub via l'intégration bidirectionnelle Lovable ↔ GitHub.
-
----
-
-### Format enrichi du timepoint
-
-```json
-{
-  "shotId": "uuid",
-  "shotIndex": 0,
-  "timeSeconds": 12.34,
-  "isManual": true
-}
+Change:
+```ts
+model: "openai/gpt-5",
+max_completion_tokens: 24000,
+temperature: isRegenerate ? 1.0 : 0.7,
+```
+to:
+```ts
+model: "openai/gpt-5",
+max_completion_tokens: 24000,
+// GPT-5 only supports the default temperature (1) — do not override
 ```
 
-Aucune migration SQL requise — `shot_timepoints` est déjà en `jsonb`.
+Variability for regenerations is already preserved via the `forcedAngle` mechanism (random pick among 9 alternative narrative angles injected into the system prompt at line 2330–2332), so removing the temperature lever has no real impact on diversity.
 
+## Audit other AI calls
+Quickly grep the rest of `generate-script/index.ts` and other edge functions calling `openai/gpt-5*` to make sure no other call still sends an explicit `temperature`. Patch any remaining occurrences the same way.
+
+## Validation
+1. Click "Générer le script" → should now stream tokens and produce a script.
+2. Click "Régénérer" → should still work (already worked).
+3. Check function logs: no more `Unsupported value: 'temperature'` errors.
