@@ -106,6 +106,13 @@ export interface StoryboardParams {
   aspectRatio?: string;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const STORYBOARD_SCENE_DELAY_MS = 1500;
+const STORYBOARD_RETRY_DELAYS_MS = [4000, 8000, 12000];
+
+const isRateLimitMessage = (message?: string) =>
+  !!message && /rate limit exceeded|limite de requêtes atteinte/i.test(message);
+
 const BackgroundTasksContext = createContext<BackgroundTasksContextValue | null>(null);
 
 // ─── SSE helpers (duplicated from PdfDocumentaryTab for independence) ─
@@ -440,47 +447,89 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
         let totalShots = 0;
         const failedSceneIds: string[] = [];
+        let rateLimitedScenes = 0;
 
         for (let i = 0; i < params.sceneIds.length; i++) {
           if (ac.signal.aborted) return;
           const sid = params.sceneIds[i];
-          try {
-            const token = await getValidToken();
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                  "x-supabase-client-platform": "web",
-                },
-                body: JSON.stringify({ project_id: params.projectId, scene_id: sid, segment_only: params.segmentOnly ?? false, prompt_only: params.promptOnly ?? false, visual_style: params.visualStyle, aspect_ratio: params.aspectRatio }),
-                signal: ac.signal,
+          if (i > 0) await sleep(STORYBOARD_SCENE_DELAY_MS);
+
+          let sceneFailed = false;
+          let sceneSawRateLimit = false;
+
+          for (let attempt = 0; attempt <= STORYBOARD_RETRY_DELAYS_MS.length; attempt++) {
+            if (ac.signal.aborted) return;
+
+            try {
+              const token = await getValidToken();
+              const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                    "x-supabase-client-platform": "web",
+                  },
+                  body: JSON.stringify({ project_id: params.projectId, scene_id: sid, segment_only: params.segmentOnly ?? false, prompt_only: params.promptOnly ?? false, visual_style: params.visualStyle, aspect_ratio: params.aspectRatio }),
+                  signal: ac.signal,
+                }
+              );
+
+              const data = await response.json().catch(() => null);
+              const message = data?.error || (!response.ok ? "Erreur" : undefined);
+              const isRateLimited = response.status === 429 || isRateLimitMessage(message);
+
+              if (!response.ok || message) {
+                if (isRateLimited && attempt < STORYBOARD_RETRY_DELAYS_MS.length) {
+                  sceneSawRateLimit = true;
+                  await sleep(STORYBOARD_RETRY_DELAYS_MS[attempt]);
+                  continue;
+                }
+                throw new Error(message || "Erreur");
               }
-            );
-            const data = await response.json();
-            if (!response.ok || data?.error) throw new Error(data?.error || "Erreur");
-            totalShots += data?.shots_count ?? 0;
-          } catch (sceneError: any) {
-            if (sceneError?.name === "AbortError") throw sceneError;
-            console.error(`Storyboard scene failed: ${sid}`, sceneError);
-            failedSceneIds.push(sid);
+
+              if (sceneSawRateLimit) rateLimitedScenes += 1;
+              totalShots += data?.shots_count ?? 0;
+              sceneFailed = false;
+              break;
+            } catch (sceneError: any) {
+              if (sceneError?.name === "AbortError") throw sceneError;
+
+              const shouldRetry = attempt < STORYBOARD_RETRY_DELAYS_MS.length
+                && (sceneError instanceof TypeError || isRateLimitMessage(sceneError?.message));
+
+              if (shouldRetry) {
+                if (isRateLimitMessage(sceneError?.message)) sceneSawRateLimit = true;
+                await sleep(STORYBOARD_RETRY_DELAYS_MS[attempt]);
+                continue;
+              }
+
+              console.error(`Storyboard scene failed: ${sid}`, sceneError);
+              failedSceneIds.push(sid);
+              sceneFailed = true;
+              break;
+            }
           }
+
+          if (sceneSawRateLimit && !sceneFailed) {
+            console.info(`Storyboard scene recovered after rate limiting: ${sid}`);
+          }
+
           updateTask(key, { completedScenes: i + 1 });
         }
 
         updateTask(key, { status: "done" });
         const completionLabel = params.segmentOnly ? "shots découpés" : "prompts générés";
         if (failedSceneIds.length > 0) {
-          toast.warning(`${totalShots} ${completionLabel}, ${failedSceneIds.length} scène(s) à relancer`);
+          toast.warning(`${totalShots} ${completionLabel}, ${failedSceneIds.length} scène(s) à relancer${rateLimitedScenes > 0 ? " — limite temporaire détectée" : ""}`);
         } else {
           toast.success(`${totalShots} ${completionLabel} sur ${params.sceneIds.length} scènes`);
         }
 
         // Trigger auto-detect object↔shot links after prompt generation (not segment-only)
-        if (!params.segmentOnly) {
+        if (!params.segmentOnly && failedSceneIds.length === 0 && totalShots > 0) {
           window.dispatchEvent(new CustomEvent("storyboard-prompts-complete", { detail: { projectId: params.projectId } }));
         }
       } catch (e: any) {

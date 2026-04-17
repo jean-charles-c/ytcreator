@@ -6,6 +6,46 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const AI_RETRY_DELAYS_MS = [3000, 6000, 12000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const callLovableAi = async (apiKey: string, body: Record<string, unknown>): Promise<Response> => {
+  for (let attempt = 0; attempt <= AI_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok || response.status !== 429 || attempt === AI_RETRY_DELAYS_MS.length) {
+        return response;
+      }
+
+      const retryAfterHeader = response.headers.get("retry-after");
+      const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN;
+      const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : AI_RETRY_DELAYS_MS[attempt];
+
+      await response.text().catch(() => null);
+      console.warn(`detect-object-shots rate limited, retrying in ${retryDelay}ms (attempt ${attempt + 1})`);
+      await sleep(retryDelay);
+    } catch (error) {
+      if (attempt === AI_RETRY_DELAYS_MS.length) throw error;
+      const retryDelay = AI_RETRY_DELAYS_MS[attempt];
+      console.warn(`detect-object-shots transient AI error, retrying in ${retryDelay}ms`, error);
+      await sleep(retryDelay);
+    }
+  }
+
+  throw new Error("AI gateway error");
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -54,52 +94,45 @@ ${objectList}
 SHOTS À ANALYSER :
 ${shotList}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "assign_objects_to_shots",
-              description: "Assigne les shots détectés pour chaque objet/personnage récurrent",
-              parameters: {
-                type: "object",
-                properties: {
-                  assignments: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        object_id: { type: "string", description: "ID de l'objet récurrent" },
-                        shot_ids: {
-                          type: "array",
-                          items: { type: "string" },
-                          description: "Liste des IDs de shots où l'objet apparaît",
-                        },
+    const response = await callLovableAi(LOVABLE_API_KEY, {
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "assign_objects_to_shots",
+            description: "Assigne les shots détectés pour chaque objet/personnage récurrent",
+            parameters: {
+              type: "object",
+              properties: {
+                assignments: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      object_id: { type: "string", description: "ID de l'objet récurrent" },
+                      shot_ids: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Liste des IDs de shots où l'objet apparaît",
                       },
-                      required: ["object_id", "shot_ids"],
-                      additionalProperties: false,
                     },
+                    required: ["object_id", "shot_ids"],
+                    additionalProperties: false,
                   },
                 },
-                required: ["assignments"],
-                additionalProperties: false,
               },
+              required: ["assignments"],
+              additionalProperties: false,
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "assign_objects_to_shots" } },
-      }),
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "assign_objects_to_shots" } },
     });
 
     if (!response.ok) {
