@@ -682,7 +682,21 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
       .getPublicUrl(filePath);
 
     const imageUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+    // 🔍 COST AUDIT: Log full billing payload from Lovable AI Gateway
+    console.log("[COST_AUDIT]", JSON.stringify({
+      model: selectedModel,
+      fallbackCost,
+      usage: aiData?.usage ?? null,
+      usageMetadata: aiData?.usageMetadata ?? null,
+      usage_metadata: aiData?.usage_metadata ?? null,
+      cost_usd_root: aiData?.cost_usd ?? null,
+      refImagesCount: Array.isArray(referenceImageInputs) ? referenceImageInputs.length : 0,
+      hasInputImages: Array.isArray(referenceImageInputs) && referenceImageInputs.length > 0,
+    }));
+
     const exactOrFallbackCost = extractUsdCost(aiData, fallbackCost);
+    console.log(`[COST_AUDIT] Final cost charged: $${exactOrFallbackCost.toFixed(4)} (fallback would be $${fallbackCost.toFixed(4)})`);
     const previousCost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
     const newTotalCost = Number((previousCost + exactOrFallbackCost).toFixed(4));
 
