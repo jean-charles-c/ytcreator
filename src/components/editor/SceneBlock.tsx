@@ -239,7 +239,7 @@ export default function SceneBlock({
       {editing ? (
         <div className="space-y-3">
           <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Titre de la scène" />
-          <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className={`${inputClass} min-h-[100px] resize-y`} placeholder="Texte source" />
+          <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full rounded border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[100px] resize-y bg-slate-400 text-primary-foreground" placeholder="Texte source" />
           <input type="text" value={editNarrativeAction} onChange={(e) => setEditNarrativeAction(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Action narrative" />
           <input type="text" value={editVisual} onChange={(e) => setEditVisual(e.target.value)} className={`${inputClass} h-11 sm:h-auto`} placeholder="Intention visuelle (en français)" />
           <div className="flex gap-2">
