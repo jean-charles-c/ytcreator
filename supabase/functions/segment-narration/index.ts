@@ -274,11 +274,14 @@ A narrative action is a coherent unit where:
 - The SAME time frame applies
 - The SAME narrative intent is at play (informing, arguing, describing, transitioning, etc.)
 
-RULES for identifying actions:
-- Create a NEW action when: a new physical/mental action begins, the subject/focus changes, the location changes, time shifts, or the narrative intent changes.
-- KEEP sentences in the SAME action if they describe one continuous event, even if there are many sentences.
-- Do NOT create micro-actions for individual sentences that are part of the same continuous event.
-- Aim for meaningful narrative beats, not sentence-by-sentence splitting.
+PARAGRAPH SIGNAL (CRITICAL):
+- Paragraph breaks ("\\n\\n") in the source narration are STRONG signals of a beat change written by the author.
+- DEFAULT: each paragraph is its OWN narrative action. Only merge two consecutive paragraphs into a single action when they unmistakably describe ONE continuous event with the same subject, location AND time frame.
+- Conversely, a single long paragraph (>4 sentences or >600 characters) describing several distinct moments MUST be split into multiple actions.
+
+TARGET COUNT:
+- Aim for roughly the same number of actions as paragraphs in the source text (±20%).
+- Avoid creating mega-actions that swallow 4+ paragraphs.
 
 Return a numbered list of actions with:
 - action_id: sequential number
@@ -370,10 +373,12 @@ ABSOLUTE RULES:
 2. Keep every word from the original narration; do not add, summarize, paraphrase, or remove text.
 3. Preserve exact narrative order.
 4. Each SceneBlock corresponds to ONE narrative action. A scene can contain ANY number of sentences — as many as needed to cover the full action. Do NOT split a continuous action into multiple scenes.
-5. If two consecutive actions are very short and closely related, you MAY merge them into one scene. Use your judgment.
-6. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
-7. Generate narrative_action IN FRENCH: what is the core narrative beat or event.
-8. Generate title IN FRENCH: short descriptive title for the scene.
+5. SOFT CAP: a single scene should rarely exceed ~600 characters or 4 sentences. If a "single action" exceeds this, it almost certainly contains multiple beats — split it.
+6. NEVER merge across paragraph breaks ("\\n\\n") unless the two paragraphs describe ONE strictly continuous event with the same subject, location AND time frame. Paragraph breaks from the source author are strong beat signals.
+7. Do NOT merge more than 2 short consecutive actions into one scene.
+8. Generate visual_intention in FRENCH regardless of narration language. It describes the TOPIC of the scene, not a visual description.
+9. Generate narrative_action IN FRENCH: what is the core narrative beat or event.
+10. Generate title IN FRENCH: short descriptive title for the scene.
 
 CHARACTER TRACKING RULES:
 - "characters" must list ONLY characters/subjects PRESENT or ACTING in the scene, NOT merely mentioned or referenced historically.
@@ -626,6 +631,83 @@ const mergeChunkBoundaryScenes = (
   return result;
 };
 
+// ─── Oversize-scene safeguard ─────────────────────────────────────
+//
+// If a scene exceeds the soft cap (>800 chars OR >3 paragraphs), split it
+// along paragraph boundaries so we never end up with mega-scenes
+// swallowing many beats.
+const SOFT_MAX_CHARS_PER_SCENE = 800;
+const SOFT_MAX_PARAGRAPHS_PER_SCENE = 3;
+
+const splitOversizeScenes = (
+  scenes: ReturnType<typeof validateSceneBlock>[]
+): ReturnType<typeof validateSceneBlock>[] => {
+  const out: ReturnType<typeof validateSceneBlock>[] = [];
+
+  for (const scene of scenes) {
+    const paragraphs = scene.source_text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+    const tooLong = scene.source_text.length > SOFT_MAX_CHARS_PER_SCENE;
+    const tooManyParagraphs = paragraphs.length > SOFT_MAX_PARAGRAPHS_PER_SCENE;
+
+    if ((!tooLong && !tooManyParagraphs) || paragraphs.length <= 1) {
+      out.push(scene);
+      continue;
+    }
+
+    const chunks: string[] = [];
+    let current: string[] = [];
+    let currentLen = 0;
+    for (const p of paragraphs) {
+      const wouldLen = currentLen + (current.length ? 2 : 0) + p.length;
+      const wouldCount = current.length + 1;
+      if (current.length > 0 && (wouldLen > SOFT_MAX_CHARS_PER_SCENE || wouldCount > SOFT_MAX_PARAGRAPHS_PER_SCENE)) {
+        chunks.push(current.join("\n\n"));
+        current = [p];
+        currentLen = p.length;
+      } else {
+        current.push(p);
+        currentLen = wouldLen;
+      }
+    }
+    if (current.length > 0) chunks.push(current.join("\n\n"));
+
+    if (chunks.length <= 1) {
+      out.push(scene);
+      continue;
+    }
+
+    console.log(`Splitting oversize scene "${scene.title}" (${scene.source_text.length} chars, ${paragraphs.length} paragraphs) into ${chunks.length} sub-scenes`);
+
+    let frChunks: string[] | null = null;
+    if (scene.source_text_fr) {
+      const frParas = scene.source_text_fr.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+      if (frParas.length === paragraphs.length) {
+        let pIdx = 0;
+        frChunks = chunks.map(c => {
+          const count = c.split(/\n\n+/).filter(Boolean).length;
+          const slice = frParas.slice(pIdx, pIdx + count).join("\n\n");
+          pIdx += count;
+          return slice;
+        });
+      }
+    }
+
+    chunks.forEach((chunk, i) => {
+      out.push({
+        ...scene,
+        title: i === 0 ? scene.title : `${scene.title} (suite ${i + 1})`,
+        source_text: chunk,
+        ...(frChunks ? { source_text_fr: frChunks[i] } : (scene.source_text_fr ? { source_text_fr: scene.source_text_fr } : {})),
+        locations_ordered: i === 0 ? scene.locations_ordered : [],
+        epochs_ordered: i === 0 ? scene.epochs_ordered : [],
+        continuity: i === 0 ? scene.continuity : "continues",
+      });
+    });
+  }
+
+  return out;
+};
+
 // ─── Main Handler ─────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -720,6 +802,13 @@ serve(async (req) => {
 
     if (allScenes.length === 0) {
       throw new Error("Aucune scène générée. Veuillez réessayer.");
+    }
+
+    // Post-processing safeguard: split scenes that exceed soft caps
+    const beforeSplit = allScenes.length;
+    allScenes = splitOversizeScenes(allScenes);
+    if (allScenes.length !== beforeSplit) {
+      console.log(`Oversize-scene safeguard: ${beforeSplit} → ${allScenes.length} SceneBlocks`);
     }
 
     console.log(`Final result: ${allScenes.length} SceneBlocks (from ${wordCount} words)`);
