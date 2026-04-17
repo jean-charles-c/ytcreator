@@ -653,9 +653,21 @@ export default function Editor() {
       }
       setPreviewShotVersionId(null);
       setActiveTab("storyboard");
-      const sceneIds = scenes.map((s) => s.id);
+
+      // Always refresh scene IDs from DB to avoid stale React state after re-segmentation
+      const { data: freshScenes, error: freshErr } = await supabase
+        .from("scenes")
+        .select("id, scene_order")
+        .eq("project_id", projectId)
+        .order("scene_order", { ascending: true });
+      if (freshErr) {
+        console.error("Failed to refresh scenes before storyboard", freshErr);
+        toast.error("Impossible de récupérer les scènes — réessayez");
+        return;
+      }
+      const sceneIds = (freshScenes ?? []).map((s) => s.id);
       if (sceneIds.length === 0) {
-        toast.error("Aucune scène à traiter");
+        toast.error("Aucune scène à traiter — relancez la segmentation");
         return;
       }
       const globalStyleId = visualStyle.getGlobalValue()?.localStyleId ?? visualStyle.getGlobalValue()?.inheritedStyleId ?? undefined;
