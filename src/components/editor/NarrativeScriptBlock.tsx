@@ -18,6 +18,7 @@ export const SCRIPT_AI_MODELS = [
   { id: "openai/gpt-5-mini", label: "GPT-5 Mini", tier: "$$$" },
   { id: "google/gemini-2.5-pro", label: "Gemini Pro", tier: "$$$$" },
   { id: "openai/gpt-5", label: "GPT-5", tier: "$$$$$" },
+  { id: "openai/gpt-5.2", label: "GPT-5.2", tier: "$$$$$" },
 ] as const;
 
 export type ScriptAiModelId = typeof SCRIPT_AI_MODELS[number]["id"];
