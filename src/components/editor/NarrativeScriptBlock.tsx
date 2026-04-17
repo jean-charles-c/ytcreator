@@ -210,7 +210,7 @@ export default function NarrativeScriptBlock({
             <>
               {/* Toolbar */}
               {!generatingScript && script && (
-                <div className="flex items-center gap-2 flex-wrap mb-4">
+                <div className="flex items-center gap-2 flex-wrap mb-4 bg-gray-800">
                   <Button variant="outline" size="sm" onClick={onCopyScript} className="h-8 text-xs">
                     <Copy className="h-3 w-3" /> Copier
                   </Button>
