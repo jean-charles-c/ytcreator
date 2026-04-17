@@ -2366,11 +2366,69 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                   const pv = sceneVersions.find((v) => v.id === previewSceneVersionId);
                   if (!pv) return null;
                   return (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      setScenes(pv.scenes);
-                      setCurrentSceneVersionId(pv.id);
-                      setPreviewSceneVersionId(null);
-                      toast.success(`Segmentation V${pv.id} restaurée`);
+                    <Button variant="outline" size="sm" onClick={async () => {
+                      const snapshotScenes = (pv.scenes ?? []) as Scene[];
+                      if (snapshotScenes.length === 0) {
+                        toast.error("Cette version est vide");
+                        return;
+                      }
+                      const previousScenes = scenes;
+                      const previousShots = shots;
+                      try {
+                        // Wipe shots + scenes, then re-insert snapshot scenes with fresh UUIDs
+                        const { error: delShotsErr } = await supabase
+                          .from("shots")
+                          .delete()
+                          .eq("project_id", projectId);
+                        if (delShotsErr) throw delShotsErr;
+
+                        const { error: delScenesErr } = await supabase
+                          .from("scenes")
+                          .delete()
+                          .eq("project_id", projectId);
+                        if (delScenesErr) throw delScenesErr;
+
+                        const rowsToInsert = snapshotScenes.map((s) => ({
+                          id: crypto.randomUUID(),
+                          project_id: projectId,
+                          scene_order: s.scene_order,
+                          title: s.title,
+                          source_text: s.source_text,
+                          source_text_fr: s.source_text_fr,
+                          visual_intention: s.visual_intention,
+                          narrative_action: s.narrative_action,
+                          characters: s.characters,
+                          location: s.location,
+                          scene_type: s.scene_type,
+                          continuity: s.continuity,
+                          scene_context: s.scene_context,
+                          validated: s.validated ?? false,
+                        }));
+
+                        const { data: inserted, error: insErr } = await supabase
+                          .from("scenes")
+                          .insert(rowsToInsert)
+                          .select("*");
+                        if (insErr) throw insErr;
+
+                        const restoredScenes = (inserted ?? []) as Scene[];
+                        setScenes(restoredScenes);
+                        setShots([]);
+                        setCurrentSceneVersionId(pv.id);
+                        setPreviewSceneVersionId(null);
+                        await supabase
+                          .from("projects")
+                          .update({ scene_count: restoredScenes.length, status: "segmented" })
+                          .eq("id", projectId);
+                        toast.success(
+                          `Segmentation V${pv.id} restaurée — relancez "Créer les SHOTS" pour cette version`,
+                        );
+                      } catch (err: any) {
+                        setScenes(previousScenes);
+                        setShots(previousShots);
+                        console.error("Restore scene version error:", err);
+                        toast.error(err?.message || "Erreur lors de la restauration");
+                      }
                     }} className="h-6 text-[10px] px-2 ml-2">
                       <RotateCcw className="h-2.5 w-2.5" /> Restaurer V{pv.id}
                     </Button>
