@@ -42,8 +42,10 @@ export function resolveShotTimingBoundaries(
     }
   }
 
-  const boundaries: ShotTimingBoundary[] = [];
-
+  // First pass: resolve each shot's start time.
+  // Priority: explicit manualEndTimeSeconds of previous shot wins.
+  // Otherwise the shot's own raw start (which may itself be manual via timeSeconds) is used.
+  const resolvedStarts: number[] = [];
   for (let index = 0; index < orderedShotIds.length; index += 1) {
     const shotId = orderedShotIds[index];
     const rawStart = timepointMap.get(shotId);
@@ -57,13 +59,23 @@ export function resolveShotTimingBoundaries(
       ? Math.min(previousManualEnd, boundedAudioDuration)
       : rawStart;
 
-    const nextShotId = index < orderedShotIds.length - 1 ? orderedShotIds[index + 1] : null;
-    const rawEnd = manualEndMap.get(shotId)
-      ?? (nextShotId ? timepointMap.get(nextShotId) : boundedAudioDuration);
+    resolvedStarts.push(start);
+  }
 
-    if (rawEnd === undefined) {
-      return null;
-    }
+  // Second pass: derive each shot's end.
+  // Priority order:
+  //  1. The shot's own manualEndTimeSeconds (explicit user override)
+  //  2. The next shot's resolved start (so a manual start on shot N+1 pulls back the end of shot N)
+  //  3. The total audio duration (last shot)
+  const boundaries: ShotTimingBoundary[] = [];
+  for (let index = 0; index < orderedShotIds.length; index += 1) {
+    const shotId = orderedShotIds[index];
+    const start = resolvedStarts[index];
+    const nextStart = index < orderedShotIds.length - 1 ? resolvedStarts[index + 1] : undefined;
+
+    const rawEnd = manualEndMap.get(shotId)
+      ?? nextStart
+      ?? boundedAudioDuration;
 
     const end = Math.min(rawEnd, boundedAudioDuration);
     boundaries.push({
