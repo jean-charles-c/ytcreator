@@ -44,7 +44,7 @@ describe("matchShotsStrictSequential", () => {
     expect(results[2].blocked).toBe(false);
   });
 
-  it("blocks when 3-word exact match not found within window", () => {
+  it("marks unmatched shot as blocked but does NOT propagate to subsequent shots (auto-skip)", () => {
     const shots = [
       { id: "shot-1", text: "Maranello, Juillet 1987." },
       { id: "shot-x", text: "Texte introuvable dans le transcript" },
@@ -56,9 +56,9 @@ describe("matchShotsStrictSequential", () => {
     expect(results[0].whisperStartIdx).toBe(0);
     expect(results[1].blocked).toBe(true);
     expect(results[1].whisperStartIdx).toBeNull();
-    // shot-3 should also be null because chain is blocked
-    expect(results[2].whisperStartIdx).toBeNull();
-    expect(results[2].blocked).toBe(false); // not the blocker itself
+    // shot-3 should still match — auto-skip lets the cascade continue
+    expect(results[2].whisperStartIdx).toBe(15);
+    expect(results[2].blocked).toBe(false);
   });
 
   it("resumes after manual anchor on blocked shot", () => {
