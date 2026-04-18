@@ -494,13 +494,30 @@ Deno.serve(async (req) => {
       console.log(`[whisper-align] Planned ${wavChunkInfos.length} WAV chunks`);
     }
 
-    // Helper to run one Whisper pass
-    async function runOnePass(): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
+    // Build a script hint to bias Whisper towards the expected words / phrasing.
+    // Using only the first ~900 chars (~200 tokens) per Whisper's prompt budget.
+    const scriptHint = orderedShots
+      .map((s) => s.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 900);
+
+    // Expected total word count from the script — used to pick the most accurate pass.
+    const expectedWordCount = orderedShots.reduce(
+      (sum, s) => sum + s.text.split(/\s+/).filter((w) => w.length > 0).length,
+      0
+    );
+
+    // Helper to run one Whisper pass with a given temperature.
+    async function runOnePass(
+      temperature: number
+    ): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
       if (wavChunkInfos && wavChunkInfos.length > 1) {
-        return callWhisperOnChunks(audioBuffer, wavChunkInfos, GROQ_API_KEY!, 0);
+        return callWhisperOnChunks(audioBuffer, wavChunkInfos, GROQ_API_KEY!, temperature, scriptHint);
       }
       const audioBlob = new Blob([audioBuffer], { type: contentType });
-      return callWhisperChunk(audioBlob, fileExtension, GROQ_API_KEY!, 0);
+      return callWhisperChunk(audioBlob, fileExtension, GROQ_API_KEY!, temperature, scriptHint);
     }
 
     // ── Call Whisper (1, 2, or 3 passes) ──
@@ -514,18 +531,36 @@ Deno.serve(async (req) => {
 
     let repairSummary: { repairCount: number; insertedWordCount: number } | null = null;
 
+    // Pick the run whose word count is closest to the expected total — that's the
+    // candidate least likely to have dropped or duplicated sentences.
+    function pickBestRun<T extends { words: WordTimestamp[] }>(runs: T[]): { run: T; index: number } {
+      if (expectedWordCount <= 0) return { run: runs[0], index: 0 };
+      let bestIdx = 0;
+      let bestDelta = Math.abs(runs[0].words.length - expectedWordCount);
+      for (let i = 1; i < runs.length; i++) {
+        const delta = Math.abs(runs[i].words.length - expectedWordCount);
+        if (delta < bestDelta) {
+          bestDelta = delta;
+          bestIdx = i;
+        }
+      }
+      return { run: runs[bestIdx], index: bestIdx };
+    }
+
     if (useTriplePass) {
-      // Run passes IN PARALLEL to stay under edge function 150s timeout
-      console.log(`[whisper-align] Triple pass — parallel execution`);
+      // Run passes IN PARALLEL with diversified temperatures so candidates differ.
+      console.log(`[whisper-align] Triple pass — parallel execution (temp 0 / 0.2 / 0.4)`);
       const [rawRunA, rawRunB, rawRunC] = await Promise.all([
-        runOnePass(),
-        runOnePass(),
-        runOnePass(),
+        runOnePass(0),
+        runOnePass(0.2),
+        runOnePass(0.4),
       ]);
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
       const runC = repairWhisperRun(rawRunC, orderedShots);
-      console.log(`[whisper-align] Pass A/B/C: ${runA.words.length}/${runB.words.length}/${runC.words.length} words`);
+      console.log(
+        `[whisper-align] Pass A/B/C words: ${runA.words.length}/${runB.words.length}/${runC.words.length} (expected ${expectedWordCount})`
+      );
 
       const compAB = compareRuns(runA.words, runB.words);
       const compAC = compareRuns(runA.words, runC.words);
@@ -541,29 +576,41 @@ Deno.serve(async (req) => {
       passAWords = runA.words;
       passBWords = runB.words;
       passCWords = runC.words;
-      finalWords = runA.words;
-      finalTranscript = runA.transcript;
-      finalDuration = runA.duration;
-      repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
+
+      const { run: bestRun, index: bestIdx } = pickBestRun([runA, runB, runC]);
+      console.log(
+        `[whisper-align] Best pass: ${["A", "B", "C"][bestIdx]} (${bestRun.words.length} words, |Δ|=${Math.abs(bestRun.words.length - expectedWordCount)})`
+      );
+      finalWords = bestRun.words;
+      finalTranscript = bestRun.transcript;
+      finalDuration = bestRun.duration;
+      repairSummary = { repairCount: bestRun.repairCount, insertedWordCount: bestRun.insertedWordCount };
     } else if (useDualPass) {
-      // Run passes IN PARALLEL to stay under edge function 150s timeout
-      console.log(`[whisper-align] Dual pass — parallel execution`);
-      const [rawRunA, rawRunB] = await Promise.all([runOnePass(), runOnePass()]);
+      // Run passes IN PARALLEL with diversified temperatures.
+      console.log(`[whisper-align] Dual pass — parallel execution (temp 0 / 0.2)`);
+      const [rawRunA, rawRunB] = await Promise.all([runOnePass(0), runOnePass(0.2)]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
 
-      console.log(`[whisper-align] Pass A: ${runA.words.length} words, Pass B: ${runB.words.length} words`);
+      console.log(
+        `[whisper-align] Pass A/B words: ${runA.words.length}/${runB.words.length} (expected ${expectedWordCount})`
+      );
 
       comparison = compareRuns(runA.words, runB.words);
       passAWords = runA.words;
       passBWords = runB.words;
-      finalWords = runA.words;
-      finalTranscript = runA.transcript;
-      finalDuration = runA.duration;
-      repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
+
+      const { run: bestRun, index: bestIdx } = pickBestRun([runA, runB]);
+      console.log(
+        `[whisper-align] Best pass: ${["A", "B"][bestIdx]} (${bestRun.words.length} words)`
+      );
+      finalWords = bestRun.words;
+      finalTranscript = bestRun.transcript;
+      finalDuration = bestRun.duration;
+      repairSummary = { repairCount: bestRun.repairCount, insertedWordCount: bestRun.insertedWordCount };
     } else {
-      const rawRun = await runOnePass();
+      const rawRun = await runOnePass(0);
       const run = repairWhisperRun(rawRun, orderedShots);
       if (run.repairCount) {
         console.log(
