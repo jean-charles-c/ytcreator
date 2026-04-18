@@ -57,7 +57,6 @@ function getShotText(shot: ProjectShotRow): string {
   ).trim();
 }
 
-const GROQ_PROMPT_MAX_BYTES = 896;
 const GROQ_PROMPT_SAFE_BYTES = 880;
 
 function truncateUtf8(input: string, maxBytes: number): string {
