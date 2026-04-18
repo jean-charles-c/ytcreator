@@ -1515,6 +1515,8 @@ export default function WhisperAlignmentEditor({
                     >
                       {shot.status === "blocked" ? (
                         <XCircle className="h-3 w-3 text-destructive shrink-0 animate-pulse" />
+                      ) : shot.status === "mismatch" ? (
+                        <XCircle className="h-3 w-3 text-destructive shrink-0" />
                       ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       ) : shot.status === "estimated" ? (
@@ -1588,6 +1590,15 @@ export default function WhisperAlignmentEditor({
                               ⛔ Matching bloqué ici — les 3 premiers mots n'ont pas été trouvés dans les 50 mots suivants du transcript Whisper.
                               Calez manuellement ce shot pour que le matching automatique reprenne.
                             </p>
+                          ) : shot.status === "mismatch" && shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
+                            <>
+                              <p className="text-destructive font-semibold mb-1">
+                                ⚠ Segment Whisper incohérent avec le texte attendu — calez manuellement.
+                              </p>
+                              <p className="text-destructive leading-relaxed whitespace-pre-wrap break-words">
+                                « {getWhisperSegment(shot.whisperStartIdx, shot.whisperEndIdx)} »
+                              </p>
+                            </>
                           ) : shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
                              <p className="text-emerald-600 leading-relaxed whitespace-pre-wrap break-words">
                               {getWhisperSegment(shot.whisperStartIdx, shot.whisperEndIdx)}
