@@ -16,6 +16,7 @@ import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText }
 import CustomPronunciationsPanel from "./CustomPronunciationsPanel";
 import CustomTtsTransformsPanel from "./CustomTtsTransformsPanel";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
+import WhisperAlignmentEditor from "./WhisperAlignmentEditor";
 import {
   Select,
   SelectContent,
@@ -811,6 +812,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
   const [voOpen, setVoOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
+  const [whisperOpen, setWhisperOpen] = useState(false);
   const [sceneAudioOpen, setSceneAudioOpen] = useState(true);
 
   // ── Manual validation checkmarks per scene (persisted by project) ──
@@ -1384,6 +1386,36 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
             />
           </div>
         )}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* ─── Whisper Alignment Collapsible ─── */}
+      <Collapsible open={whisperOpen} onOpenChange={setWhisperOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group">
+          <AudioLines className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold font-display text-foreground flex-1 text-left">Alignement Whisper par shot</span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${whisperOpen ? "rotate-180" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <div className="rounded-lg border border-border bg-card p-4">
+            {projectId ? (
+              <WhisperAlignmentEditor
+                projectId={projectId}
+                shots={(shots ?? []).map((s) => ({
+                  id: s.id,
+                  scene_id: s.scene_id,
+                  shot_order: s.shot_order,
+                  source_sentence: s.source_sentence,
+                  source_sentence_fr: s.source_sentence_fr,
+                  description: s.description,
+                }))}
+                scenesForSort={scenesForSort ?? []}
+                refreshKey={historyRefreshKey}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">Sauvegardez d'abord le projet pour utiliser l'alignement Whisper.</p>
+            )}
+          </div>
         </CollapsibleContent>
       </Collapsible>
 
