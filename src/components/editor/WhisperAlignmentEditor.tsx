@@ -432,12 +432,13 @@ export default function WhisperAlignmentEditor({
           const isManual = manualRange !== undefined;
           const manualSelectionEndIdx = manualRange?.endIdx ?? null;
           let status: AlignedShot["status"];
-          if (isBlocked) {
+          if (isManual && startTime !== null) {
+            // Manual anchor wins: user has explicitly validated this shot.
+            status = "ok";
+          } else if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null && matchResult) {
             status = coverageStatus(matchResult, text);
-          } else if (isManual && startTime !== null) {
-            status = "estimated"; // manual anchor but no whisper match data
           } else if (startTime !== null) {
             status = "estimated";
           } else {
@@ -601,12 +602,13 @@ export default function WhisperAlignmentEditor({
       const isManual = manualRange !== undefined;
       const manualSelectionEndIdx = manualRange?.endIdx ?? null;
       let status: AlignedShot["status"];
-      if (isBlocked) {
+      if (isManual && startTime !== null) {
+        // Manual anchor wins: user has explicitly validated this shot.
+        status = "ok";
+      } else if (isBlocked) {
         status = "blocked";
       } else if (whisperStartIdx !== null && matchResult) {
         status = coverageStatus(matchResult, text);
-      } else if (isManual && startTime !== null) {
-        status = "estimated";
       } else {
         status = "missing";
       }
@@ -1560,6 +1562,14 @@ export default function WhisperAlignmentEditor({
                       <span className="font-mono font-medium text-muted-foreground shrink-0">
                         #{shot.globalIndex}
                       </span>
+                      {shot.status === "estimated" && (
+                        <span
+                          className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 text-orange-500 px-1.5 py-0.5 text-[8px] font-semibold shrink-0"
+                          title="Le calage automatique est imparfait : ouvrez le shot pour le valider ou le recaler manuellement."
+                        >
+                          ⚠ À vérifier
+                        </span>
+                      )}
                       <span className="text-foreground truncate flex-1 min-w-0">
                         {shot.shotText.slice(0, 60)}
                         {shot.shotText.length > 60 ? "…" : ""}
@@ -1702,7 +1712,7 @@ export default function WhisperAlignmentEditor({
                                     const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
                                       alignedShots.map((s) =>
                                         s.shotId === shot.shotId
-                                          ? { ...s, startTime: newStart, status: "estimated" as const, isManualAnchor: true }
+                                          ? { ...s, startTime: newStart, status: "ok" as const, isManualAnchor: true }
                                           : s
                                       ),
                                       whisperWords,
@@ -1730,7 +1740,7 @@ export default function WhisperAlignmentEditor({
                                     const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
                                       alignedShots.map((s) =>
                                         s.shotId === shot.shotId
-                                          ? { ...s, startTime: newStart, status: "estimated" as const, isManualAnchor: true }
+                                          ? { ...s, startTime: newStart, status: "ok" as const, isManualAnchor: true }
                                           : s
                                       ),
                                       whisperWords,
@@ -1751,21 +1761,57 @@ export default function WhisperAlignmentEditor({
                           </div>
                         )}
 
-                        {/* Edit button */}
+                        {/* Edit button + Validate button */}
                         {!isEditing && (
-                          <Button
-                            size="sm"
-                            variant={shot.status === "blocked" || shot.status === "missing" ? "destructive" : "outline"}
-                            className={`h-7 text-[10px] ${shot.status === "blocked" ? "animate-pulse" : ""}`}
-                            onClick={() => startEditing(shot.shotId)}
-                          >
-                            <Search className="h-3 w-3 mr-1" />
-                            {shot.status === "blocked"
-                              ? "⛔ Caler manuellement pour continuer"
-                              : shot.status === "missing"
-                              ? "Caler manuellement"
-                              : "Recaler"}
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant={shot.status === "blocked" || shot.status === "missing" ? "destructive" : "outline"}
+                              className={`h-7 text-[10px] ${shot.status === "blocked" ? "animate-pulse" : ""}`}
+                              onClick={() => startEditing(shot.shotId)}
+                            >
+                              <Search className="h-3 w-3 mr-1" />
+                              {shot.status === "blocked"
+                                ? "⛔ Caler manuellement pour continuer"
+                                : shot.status === "missing"
+                                ? "Caler manuellement"
+                                : "Recaler"}
+                            </Button>
+
+                            {/* Validate "estimated" calage as good → promote to ok */}
+                            {shot.status === "estimated" && shot.startTime !== null && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                                onClick={async () => {
+                                  const recalculated = alignedShots.map((s) =>
+                                    s.shotId === shot.shotId
+                                      ? { ...s, status: "ok" as const, isManualAnchor: true }
+                                      : s
+                                  );
+                                  setAlignedShots(recalculated);
+                                  if (audioEntryId) {
+                                    try {
+                                      const timepoints = buildTimepointsPayload(recalculated);
+                                      await supabase
+                                        .from("vo_audio_history")
+                                        .update({ shot_timepoints: timepoints as any })
+                                        .eq("id", audioEntryId);
+                                      notifyTimepointsUpdated();
+                                      toast.success(`Shot #${shot.globalIndex} validé ✓`);
+                                    } catch (e) {
+                                      console.error("[WhisperAlignmentEditor] validate error:", e);
+                                      toast.error("Validation locale appliquée mais erreur de sauvegarde");
+                                    }
+                                  }
+                                }}
+                              >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Valider le calage
+                              </Button>
+                            )}
+                          </div>
                         )}
 
                         {/* Manual selection UI */}
