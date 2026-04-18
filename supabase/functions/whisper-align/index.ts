@@ -510,16 +510,10 @@ Deno.serve(async (req) => {
       console.log(`[whisper-align] Planned ${wavChunkInfos.length} WAV chunks`);
     }
 
-    // Build a script hint to bias Whisper towards the expected words / phrasing.
-    // Groq Whisper counts UTF-8 bytes, not JS characters.
-    const scriptHint = truncateUtf8(
-      orderedShots
-        .map((s) => s.text)
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim(),
-      GROQ_PROMPT_SAFE_BYTES
-    );
+    // Script hint DISABLED: when Whisper hits silence/noise, it loops on the prompt
+    // and explodes word count (7000+ words instead of ~1200) → CPU limit + bad transcript.
+    // Rely on audio alone; downstream matching maps words to shots.
+    const scriptHint: string | undefined = undefined;
 
     // Expected total word count from the script — used to pick the most accurate pass.
     const expectedWordCount = orderedShots.reduce(
