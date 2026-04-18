@@ -171,18 +171,42 @@ async function callWhisperChunk(
     formData.append("temperature", String(temperature));
   }
 
-  const resp = await fetch(
-    "https://api.groq.com/openai/v1/audio/transcriptions",
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${groqApiKey}` },
-      body: formData,
-    }
-  );
+  const MAX_ATTEMPTS = 4;
+  let resp: Response | null = null;
+  let lastErrText = "";
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    resp = await fetch(
+      "https://api.groq.com/openai/v1/audio/transcriptions",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${groqApiKey}` },
+        body: formData,
+      }
+    );
 
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Groq Whisper [${resp.status}]: ${errText}`);
+    if (resp.ok) break;
+
+    lastErrText = await resp.text();
+    const isRetryable = resp.status === 429 || resp.status === 503 || resp.status === 504;
+    if (!isRetryable || attempt === MAX_ATTEMPTS) {
+      throw new Error(`Groq Whisper [${resp.status}]: ${lastErrText}`);
+    }
+
+    // Try to honor "try again in Xs/Xm" hint from Groq, otherwise exponential backoff
+    let waitMs = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s
+    const hint = lastErrText.match(/try again in\s+(?:(\d+)m)?\s*(\d+(?:\.\d+)?)?s/i);
+    if (hint) {
+      const mins = hint[1] ? parseInt(hint[1], 10) : 0;
+      const secs = hint[2] ? parseFloat(hint[2]) : 0;
+      const hintedMs = (mins * 60 + secs) * 1000 + 1500; // small buffer
+      if (hintedMs > 0) waitMs = Math.min(hintedMs, 180_000); // cap at 3min
+    }
+    console.warn(`[whisper-align] Groq ${resp.status} on attempt ${attempt}/${MAX_ATTEMPTS}, retrying in ${Math.round(waitMs)}ms`);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+
+  if (!resp || !resp.ok) {
+    throw new Error(`Groq Whisper failed after ${MAX_ATTEMPTS} attempts: ${lastErrText}`);
   }
 
   const data = await resp.json();
