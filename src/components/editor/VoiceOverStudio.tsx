@@ -1123,6 +1123,43 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [musicOpen, setMusicOpen] = useState(false);
   const [sceneAudioOpen, setSceneAudioOpen] = useState(true);
 
+  // ── Manual validation checkmarks per scene (persisted by project) ──
+  const validatedStorageKey = projectId ? `vo-scene-validated-${projectId}` : null;
+  const [validatedScenes, setValidatedScenes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!validatedStorageKey) {
+      setValidatedScenes(new Set());
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(validatedStorageKey);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setValidatedScenes(new Set(arr));
+        else setValidatedScenes(new Set());
+      } else {
+        setValidatedScenes(new Set());
+      }
+    } catch {
+      setValidatedScenes(new Set());
+    }
+  }, [validatedStorageKey]);
+
+  const toggleSceneValidated = (sceneId: string) => {
+    setValidatedScenes((prev) => {
+      const next = new Set(prev);
+      if (next.has(sceneId)) next.delete(sceneId);
+      else next.add(sceneId);
+      if (validatedStorageKey) {
+        try {
+          localStorage.setItem(validatedStorageKey, JSON.stringify([...next]));
+        } catch { /* ignore quota errors */ }
+      }
+      return next;
+    });
+  };
+
   // ── Desync detection: compare current shots with latest audio timepoints ──
   const [desyncWarning, setDesyncWarning] = useState<string | null>(null);
   const [syncChecked, setSyncChecked] = useState(false);
@@ -1491,7 +1528,21 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                 )}
                                 <span className="w-5 text-white text-right flex-shrink-0 text-sm">{idx + 1}.</span>
                                 {status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                                {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                                {status === "done" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSceneValidated(scene.id)}
+                                    className="flex-shrink-0 inline-flex items-center justify-center rounded-sm hover:bg-secondary/50 transition-colors p-0.5"
+                                    title={validatedScenes.has(scene.id) ? "Marquer comme non vérifié" : "Marquer comme vérifié"}
+                                    aria-pressed={validatedScenes.has(scene.id)}
+                                  >
+                                    <CheckCircle2
+                                      className={`h-3 w-3 transition-colors ${
+                                        validatedScenes.has(scene.id) ? "text-emerald-500" : "text-muted-foreground/50"
+                                      }`}
+                                    />
+                                  </button>
+                                )}
                                 {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
                                 {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
                                 <span className={`flex-1 truncate text-sm ${status === "error" ? "text-destructive" : "bg-primary-foreground text-primary"}`}>
