@@ -1404,9 +1404,10 @@ export default function WhisperAlignmentEditor({
                             const isManual = manualRange !== undefined;
                             const manualSelectionEndIdx = manualRange?.endIdx ?? null;
                             let status: AlignedShot["status"];
-                            if (isBlocked) status = "blocked";
+                            if (isManual && startTime !== null) status = "ok";
+                            else if (isBlocked) status = "blocked";
                             else if (wsi !== null && matchResult) status = coverageStatus(matchResult, text);
-                            else if ((isManual || startTime !== null) && startTime !== null) status = "estimated";
+                            else if (startTime !== null) status = "estimated";
                             else status = "missing";
 
                             return {
