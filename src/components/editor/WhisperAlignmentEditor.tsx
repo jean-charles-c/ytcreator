@@ -754,12 +754,13 @@ export default function WhisperAlignmentEditor({
         {totalCount > 0 && (
           <span
             className={`ml-auto text-[9px] font-bold ${
-                blockedCount > 0 ? "text-destructive" : missingCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
+                blockedCount > 0 || missingCount > 0 || mismatchCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
             }`}
           >
             {okCount}/{totalCount}
             {manualCount > 0 && <span className="text-emerald-500 ml-1">(📌{manualCount} manuels)</span>}
             {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
+            {mismatchCount > 0 && <span className="text-destructive ml-1">⚠ {mismatchCount} incohérent{mismatchCount > 1 ? "s" : ""}</span>}
             {blockedCount > 0 && <span className="text-destructive ml-1">⛔ bloqué shot #{firstBlockedShot?.globalIndex}</span>}
           </span>
         )}
@@ -1466,6 +1467,26 @@ export default function WhisperAlignmentEditor({
 
         {!loading && whisperWords.length > 0 && (
           <>
+            {/* Action bar: verify alignment */}
+            <div className="flex items-center justify-between gap-2 rounded border border-border bg-muted/30 px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <Search className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="text-[10px] text-muted-foreground">
+                  Re-vérifier la cohérence shot ↔ Whisper :
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[9px] px-2"
+                onClick={verifyAllShots}
+                disabled={alignedShots.length === 0}
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Vérifier tous les shots
+              </Button>
+            </div>
+
             {/* Shot list */}
             <div className="space-y-1">
               {alignedShots.map((shot) => {
@@ -1475,7 +1496,7 @@ export default function WhisperAlignmentEditor({
                   <div
                     key={shot.shotId}
                     className={`rounded border text-[10px] ${
-                      shot.status === "blocked"
+                      shot.status === "blocked" || shot.status === "mismatch"
                         ? "border-destructive bg-destructive/10 ring-2 ring-destructive/40"
                         : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
