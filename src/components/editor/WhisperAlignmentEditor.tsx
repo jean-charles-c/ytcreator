@@ -481,6 +481,7 @@ export default function WhisperAlignmentEditor({
   const estimatedCount = alignedShots.filter((s) => s.status === "estimated").length;
   const blockedCount = alignedShots.filter((s) => s.status === "blocked").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
+  const mismatchCount = alignedShots.filter((s) => s.status === "mismatch").length;
   const totalCount = alignedShots.length;
   const firstBlockedShot = alignedShots.find((s) => s.status === "blocked");
 
