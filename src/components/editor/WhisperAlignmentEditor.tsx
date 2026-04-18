@@ -1732,7 +1732,7 @@ export default function WhisperAlignmentEditor({
                                     const recalculated = recalculateWhisperShotEndTimesWithManualRanges(
                                       alignedShots.map((s) =>
                                         s.shotId === shot.shotId
-                                          ? { ...s, startTime: newStart, status: "estimated" as const, isManualAnchor: true }
+                                          ? { ...s, startTime: newStart, status: "ok" as const, isManualAnchor: true }
                                           : s
                                       ),
                                       whisperWords,
