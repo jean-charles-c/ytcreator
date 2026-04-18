@@ -231,6 +231,16 @@ export default function GeneratedAudioHistory({
         }
       }
 
+      // Notify WhisperAlignmentEditor that whisper_words changed for this entry,
+      // so it reloads the fresh transcript instead of showing the stale one.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("vo-audio-timepoints-updated", {
+            detail: { projectId, audioEntryId: entry.id },
+          })
+        );
+      }
+
       await fetchHistory();
     } catch (e: any) {
       console.error("Align error:", e);

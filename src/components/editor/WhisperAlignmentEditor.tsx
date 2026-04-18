@@ -276,6 +276,22 @@ export default function WhisperAlignmentEditor({
     };
   }, [projectId, loadMultiPassData]);
 
+  const [reloadTick, setReloadTick] = useState(0);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const handler = (event: Event) => {
+      const detailProjectId =
+        event instanceof CustomEvent && typeof event.detail?.projectId === "string"
+          ? event.detail.projectId
+          : null;
+      if (detailProjectId && detailProjectId !== projectId) return;
+      setReloadTick((t) => t + 1);
+    };
+    window.addEventListener(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, handler);
+  }, [projectId]);
+
   useEffect(() => {
     if (!projectId) return;
     const load = async () => {
@@ -407,7 +423,7 @@ export default function WhisperAlignmentEditor({
       }
     };
     load();
-  }, [projectId, refreshKey, getSortedShots, resolveManualAnchorsFromDb]);
+  }, [projectId, refreshKey, reloadTick, getSortedShots, resolveManualAnchorsFromDb]);
 
   // ── Stats ──
   const okCount = alignedShots.filter((s) => s.status === "ok").length;

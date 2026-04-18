@@ -430,11 +430,12 @@ Deno.serve(async (req) => {
 
     // ── Input ──
     const body = await req.json();
-    const { audioUrl, projectId, dualPass, triplePass } = body as {
+    const { audioUrl, projectId, dualPass, triplePass, audioHistoryId } = body as {
       audioUrl?: string;
       projectId?: string;
       dualPass?: boolean;
       triplePass?: boolean;
+      audioHistoryId?: string;
     };
 
     if (!audioUrl || typeof audioUrl !== "string") {
@@ -587,29 +588,39 @@ Deno.serve(async (req) => {
     // Only persist whisper_words (raw word timestamps) — NOT shot_timepoints.
     // shot_timepoints are managed by the client-side "Recaler sur Whisper" button
     // to avoid overwriting carefully calibrated timepoints with raw Whisper data.
-    const { data: latestAudio } = await supabaseService
-      .from("vo_audio_history")
-      .select("id")
-      .eq("project_id", projectId)
-      .eq("user_id", user.id)
-      .eq("style", "chirp3hd")
-      .order("created_at", { ascending: false })
-      .limit(1);
+    //
+    // CRITICAL: target the EXACT entry requested via audioHistoryId. Falling back
+    // on "latest by style" caused fresh whisper_words to be written on the wrong
+    // row, so the editor kept showing the stale transcript.
+    let targetEntryId: string | null = audioHistoryId ?? null;
+    if (!targetEntryId) {
+      const { data: latestAudio } = await supabaseService
+        .from("vo_audio_history")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      targetEntryId = latestAudio?.[0]?.id ?? null;
+    }
 
-    if (latestAudio && latestAudio.length > 0) {
+    if (targetEntryId) {
       const { error: updateError } = await supabaseService
         .from("vo_audio_history")
         .update({
           duration_estimate: finalDuration,
           whisper_words: finalWords as unknown as Record<string, unknown>[],
         })
-        .eq("id", latestAudio[0].id);
+        .eq("id", targetEntryId)
+        .eq("user_id", user.id);
 
       if (updateError) {
         console.error("[whisper-align] DB update error:", updateError);
       } else {
-        console.log(`[whisper-align] Updated vo_audio_history ${latestAudio[0].id} (whisper_words only, shot_timepoints preserved)`);
+        console.log(`[whisper-align] Updated vo_audio_history ${targetEntryId} (whisper_words only, shot_timepoints preserved)`);
       }
+    } else {
+      console.warn(`[whisper-align] No vo_audio_history entry found to persist whisper_words`);
     }
 
     return jsonResponse({
