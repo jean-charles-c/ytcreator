@@ -1362,6 +1362,8 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                           projectId={projectId}
                           refreshKey={historyRefreshKey}
                           onPlay={handlePlayFromHistory}
+                          shots={shots}
+                          scenesForSort={scenesForSort}
                           hideHeader
                         />
                       </AccordionContent>
