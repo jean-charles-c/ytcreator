@@ -1528,7 +1528,21 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                 )}
                                 <span className="w-5 text-white text-right flex-shrink-0 text-sm">{idx + 1}.</span>
                                 {status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                                {status === "done" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                                {status === "done" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSceneValidated(scene.id)}
+                                    className="flex-shrink-0 inline-flex items-center justify-center rounded-sm hover:bg-secondary/50 transition-colors p-0.5"
+                                    title={validatedScenes.has(scene.id) ? "Marquer comme non vérifié" : "Marquer comme vérifié"}
+                                    aria-pressed={validatedScenes.has(scene.id)}
+                                  >
+                                    <CheckCircle2
+                                      className={`h-3 w-3 transition-colors ${
+                                        validatedScenes.has(scene.id) ? "text-emerald-500" : "text-muted-foreground/50"
+                                      }`}
+                                    />
+                                  </button>
+                                )}
                                 {status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
                                 {status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
                                 <span className={`flex-1 truncate text-sm ${status === "error" ? "text-destructive" : "bg-primary-foreground text-primary"}`}>
