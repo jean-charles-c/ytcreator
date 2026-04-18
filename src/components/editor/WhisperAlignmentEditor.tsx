@@ -397,11 +397,30 @@ export default function WhisperAlignmentEditor({
         const aligned: AlignedShot[] = sorted.map((shot, idx) => {
           const text = getShotFragmentText(shot);
           const matchResult = strictResults[idx];
-          const whisperStartIdx = matchResult?.whisperStartIdx ?? null;
+          const matcherWhisperStartIdx = matchResult?.whisperStartIdx ?? null;
           const isBlocked = matchResult?.blocked ?? false;
-          const startTime = tpMap.get(shot.id) ?? (
-            whisperStartIdx !== null ? words[whisperStartIdx].start : null
-          );
+          const persistedStartTime = tpMap.get(shot.id);
+          const hasPersistedTimepoint = persistedStartTime !== undefined;
+
+          // ⚠ If a timepoint exists in DB, it WINS over local matcher failure.
+          // The matcher may fail (e.g. another "P400" earlier in the audio confused
+          // the sequential search) but the persisted timepoint is the source of truth.
+          const startTime = hasPersistedTimepoint
+            ? persistedStartTime
+            : (matcherWhisperStartIdx !== null ? words[matcherWhisperStartIdx].start : null);
+
+          // Resolve whisperStartIdx: prefer matcher result, else derive from persisted time.
+          let whisperStartIdx: number | null = matcherWhisperStartIdx;
+          if (whisperStartIdx === null && hasPersistedTimepoint && persistedStartTime !== undefined) {
+            // Find closest whisper word matching the persisted start time
+            let bestIdx: number | null = null;
+            let bestDelta = Infinity;
+            for (let wi = 0; wi < words.length; wi++) {
+              const delta = Math.abs(words[wi].start - persistedStartTime);
+              if (delta < bestDelta) { bestDelta = delta; bestIdx = wi; }
+            }
+            if (bestIdx !== null && bestDelta < 0.5) whisperStartIdx = bestIdx;
+          }
 
           let endTime: number | null = null;
           for (let j = idx + 1; j < sorted.length; j++) {
@@ -435,6 +454,10 @@ export default function WhisperAlignmentEditor({
           if (isManual && startTime !== null) {
             // Manual anchor wins: user has explicitly validated this shot.
             status = "ok";
+          } else if (hasPersistedTimepoint && matcherWhisperStartIdx === null) {
+            // DB has a timepoint but local matcher failed → estimated (orange "à vérifier")
+            // instead of blocked (red), so the user can validate or recaler.
+            status = "estimated";
           } else if (isBlocked) {
             status = "blocked";
           } else if (whisperStartIdx !== null && matchResult) {
