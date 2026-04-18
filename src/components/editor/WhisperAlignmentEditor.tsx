@@ -1562,6 +1562,14 @@ export default function WhisperAlignmentEditor({
                       <span className="font-mono font-medium text-muted-foreground shrink-0">
                         #{shot.globalIndex}
                       </span>
+                      {shot.status === "estimated" && (
+                        <span
+                          className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 text-orange-500 px-1.5 py-0.5 text-[8px] font-semibold shrink-0"
+                          title="Le calage automatique est imparfait : ouvrez le shot pour le valider ou le recaler manuellement."
+                        >
+                          ⚠ À vérifier
+                        </span>
+                      )}
                       <span className="text-foreground truncate flex-1 min-w-0">
                         {shot.shotText.slice(0, 60)}
                         {shot.shotText.length > 60 ? "…" : ""}
