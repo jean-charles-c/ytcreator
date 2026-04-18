@@ -57,6 +57,23 @@ function getShotText(shot: ProjectShotRow): string {
   ).trim();
 }
 
+const GROQ_PROMPT_MAX_BYTES = 896;
+const GROQ_PROMPT_SAFE_BYTES = 880;
+
+function truncateUtf8(input: string, maxBytes: number): string {
+  const encoder = new TextEncoder();
+  if (encoder.encode(input).length <= maxBytes) return input;
+
+  let end = input.length;
+  let result = input;
+  while (end > 0 && encoder.encode(result).length > maxBytes) {
+    end -= 1;
+    result = input.slice(0, end);
+  }
+
+  return result;
+}
+
 async function loadOrderedShotSources(
   supabaseService: ReturnType<typeof createClient>,
   projectId: string,
