@@ -423,7 +423,7 @@ export default function WhisperAlignmentEditor({
       }
     };
     load();
-  }, [projectId, refreshKey, getSortedShots, resolveManualAnchorsFromDb]);
+  }, [projectId, refreshKey, reloadTick, getSortedShots, resolveManualAnchorsFromDb]);
 
   // ── Stats ──
   const okCount = alignedShots.filter((s) => s.status === "ok").length;
