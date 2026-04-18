@@ -1175,6 +1175,13 @@ export default function WhisperAlignmentEditor({
                     throw new Error(err?.error || `Erreur ${resp.status}`);
                   }
                   const result = await resp.json();
+                  setReloadTick((t) => t + 1);
+                  window.dispatchEvent(
+                    new CustomEvent(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, {
+                      detail: { projectId },
+                    })
+                  );
+
                   if (result.passA && result.passB && result.dualPassComparison) {
                     const stored = {
                       passA: result.passA,
