@@ -74,19 +74,22 @@ serve(async (req) => {
 
     const shotList = shots.map((s: any) => {
       const text = s.source_sentence || s.source_sentence_fr || s.description || "";
-      return `- ShotID: "${s.id}" | Scène: ${s.scene_id} | Texte: "${text.slice(0, 300)}"`;
+      const visualPrompt = (s.prompt_export || "").toString().trim();
+      const visualLine = visualPrompt ? `\n  Prompt visuel: "${visualPrompt.slice(0, 400)}"` : "";
+      return `- ShotID: "${s.id}" | Scène: ${s.scene_id} | Texte narratif: "${text.slice(0, 300)}"${visualLine}`;
     }).join("\n");
 
-    const systemPrompt = `Tu es un analyste textuel spécialisé dans l'identification d'entités (personnages, véhicules, lieux, objets) dans des phrases de script documentaire.
+    const systemPrompt = `Tu es un analyste textuel spécialisé dans l'identification d'entités (personnages, véhicules, lieux, objets) dans des shots de documentaire.
 
-TÂCHE : Pour chaque objet/personnage récurrent fourni, identifie TOUS les shots où cet objet/personnage est mentionné, référencé, ou clairement impliqué dans la phrase.
+TÂCHE : Pour chaque objet/personnage/lieu récurrent fourni, identifie TOUS les shots où cet objet est mentionné, référencé, ou clairement impliqué — en te basant à la fois sur le TEXTE NARRATIF (script) ET sur le PROMPT VISUEL (description de l'image générée).
 
 RÈGLES :
-- Fais une correspondance sémantique, pas juste lexicale. Ex: "la berlinette rouge" → Ferrari 250 GTO
-- Inclus les références indirectes claires. Ex: "le pilote prend le volant" → le personnage pilote ET le véhicule
-- Inclus les pronoms qui réfèrent clairement à l'objet. Ex: "elle file sur la piste" après mention d'une voiture
-- N'inclus PAS les associations trop vagues ou spéculatives
-- Analyse les textes en français ET en anglais`;
+- Analyse les DEUX champs : un objet peut être absent du texte narratif mais explicitement présent dans le prompt visuel (et inversement). Une seule occurrence dans l'un ou l'autre suffit pour lier le shot.
+- Fais une correspondance sémantique, pas juste lexicale. Ex: "la berlinette rouge" → Ferrari 250 GTO ; "a vintage red sports car" → Ferrari 250 GTO.
+- Inclus les références indirectes claires. Ex: "le pilote prend le volant" → le personnage pilote ET le véhicule.
+- Inclus les pronoms qui réfèrent clairement à l'objet. Ex: "elle file sur la piste" après mention d'une voiture.
+- N'inclus PAS les associations trop vagues ou spéculatives.
+- Analyse les textes en français ET en anglais.`;
 
     const userPrompt = `OBJETS/PERSONNAGES RÉCURRENTS :
 ${objectList}
