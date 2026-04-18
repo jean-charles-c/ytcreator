@@ -1038,12 +1038,12 @@ export default function WhisperAlignmentEditor({
                       const isManual = manualAnchor !== undefined;
                       const manualSelectionEndIdx = manualAnchor?.endIdx ?? s.manualSelectionEndIdx ?? null;
                       let status: AlignedShot["status"];
-                      if (isBlocked) {
+                      if (isManual && startTime !== null) {
+                        status = "ok";
+                      } else if (isBlocked) {
                         status = "blocked";
                       } else if (whisperStartIdx !== null && strictMatch) {
                         status = coverageStatus(strictMatch, s.shotText);
-                      } else if (isManual && startTime !== null) {
-                        status = "estimated";
                       } else if (startTime !== null) {
                         status = "estimated";
                       } else {
