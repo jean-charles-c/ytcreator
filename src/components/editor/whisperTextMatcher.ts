@@ -253,6 +253,19 @@ export function matchShotsStrictSequential(
       const minAdvance = Math.max(matchedCount, Math.floor(shotWordCount * 0.5), 3);
       searchFrom = foundIdx + minAdvance;
     } else {
+      // 🔍 DIAGNOSTIC: log why this shot failed to match
+      const windowTokens = whisperWords
+        .slice(searchFrom, Math.min(searchEnd, searchFrom + 15))
+        .map((w, i) => `[${searchFrom + i}] "${w.word}" → "${norm(w.word)}"`);
+      // eslint-disable-next-line no-console
+      console.debug(
+        `[whisperTextMatcher] ❌ NO MATCH for shot ${shot.id} (idx ${shotIdx})\n` +
+        `  shot.text: "${shot.text.slice(0, 80)}"\n` +
+        `  leadWords (3): [${leadWords.join(", ")}]\n` +
+        `  searchFrom: ${searchFrom} (window end: ${searchEnd})\n` +
+        `  prev shot ended at: ${shotIdx > 0 ? results[shotIdx - 1].whisperStartIdx : "n/a"}\n` +
+        `  whisper window (first 15):\n    ${windowTokens.join("\n    ")}`
+      );
       // Blocked!
       results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
       blocked = true;
