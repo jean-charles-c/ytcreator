@@ -173,7 +173,7 @@ async function callWhisperChunk(
 
   // Hard cap total retry budget to stay under edge function 150s idle timeout.
   const MAX_ATTEMPTS = 3;
-  const MAX_WAIT_MS = 25_000; // never wait more than 25s between retries
+  const MAX_WAIT_MS = 12_000; // never wait more than 12s between retries (edge timeout 150s)
   let resp: Response | null = null;
   let lastErrText = "";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
