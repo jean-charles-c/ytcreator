@@ -697,6 +697,52 @@ export default function WhisperAlignmentEditor({
     return alignedShots.some((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null);
   }, [alignedShots]);
 
+  // ── Verify all shots: re-check that the assigned Whisper segment matches the expected text ──
+  const verifyAllShots = useCallback(() => {
+    if (alignedShots.length === 0) return;
+    let downgraded = 0;
+    let promoted = 0;
+
+    const verified = alignedShots.map((shot) => {
+      // Skip blocked / missing shots — already flagged
+      if (shot.status === "blocked" || shot.status === "missing") return shot;
+      if (shot.whisperStartIdx === null || shot.whisperEndIdx === null) return shot;
+
+      const segment = whisperWords.slice(shot.whisperStartIdx, shot.whisperEndIdx + 1);
+      const integrity = verifySegmentIntegrity(shot.shotText, segment);
+
+      if (integrity === "mismatch" && shot.status !== "mismatch") {
+        downgraded++;
+        return { ...shot, status: "mismatch" as const };
+      }
+      if (integrity === "estimated" && shot.status === "ok") {
+        downgraded++;
+        return { ...shot, status: "estimated" as const };
+      }
+      if (integrity === "ok" && shot.status === "mismatch") {
+        promoted++;
+        return { ...shot, status: "ok" as const };
+      }
+      return shot;
+    });
+
+    setAlignedShots(verified);
+
+    const mismatchCount = verified.filter((s) => s.status === "mismatch").length;
+    if (mismatchCount === 0 && downgraded === 0) {
+      toast.success(`Vérification OK — ${verified.length} shots cohérents avec le Whisper ✓`);
+    } else if (mismatchCount > 0) {
+      toast.warning(
+        `${mismatchCount} shot(s) incohérent(s) avec le Whisper — calez-les manuellement (en rouge)`
+      );
+    } else if (downgraded > 0) {
+      toast.info(`${downgraded} shot(s) rétrogradés en "estimé"`);
+    }
+    if (promoted > 0) {
+      console.log(`[WhisperAlignmentEditor] verifyAllShots: ${promoted} shots repassés en OK`);
+    }
+  }, [alignedShots, whisperWords]);
+
   if (totalCount === 0 && !loading && !multiPassData) return null;
 
   return (
