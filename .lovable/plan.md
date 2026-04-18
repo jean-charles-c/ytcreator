@@ -1,46 +1,64 @@
 
 
-## Goal
-Après génération des prompts visuels (`prompt_export`), détecter automatiquement les objets/personnages/lieux récurrents qui apparaissent dans **la phrase descriptive du visuel** (et non seulement dans le texte source du script), pour que les images de référence soient automatiquement ajoutées au moment de la génération d'image.
+## Diagnosis
 
-## État actuel (ce qui existe déjà)
+The triple-pass whisper IS working correctly (logs confirm fresh 1199 words written to the right `vo_audio_history` row). The displayed transcript IS up to date.
 
-Un mécanisme de détection automatique existe déjà :
-- À la fin de `startStoryboard` (mode prompts), un évènement `storyboard-prompts-complete` est dispatché.
-- Un listener dans `Editor.tsx` appelle `detect-object-shots` puis met à jour `mentions_shots` sur chaque objet.
-- Au moment de l'image gen, `generate-shot-image` lit `mentions_shots` et injecte automatiquement les `reference_images` + REFERENCE IMAGE RULE dans le prompt envoyé à l'IA.
+The real problem: **Whisper itself is hallucinating** on this audio. Looking at the actual stored transcript around shot 5:
 
-**Problème** : le payload envoyé à `detect-object-shots` ne contient que `source_sentence` / `source_sentence_fr` / `description`. Il n'inclut **pas** `prompt_export`, qui est pourtant la phrase descriptive utilisée pour le visuel et qui mentionne souvent l'objet/personnage/lieu (ex : la voiture est nommée explicitement dans le prompt mais pas dans la narration).
+> "…Les ateliers tournent tard. La presse, elle, s'enflamme tôt. **servent de banc d'essai à l'aube.** Les routes d'Émilie-Romagne **servent de banc d'essai à l'aube.** Au centre,…"
 
-## Changements proposés
+Whisper:
+- **Dropped** the real sentence "Le pays affiche une prospérité neuve."
+- **Duplicated** "servent de banc d'essai à l'aube"
 
-### 1. `src/pages/Editor.tsx` — enrichir le payload de détection
-Dans les deux endroits qui appellent `detect-object-shots` (auto post-prompts ligne ~1768 et manuel ligne ~1694), ajouter `prompt_export` au payload de chaque shot :
-```ts
-shotsPayload = shots.map(s => ({
-  id, scene_id,
-  source_sentence, source_sentence_fr, description,
-  prompt_export: s.prompt_export,   // ← nouveau
-}))
+Two reasons re-running gives the same result:
+1. All 3 parallel passes use `temperature=0` → deterministic → identical outputs → averaging cannot diverge.
+2. No `prompt` (script context) is sent to Whisper, so it has no way to disambiguate near-duplicate phrasing in Chirp 3 HD audio.
+
+## Plan
+
+### 1. Diversify the triple pass (`supabase/functions/whisper-align/index.ts`)
+
+Currently passes A/B/C all run at `temperature=0` → identical. Change to staggered temperatures so the model produces 3 *different* candidates:
+
+- Pass A: `temperature=0` (greedy)
+- Pass B: `temperature=0.2`
+- Pass C: `temperature=0.4`
+
+Then pick the candidate whose word count is **closest to the expected length** (sum of words in `orderedShots`) instead of always returning Pass A. This typically rescues dropped sentences.
+
+### 2. Send the expected script as a Whisper `prompt`
+
+Whisper supports a 244-token initial prompt that biases transcription toward expected vocabulary/phrasing. Build it from the first ~200 tokens of `orderedShots` text and pass `formData.append("prompt", scriptHint)` in `callWhisperChunk`. This is the single biggest accuracy improvement for hallucination-prone audio (drastically reduces dropped words and duplicated sentences).
+
+### 3. Pick best pass instead of always Pass A
+
+After repair, compute for each run:
+- `expectedWordCount` = total words in ordered shots
+- `delta` = `|run.words.length − expectedWordCount|`
+
+Return the run with smallest `delta` as `finalWords` (currently always returns runA on lines 536-538). Keep all 3 in the `passA/B/C` payload so the existing comparison UI still works.
+
+### 4. Editable whisper transcript in `WhisperAlignmentEditor.tsx` (manual escape hatch)
+
+Even with diversified passes + script prompt, some Chirp audio cases will still fool Whisper. Add a small **"Éditer la transcription"** action under the existing transcript view that:
+
+- Opens a textarea pre-filled with the current whisper transcript (one word per line with timestamps).
+- On save, persists the edited word array back to `vo_audio_history.whisper_words` for the current `audioEntryId` and re-dispatches `vo-audio-timepoints-updated` to force re-matching.
+
+This gives the user a way to insert "Le pays affiche une prospérité neuve." between two existing words without depending on Whisper.
+
+### Files touched
+
+```text
+supabase/functions/whisper-align/index.ts    (passes 1-3: temperature variation, script prompt, best-pass selection)
+src/components/editor/WhisperAlignmentEditor.tsx  (manual transcript editor section)
 ```
 
-### 2. `supabase/functions/detect-object-shots/index.ts` — analyser aussi le prompt visuel
-- Inclure `prompt_export` dans le `shotList` envoyé à l'IA, sous un libellé clair (ex : `Prompt visuel: "..."`).
-- Mettre à jour le system prompt pour préciser que l'analyse doit porter à la fois sur le **texte narratif** ET sur la **description visuelle générée**, car un objet peut être présent visuellement sans être nommé dans la narration.
-- Garder la limite de 300 caractères ou augmenter légèrement (ex : 400) pour le prompt visuel afin d'éviter de trop gonfler le payload.
+No DB migration needed — `whisper_words` already accepts arbitrary `jsonb`.
 
-### 3. Robustesse du déclenchement automatique
-Vérifier dans `BackgroundTasks.tsx` que `storyboard-prompts-complete` est bien dispatché aussi quand `promptOnly: true` est utilisé (régénération des prompts manquants), pas seulement à la première création. Ajuster la condition `!params.segmentOnly && failedSceneIds.length === 0 && totalShots > 0` si besoin pour qu'elle couvre `promptOnly`.
+### Why this fixes the user's case
 
-### 4. Toast de confirmation clair
-Garder le toast existant `Auto-détection : N liaison(s) objet↔shot trouvée(s)` et ajouter une mention quand des images de référence sont effectivement disponibles, ex :
-> « Auto-détection : 12 liaisons trouvées — 4 shots recevront des images de référence. »
-
-## Ce qui ne change pas
-- `generate-shot-image` n'a pas besoin de modification : il lit déjà `mentions_shots` + `reference_images` et injecte le bloc REFERENCE IMAGE RULE automatiquement.
-- `ObjectRegistryPanel` reste la source de vérité pour les images de référence par objet.
-- Le mécanisme de retry 429 et la logique de merge (union des liens existants + nouveaux) sont conservés.
-
-## Résultat attendu
-Dès que les prompts visuels sont générés (création initiale ou « Générer les prompts manquants »), une passe IA croise automatiquement chaque `prompt_export` ET le texte source avec le registre d'objets récurrents, met à jour `mentions_shots`, et la génération d'image suivante embarque automatiquement les images de référence + la REFERENCE IMAGE RULE pour préserver l'identité visuelle.
+For their shot 5: with `temperature=0.2/0.4` AND a script prompt biased on "Le pays affiche une prospérité neuve", Whisper will almost certainly recover the dropped sentence on at least one pass. Best-pass selection then surfaces it. If it still fails on rare Chirp cases, the manual editor provides a final-resort fix without burning Groq quota.
 
