@@ -1694,6 +1694,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       const shotsPayload = shots.map(s => ({
         id: s.id, scene_id: s.scene_id, source_sentence: s.source_sentence,
         source_sentence_fr: s.source_sentence_fr, description: s.description,
+        prompt_export: s.prompt_export,
       }));
       const { data, error } = await supabase.functions.invoke("detect-object-shots", {
         body: { objects: objectsPayload, shots: shotsPayload },
@@ -1709,7 +1710,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       });
       handleObjectRegistryChange(updated);
       const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
-      toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)`);
+      const shotsWithRefs = new Set<string>();
+      for (const obj of recurringObjects) {
+        const refCount = Array.isArray(obj.reference_images) ? obj.reference_images.length : 0;
+        if (refCount === 0) continue;
+        for (const sid of results[obj.id] || []) shotsWithRefs.add(sid);
+      }
+      const refMsg = shotsWithRefs.size > 0 ? ` — ${shotsWithRefs.size} shot(s) recevront des images de référence` : "";
+      toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)${refMsg}`);
     } catch (err: any) {
       console.error("Manual detect objects error:", err);
       toast.error(err?.message || "Erreur lors de la détection");
@@ -1777,6 +1785,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
           source_sentence: s.source_sentence,
           source_sentence_fr: s.source_sentence_fr,
           description: s.description,
+          prompt_export: s.prompt_export,
         }));
 
         const { data, error } = await supabase.functions.invoke("detect-object-shots", {
@@ -1801,7 +1810,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         handleObjectRegistryChange(updated);
         const totalDetected = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
         if (totalDetected > 0) {
-          toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)`);
+          const shotsWithRefs = new Set<string>();
+          for (const obj of recurringObjects) {
+            const refCount = Array.isArray(obj.reference_images) ? obj.reference_images.length : 0;
+            if (refCount === 0) continue;
+            for (const sid of results[obj.id] || []) shotsWithRefs.add(sid);
+          }
+          const refMsg = shotsWithRefs.size > 0 ? ` — ${shotsWithRefs.size} shot(s) recevront des images de référence` : "";
+          toast.success(`Auto-détection : ${totalDetected} liaison(s) objet↔shot trouvée(s)${refMsg}`);
         }
       } catch (err) {
         console.warn("Auto-detect object shots error:", err);
