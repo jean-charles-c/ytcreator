@@ -142,34 +142,9 @@ export function matchShotsStrictSequential(
 
   // Shot 0 always anchors at word 0
   let searchFrom = 0;
-  let blocked = false;
 
   for (let shotIdx = 0; shotIdx < shots.length; shotIdx++) {
     const shot = shots[shotIdx];
-
-    // If we're blocked, check if this shot has a manual anchor to resume
-    if (blocked) {
-      const manualRange = resolveManualAnchorRange(anchors.get(shot.id));
-      if (manualRange) {
-        // Resume from manual anchor
-      results.push({
-        shotId: shot.id,
-        whisperStartIdx: manualRange.startIdx,
-        matchedWords:
-          manualRange.endIdx !== null
-            ? Math.max(1, manualRange.endIdx - manualRange.startIdx + 1)
-            : REQUIRED_MATCH_COUNT,
-        blocked: false,
-        coverageRatio: computeCoverageRatio(shot.text, whisperWords, manualRange.startIdx),
-      });
-      searchFrom = getManualResumeIndex(manualRange, shot.text);
-      blocked = false;
-      continue;
-      }
-      // Still blocked
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: false, coverageRatio: 0 });
-      continue;
-    }
 
     // First shot: anchor at word 0
     if (shotIdx === 0) {
@@ -204,9 +179,8 @@ export function matchShotsStrictSequential(
     const leadWords = extractLeadingWords(shot.text, REQUIRED_MATCH_COUNT);
 
     if (leadWords.length < FALLBACK_MATCH_COUNT) {
-      // Not enough words to match — block
+      // Not enough words to match — skip but DON'T block subsequent shots
       results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
-      blocked = true;
       continue;
     }
 
@@ -247,28 +221,15 @@ export function matchShotsStrictSequential(
         blocked: false,
         coverageRatio: computeCoverageRatio(shot.text, whisperWords, foundIdx),
       });
-      // Advance past the matched words + a minimum gap to avoid false-positive
-      // matches on the very next word that cause near-zero durations
       const shotWordCount = shot.text.split(/\s+/).filter(w => w.length > 0).length;
       const minAdvance = Math.max(matchedCount, Math.floor(shotWordCount * 0.5), 3);
       searchFrom = foundIdx + minAdvance;
     } else {
-      // 🔍 DIAGNOSTIC: log why this shot failed to match
-      const windowTokens = whisperWords
-        .slice(searchFrom, Math.min(searchEnd, searchFrom + 15))
-        .map((w, i) => `[${searchFrom + i}] "${w.word}" → "${norm(w.word)}"`);
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[whisperTextMatcher] ❌ NO MATCH for shot ${shot.id} (idx ${shotIdx})\n` +
-        `  shot.text: "${shot.text.slice(0, 80)}"\n` +
-        `  leadWords (3): [${leadWords.join(", ")}]\n` +
-        `  searchFrom: ${searchFrom} (window end: ${searchEnd})\n` +
-        `  prev shot ended at: ${shotIdx > 0 ? results[shotIdx - 1].whisperStartIdx : "n/a"}\n` +
-        `  whisper window (first 15):\n    ${windowTokens.join("\n    ")}`
-      );
-      // Blocked!
+      // ⚠️ AUTO-SKIP: mark this shot as blocked (red) but DO NOT propagate the block.
+      // Subsequent shots keep trying from the same searchFrom — the cascade survives
+      // a single bad shot (e.g. Whisper splitting "Sant'Agata" into "Santa Gata").
       results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
-      blocked = true;
+      // searchFrom stays unchanged — the next shot will search the same window
     }
   }
 
