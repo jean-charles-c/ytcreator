@@ -12,7 +12,7 @@ import VoicePreviewTest from "./VoicePreviewTest";
 import GeneratedAudioHistory from "./GeneratedAudioHistory";
 import { validateExactAlignedShotSentences, validateExactShotTimepoints } from "./exactShotSync";
 import MusicStudio from "./MusicStudio";
-import { buildExactShotScript, buildExactShotSentences, getShotFragmentText, normalizeExactSyncText } from "./voiceOverShotSync";
+import { buildExactShotScript, buildExactShotSentences, normalizeExactSyncText } from "./voiceOverShotSync";
 import CustomPronunciationsPanel from "./CustomPronunciationsPanel";
 import CustomTtsTransformsPanel from "./CustomTtsTransformsPanel";
 import ChirpAlignmentReview from "./ChirpAlignmentReview";
