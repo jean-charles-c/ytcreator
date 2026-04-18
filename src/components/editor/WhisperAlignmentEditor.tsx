@@ -52,30 +52,83 @@ function normWord(w: string): string {
  *  - "estimated" : segment too short or low coverage but timecode usable.
  *  - "mismatch"  : segment is severely truncated vs expected text.
  */
+// French stop-words: too frequent to count as meaningful overlap
+const STOP_WORDS = new Set([
+  "le", "la", "les", "l", "un", "une", "des", "de", "du", "d",
+  "et", "ou", "mais", "donc", "car", "ni", "or",
+  "a", "à", "au", "aux", "en", "dans", "sur", "sous", "par", "pour", "avec", "sans",
+  "ce", "cet", "cette", "ces", "se", "s", "sa", "son", "ses", "leur", "leurs",
+  "je", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles", "me", "te", "lui", "y",
+  "qui", "que", "quoi", "qu", "dont", "où",
+  "est", "sont", "été", "était", "ont", "a", "ai", "as", "avez", "avons",
+  "ne", "pas", "plus", "moins", "très", "si", "tout", "tous", "toute", "toutes",
+]);
+
+/**
+ * Verify that the Whisper segment actually assigned to a shot
+ * (whisperStartIdx → whisperEndIdx) is coherent with the expected text.
+ *
+ * Strategy (durci) :
+ *  1. Coverage est calculée uniquement sur les mots SIGNIFICATIFS (hors stop-words).
+ *  2. On exige aussi un anchor séquentiel : au moins 2 mots significatifs consécutifs
+ *     du shot doivent apparaître consécutivement dans le segment. Sinon → mismatch.
+ *
+ * Returns:
+ *  - "ok"        : ancrage séquentiel + couverture significative ≥ 60%.
+ *  - "estimated" : ancrage présent mais couverture moyenne (40–60%).
+ *  - "mismatch"  : pas d'ancrage séquentiel OU couverture < 40%.
+ */
 function verifySegmentIntegrity(
   shotText: string,
   segmentWords: { word: string }[]
 ): "ok" | "estimated" | "mismatch" {
-  const expected = shotText
+  const expectedAll = shotText
     .split(/\s+/)
     .map(normWord)
     .filter((w) => w.length > 0);
-  const actual = segmentWords.map((w) => normWord(w.word)).filter((w) => w.length > 0);
+  const actualAll = segmentWords.map((w) => normWord(w.word)).filter((w) => w.length > 0);
 
-  if (expected.length === 0) return "ok";
+  if (expectedAll.length === 0) return "ok";
 
-  // Severe truncation: assigned segment is < 30% of expected words AND has < 3 words
-  const lengthRatio = actual.length / expected.length;
-  if (actual.length < 3 && expected.length >= 4) return "mismatch";
-  if (lengthRatio < 0.3 && expected.length >= 4) return "mismatch";
+  // Severe truncation guard
+  const lengthRatio = actualAll.length / expectedAll.length;
+  if (actualAll.length < 3 && expectedAll.length >= 4) return "mismatch";
+  if (lengthRatio < 0.3 && expectedAll.length >= 4) return "mismatch";
 
-  // Coverage of expected words actually present in segment (any order)
-  const actualSet = new Set(actual);
-  const matched = expected.filter((w) => actualSet.has(w)).length;
-  const coverage = matched / expected.length;
+  // Filter out stop-words for meaningful comparison
+  const expectedMeaningful = expectedAll.filter((w) => !STOP_WORDS.has(w) && w.length > 1);
+  const actualMeaningful = actualAll.filter((w) => !STOP_WORDS.has(w) && w.length > 1);
 
-  const requiredCoverage = expected.length < 4 ? 1.0 : 0.6;
+  // If shot text is only stop-words, fall back to full set
+  const expSet = expectedMeaningful.length > 0 ? expectedMeaningful : expectedAll;
+  const actSet = new Set(actualMeaningful.length > 0 ? actualMeaningful : actualAll);
+
+  const matched = expSet.filter((w) => actSet.has(w)).length;
+  const coverage = matched / expSet.length;
+
+  // Sequential anchor: look for any 2 consecutive meaningful words from expected
+  // appearing consecutively in actual.
+  let hasAnchor = false;
+  if (expectedMeaningful.length >= 2 && actualMeaningful.length >= 2) {
+    for (let i = 0; i < expectedMeaningful.length - 1 && !hasAnchor; i++) {
+      const a = expectedMeaningful[i];
+      const b = expectedMeaningful[i + 1];
+      for (let j = 0; j < actualMeaningful.length - 1; j++) {
+        if (actualMeaningful[j] === a && actualMeaningful[j + 1] === b) {
+          hasAnchor = true;
+          break;
+        }
+      }
+    }
+  } else {
+    // Too few meaningful words: rely on coverage alone
+    hasAnchor = coverage >= 0.6;
+  }
+
+  if (!hasAnchor) return "mismatch";
   if (coverage < 0.4) return "mismatch";
+
+  const requiredCoverage = expSet.length < 4 ? 0.75 : 0.6;
   if (coverage < requiredCoverage || lengthRatio < 0.5) return "estimated";
   return "ok";
 }
