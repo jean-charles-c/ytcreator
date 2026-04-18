@@ -601,12 +601,13 @@ export default function WhisperAlignmentEditor({
       const isManual = manualRange !== undefined;
       const manualSelectionEndIdx = manualRange?.endIdx ?? null;
       let status: AlignedShot["status"];
-      if (isBlocked) {
+      if (isManual && startTime !== null) {
+        // Manual anchor wins: user has explicitly validated this shot.
+        status = "ok";
+      } else if (isBlocked) {
         status = "blocked";
       } else if (whisperStartIdx !== null && matchResult) {
         status = coverageStatus(matchResult, text);
-      } else if (isManual && startTime !== null) {
-        status = "estimated";
       } else {
         status = "missing";
       }
