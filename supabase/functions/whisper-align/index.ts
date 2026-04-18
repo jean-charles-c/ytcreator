@@ -159,7 +159,8 @@ async function callWhisperChunk(
   audioBlob: Blob,
   fileExtension: string,
   groqApiKey: string,
-  temperature: number
+  temperature: number,
+  scriptHint?: string
 ): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
   const formData = new FormData();
   formData.append("file", audioBlob, `audio.${fileExtension}`);
@@ -169,6 +170,12 @@ async function callWhisperChunk(
   formData.append("timestamp_granularities[]", "word");
   if (temperature > 0) {
     formData.append("temperature", String(temperature));
+  }
+  // Whisper supports up to 244 tokens of initial prompt.
+  // Bias the model with the expected script — drastically reduces dropped sentences
+  // and duplicated phrases on Chirp-generated audio.
+  if (scriptHint && scriptHint.trim().length > 0) {
+    formData.append("prompt", scriptHint.slice(0, 900));
   }
 
   // Hard cap total retry budget to stay under edge function 150s idle timeout.
