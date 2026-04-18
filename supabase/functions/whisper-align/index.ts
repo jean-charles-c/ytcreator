@@ -171,7 +171,9 @@ async function callWhisperChunk(
     formData.append("temperature", String(temperature));
   }
 
-  const MAX_ATTEMPTS = 4;
+  // Hard cap total retry budget to stay under edge function 150s idle timeout.
+  const MAX_ATTEMPTS = 3;
+  const MAX_WAIT_MS = 25_000; // never wait more than 25s between retries
   let resp: Response | null = null;
   let lastErrText = "";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -189,18 +191,37 @@ async function callWhisperChunk(
     lastErrText = await resp.text();
     const isRetryable = resp.status === 429 || resp.status === 503 || resp.status === 504;
     if (!isRetryable || attempt === MAX_ATTEMPTS) {
+      if (resp.status === 429) {
+        const hint = lastErrText.match(/try again in\s+([^.\"]+)/i);
+        const waitHint = hint ? hint[1].trim() : "quelques minutes";
+        throw new Error(
+          `Groq Whisper rate limit atteint (quota d'audio par heure dépassé). Réessayez dans ${waitHint}.`
+        );
+      }
       throw new Error(`Groq Whisper [${resp.status}]: ${lastErrText}`);
     }
 
-    // Try to honor "try again in Xs/Xm" hint from Groq, otherwise exponential backoff
-    let waitMs = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s
+    // Honor "try again in Xs/Xm" hint, but cap to MAX_WAIT_MS so we don't hit edge timeout.
+    let waitMs = 3000 * attempt; // 3s, 6s
     const hint = lastErrText.match(/try again in\s+(?:(\d+)m)?\s*(\d+(?:\.\d+)?)?s/i);
+    let hintedMs = 0;
     if (hint) {
       const mins = hint[1] ? parseInt(hint[1], 10) : 0;
       const secs = hint[2] ? parseFloat(hint[2]) : 0;
-      const hintedMs = (mins * 60 + secs) * 1000 + 1500; // small buffer
-      if (hintedMs > 0) waitMs = Math.min(hintedMs, 180_000); // cap at 3min
+      hintedMs = (mins * 60 + secs) * 1000 + 1000;
+      if (hintedMs > 0) waitMs = hintedMs;
     }
+
+    // If the suggested wait exceeds our budget, fail fast with a clear message
+    // instead of timing out the whole edge function at 150s.
+    if (resp.status === 429 && hintedMs > MAX_WAIT_MS) {
+      const waitHint = hint ? hint[0].replace(/^try again in\s+/i, "") : "quelques minutes";
+      throw new Error(
+        `Groq Whisper rate limit atteint (quota d'audio par heure dépassé). Réessayez dans ${waitHint}.`
+      );
+    }
+
+    waitMs = Math.min(waitMs, MAX_WAIT_MS);
     console.warn(`[whisper-align] Groq ${resp.status} on attempt ${attempt}/${MAX_ATTEMPTS}, retrying in ${Math.round(waitMs)}ms`);
     await new Promise((r) => setTimeout(r, waitMs));
   }
