@@ -1017,7 +1017,7 @@ export default function WhisperAlignmentEditor({
           </div>
         )}
 
-
+        {loading && (
           <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" /> Chargement…
           </p>
