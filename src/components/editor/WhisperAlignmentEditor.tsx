@@ -783,6 +783,12 @@ export default function WhisperAlignmentEditor({
     let promoted = 0;
 
     const verified = alignedShots.map((shot) => {
+      // Les shots manuels sont explicitement validés par l'utilisateur :
+      // on ne les rétrograde jamais en mismatch/blocked.
+      if (shot.isManualAnchor) {
+        return shot.status === "ok" ? shot : { ...shot, status: "ok" as const };
+      }
+
       // Skip blocked / missing shots — already flagged
       if (shot.status === "blocked" || shot.status === "missing") return shot;
       if (shot.whisperStartIdx === null || shot.whisperEndIdx === null) return shot;
