@@ -192,8 +192,7 @@ async function callWhisperChunk(
   // Bias the model with the expected script — drastically reduces dropped sentences
   // and duplicated phrases on Chirp-generated audio.
   if (scriptHint && scriptHint.trim().length > 0) {
-    // Groq Whisper limite le prompt à 896 caractères. Marge de sécurité à 880.
-    formData.append("prompt", scriptHint.slice(0, 880));
+    formData.append("prompt", truncateUtf8(scriptHint, GROQ_PROMPT_SAFE_BYTES));
   }
 
   // Hard cap total retry budget to stay under edge function 150s idle timeout.
@@ -513,13 +512,15 @@ Deno.serve(async (req) => {
     }
 
     // Build a script hint to bias Whisper towards the expected words / phrasing.
-    // Groq Whisper limit: 896 characters max. We use 880 for safety margin.
-    const scriptHint = orderedShots
-      .map((s) => s.text)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 880);
+    // Groq Whisper counts UTF-8 bytes, not JS characters.
+    const scriptHint = truncateUtf8(
+      orderedShots
+        .map((s) => s.text)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim(),
+      GROQ_PROMPT_SAFE_BYTES
+    );
 
     // Expected total word count from the script — used to pick the most accurate pass.
     const expectedWordCount = orderedShots.reduce(
