@@ -1,39 +1,44 @@
 
 
-## Diagnostic
+## Compréhension corrigée
 
-La triple passe Whisper fonctionne (les 1199 mots sont bien réécrits sur la bonne ligne `vo_audio_history`), mais Whisper **hallucine** sur ton audio shot 5 :
-- Phrase manquante : « Le pays affiche une prospérité neuve. »
-- Phrase dupliquée : « servent de banc d'essai à l'aube »
+Mon diagnostic précédent était faux : Whisper ne fusionne PAS les mots. C'est ton copier-coller depuis la textarea qui supprime les espaces à l'affichage. Côté données, les `whisperWords` sont bien des tokens séparés avec leurs timestamps individuels.
 
-Pourquoi relancer ne change rien :
-1. Les 3 passes parallèles tournent toutes à `temperature=0` → résultats identiques.
-2. Aucun `prompt` (contexte du script) n'est envoyé à Whisper, donc rien ne le guide.
+Donc le shot 41 a un vrai problème de matching, mais pas pour la raison que je pensais. Il faut que j'inspecte les vraies données pour comprendre.
+
+## Hypothèses à vérifier
+
+Vu que les mots SONT bien séparés côté Whisper et que la phrase attendue « Sous certaines P400 précoces, les restaurations font apparaître des différences nettes. » correspond mot pour mot à ce que tu vois dans la textarea, le shot 41 devrait matcher trivialement avec la passe « 3 mots exacts ».
+
+Causes plausibles :
+
+1. **Le shot précédent (40) a "volé" la fenêtre** : si shot 40 a matché trop loin dans le transcript (ex: à l'index 1100), alors `searchFrom` pour shot 41 démarre après "Sous certaines P400…" qui se trouve avant. Le matcher ne regarde QUE en avant (`searchFrom → searchFrom + 50`).
+
+2. **Le shot 41 est marqué `blocked` à cause d'un shot antérieur bloqué** : la chaîne séquentielle stricte propage le blocage.
+
+3. **Normalisation de "P400"** : `norm("P400")` donne bien `"p400"` (la regex `[^\p{L}\p{N}']` garde les chiffres), donc OK a priori. Mais si Whisper a transcrit « P 400 » (avec espace) ou « pé quatre cents », les 3 premiers mots `["sous", "certaines", "p400"]` ne matchent pas.
+
+4. **Le matcher trouve un faux positif "Sous" plus tôt** : il y a peut-être un autre "Sous certaines …" dans le transcript qui aspire shot 41.
 
 ## Plan
 
-### 1. Diversifier la triple passe (`supabase/functions/whisper-align/index.ts`)
-- Passe A : `temperature=0`
-- Passe B : `temperature=0.2`
-- Passe C : `temperature=0.4`
+### Étape 1 — Diagnostic ciblé (logs temporaires)
+Ajouter dans `whisperTextMatcher.ts` un `console.debug` quand un shot ne match pas en passes 1 et 2 : afficher les `leadWords` du shot, `searchFrom`, et les 10 premiers tokens Whisper de la fenêtre. Tu relances la triple passe sur le projet, on lit les logs navigateur pour shot 41 et on saura exactement ce que Whisper a renvoyé pour « P400 ».
 
-### 2. Envoyer le script attendu en `prompt` Whisper
-Construire un prompt à partir des ~200 premiers tokens des `orderedShots` et l'ajouter via `formData.append("prompt", scriptHint)` dans `callWhisperChunk`. C'est le levier le plus puissant contre les hallucinations (mots oubliés / phrases dupliquées).
+### Étape 2 — Correctif selon le diagnostic
+Trois correctifs candidats, à appliquer selon ce que révèlent les logs :
 
-### 3. Sélectionner la meilleure passe au lieu de toujours renvoyer A
-Calculer `expectedWordCount` (somme des mots des shots) et choisir la passe dont `|words.length − expectedWordCount|` est le plus petit comme `finalWords`. Garder A/B/C dans le payload pour préserver l'UI de comparaison existante.
+- **Si « P400 » est transcrit « P 400 »** → améliorer `extractLeadingWords` pour fusionner lettre+chiffre adjacents, OU étendre la passe 2 à un matching avec recombinaison de tokens.
+- **Si shot 40 a sur-avancé `searchFrom`** → ajouter un *back-search limité* (regarder aussi `[searchFrom - 10 … searchFrom]`) en passe 3, uniquement si la passe 1+2 échoue, pour récupérer les shots qui ont été "sautés".
+- **Si un shot antérieur est bloqué** → afficher clairement dans l'UI quel shot a bloqué la chaîne pour shot 41, pour que tu cales celui-là d'abord.
 
-### 4. Éditeur manuel de transcription (`WhisperAlignmentEditor.tsx`)
-Ajouter une action **« Éditer la transcription »** : ouvre une textarea pré-remplie avec les mots Whisper (un mot + timestamp par ligne). À la sauvegarde, persiste le tableau modifié dans `vo_audio_history.whisper_words` pour l'`audioEntryId` courant et redéclenche `vo-audio-timepoints-updated`. Filet de sécurité quand Whisper rate vraiment.
+### Étape 3 — Nettoyage
+Retirer les `console.debug` une fois le bug compris et corrigé.
 
-### Fichiers touchés
+### Fichier touché
 ```text
-supabase/functions/whisper-align/index.ts
-src/components/editor/WhisperAlignmentEditor.tsx
+src/components/editor/whisperTextMatcher.ts
 ```
 
-Aucune migration DB nécessaire (`whisper_words` est déjà du `jsonb` libre).
-
-### Pourquoi ça résout ton cas shot 5
-Avec `temperature=0.2/0.4` ET un prompt biaisé contenant « Le pays affiche une prospérité neuve », au moins une passe a de fortes chances de récupérer la phrase manquante. La sélection « best-pass » la fera remonter automatiquement. Et si ça échoue encore, l'éditeur manuel permet d'insérer le segment sans reconsommer du quota Groq.
+Aucune migration DB, aucun changement Edge Function.
 
