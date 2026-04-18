@@ -493,66 +493,12 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     setHistoryRefreshKey((k) => k + 1);
     toast.success(`Audio réassemblé — ${assembled.durationEstimate.toFixed(1)}s`);
 
-    // Re-run whisper + shot mapping
-    if (!freeMode && shots && shots.length > 0) {
-      toast.info("Réalignement Whisper…");
-      try {
-        const alignResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ audioUrl: assembled.audioUrl, projectId, dualPass: true }),
-          }
-        );
-
-        if (alignResponse.ok) {
-          const alignData = await alignResponse.json();
-
-          if (alignData.alignmentRun) {
-            const sortedShots = getSortedShots();
-            const shotSources = sortedShots.map((s) => ({
-              shotId: s.id,
-              text: getShotFragmentText(s),
-            })).filter((s) => s.text.length > 0);
-
-            const { data: latestAudio } = await supabase
-              .from("vo_audio_history")
-              .select("id")
-              .eq("project_id", projectId)
-              .eq("style", "chirp3hd-assembled")
-              .order("created_at", { ascending: false })
-              .limit(1);
-
-            await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chirp-shot-mapping`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                  alignmentRun: alignData.alignmentRun,
-                  shots: shotSources,
-                  projectId,
-                  audioHistoryId: latestAudio?.[0]?.id,
-                }),
-              }
-            );
-          }
-
-          toast.success("Réalignement terminé.");
-          setHistoryRefreshKey((k) => k + 1);
-        }
-      } catch {
-        toast.warning("Réalignement Whisper échoué.");
-      }
+    // Whisper alignment is now manual — triggered from the history panel.
+    if (!freeMode) {
+      toast.info(
+        "Audio prêt. Cliquez sur « Aligner Whisper » dans l'historique pour relancer l'alignement.",
+        { duration: 6000 }
+      );
     }
 
     setGenerating(false);
