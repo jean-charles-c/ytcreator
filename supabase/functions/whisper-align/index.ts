@@ -567,11 +567,11 @@ Deno.serve(async (req) => {
 
     if (useTriplePass) {
       // Run passes IN PARALLEL with diversified temperatures so candidates differ.
-      console.log(`[whisper-align] Triple pass — parallel execution (temp 0 / 0.2 / 0.4)`);
+      console.log(`[whisper-align] Triple pass — parallel execution (temp 0 / 0 / 0)`);
       const [rawRunA, rawRunB, rawRunC] = await Promise.all([
         runOnePass(0),
-        runOnePass(0.2),
-        runOnePass(0.4),
+        runOnePass(0),
+        runOnePass(0),
       ]);
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
@@ -605,8 +605,8 @@ Deno.serve(async (req) => {
       repairSummary = { repairCount: bestRun.repairCount, insertedWordCount: bestRun.insertedWordCount };
     } else if (useDualPass) {
       // Run passes IN PARALLEL with diversified temperatures.
-      console.log(`[whisper-align] Dual pass — parallel execution (temp 0 / 0.2)`);
-      const [rawRunA, rawRunB] = await Promise.all([runOnePass(0), runOnePass(0.2)]);
+      console.log(`[whisper-align] Dual pass — parallel execution (temp 0 / 0)`);
+      const [rawRunA, rawRunB] = await Promise.all([runOnePass(0), runOnePass(0)]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
