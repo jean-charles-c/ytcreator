@@ -307,7 +307,8 @@ async function callWhisperOnChunks(
   wavBuffer: ArrayBuffer,
   chunkInfos: WavChunkInfo[],
   groqApiKey: string,
-  temperature: number
+  temperature: number,
+  scriptHint?: string
 ): Promise<{ words: WordTimestamp[]; transcript: string; duration: number }> {
   const allWords: WordTimestamp[] = [];
   let fullTranscript = "";
@@ -318,7 +319,7 @@ async function callWhisperOnChunks(
     const chunkBlob = buildWavChunk(wavBuffer, info);
     console.log(`[whisper-align] Sending chunk ${i + 1}/${chunkInfos.length} (${chunkBlob.size} bytes, offset=${info.timeOffset.toFixed(1)}s)`);
 
-    const result = await callWhisperChunk(chunkBlob, "wav", groqApiKey, temperature);
+    const result = await callWhisperChunk(chunkBlob, "wav", groqApiKey, temperature, scriptHint);
 
     for (const w of result.words) {
       allWords.push({
