@@ -902,7 +902,122 @@ export default function WhisperAlignmentEditor({
           </div>
         )}
 
-        {loading && (
+        {/* Manual transcript editor — escape hatch when Whisper drops/duplicates words */}
+        {!loading && whisperWords.length > 0 && (
+          <div className="rounded border border-dashed border-border bg-muted/20 px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <Search className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-[10px] text-muted-foreground flex-1">
+                Éditeur manuel de la transcription Whisper ({whisperWords.length} mots).
+                Format par ligne : <code className="font-mono">start end mot</code> (secondes).
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[9px] px-2"
+                onClick={() => {
+                  if (editTranscriptOpen) {
+                    setEditTranscriptOpen(false);
+                    return;
+                  }
+                  const draft = whisperWords
+                    .map((w) => `${w.start.toFixed(3)} ${w.end.toFixed(3)} ${w.word}`)
+                    .join("\n");
+                  setEditTranscriptDraft(draft);
+                  setEditTranscriptOpen(true);
+                }}
+              >
+                {editTranscriptOpen ? "Annuler" : "Éditer la transcription"}
+              </Button>
+            </div>
+            {editTranscriptOpen && (
+              <>
+                <textarea
+                  value={editTranscriptDraft}
+                  onChange={(e) => setEditTranscriptDraft(e.target.value)}
+                  className="w-full h-48 text-[10px] font-mono bg-background border border-border rounded p-2 resize-y"
+                  placeholder="0.000 0.250 Bonjour&#10;0.260 0.500 le&#10;0.510 0.900 monde"
+                  spellCheck={false}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <span className="text-[9px] text-muted-foreground mr-auto">
+                    Astuce : insérez des lignes pour les mots manquants, supprimez celles qui sont en double, puis enregistrez.
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-6 text-[9px] px-2"
+                    disabled={saving}
+                    onClick={async () => {
+                      if (!audioEntryId) {
+                        toast.error("Aucun audio sélectionné");
+                        return;
+                      }
+                      // Parse: each non-empty line = "start end word..."
+                      const lines = editTranscriptDraft
+                        .split(/\r?\n/)
+                        .map((l) => l.trim())
+                        .filter((l) => l.length > 0);
+                      const parsed: WhisperWord[] = [];
+                      const errors: string[] = [];
+                      lines.forEach((line, idx) => {
+                        const m = line.match(/^(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(.+)$/);
+                        if (!m) {
+                          errors.push(`Ligne ${idx + 1} ignorée (format invalide)`);
+                          return;
+                        }
+                        const start = parseFloat(m[1].replace(",", "."));
+                        const end = parseFloat(m[2].replace(",", "."));
+                        const word = m[3].trim();
+                        if (!Number.isFinite(start) || !Number.isFinite(end) || word.length === 0) {
+                          errors.push(`Ligne ${idx + 1} ignorée (valeurs invalides)`);
+                          return;
+                        }
+                        parsed.push({ word, start, end: Math.max(end, start) });
+                      });
+                      if (parsed.length === 0) {
+                        toast.error("Aucun mot valide à enregistrer");
+                        return;
+                      }
+                      // Sort by start time to keep the timeline monotonic
+                      parsed.sort((a, b) => a.start - b.start);
+                      setSaving(true);
+                      try {
+                        const { error } = await supabase
+                          .from("vo_audio_history")
+                          .update({ whisper_words: parsed as any })
+                          .eq("id", audioEntryId);
+                        if (error) throw error;
+                        toast.success(
+                          `Transcription enregistrée (${parsed.length} mots${errors.length ? `, ${errors.length} ligne(s) ignorée(s)` : ""})`
+                        );
+                        setEditTranscriptOpen(false);
+                        // Trigger reload of the editor so alignment recomputes
+                        if (typeof window !== "undefined") {
+                          window.dispatchEvent(
+                            new CustomEvent("vo-audio-timepoints-updated", {
+                              detail: { projectId, audioEntryId },
+                            })
+                          );
+                        }
+                        setReloadTick((t) => t + 1);
+                      } catch (e: any) {
+                        console.error("[WhisperAlignmentEditor] manual transcript save error:", e);
+                        toast.error("Erreur lors de l'enregistrement");
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                  >
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Enregistrer la transcription"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+
           <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" /> Chargement…
           </p>
