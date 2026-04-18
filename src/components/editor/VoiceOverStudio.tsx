@@ -1121,6 +1121,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
   const [voOpen, setVoOpen] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
+  const [sceneAudioOpen, setSceneAudioOpen] = useState(true);
 
   // ── Desync detection: compare current shots with latest audio timepoints ──
   const [desyncWarning, setDesyncWarning] = useState<string | null>(null);
