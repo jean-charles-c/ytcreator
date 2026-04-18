@@ -1434,17 +1434,26 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
                 {/* Per-scene generation status — visible when audio exists OR generation in progress */}
                 {pipelineMode === "chirp3hd" && scenes && scenes.length > 0 && (sceneStatuses.size > 0 || sceneAudioMap.size > 0) && (
-                  <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
-                      <AudioLines className="h-3.5 w-3.5 text-primary" />
-                      Audio par scène
-                      {sceneAudioMap.size > 0 && (
-                        <span className="text-[10px] text-muted-foreground font-normal">
-                          ({sceneAudioMap.size}/{scenes.length} scènes)
-                        </span>
-                      )}
-                    </h4>
-                    <div className="space-y-1.5">
+                  <Collapsible open={sceneAudioOpen} onOpenChange={setSceneAudioOpen} className="rounded-lg border border-border bg-card">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between gap-2 p-3 hover:bg-secondary/30 transition-colors rounded-lg"
+                      >
+                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
+                          <AudioLines className="h-3.5 w-3.5 text-primary" />
+                          Audio par scène
+                          {sceneAudioMap.size > 0 && (
+                            <span className="text-[10px] text-muted-foreground font-normal">
+                              ({sceneAudioMap.size}/{scenes.length} scènes)
+                            </span>
+                          )}
+                        </h4>
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${sceneAudioOpen ? "rotate-180" : ""}`} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-3 pb-3 space-y-1.5">
                       {[...scenes]
                         .sort((a, b) => {
                           const oA = scenesForSort?.find((s) => s.id === a.id)?.scene_order ?? 0;
@@ -1547,8 +1556,9 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                             </div>
                           );
                         })}
-                    </div>
-                  </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
               </div>
 
