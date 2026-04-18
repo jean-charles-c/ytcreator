@@ -83,16 +83,34 @@ Deno.serve(async (req) => {
     for (let i = 0; i < sceneAudios.length; i++) {
       const scene = sceneAudios[i];
 
-      // Download WAV from storage
-      const { data: fileData, error: dlError } = await supabase.storage
-        .from("vo-audio")
-        .download(scene.file_path);
+      // Download WAV from storage with retry (handles transient 504/network errors)
+      let fileData: Blob | null = null;
+      let lastError: any = null;
+      const maxAttempts = 4;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const { data, error: dlError } = await supabase.storage
+          .from("vo-audio")
+          .download(scene.file_path);
+        if (!dlError && data) {
+          fileData = data;
+          lastError = null;
+          break;
+        }
+        lastError = dlError;
+        const msg = (dlError as any)?.message ?? JSON.stringify(dlError ?? {});
+        console.warn(`[assemble] Download attempt ${attempt}/${maxAttempts} failed for scene ${scene.scene_id} (order=${scene.scene_order}): ${msg}`);
+        if (attempt < maxAttempts) {
+          // Exponential backoff: ~500ms, 1500ms, 3500ms
+          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1) + 500 * (attempt - 1)));
+        }
+      }
 
-      if (dlError || !fileData) {
-        console.error(`[assemble] Failed to download scene ${scene.scene_id}:`, dlError);
+      if (!fileData) {
+        const detail = (lastError as any)?.message ?? (lastError ? JSON.stringify(lastError) : "fichier introuvable");
+        console.error(`[assemble] Failed to download scene ${scene.scene_id} after ${maxAttempts} attempts:`, lastError);
         return jsonResponse({
-          error: `Erreur téléchargement audio scène ${scene.scene_order + 1} : ${dlError?.message ?? "fichier introuvable"}`,
-        }, 500);
+          error: `Erreur téléchargement audio scène ${scene.scene_order + 1} après ${maxAttempts} tentatives : ${detail}. Réessayez dans quelques instants ou régénérez la scène.`,
+        }, 502);
       }
 
       const wavBytes = new Uint8Array(await fileData.arrayBuffer());
