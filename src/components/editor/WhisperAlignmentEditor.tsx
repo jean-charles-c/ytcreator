@@ -115,7 +115,7 @@ interface AlignedShot {
   manualSelectionEndIdx: number | null;
   startTime: number | null;
   endTime: number | null;
-  status: "ok" | "missing" | "manual" | "estimated" | "blocked";
+  status: "ok" | "missing" | "manual" | "estimated" | "blocked" | "mismatch";
   /** Was this shot manually anchored? */
   isManualAnchor: boolean;
   /** Is user currently editing this? */
