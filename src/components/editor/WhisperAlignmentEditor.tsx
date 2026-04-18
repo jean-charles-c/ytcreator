@@ -1761,21 +1761,57 @@ export default function WhisperAlignmentEditor({
                           </div>
                         )}
 
-                        {/* Edit button */}
+                        {/* Edit button + Validate button */}
                         {!isEditing && (
-                          <Button
-                            size="sm"
-                            variant={shot.status === "blocked" || shot.status === "missing" ? "destructive" : "outline"}
-                            className={`h-7 text-[10px] ${shot.status === "blocked" ? "animate-pulse" : ""}`}
-                            onClick={() => startEditing(shot.shotId)}
-                          >
-                            <Search className="h-3 w-3 mr-1" />
-                            {shot.status === "blocked"
-                              ? "⛔ Caler manuellement pour continuer"
-                              : shot.status === "missing"
-                              ? "Caler manuellement"
-                              : "Recaler"}
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant={shot.status === "blocked" || shot.status === "missing" ? "destructive" : "outline"}
+                              className={`h-7 text-[10px] ${shot.status === "blocked" ? "animate-pulse" : ""}`}
+                              onClick={() => startEditing(shot.shotId)}
+                            >
+                              <Search className="h-3 w-3 mr-1" />
+                              {shot.status === "blocked"
+                                ? "⛔ Caler manuellement pour continuer"
+                                : shot.status === "missing"
+                                ? "Caler manuellement"
+                                : "Recaler"}
+                            </Button>
+
+                            {/* Validate "estimated" calage as good → promote to ok */}
+                            {shot.status === "estimated" && shot.startTime !== null && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                                onClick={async () => {
+                                  const recalculated = alignedShots.map((s) =>
+                                    s.shotId === shot.shotId
+                                      ? { ...s, status: "ok" as const, isManualAnchor: true }
+                                      : s
+                                  );
+                                  setAlignedShots(recalculated);
+                                  if (audioEntryId) {
+                                    try {
+                                      const timepoints = buildTimepointsPayload(recalculated);
+                                      await supabase
+                                        .from("vo_audio_history")
+                                        .update({ shot_timepoints: timepoints as any })
+                                        .eq("id", audioEntryId);
+                                      notifyTimepointsUpdated();
+                                      toast.success(`Shot #${shot.globalIndex} validé ✓`);
+                                    } catch (e) {
+                                      console.error("[WhisperAlignmentEditor] validate error:", e);
+                                      toast.error("Validation locale appliquée mais erreur de sauvegarde");
+                                    }
+                                  }
+                                }}
+                              >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Valider le calage
+                              </Button>
+                            )}
+                          </div>
                         )}
 
                         {/* Manual selection UI */}
