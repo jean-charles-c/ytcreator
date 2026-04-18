@@ -506,19 +506,17 @@ Deno.serve(async (req) => {
     let repairSummary: { repairCount: number; insertedWordCount: number } | null = null;
 
     if (useTriplePass) {
-      // Run passes SEQUENTIALLY to stay within compute limits
-      console.log(`[whisper-align] Triple pass — sequential execution`);
-      const rawRunA = await runOnePass();
+      // Run passes IN PARALLEL to stay under edge function 150s timeout
+      console.log(`[whisper-align] Triple pass — parallel execution`);
+      const [rawRunA, rawRunB, rawRunC] = await Promise.all([
+        runOnePass(),
+        runOnePass(),
+        runOnePass(),
+      ]);
       const runA = repairWhisperRun(rawRunA, orderedShots);
-      console.log(`[whisper-align] Pass A: ${runA.words.length} words`);
-
-      const rawRunB = await runOnePass();
       const runB = repairWhisperRun(rawRunB, orderedShots);
-      console.log(`[whisper-align] Pass B: ${runB.words.length} words`);
-
-      const rawRunC = await runOnePass();
       const runC = repairWhisperRun(rawRunC, orderedShots);
-      console.log(`[whisper-align] Pass C: ${runC.words.length} words`);
+      console.log(`[whisper-align] Pass A/B/C: ${runA.words.length}/${runB.words.length}/${runC.words.length} words`);
 
       const compAB = compareRuns(runA.words, runB.words);
       const compAC = compareRuns(runA.words, runC.words);
@@ -539,9 +537,9 @@ Deno.serve(async (req) => {
       finalDuration = runA.duration;
       repairSummary = { repairCount: runA.repairCount, insertedWordCount: runA.insertedWordCount };
     } else if (useDualPass) {
-      // Run passes sequentially to avoid compute limits
-      const rawRunA = await runOnePass();
-      const rawRunB = await runOnePass();
+      // Run passes IN PARALLEL to stay under edge function 150s timeout
+      console.log(`[whisper-align] Dual pass — parallel execution`);
+      const [rawRunA, rawRunB] = await Promise.all([runOnePass(), runOnePass()]);
 
       const runA = repairWhisperRun(rawRunA, orderedShots);
       const runB = repairWhisperRun(rawRunB, orderedShots);
