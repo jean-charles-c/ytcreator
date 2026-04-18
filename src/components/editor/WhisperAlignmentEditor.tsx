@@ -784,6 +784,29 @@ export default function WhisperAlignmentEditor({
             </p>
           </div>
         )}
+
+        {/* Force re-run text alignment (uses current Whisper transcript) */}
+        {!loading && whisperWords.length > 0 && (
+          <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
+            <Search className="h-3 w-3 text-primary shrink-0" />
+            <span className="text-[10px] text-muted-foreground flex-1">
+              Re-jouer le calage automatique texte→Whisper sur la transcription actuelle
+            </span>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-6 text-[9px] px-2"
+              disabled={loading}
+              onClick={() => {
+                setReloadTick((t) => t + 1);
+                toast.info("Calage automatique en cours…");
+              }}
+            >
+              Calage automatique du texte
+            </Button>
+          </div>
+        )}
+
         {/* Global offset control */}
         {!loading && whisperWords.length > 0 && (
           <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
