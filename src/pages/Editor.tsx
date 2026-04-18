@@ -3538,13 +3538,6 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                       if (data) setScenes(data);
                     }}
                   />
-                  <div className="mt-3">
-                    <WhisperAlignmentEditor
-                      projectId={projectId!}
-                      shots={shots}
-                      scenesForSort={scenes.map(s => ({ id: s.id, scene_order: s.scene_order }))}
-                    />
-                  </div>
                 </div>
               </details>
 
