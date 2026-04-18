@@ -1,64 +1,39 @@
 
 
-## Diagnosis
+## Diagnostic
 
-The triple-pass whisper IS working correctly (logs confirm fresh 1199 words written to the right `vo_audio_history` row). The displayed transcript IS up to date.
+La triple passe Whisper fonctionne (les 1199 mots sont bien réécrits sur la bonne ligne `vo_audio_history`), mais Whisper **hallucine** sur ton audio shot 5 :
+- Phrase manquante : « Le pays affiche une prospérité neuve. »
+- Phrase dupliquée : « servent de banc d'essai à l'aube »
 
-The real problem: **Whisper itself is hallucinating** on this audio. Looking at the actual stored transcript around shot 5:
-
-> "…Les ateliers tournent tard. La presse, elle, s'enflamme tôt. **servent de banc d'essai à l'aube.** Les routes d'Émilie-Romagne **servent de banc d'essai à l'aube.** Au centre,…"
-
-Whisper:
-- **Dropped** the real sentence "Le pays affiche une prospérité neuve."
-- **Duplicated** "servent de banc d'essai à l'aube"
-
-Two reasons re-running gives the same result:
-1. All 3 parallel passes use `temperature=0` → deterministic → identical outputs → averaging cannot diverge.
-2. No `prompt` (script context) is sent to Whisper, so it has no way to disambiguate near-duplicate phrasing in Chirp 3 HD audio.
+Pourquoi relancer ne change rien :
+1. Les 3 passes parallèles tournent toutes à `temperature=0` → résultats identiques.
+2. Aucun `prompt` (contexte du script) n'est envoyé à Whisper, donc rien ne le guide.
 
 ## Plan
 
-### 1. Diversify the triple pass (`supabase/functions/whisper-align/index.ts`)
+### 1. Diversifier la triple passe (`supabase/functions/whisper-align/index.ts`)
+- Passe A : `temperature=0`
+- Passe B : `temperature=0.2`
+- Passe C : `temperature=0.4`
 
-Currently passes A/B/C all run at `temperature=0` → identical. Change to staggered temperatures so the model produces 3 *different* candidates:
+### 2. Envoyer le script attendu en `prompt` Whisper
+Construire un prompt à partir des ~200 premiers tokens des `orderedShots` et l'ajouter via `formData.append("prompt", scriptHint)` dans `callWhisperChunk`. C'est le levier le plus puissant contre les hallucinations (mots oubliés / phrases dupliquées).
 
-- Pass A: `temperature=0` (greedy)
-- Pass B: `temperature=0.2`
-- Pass C: `temperature=0.4`
+### 3. Sélectionner la meilleure passe au lieu de toujours renvoyer A
+Calculer `expectedWordCount` (somme des mots des shots) et choisir la passe dont `|words.length − expectedWordCount|` est le plus petit comme `finalWords`. Garder A/B/C dans le payload pour préserver l'UI de comparaison existante.
 
-Then pick the candidate whose word count is **closest to the expected length** (sum of words in `orderedShots`) instead of always returning Pass A. This typically rescues dropped sentences.
+### 4. Éditeur manuel de transcription (`WhisperAlignmentEditor.tsx`)
+Ajouter une action **« Éditer la transcription »** : ouvre une textarea pré-remplie avec les mots Whisper (un mot + timestamp par ligne). À la sauvegarde, persiste le tableau modifié dans `vo_audio_history.whisper_words` pour l'`audioEntryId` courant et redéclenche `vo-audio-timepoints-updated`. Filet de sécurité quand Whisper rate vraiment.
 
-### 2. Send the expected script as a Whisper `prompt`
-
-Whisper supports a 244-token initial prompt that biases transcription toward expected vocabulary/phrasing. Build it from the first ~200 tokens of `orderedShots` text and pass `formData.append("prompt", scriptHint)` in `callWhisperChunk`. This is the single biggest accuracy improvement for hallucination-prone audio (drastically reduces dropped words and duplicated sentences).
-
-### 3. Pick best pass instead of always Pass A
-
-After repair, compute for each run:
-- `expectedWordCount` = total words in ordered shots
-- `delta` = `|run.words.length − expectedWordCount|`
-
-Return the run with smallest `delta` as `finalWords` (currently always returns runA on lines 536-538). Keep all 3 in the `passA/B/C` payload so the existing comparison UI still works.
-
-### 4. Editable whisper transcript in `WhisperAlignmentEditor.tsx` (manual escape hatch)
-
-Even with diversified passes + script prompt, some Chirp audio cases will still fool Whisper. Add a small **"Éditer la transcription"** action under the existing transcript view that:
-
-- Opens a textarea pre-filled with the current whisper transcript (one word per line with timestamps).
-- On save, persists the edited word array back to `vo_audio_history.whisper_words` for the current `audioEntryId` and re-dispatches `vo-audio-timepoints-updated` to force re-matching.
-
-This gives the user a way to insert "Le pays affiche une prospérité neuve." between two existing words without depending on Whisper.
-
-### Files touched
-
+### Fichiers touchés
 ```text
-supabase/functions/whisper-align/index.ts    (passes 1-3: temperature variation, script prompt, best-pass selection)
-src/components/editor/WhisperAlignmentEditor.tsx  (manual transcript editor section)
+supabase/functions/whisper-align/index.ts
+src/components/editor/WhisperAlignmentEditor.tsx
 ```
 
-No DB migration needed — `whisper_words` already accepts arbitrary `jsonb`.
+Aucune migration DB nécessaire (`whisper_words` est déjà du `jsonb` libre).
 
-### Why this fixes the user's case
-
-For their shot 5: with `temperature=0.2/0.4` AND a script prompt biased on "Le pays affiche une prospérité neuve", Whisper will almost certainly recover the dropped sentence on at least one pass. Best-pass selection then surfaces it. If it still fails on rare Chirp cases, the manual editor provides a final-resort fix without burning Groq quota.
+### Pourquoi ça résout ton cas shot 5
+Avec `temperature=0.2/0.4` ET un prompt biaisé contenant « Le pays affiche une prospérité neuve », au moins une passe a de fortes chances de récupérer la phrase manquante. La sélection « best-pass » la fera remonter automatiquement. Et si ça échoue encore, l'éditeur manuel permet d'insérer le segment sans reconsommer du quota Groq.
 
