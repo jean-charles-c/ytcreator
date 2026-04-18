@@ -137,6 +137,8 @@ export default function WhisperAlignmentEditor({
   const [expandedShotIds, setExpandedShotIds] = useState<Set<string>>(new Set());
   const [globalOffset, setGlobalOffset] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [editTranscriptOpen, setEditTranscriptOpen] = useState(false);
+  const [editTranscriptDraft, setEditTranscriptDraft] = useState("");
   
   const [multiPassData, setMultiPassData] = useState<{
     passA: WhisperWord[];
