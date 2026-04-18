@@ -32,6 +32,54 @@ function coverageStatus(matchResult: StrictMatchResult, shotText: string): "ok" 
   return matchResult.coverageRatio >= requiredRatio ? "ok" : "estimated";
 }
 
+/** Normalise a word for cross-comparison (mirror of whisperTextMatcher norm). */
+function normWord(w: string): string {
+  return w
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[’'`´]/g, "'")
+    .replace(/[^\p{L}\p{N}']/gu, "")
+    .trim();
+}
+
+/**
+ * Verify that the Whisper segment actually assigned to a shot
+ * (whisperStartIdx → whisperEndIdx) is coherent with the expected text.
+ *
+ * Returns:
+ *  - "ok"        : segment word count + coverage are sufficient.
+ *  - "estimated" : segment too short or low coverage but timecode usable.
+ *  - "mismatch"  : segment is severely truncated vs expected text.
+ */
+function verifySegmentIntegrity(
+  shotText: string,
+  segmentWords: { word: string }[]
+): "ok" | "estimated" | "mismatch" {
+  const expected = shotText
+    .split(/\s+/)
+    .map(normWord)
+    .filter((w) => w.length > 0);
+  const actual = segmentWords.map((w) => normWord(w.word)).filter((w) => w.length > 0);
+
+  if (expected.length === 0) return "ok";
+
+  // Severe truncation: assigned segment is < 30% of expected words AND has < 3 words
+  const lengthRatio = actual.length / expected.length;
+  if (actual.length < 3 && expected.length >= 4) return "mismatch";
+  if (lengthRatio < 0.3 && expected.length >= 4) return "mismatch";
+
+  // Coverage of expected words actually present in segment (any order)
+  const actualSet = new Set(actual);
+  const matched = expected.filter((w) => actualSet.has(w)).length;
+  const coverage = matched / expected.length;
+
+  const requiredCoverage = expected.length < 4 ? 1.0 : 0.6;
+  if (coverage < 0.4) return "mismatch";
+  if (coverage < requiredCoverage || lengthRatio < 0.5) return "estimated";
+  return "ok";
+}
+
 // ── Types ──
 
 interface WhisperWord {
