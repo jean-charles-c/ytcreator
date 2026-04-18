@@ -258,7 +258,7 @@ export function matchShotsStrictSequential(
         .slice(searchFrom, Math.min(searchEnd, searchFrom + 15))
         .map((w, i) => `[${searchFrom + i}] "${w.word}" → "${norm(w.word)}"`);
       // eslint-disable-next-line no-console
-      console.debug(
+      console.warn(
         `[whisperTextMatcher] ❌ NO MATCH for shot ${shot.id} (idx ${shotIdx})\n` +
         `  shot.text: "${shot.text.slice(0, 80)}"\n` +
         `  leadWords (3): [${leadWords.join(", ")}]\n` +
