@@ -783,6 +783,12 @@ export default function WhisperAlignmentEditor({
     let promoted = 0;
 
     const verified = alignedShots.map((shot) => {
+      // Les shots manuels sont explicitement validés par l'utilisateur :
+      // on ne les rétrograde jamais en mismatch/blocked.
+      if (shot.isManualAnchor) {
+        return shot.status === "ok" ? shot : { ...shot, status: "ok" as const };
+      }
+
       // Skip blocked / missing shots — already flagged
       if (shot.status === "blocked" || shot.status === "missing") return shot;
       if (shot.whisperStartIdx === null || shot.whisperEndIdx === null) return shot;
@@ -1032,12 +1038,12 @@ export default function WhisperAlignmentEditor({
                       const isManual = manualAnchor !== undefined;
                       const manualSelectionEndIdx = manualAnchor?.endIdx ?? s.manualSelectionEndIdx ?? null;
                       let status: AlignedShot["status"];
-                      if (isBlocked) {
+                      if (isManual && startTime !== null) {
+                        status = "ok";
+                      } else if (isBlocked) {
                         status = "blocked";
                       } else if (whisperStartIdx !== null && strictMatch) {
                         status = coverageStatus(strictMatch, s.shotText);
-                      } else if (isManual && startTime !== null) {
-                        status = "estimated";
                       } else if (startTime !== null) {
                         status = "estimated";
                       } else {
@@ -1398,9 +1404,10 @@ export default function WhisperAlignmentEditor({
                             const isManual = manualRange !== undefined;
                             const manualSelectionEndIdx = manualRange?.endIdx ?? null;
                             let status: AlignedShot["status"];
-                            if (isBlocked) status = "blocked";
+                            if (isManual && startTime !== null) status = "ok";
+                            else if (isBlocked) status = "blocked";
                             else if (wsi !== null && matchResult) status = coverageStatus(matchResult, text);
-                            else if ((isManual || startTime !== null) && startTime !== null) status = "estimated";
+                            else if (startTime !== null) status = "estimated";
                             else status = "missing";
 
                             return {
