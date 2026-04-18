@@ -32,6 +32,54 @@ function coverageStatus(matchResult: StrictMatchResult, shotText: string): "ok" 
   return matchResult.coverageRatio >= requiredRatio ? "ok" : "estimated";
 }
 
+/** Normalise a word for cross-comparison (mirror of whisperTextMatcher norm). */
+function normWord(w: string): string {
+  return w
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[’'`´]/g, "'")
+    .replace(/[^\p{L}\p{N}']/gu, "")
+    .trim();
+}
+
+/**
+ * Verify that the Whisper segment actually assigned to a shot
+ * (whisperStartIdx → whisperEndIdx) is coherent with the expected text.
+ *
+ * Returns:
+ *  - "ok"        : segment word count + coverage are sufficient.
+ *  - "estimated" : segment too short or low coverage but timecode usable.
+ *  - "mismatch"  : segment is severely truncated vs expected text.
+ */
+function verifySegmentIntegrity(
+  shotText: string,
+  segmentWords: { word: string }[]
+): "ok" | "estimated" | "mismatch" {
+  const expected = shotText
+    .split(/\s+/)
+    .map(normWord)
+    .filter((w) => w.length > 0);
+  const actual = segmentWords.map((w) => normWord(w.word)).filter((w) => w.length > 0);
+
+  if (expected.length === 0) return "ok";
+
+  // Severe truncation: assigned segment is < 30% of expected words AND has < 3 words
+  const lengthRatio = actual.length / expected.length;
+  if (actual.length < 3 && expected.length >= 4) return "mismatch";
+  if (lengthRatio < 0.3 && expected.length >= 4) return "mismatch";
+
+  // Coverage of expected words actually present in segment (any order)
+  const actualSet = new Set(actual);
+  const matched = expected.filter((w) => actualSet.has(w)).length;
+  const coverage = matched / expected.length;
+
+  const requiredCoverage = expected.length < 4 ? 1.0 : 0.6;
+  if (coverage < 0.4) return "mismatch";
+  if (coverage < requiredCoverage || lengthRatio < 0.5) return "estimated";
+  return "ok";
+}
+
 // ── Types ──
 
 interface WhisperWord {
@@ -67,7 +115,7 @@ interface AlignedShot {
   manualSelectionEndIdx: number | null;
   startTime: number | null;
   endTime: number | null;
-  status: "ok" | "missing" | "manual" | "estimated" | "blocked";
+  status: "ok" | "missing" | "manual" | "estimated" | "blocked" | "mismatch";
   /** Was this shot manually anchored? */
   isManualAnchor: boolean;
   /** Is user currently editing this? */
@@ -433,6 +481,7 @@ export default function WhisperAlignmentEditor({
   const estimatedCount = alignedShots.filter((s) => s.status === "estimated").length;
   const blockedCount = alignedShots.filter((s) => s.status === "blocked").length;
   const missingCount = alignedShots.filter((s) => s.status === "missing").length;
+  const mismatchCount = alignedShots.filter((s) => s.status === "mismatch").length;
   const totalCount = alignedShots.length;
   const firstBlockedShot = alignedShots.find((s) => s.status === "blocked");
 
@@ -649,6 +698,52 @@ export default function WhisperAlignmentEditor({
     return alignedShots.some((s) => (s.status === "ok" || s.status === "estimated") && s.startTime !== null);
   }, [alignedShots]);
 
+  // ── Verify all shots: re-check that the assigned Whisper segment matches the expected text ──
+  const verifyAllShots = useCallback(() => {
+    if (alignedShots.length === 0) return;
+    let downgraded = 0;
+    let promoted = 0;
+
+    const verified = alignedShots.map((shot) => {
+      // Skip blocked / missing shots — already flagged
+      if (shot.status === "blocked" || shot.status === "missing") return shot;
+      if (shot.whisperStartIdx === null || shot.whisperEndIdx === null) return shot;
+
+      const segment = whisperWords.slice(shot.whisperStartIdx, shot.whisperEndIdx + 1);
+      const integrity = verifySegmentIntegrity(shot.shotText, segment);
+
+      if (integrity === "mismatch" && shot.status !== "mismatch") {
+        downgraded++;
+        return { ...shot, status: "mismatch" as const };
+      }
+      if (integrity === "estimated" && shot.status === "ok") {
+        downgraded++;
+        return { ...shot, status: "estimated" as const };
+      }
+      if (integrity === "ok" && shot.status === "mismatch") {
+        promoted++;
+        return { ...shot, status: "ok" as const };
+      }
+      return shot;
+    });
+
+    setAlignedShots(verified);
+
+    const mismatchCount = verified.filter((s) => s.status === "mismatch").length;
+    if (mismatchCount === 0 && downgraded === 0) {
+      toast.success(`Vérification OK — ${verified.length} shots cohérents avec le Whisper ✓`);
+    } else if (mismatchCount > 0) {
+      toast.warning(
+        `${mismatchCount} shot(s) incohérent(s) avec le Whisper — calez-les manuellement (en rouge)`
+      );
+    } else if (downgraded > 0) {
+      toast.info(`${downgraded} shot(s) rétrogradés en "estimé"`);
+    }
+    if (promoted > 0) {
+      console.log(`[WhisperAlignmentEditor] verifyAllShots: ${promoted} shots repassés en OK`);
+    }
+  }, [alignedShots, whisperWords]);
+
   if (totalCount === 0 && !loading && !multiPassData) return null;
 
   return (
@@ -659,12 +754,13 @@ export default function WhisperAlignmentEditor({
         {totalCount > 0 && (
           <span
             className={`ml-auto text-[9px] font-bold ${
-                blockedCount > 0 ? "text-destructive" : missingCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
+                blockedCount > 0 || missingCount > 0 || mismatchCount > 0 ? "text-destructive" : estimatedCount > 0 ? "text-orange-500" : "text-emerald-500"
             }`}
           >
             {okCount}/{totalCount}
             {manualCount > 0 && <span className="text-emerald-500 ml-1">(📌{manualCount} manuels)</span>}
             {estimatedCount > 0 && <span className="text-orange-500 ml-1">({estimatedCount} estimés)</span>}
+            {mismatchCount > 0 && <span className="text-destructive ml-1">⚠ {mismatchCount} incohérent{mismatchCount > 1 ? "s" : ""}</span>}
             {blockedCount > 0 && <span className="text-destructive ml-1">⛔ bloqué shot #{firstBlockedShot?.globalIndex}</span>}
           </span>
         )}
@@ -1371,6 +1467,26 @@ export default function WhisperAlignmentEditor({
 
         {!loading && whisperWords.length > 0 && (
           <>
+            {/* Action bar: verify alignment */}
+            <div className="flex items-center justify-between gap-2 rounded border border-border bg-muted/30 px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <Search className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="text-[10px] text-muted-foreground">
+                  Re-vérifier la cohérence shot ↔ Whisper :
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[9px] px-2"
+                onClick={verifyAllShots}
+                disabled={alignedShots.length === 0}
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Vérifier tous les shots
+              </Button>
+            </div>
+
             {/* Shot list */}
             <div className="space-y-1">
               {alignedShots.map((shot) => {
@@ -1380,7 +1496,7 @@ export default function WhisperAlignmentEditor({
                   <div
                     key={shot.shotId}
                     className={`rounded border text-[10px] ${
-                      shot.status === "blocked"
+                      shot.status === "blocked" || shot.status === "mismatch"
                         ? "border-destructive bg-destructive/10 ring-2 ring-destructive/40"
                         : shot.status === "ok"
                         ? "border-emerald-500/20 bg-emerald-500/5"
@@ -1399,6 +1515,8 @@ export default function WhisperAlignmentEditor({
                     >
                       {shot.status === "blocked" ? (
                         <XCircle className="h-3 w-3 text-destructive shrink-0 animate-pulse" />
+                      ) : shot.status === "mismatch" ? (
+                        <XCircle className="h-3 w-3 text-destructive shrink-0" />
                       ) : shot.status === "ok" ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       ) : shot.status === "estimated" ? (
@@ -1472,6 +1590,15 @@ export default function WhisperAlignmentEditor({
                               ⛔ Matching bloqué ici — les 3 premiers mots n'ont pas été trouvés dans les 50 mots suivants du transcript Whisper.
                               Calez manuellement ce shot pour que le matching automatique reprenne.
                             </p>
+                          ) : shot.status === "mismatch" && shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
+                            <>
+                              <p className="text-destructive font-semibold mb-1">
+                                ⚠ Segment Whisper incohérent avec le texte attendu — calez manuellement.
+                              </p>
+                              <p className="text-destructive leading-relaxed whitespace-pre-wrap break-words">
+                                « {getWhisperSegment(shot.whisperStartIdx, shot.whisperEndIdx)} »
+                              </p>
+                            </>
                           ) : shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
                              <p className="text-emerald-600 leading-relaxed whitespace-pre-wrap break-words">
                               {getWhisperSegment(shot.whisperStartIdx, shot.whisperEndIdx)}
