@@ -226,8 +226,11 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
     // Priority: use scenes' source_text directly to preserve original
     // line breaks / paragraph structure (same rendering as Segmentation tab).
     if (scenes && scenes.length > 0) {
+      const orderMap = new Map(
+        (scenesForSort ?? []).map((s) => [s.id, s.scene_order ?? 0]),
+      );
       const sortedScenes = [...scenes].sort(
-        (a, b) => (a.scene_order ?? 0) - (b.scene_order ?? 0),
+        (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
       );
       const sceneTexts = sortedScenes
         .map((s) => (s.source_text ?? "").trim())
