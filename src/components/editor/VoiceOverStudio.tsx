@@ -69,6 +69,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [sceneErrors, setSceneErrors] = useState<Map<string, string>>(new Map());
   const [playingSceneId, setPlayingSceneId] = useState<string | null>(null);
   const [assembling, setAssembling] = useState(false);
+  const [aligningAll, setAligningAll] = useState(false);
 
   // ── Per-scene audio data (persisted in DB) ──
   interface SceneAudioInfo {
