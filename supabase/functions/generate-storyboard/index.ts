@@ -674,7 +674,21 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { project_id, scene_id, sensitive_level, segment_only, prompt_only, visual_style, aspect_ratio: reqAspectRatio } = await req.json();
+    let body: any = {};
+    try {
+      const rawText = await req.text();
+      if (!rawText || rawText.trim() === "") {
+        throw new Error("Empty request body received");
+      }
+      body = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error("generate-storyboard: failed to parse request body", parseErr);
+      return new Response(
+        JSON.stringify({ error: "Invalid or empty JSON body", details: String(parseErr instanceof Error ? parseErr.message : parseErr) }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { project_id, scene_id, sensitive_level, segment_only, prompt_only, visual_style, aspect_ratio: reqAspectRatio } = body;
     if (!project_id) throw new Error("Missing project_id");
 
     // Visual style from shared definitions
