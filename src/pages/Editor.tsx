@@ -1753,6 +1753,28 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
     });
   };
 
+  const handleRegenerateAllImages = () => {
+    if (!projectId || generatingAllImages) return;
+    const allShots = [...shots].sort((a, b) => {
+      const scA = scenes.find((sc) => sc.id === a.scene_id)?.scene_order ?? 0;
+      const scB = scenes.find((sc) => sc.id === b.scene_id)?.scene_order ?? 0;
+      return scA !== scB ? scA - scB : a.shot_order - b.shot_order;
+    });
+    if (allShots.length === 0) return;
+    const ok = window.confirm(
+      `Régénérer les ${allShots.length} visuels du projet ? Les images existantes seront remplacées.`
+    );
+    if (!ok) return;
+    bgStartImageGen({
+      projectId,
+      shotIds: allShots.map((s) => s.id),
+      model: imageModel,
+      aspectRatio: imageAspectRatio,
+      sensitiveLevels: buildSensitiveLevelsMap(allShots),
+      visualStyles: buildVisualStylesMap(allShots),
+    });
+  };
+
   const stopImageGeneration = () => {
     if (projectId) stopTask(projectId, "image-gen");
   };
@@ -2811,10 +2833,25 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         const hasAnyImage = shots.some((s: any) => s.image_url);
                         const allHaveImages = shots.length > 0 && shots.every((s: any) => s.image_url);
                         return (
-                          <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
-                            <ImageIcon className="h-4 w-4" />
-                            {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
-                          </Button>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button variant="hero" size="sm" onClick={handleGenerateAllImages} disabled={allHaveImages} className="min-h-[40px]">
+                              <ImageIcon className="h-4 w-4" />
+                              {hasAnyImage ? "Créer les visuels manquants" : "Créer tous les visuels"}
+                            </Button>
+                            {hasAnyImage && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleRegenerateAllImages}
+                                disabled={shots.length === 0}
+                                className="min-h-[40px]"
+                                title="Régénère TOUS les visuels (force), même ceux déjà générés"
+                              >
+                                <ImageIcon className="h-4 w-4" />
+                                Tout régénérer (force)
+                              </Button>
+                            )}
+                          </div>
                         );
                       })()}
                     </div>
