@@ -132,6 +132,7 @@ export interface StoryboardParams {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const STORYBOARD_SCENE_DELAY_MS = 1500;
 const STORYBOARD_RETRY_DELAYS_MS = [4000, 8000, 12000];
+const STORYBOARD_CONCURRENCY = 3;
 
 const isRateLimitMessage = (message?: string) =>
   !!message && /rate limit exceeded|limite de requêtes atteinte/i.test(message);
@@ -711,11 +712,12 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         let totalShots = 0;
         const failedSceneIds: string[] = [];
         let rateLimitedScenes = 0;
+        let completedCount = 0;
 
-        for (let i = 0; i < params.sceneIds.length; i++) {
+        const processScene = async (sid: string, indexInBatch: number) => {
           if (ac.signal.aborted) return;
-          const sid = params.sceneIds[i];
-          if (i > 0) await sleep(STORYBOARD_SCENE_DELAY_MS);
+          // Stagger starts within a batch to avoid hitting the gateway simultaneously
+          if (indexInBatch > 0) await sleep(indexInBatch * 400);
 
           let sceneFailed = false;
           let sceneSawRateLimit = false;
@@ -780,7 +782,19 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             console.info(`Storyboard scene recovered after rate limiting: ${sid}`);
           }
 
-          updateTask(key, { completedScenes: i + 1 });
+          completedCount += 1;
+          updateTask(key, { completedScenes: completedCount });
+        };
+
+        // Process in batches of STORYBOARD_CONCURRENCY for parallelism
+        for (let i = 0; i < params.sceneIds.length; i += STORYBOARD_CONCURRENCY) {
+          if (ac.signal.aborted) return;
+          const batch = params.sceneIds.slice(i, i + STORYBOARD_CONCURRENCY);
+          await Promise.all(batch.map((sid, idx) => processScene(sid, idx)));
+          // Pause between batches to let the gateway breathe
+          if (i + STORYBOARD_CONCURRENCY < params.sceneIds.length) {
+            await sleep(STORYBOARD_SCENE_DELAY_MS);
+          }
         }
 
         updateTask(key, { status: "done" });
