@@ -599,10 +599,13 @@ export default function Editor() {
   }, [projectId, stopTask]);
 
   // Generate storyboard (all or single scene)
-  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean; promptOnly?: boolean }) => {
+  // force=true → re-generates prompts for ALL scenes even if already complete,
+  //              using the currently selected global style + aspect ratio + sensitive level.
+  const runStoryboard = useCallback(async (sceneId?: string, options?: { segmentOnly?: boolean; promptOnly?: boolean; force?: boolean }) => {
     if (!projectId) return;
     const segmentOnly = options?.segmentOnly ?? false;
     const promptOnly = options?.promptOnly ?? false;
+    const force = options?.force ?? false;
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
@@ -673,8 +676,10 @@ export default function Editor() {
 
       // ─── Skip scenes already complete in promptOnly mode ───
       // A scene is "complete" if it has at least one shot AND every shot has a non-empty prompt_export.
+      // When `force=true`, we bypass this filter and regenerate ALL prompts using the current
+      // global style, aspect ratio and sensitive level.
       let sceneIds = allSceneIds;
-      if (promptOnly) {
+      if (promptOnly && !force) {
         const { data: existingShots } = await supabase
           .from("shots")
           .select("scene_id, prompt_export")
@@ -700,6 +705,8 @@ export default function Editor() {
           toast.info(`${skipped} scène(s) déjà complète(s) ignorée(s) — génération des ${pending.length} restante(s)`);
         }
         sceneIds = pending;
+      } else if (promptOnly && force) {
+        toast.info(`Régénération forcée des prompts pour ${allSceneIds.length} scène(s) — style et format actuels appliqués`);
       }
 
       const globalStyleId = visualStyle.getGlobalValue()?.localStyleId ?? visualStyle.getGlobalValue()?.inheritedStyleId ?? undefined;
