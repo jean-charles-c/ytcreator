@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
-import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID } from "@/config/narrativeStyles";
+import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID, getNarrativeStyleById } from "@/config/narrativeStyles";
+import { NARRATIVE_FORMS, DEFAULT_NARRATIVE_FORM_ID } from "@/config/narrativeForms";
 import { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
 import NarrativeScriptBlock, { type ScriptVersion, getPersistedScriptAiModel, persistScriptAiModel, type ScriptAiModelId } from "./NarrativeScriptBlock";
 import ChapterCollapse from "./ChapterCollapse";
@@ -150,7 +151,7 @@ export default function PdfDocumentaryTab({
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
   narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation, shots, scenesForShotOrder,
 }: PdfDocumentaryTabProps) {
-  const { startScriptGeneration, getTask, subscribe, stopTask } = useBackgroundTasks();
+  const { startScriptGeneration, startScriptGenerationV2, triggerRevision, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
   const chapterSaveTimeoutRef = useRef<number | null>(null);
   const chapterHydratedRef = useRef(false);
@@ -182,7 +183,20 @@ export default function PdfDocumentaryTab({
   const translationsHydratedRef = useRef(false);
   const sectionsInitRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
+  // ── ScriptCreator v2 ──────────────────────────────────────────────
+  const [v2Enabled, setV2Enabled] = useState(() => {
+    try { return localStorage.getItem("sc-v2-enabled") === "true"; } catch { return false; }
+  });
+  const [selectedForm, setSelectedForm] = useState(DEFAULT_NARRATIVE_FORM_ID);
+  const [detectedForm, setDetectedForm] = useState<string | null>(null);
+  const [alternativeForm, setAlternativeForm] = useState<string | null>(null);
+  const [formReasoning, setFormReasoning] = useState("");
+  const [detectingForm, setDetectingForm] = useState(false);
+  const [v2IntentionNote, setV2IntentionNote] = useState("");
+  const [scriptV2, setScriptV2] = useState<string | null>(null);
+  const [scriptV2Revised, setScriptV2Revised] = useState<string | null>(null);
+  const [showV2Revised, setShowV2Revised] = useState(false);
 
   // ── Hydrate chapterState from DB on mount ──
   useEffect(() => {
@@ -867,6 +881,81 @@ export default function PdfDocumentaryTab({
     return unsub;
   }, [projectId, subscribe, onScriptChange, onScriptReady, onScriptVersionsChange, onCurrentVersionIdChange, handleAnalyzeScript]);
 
+  // ── v2 derived state ──────────────────────────────────────────────
+  const bgScriptV2Task = projectId ? getTask(projectId, "script-v2") : undefined;
+  const generatingScriptV2 = bgScriptV2Task?.status === "running";
+  const bgRevisionTask = projectId ? getTask(projectId, "revision") : undefined;
+  const revising = bgRevisionTask?.status === "running";
+
+  // ── v2 subscriptions ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!projectId) return;
+    const unsub = subscribe(projectId, "script-v2", (task) => {
+      if (task.streamedText !== undefined) setScriptV2(task.streamedText);
+      if (task.intentionNote !== undefined) setV2IntentionNote(task.intentionNote || "");
+    });
+    return unsub;
+  }, [projectId, subscribe]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const unsub = subscribe(projectId, "revision", (task) => {
+      if (task.streamedText !== undefined) setScriptV2Revised(task.streamedText);
+      if (task.status === "done") setShowV2Revised(true);
+    });
+    return unsub;
+  }, [projectId, subscribe]);
+
+  // ── Auto-detect narrative form when analysis arrives ─────────────
+  useEffect(() => {
+    if (!analysis || !v2Enabled || detectedForm || detectingForm) return;
+    setDetectingForm(true);
+    const session_promise = supabase.auth.getSession();
+    session_promise.then(({ data: { session } }) => {
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/detect-narrative-form`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ analysis }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.form) {
+            setDetectedForm(data.form);
+            setAlternativeForm(data.alternative ?? null);
+            setFormReasoning(data.reasoning ?? "");
+            setSelectedForm(data.form);
+          }
+        })
+        .catch(console.warn)
+        .finally(() => setDetectingForm(false));
+    });
+  }, [analysis, v2Enabled, detectedForm, detectingForm]);
+
+  // ── v2 generation function ────────────────────────────────────────
+  const runFullScriptGenerationV2 = useCallback(() => {
+    if (!analysis || !extractedText || !projectId) return;
+    const styleVoice = getNarrativeStyleById(narrativeStyleId)?.voice ?? "";
+    setV2IntentionNote("");
+    setScriptV2("");
+    setScriptV2Revised(null);
+    setShowV2Revised(false);
+    startScriptGenerationV2({
+      projectId,
+      analysis,
+      extractedText,
+      scriptLanguage,
+      charMin,
+      charMax,
+      narrativeForm: selectedForm,
+      narrativeStyleVoice: narrativeStyleId === "custom" ? customStyleLabel : styleVoice,
+      onIntentionNote: (note) => setV2IntentionNote(note),
+    });
+  }, [analysis, extractedText, projectId, scriptLanguage, charMin, charMax, selectedForm, narrativeStyleId, customStyleLabel, startScriptGenerationV2]);
+
   // Delegate script generation to background context
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
     if (!analysis || !extractedText || !projectId) return;
@@ -1280,6 +1369,83 @@ export default function PdfDocumentaryTab({
             </Button>
           </div>
         )}
+
+        {/* v2 toggle */}
+        {analysis && (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={v2Enabled}
+              onClick={() => {
+                const next = !v2Enabled;
+                setV2Enabled(next);
+                try { localStorage.setItem("sc-v2-enabled", String(next)); } catch {}
+              }}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ${v2Enabled ? "bg-primary" : "bg-muted"}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${v2Enabled ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+            <span className="text-xs text-muted-foreground">
+              ScriptCreator v2{" "}
+              <span className="inline-block text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">beta</span>
+            </span>
+            {v2Enabled && <span className="text-[10px] text-muted-foreground">— prose continue, sans blocs structurés</span>}
+          </div>
+        )}
+
+        {/* v2 form selector + generate button */}
+        {analysis && v2Enabled && (
+          <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Forme narrative</span>
+              {detectingForm && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {NARRATIVE_FORMS.map((form) => {
+                const isDetected = form.id === detectedForm;
+                const isAlt = form.id === alternativeForm;
+                const isSelected = form.id === selectedForm;
+                return (
+                  <button
+                    key={form.id}
+                    type="button"
+                    onClick={() => setSelectedForm(form.id)}
+                    title={isDetected && formReasoning ? formReasoning : form.description}
+                    className={`relative rounded-lg border p-3 text-left transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-border bg-card hover:border-primary/50 hover:bg-secondary/30"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-xs font-semibold text-foreground">{form.label}</span>
+                      {isDetected && (
+                        <span className="text-[9px] bg-primary text-primary-foreground px-1 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">Suggéré</span>
+                      )}
+                      {!isDetected && isAlt && (
+                        <span className="text-[9px] bg-secondary text-muted-foreground px-1 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">Alt.</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{form.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <Button
+              variant="hero"
+              disabled={generatingScriptV2}
+              onClick={runFullScriptGenerationV2}
+              className="min-h-[44px] w-full"
+            >
+              {generatingScriptV2
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Génération v2 en cours…</>
+                : <><Sparkles className="h-4 w-4" /> Créer le script v2</>
+              }
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Generation loading — shown before script arrives */}
@@ -1417,6 +1583,101 @@ export default function PdfDocumentaryTab({
           </div>
         }
       />
+
+      {/* ScriptCreator v2 — intention note + script + revision */}
+      {v2Enabled && (generatingScriptV2 || scriptV2) && (
+        <div className="mt-6 space-y-4">
+          {/* Intention note */}
+          {v2IntentionNote && (
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Note d'intention</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{v2IntentionNote}</p>
+            </div>
+          )}
+
+          {/* v2 script or generating indicator */}
+          {(generatingScriptV2 || scriptV2) && (
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="w-full rounded-t-lg border border-border bg-card p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <ScrollText className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">Script v2 — Premier jet</span>
+                  {scriptV2 && <span className="text-xs text-muted-foreground">{scriptV2.length.toLocaleString()} car.</span>}
+                  {generatingScriptV2 && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="rounded-b-lg border border-t-0 border-border bg-card p-4">
+                  {scriptV2 && (
+                    <>
+                      <pre className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-body mb-4">{showV2Revised && scriptV2Revised ? scriptV2Revised : scriptV2}</pre>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {!revising && !scriptV2Revised && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (!projectId) return;
+                              triggerRevision({ projectId, script: scriptV2, scriptLanguage });
+                            }}
+                          >
+                            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                            Révision critique
+                          </Button>
+                        )}
+                        {revising && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Révision en cours…
+                          </div>
+                        )}
+                        {scriptV2Revised && (
+                          <Button
+                            variant={showV2Revised ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowV2Revised((v) => !v)}
+                          >
+                            {showV2Revised ? "Voir premier jet" : "Voir version révisée"}
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const text = showV2Revised && scriptV2Revised ? scriptV2Revised : scriptV2;
+                            if (text) {
+                              navigator.clipboard.writeText(text);
+                              toast.success("Script v2 copié");
+                            }
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5 mr-1.5" />
+                          Copier
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const text = showV2Revised && scriptV2Revised ? scriptV2Revised : scriptV2;
+                            if (text) onSendToNarration?.(text);
+                          }}
+                        >
+                          <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                          Envoyer dans ScriptInput
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
+      )}
 
       {/* Chapitres de la vidéo */}
       <div className="mt-6">

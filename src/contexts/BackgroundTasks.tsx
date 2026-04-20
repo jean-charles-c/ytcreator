@@ -15,7 +15,7 @@ import { buildManifest } from "@/components/editor/visualPromptTypes";
 import { buildManifestTiming } from "@/components/editor/manifestTiming";
 
 // ─── Types ──────────────────────────────────────────────────────────
-export type TaskType = "script" | "segmentation" | "storyboard" | "export-mp4" | "export-xml" | "image-gen";
+export type TaskType = "script" | "script-v2" | "revision" | "segmentation" | "storyboard" | "export-mp4" | "export-xml" | "image-gen";
 export type TaskStatus = "running" | "done" | "error";
 
 export interface BackgroundTask {
@@ -25,6 +25,8 @@ export interface BackgroundTask {
   error?: string;
   /** Script streaming text (live) */
   streamedText?: string;
+  /** v2 intention note (extracted from <intention> block) */
+  intentionNote?: string;
   /** Storyboard progress */
   completedScenes?: number;
   totalScenes?: number;
@@ -69,6 +71,8 @@ export interface ImageGenParams {
 interface BackgroundTasksContextValue {
   tasks: Record<string, BackgroundTask>;
   startScriptGeneration: (params: ScriptGenParams) => void;
+  startScriptGenerationV2: (params: ScriptGenV2Params) => void;
+  triggerRevision: (params: RevisionParams) => void;
   startSegmentation: (params: SegmentationParams) => void;
   startStoryboard: (params: StoryboardParams) => void;
   startExportMp4: (params: ExportMp4Params) => void;
@@ -90,6 +94,25 @@ export interface ScriptGenParams {
   existingScript?: string | null;
   isRegenerate?: boolean;
   shortSentencePct?: number;
+}
+
+export interface ScriptGenV2Params {
+  projectId: string;
+  analysis: any;
+  extractedText: string;
+  scriptLanguage: string;
+  charMin: number;
+  charMax: number;
+  narrativeForm: string;
+  narrativeStyleVoice?: string;
+  globalContext?: any;
+  onIntentionNote?: (note: string) => void;
+}
+
+export interface RevisionParams {
+  projectId: string;
+  script: string;
+  scriptLanguage: string;
 }
 
 export interface SegmentationParams {
@@ -330,6 +353,246 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         console.error("Background script generation error:", e);
         updateTask(key, { status: "error", error: e?.message || "Erreur inconnue" });
         toast.error(e?.message || "Erreur de génération du script");
+      }
+    })();
+  }, []);
+
+  // ─── Script Generation V2 ──────────────────────────────────────────
+  const startScriptGenerationV2 = useCallback((params: ScriptGenV2Params) => {
+    const key = taskKey(params.projectId, "script-v2");
+    abortControllers.current[key]?.abort();
+
+    const ac = new AbortController();
+    abortControllers.current[key] = ac;
+
+    setTask(key, {
+      projectId: params.projectId,
+      type: "script-v2",
+      status: "running",
+      streamedText: "",
+      intentionNote: "",
+    });
+
+    (async () => {
+      try {
+        const session = (await supabase.auth.getSession()).data.session;
+
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script-v2`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              "x-supabase-client-platform": "web",
+            },
+            body: JSON.stringify({
+              analysis: params.analysis,
+              extractedText: params.extractedText,
+              language: params.scriptLanguage,
+              charMin: params.charMin,
+              charMax: params.charMax,
+              narrativeForm: params.narrativeForm,
+              narrativeStyleVoice: params.narrativeStyleVoice || "",
+              globalContext: params.globalContext || null,
+            }),
+            signal: ac.signal,
+          }
+        );
+        if (!resp.ok || !resp.body) throw new Error("Erreur de génération du script v2");
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let full = "";
+        let intentionFull = "";
+        let intentionDone = false;
+        let done = false;
+
+        while (!done) {
+          const chunk = await reader.read();
+          done = chunk.done;
+          buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !done });
+
+          let eventBoundaryIndex: number;
+          while ((eventBoundaryIndex = buffer.indexOf("\n\n")) !== -1) {
+            const rawEvent = buffer.slice(0, eventBoundaryIndex);
+            buffer = buffer.slice(eventBoundaryIndex + 2);
+            if (!rawEvent.trim()) continue;
+            if (rawEvent.split("\n").every((line) => line.trimStart().startsWith(":"))) continue;
+            const eventData = readSseEventData(rawEvent);
+            if (!eventData) continue;
+            if (eventData === "[DONE]") { done = true; break; }
+
+            try {
+              const parsed = JSON.parse(eventData);
+              const content = extractTextFromStreamPayload(parsed);
+              if (content) {
+                full += content;
+
+                // Extract intention note from <intention>...</intention>
+                if (!intentionDone) {
+                  const intentionMatch = full.match(/<intention>([\s\S]*?)(<\/intention>|$)/);
+                  if (intentionMatch) {
+                    intentionFull = intentionMatch[1];
+                    if (full.includes("</intention>")) {
+                      intentionDone = true;
+                      params.onIntentionNote?.(intentionFull.trim());
+                    }
+                  }
+                }
+
+                // Display text: strip intention block
+                const displayText = full.replace(/<intention>[\s\S]*?<\/intention>\s*/gi, "")
+                  .replace(/<intention>[\s\S]*/gi, "");
+                updateTask(key, { streamedText: displayText, intentionNote: intentionFull });
+              }
+            } catch { /* skip bad chunk */ }
+          }
+        }
+
+        if (buffer.trim()) {
+          const eventData = readSseEventData(buffer);
+          if (eventData && eventData !== "[DONE]") {
+            try {
+              const parsed = JSON.parse(eventData);
+              const content = extractTextFromStreamPayload(parsed);
+              if (content) full += content;
+            } catch { /* skip */ }
+          }
+        }
+
+        // Extract final intention note
+        const finalIntentionMatch = full.match(/<intention>([\s\S]*?)<\/intention>/i);
+        const finalIntentionNote = finalIntentionMatch ? finalIntentionMatch[1].trim() : intentionFull.trim();
+
+        // Clean script: remove intention block
+        const finalScript = full.replace(/<intention>[\s\S]*?<\/intention>\s*/gi, "").trim();
+        if (!finalScript) throw new Error("Le flux AI n'a retourné aucun texte exploitable.");
+
+        // Save to Supabase
+        await (supabase as any).from("project_scriptcreator_state").update({
+          script_v2_raw: finalScript,
+          intention_note: finalIntentionNote || null,
+          narrative_form: params.narrativeForm,
+        }).eq("project_id", params.projectId);
+
+        updateTask(key, { status: "done", streamedText: finalScript, intentionNote: finalIntentionNote });
+        toast.success(`Script v2 généré — ${finalScript.length.toLocaleString()} caractères`);
+      } catch (e: any) {
+        if (e?.name === "AbortError") {
+          toast.info("Génération v2 annulée");
+          removeTask(key);
+          return;
+        }
+        console.error("Background script-v2 generation error:", e);
+        updateTask(key, { status: "error", error: e?.message || "Erreur inconnue" });
+        toast.error(e?.message || "Erreur de génération du script v2");
+      }
+    })();
+  }, []);
+
+  // ─── Revision (critical pass on v2 script) ────────────────────────
+  const triggerRevision = useCallback((params: RevisionParams) => {
+    const key = taskKey(params.projectId, "revision");
+    abortControllers.current[key]?.abort();
+
+    const ac = new AbortController();
+    abortControllers.current[key] = ac;
+
+    setTask(key, {
+      projectId: params.projectId,
+      type: "revision",
+      status: "running",
+      streamedText: "",
+    });
+
+    (async () => {
+      try {
+        const session = (await supabase.auth.getSession()).data.session;
+
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revise-script`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              "x-supabase-client-platform": "web",
+            },
+            body: JSON.stringify({
+              script: params.script,
+              language: params.scriptLanguage,
+            }),
+            signal: ac.signal,
+          }
+        );
+        if (!resp.ok || !resp.body) throw new Error("Erreur de révision du script");
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let full = "";
+        let done = false;
+
+        while (!done) {
+          const chunk = await reader.read();
+          done = chunk.done;
+          buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !done });
+
+          let eventBoundaryIndex: number;
+          while ((eventBoundaryIndex = buffer.indexOf("\n\n")) !== -1) {
+            const rawEvent = buffer.slice(0, eventBoundaryIndex);
+            buffer = buffer.slice(eventBoundaryIndex + 2);
+            if (!rawEvent.trim()) continue;
+            if (rawEvent.split("\n").every((line) => line.trimStart().startsWith(":"))) continue;
+            const eventData = readSseEventData(rawEvent);
+            if (!eventData) continue;
+            if (eventData === "[DONE]") { done = true; break; }
+
+            try {
+              const parsed = JSON.parse(eventData);
+              const content = extractTextFromStreamPayload(parsed);
+              if (content) {
+                full += content;
+                updateTask(key, { streamedText: full });
+              }
+            } catch { /* skip bad chunk */ }
+          }
+        }
+
+        if (buffer.trim()) {
+          const eventData = readSseEventData(buffer);
+          if (eventData && eventData !== "[DONE]") {
+            try {
+              const parsed = JSON.parse(eventData);
+              const content = extractTextFromStreamPayload(parsed);
+              if (content) full += content;
+            } catch { /* skip */ }
+          }
+        }
+
+        const finalRevised = full.trim();
+        if (!finalRevised) throw new Error("La révision n'a retourné aucun texte.");
+
+        // Save revised version to Supabase
+        await (supabase as any).from("project_scriptcreator_state").update({
+          script_v2_revised: finalRevised,
+        }).eq("project_id", params.projectId);
+
+        updateTask(key, { status: "done", streamedText: finalRevised });
+        toast.success(`Révision critique terminée — ${finalRevised.length.toLocaleString()} caractères`);
+      } catch (e: any) {
+        if (e?.name === "AbortError") {
+          toast.info("Révision annulée");
+          removeTask(key);
+          return;
+        }
+        console.error("Background revision error:", e);
+        updateTask(key, { status: "error", error: e?.message || "Erreur inconnue" });
+        toast.error(e?.message || "Erreur de révision");
       }
     })();
   }, []);
@@ -1027,7 +1290,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <BackgroundTasksContext.Provider value={{ tasks, startScriptGeneration, startSegmentation, startStoryboard, startExportMp4, startExportXml, startImageGen, stopTask, getTask, subscribe }}>
+    <BackgroundTasksContext.Provider value={{ tasks, startScriptGeneration, startScriptGenerationV2, triggerRevision, startSegmentation, startStoryboard, startExportMp4, startExportXml, startImageGen, stopTask, getTask, subscribe }}>
       {children}
     </BackgroundTasksContext.Provider>
   );
@@ -1038,6 +1301,8 @@ const NOOP_UNSUB = () => NOOP;
 const FALLBACK: BackgroundTasksContextValue = {
   tasks: {},
   startScriptGeneration: NOOP as any,
+  startScriptGenerationV2: NOOP as any,
+  triggerRevision: NOOP as any,
   startSegmentation: NOOP as any,
   startStoryboard: NOOP as any,
   startExportMp4: NOOP as any,
