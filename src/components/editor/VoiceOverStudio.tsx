@@ -223,6 +223,35 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   };
 
   const handlePasteFromScript = () => {
+    // Priority: use scenes' source_text directly to preserve original
+    // line breaks / paragraph structure (same rendering as Segmentation tab).
+    if (scenes && scenes.length > 0) {
+      const orderMap = new Map(
+        (scenesForSort ?? []).map((s) => [s.id, s.scene_order ?? 0]),
+      );
+      const sortedScenes = [...scenes].sort(
+        (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+      );
+      const sceneTexts = sortedScenes
+        .map((s) => (s.source_text ?? "").trim())
+        .filter(Boolean);
+      if (sceneTexts.length > 0) {
+        setVoScript(stripThousandSeparators(sceneTexts.join("\n\n")));
+        setUserEditedScript(false);
+        toast.success("Script collé (structure des scènes)");
+        return;
+      }
+    }
+
+    // Fallback: use the generated script directly (preserves its own line breaks)
+    if (generatedScript?.trim()) {
+      setVoScript(stripThousandSeparators(generatedScript));
+      setUserEditedScript(false);
+      toast.success("Script généré collé");
+      return;
+    }
+
+    // Secondary fallback: rebuild from shots (no original line breaks available)
     const currentShotScript = buildScriptFromCurrentShots();
     if (currentShotScript) {
       setVoScript(currentShotScript);
@@ -231,24 +260,6 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       return;
     }
 
-    // Priority fallback: use generated script with scene structure
-    if (generatedScript?.trim()) {
-      // If we have scenes, build structured text with scene breaks
-      if (scenes && scenes.length > 0) {
-        const sceneTexts = scenes.map((s) => s.source_text).filter(Boolean);
-        if (sceneTexts.length > 0) {
-          setVoScript(stripThousandSeparators(sceneTexts.join("\n\n")));
-          setUserEditedScript(false);
-          toast.success("Script généré collé (structure par scènes)");
-          return;
-        }
-      }
-      // Fallback: use the generated script directly
-      setVoScript(stripThousandSeparators(generatedScript));
-      setUserEditedScript(false);
-      toast.success("Script généré collé");
-      return;
-    }
     // Last resort: narration
     const source = narration;
     if (!source?.trim()) {
