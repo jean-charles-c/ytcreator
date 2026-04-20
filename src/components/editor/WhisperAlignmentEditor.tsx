@@ -828,7 +828,18 @@ export default function WhisperAlignmentEditor({
     }
   }, [alignedShots, whisperWords]);
 
-  if (totalCount === 0 && !loading && !multiPassData) return null;
+  if (totalCount === 0 && !loading && !multiPassData) {
+    return (
+      <div className="rounded border border-border bg-card px-3 py-3 text-[11px] text-muted-foreground space-y-1">
+        <p className="font-semibold text-foreground">Aucune transcription Whisper disponible</p>
+        <p>
+          La dernière génération audio Chirp 3 HD ne contient pas de mots transcrits.
+          Lancez un alignement Whisper depuis l'historique audio (bouton « Recaler avec Whisper »)
+          pour activer cet éditeur.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <details className="rounded border border-border bg-card">
