@@ -727,6 +727,12 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
             try {
               const token = await getValidToken();
+              // Per-scene timeout (140s) — edge function hard limit is 150s.
+              // We abort just before, so we can retry instead of getting a 504 IDLE_TIMEOUT.
+              const timeoutCtrl = new AbortController();
+              const onParentAbort = () => timeoutCtrl.abort();
+              ac.signal.addEventListener("abort", onParentAbort);
+              const timeoutId = setTimeout(() => timeoutCtrl.abort(new Error("scene_timeout")), 140_000);
               const response = await fetch(
                 `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-storyboard`,
                 {
@@ -738,16 +744,20 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                     "x-supabase-client-platform": "web",
                   },
                   body: JSON.stringify({ project_id: params.projectId, scene_id: sid, segment_only: params.segmentOnly ?? false, prompt_only: params.promptOnly ?? false, visual_style: params.visualStyle, aspect_ratio: params.aspectRatio }),
-                  signal: ac.signal,
+                  signal: timeoutCtrl.signal,
                 }
-              );
+              ).finally(() => {
+                clearTimeout(timeoutId);
+                ac.signal.removeEventListener("abort", onParentAbort);
+              });
 
               const data = await response.json().catch(() => null);
               const message = data?.error || (!response.ok ? "Erreur" : undefined);
               const isRateLimited = response.status === 429 || isRateLimitMessage(message);
+              const isTimeout = response.status === 504 || /idle_timeout|timeout/i.test(message ?? "");
 
               if (!response.ok || message) {
-                if (isRateLimited && attempt < STORYBOARD_RETRY_DELAYS_MS.length) {
+                if ((isRateLimited || isTimeout) && attempt < STORYBOARD_RETRY_DELAYS_MS.length) {
                   sceneSawRateLimit = true;
                   await sleep(STORYBOARD_RETRY_DELAYS_MS[attempt]);
                   continue;
@@ -760,10 +770,12 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               sceneFailed = false;
               break;
             } catch (sceneError: any) {
-              if (sceneError?.name === "AbortError") throw sceneError;
+              // Parent abort (user cancel) → propagate. Per-scene timeout abort → retry.
+              if (sceneError?.name === "AbortError" && ac.signal.aborted) throw sceneError;
+              const isClientTimeout = sceneError?.name === "AbortError" || /timeout/i.test(sceneError?.message ?? "");
 
               const shouldRetry = attempt < STORYBOARD_RETRY_DELAYS_MS.length
-                && (sceneError instanceof TypeError || isRateLimitMessage(sceneError?.message));
+                && (sceneError instanceof TypeError || isRateLimitMessage(sceneError?.message) || isClientTimeout);
 
               if (shouldRetry) {
                 if (isRateLimitMessage(sceneError?.message)) sceneSawRateLimit = true;
