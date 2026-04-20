@@ -707,6 +707,154 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
 
   // Play from history or from generation
   const handlePlayFromHistory = (audioUrl: string, fileName: string, duration: number) => {
+    return _handlePlayFromHistory(audioUrl, fileName, duration);
+  };
+
+  // ── Run Whisper alignment on the latest assembled chirp3hd audio ──
+  const handleAlignAllScenes = async () => {
+    if (!projectId) return;
+    setAligningAll(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        toast.error("Vous devez être connecté.");
+        return;
+      }
+
+      // Fetch the most recent chirp3hd-assembled entry
+      const { data: entries, error: fetchErr } = await supabase
+        .from("vo_audio_history")
+        .select("id, file_path")
+        .eq("project_id", projectId)
+        .in("style", ["chirp3hd", "chirp3hd-assembled"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (fetchErr) throw fetchErr;
+      const entry = entries?.[0];
+      if (!entry) {
+        toast.error("Aucun audio assemblé trouvé. Générez d'abord les scènes.");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from("vo-audio").getPublicUrl(entry.file_path);
+      const audioUrl = urlData.publicUrl;
+
+      toast.info("Alignement texte/audio Whisper en cours… (1-2 min)");
+
+      const alignResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whisper-align`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            audioUrl,
+            projectId,
+            triplePass: true,
+            audioHistoryId: entry.id,
+          }),
+        }
+      );
+
+      if (!alignResponse.ok) {
+        const alignErr = await alignResponse.json().catch(() => ({}));
+        throw new Error(alignErr?.error || `Alignement échoué (${alignResponse.status})`);
+      }
+
+      const alignData = await alignResponse.json();
+
+      if (alignData.alignmentRun?.words) {
+        await (supabase as any)
+          .from("vo_audio_history")
+          .update({ whisper_words: alignData.alignmentRun.words })
+          .eq("id", entry.id);
+      }
+
+      if (alignData.passA && alignData.passB) {
+        localStorage.setItem(
+          `whisper-dual-${projectId}`,
+          JSON.stringify({
+            passA: alignData.passA,
+            passB: alignData.passB,
+            passC: alignData.passC ?? null,
+            comparison: alignData.dualPassComparison ?? null,
+            timestamp: new Date().toISOString(),
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent("whisper-dual-updated", { detail: { projectId } })
+        );
+      }
+
+      toast.success(`Alignement terminé — ${alignData.wordCount ?? "?"} mots détectés.`);
+
+      // Map shots if available
+      if (alignData.alignmentRun && shots && shots.length > 0) {
+        toast.info("Mapping des timecodes vers les shots…");
+        const orderMap = new Map(scenesForSort?.map((s) => [s.id, s.scene_order]) ?? []);
+        const sortedShots = [...shots].sort((a, b) => {
+          const sa = orderMap.get(a.scene_id) ?? 0;
+          const sb = orderMap.get(b.scene_id) ?? 0;
+          if (sa !== sb) return sa - sb;
+          return a.shot_order - b.shot_order;
+        });
+        const shotSources = sortedShots
+          .map((s) => ({
+            shotId: s.id,
+            text: (s.source_sentence_fr ?? s.source_sentence ?? s.description ?? "").trim(),
+          }))
+          .filter((s) => s.text.length > 0);
+
+        const mapResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chirp-shot-mapping`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              alignmentRun: alignData.alignmentRun,
+              shots: shotSources,
+              projectId,
+              audioHistoryId: entry.id,
+            }),
+          }
+        );
+
+        if (mapResponse.ok) {
+          const mapData = await mapResponse.json();
+          const exact = mapData.shotTimelines?.filter((s: any) => s.status === "exact").length ?? 0;
+          const total = mapData.shotTimelines?.length ?? 0;
+          if (exact === total) {
+            toast.success(`Mapping parfait — ${exact}/${total} shots calés.`);
+          } else {
+            toast.warning(`Mapping partiel — ${exact}/${total} shots calés.`);
+          }
+        }
+      }
+
+      // Notify WhisperAlignmentEditor to reload
+      window.dispatchEvent(
+        new CustomEvent("vo-audio-timepoints-updated", {
+          detail: { projectId, audioEntryId: entry.id },
+        })
+      );
+      setHistoryRefreshKey((k) => k + 1);
+    } catch (e: any) {
+      console.error("[VoiceOverStudio] Align all error:", e);
+      toast.error(e?.message || "Erreur d'alignement Whisper");
+    } finally {
+      setAligningAll(false);
+    }
+  };
+
+  const _handlePlayFromHistory = (audioUrl: string, fileName: string, duration: number) => {
     // Stop current
     if (audioRef.current) {
       audioRef.current.pause();
