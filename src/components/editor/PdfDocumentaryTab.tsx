@@ -232,6 +232,23 @@ export default function PdfDocumentaryTab({
     })();
   }, [projectId]);
 
+  // ── Hydrate v2 states from DB on mount ──
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("project_scriptcreator_state")
+        .select("script_v2_raw, script_v2_revised, intention_note, narrative_form")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (!data) return;
+      if (data.script_v2_raw)     setScriptV2(data.script_v2_raw);
+      if (data.script_v2_revised) setScriptV2Revised(data.script_v2_revised);
+      if (data.intention_note)    setV2IntentionNote(data.intention_note);
+      if (data.narrative_form)    setSelectedForm(data.narrative_form);
+    })();
+  }, [projectId]);
+
   // ── Persist sectionTranslations to DB ──
   const saveTranslations = useCallback(async (translations: Record<string, string>) => {
     if (!projectId || !translationsHydratedRef.current) return;
@@ -294,6 +311,18 @@ export default function PdfDocumentaryTab({
       }
     };
   }, [projectId, saveChapterState]);
+
+  // ── Active v2 script (revised takes priority) ──
+  const activeV2Script = scriptV2Revised || scriptV2 || null;
+
+  // ── Reset chapterState when v2 script first appears (avoid stale v1 chapters) ──
+  const prevActiveV2ScriptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (v2Enabled && activeV2Script && prevActiveV2ScriptRef.current === null) {
+      setChapterState(null);
+    }
+    prevActiveV2ScriptRef.current = activeV2Script;
+  }, [v2Enabled, activeV2Script]);
 
 
   const bgScriptTask = projectId ? getTask(projectId, "script") : undefined;
@@ -1682,7 +1711,8 @@ export default function PdfDocumentaryTab({
       {/* Chapitres de la vidéo */}
       <div className="mt-6">
         <ChapterCollapse
-          scriptSections={sections}
+          scriptSections={v2Enabled && activeV2Script ? undefined : sections}
+          proseScript={v2Enabled && activeV2Script ? activeV2Script : undefined}
           narration={narration}
           chapterState={chapterState}
           onChapterStateChange={setChapterState}

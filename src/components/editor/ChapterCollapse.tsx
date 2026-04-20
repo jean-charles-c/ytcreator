@@ -21,6 +21,8 @@ const TONES = [
 interface ChapterCollapseProps {
   /** Sections from NarrativeScriptBlock (preferred source of truth) */
   scriptSections?: NarrativeSection[];
+  /** Prose script from ScriptCreator v2 (used instead of scriptSections when v2 is active) */
+  proseScript?: string;
   narration?: string | null;
   chapterState: ChapterListState | null;
   onChapterStateChange: (state: ChapterListState) => void;
@@ -31,6 +33,7 @@ interface ChapterCollapseProps {
 
 export default function ChapterCollapse({
   scriptSections,
+  proseScript,
   narration,
   chapterState,
   onChapterStateChange,
@@ -66,9 +69,61 @@ export default function ChapterCollapse({
     });
   }, [scriptSections]);
 
+  /** Build chapters from v2 prose — groups paragraphs into 4–7 sections */
+  const chaptersFromProse = useMemo((): Chapter[] => {
+    if (!proseScript) return [];
+    const paragraphs = proseScript
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 80);
+    if (paragraphs.length === 0) return [];
+
+    // Target 4–7 groups proportional to paragraph count
+    const targetCount = Math.min(Math.max(Math.floor(paragraphs.length / 3), 4), 7);
+
+    // Distribute paragraphs across groups by character count
+    const totalChars = paragraphs.reduce((sum, p) => sum + p.length, 0);
+    const targetGroupSize = totalChars / targetCount;
+
+    const groups: string[][] = [];
+    let current: string[] = [];
+    let currentSize = 0;
+
+    for (const p of paragraphs) {
+      current.push(p);
+      currentSize += p.length;
+      if (currentSize >= targetGroupSize && groups.length < targetCount - 1) {
+        groups.push(current);
+        current = [];
+        currentSize = 0;
+      }
+    }
+    if (current.length > 0) groups.push(current);
+
+    return groups.map((group, idx) => {
+      const text = group.join("\n\n");
+      const firstSentence = text.split(/[.!?]\s/)[0]?.trim() || "";
+      return {
+        id: `v2_part_${idx + 1}`,
+        index: idx,
+        sectionType: null as any,
+        startSentence: firstSentence.slice(0, 120),
+        summary: "",
+        title: `Partie ${idx + 1}`,
+        variants: [],
+        titleFR: null,
+        validated: false,
+        sourceText: text,
+      };
+    });
+  }, [proseScript]);
+
+  /** Active chapter list — prose-based when proseScript provided, section-based otherwise */
+  const activeChapters = proseScript ? chaptersFromProse : chaptersFromSections;
+
   const normalizeChapterState = useCallback(
     (existingState: ChapterListState | null): ChapterListState => {
-      const freshChapters = chaptersFromSections;
+      const freshChapters = activeChapters;
       const previousById = new Map((existingState?.chapters ?? []).map((chapter) => [chapter.id, chapter]));
 
       return {
@@ -88,29 +143,34 @@ export default function ChapterCollapse({
             sourceText: chapter.sourceText, // always use fresh text from sections
           };
         }),
-        method: "tags",
+        method: proseScript ? "semantic" : "tags",
         lastUpdatedAt: new Date().toISOString(),
       };
     },
-    [chaptersFromSections]
+    [activeChapters, proseScript]
   );
 
   const isLegacyChapterState = useCallback((state: ChapterListState | null) => {
+    if (proseScript) {
+      // For prose mode, legacy = state built from v1 section IDs
+      if (!state) return true;
+      return state.chapters.some((ch) => !ch.id.startsWith("v2_part_"));
+    }
     if (!state) return true;
     if (state.chapters.length !== CORE_SECTION_TYPES.length) return true;
     return CORE_SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
-  }, []);
+  }, [proseScript]);
 
-  // Auto-refresh sourceText & startSentence when scriptSections change
+  // Auto-refresh sourceText & startSentence when active chapters change
   const prevSourceTextsRef = useRef<string>("");
   useEffect(() => {
-    const freshKey = chaptersFromSections.map((c) => c.sourceText).join("||");
+    const freshKey = activeChapters.map((c) => c.sourceText).join("||");
     if (freshKey === prevSourceTextsRef.current) return;
     prevSourceTextsRef.current = freshKey;
 
     if (chapterState && !isLegacyChapterState(chapterState)) {
       const needsUpdate = chapterState.chapters.some((ch) => {
-        const fresh = chaptersFromSections.find((f) => f.id === ch.id);
+        const fresh = activeChapters.find((f) => f.id === ch.id);
         return fresh && fresh.sourceText !== ch.sourceText;
       });
       if (needsUpdate) {
@@ -384,7 +444,7 @@ export default function ChapterCollapse({
               className="h-7 text-xs gap-1"
             >
               {batchGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              Générer les 10 titres
+              Générer les {chapters.length} titres
             </Button>
             <Button
               variant="outline"
