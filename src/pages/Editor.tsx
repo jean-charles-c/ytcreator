@@ -2733,6 +2733,20 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
                         Générer tous les prompts
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!confirm("Régénérer TOUS les prompts (même ceux déjà générés) avec le style et format actuellement sélectionnés ?")) return;
+                          runStoryboard(undefined, { promptOnly: true, force: true });
+                        }}
+                        disabled={generatingStoryboard || shots.length === 0}
+                        className="min-h-[40px]"
+                        title="Force la régénération de tous les prompts en utilisant le style global, le format et le niveau sensible actuels"
+                      >
+                        {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Tout régénérer (force)
+                      </Button>
                     </div>
                   </div>
 
