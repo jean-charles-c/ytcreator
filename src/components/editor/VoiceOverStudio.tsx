@@ -1460,6 +1460,24 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                           );
                         })}
                       </div>
+                      {/* Whisper text/audio alignment trigger */}
+                      {sceneAudioMap.size > 0 && (
+                        <div className="px-3 pb-3 pt-1 border-t border-border/50">
+                          <Button
+                            variant="hero"
+                            disabled={aligningAll || generating || assembling}
+                            className="min-h-[44px] gap-2 w-full"
+                            onClick={handleAlignAllScenes}
+                          >
+                            {aligningAll ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <AudioLines className="h-4 w-4" />
+                            )}
+                            {aligningAll ? "Alignement en cours…" : "Lancer l'alignement texte/audio"}
+                          </Button>
+                        </div>
+                      )}
                     </CollapsibleContent>
                   </Collapsible>
                 )}
