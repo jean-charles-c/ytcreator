@@ -294,14 +294,19 @@ export type Database = {
           file_name: string | null
           generated_script: string | null
           global_context: Json | null
+          intention_note: string | null
+          narrative_form: string | null
           page_count: number
           project_id: string
           scene_versions: Json | null
+          script_v2_raw: string | null
+          script_v2_revised: string | null
           script_versions: Json | null
           seo_results: Json | null
           shot_versions: Json | null
           timeline_state: Json | null
           updated_at: string
+          v2_enabled: boolean | null
         }
         Insert: {
           analysis?: Json | null
@@ -311,14 +316,19 @@ export type Database = {
           file_name?: string | null
           generated_script?: string | null
           global_context?: Json | null
+          intention_note?: string | null
+          narrative_form?: string | null
           page_count?: number
           project_id: string
           scene_versions?: Json | null
+          script_v2_raw?: string | null
+          script_v2_revised?: string | null
           script_versions?: Json | null
           seo_results?: Json | null
           shot_versions?: Json | null
           timeline_state?: Json | null
           updated_at?: string
+          v2_enabled?: boolean | null
         }
         Update: {
           analysis?: Json | null
@@ -328,14 +338,19 @@ export type Database = {
           file_name?: string | null
           generated_script?: string | null
           global_context?: Json | null
+          intention_note?: string | null
+          narrative_form?: string | null
           page_count?: number
           project_id?: string
           scene_versions?: Json | null
+          script_v2_raw?: string | null
+          script_v2_revised?: string | null
           script_versions?: Json | null
           seo_results?: Json | null
           shot_versions?: Json | null
           timeline_state?: Json | null
           updated_at?: string
+          v2_enabled?: boolean | null
         }
         Relationships: [
           {
