@@ -23,6 +23,15 @@ import {
 } from "./types";
 
 const STORAGE_PREFIX = "visualStyle_globalId:";
+const LEGACY_GLOBAL_KEY = "visualStyle_globalId";
+
+// One-time cleanup of the legacy cross-project key (executed at module load).
+try {
+  if (typeof localStorage !== "undefined" && localStorage.getItem(LEGACY_GLOBAL_KEY) != null) {
+    localStorage.removeItem(LEGACY_GLOBAL_KEY);
+  }
+} catch { /* noop */ }
+
 const projectKey = (projectId: string | null | undefined) =>
   projectId ? `${STORAGE_PREFIX}${projectId}` : null;
 
