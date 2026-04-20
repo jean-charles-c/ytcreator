@@ -315,15 +315,6 @@ export default function PdfDocumentaryTab({
   // ── Active v2 script (revised takes priority) ──
   const activeV2Script = scriptV2Revised || scriptV2 || null;
 
-  // ── Reset chapterState when v2 script first appears (avoid stale v1 chapters) ──
-  const prevActiveV2ScriptRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (v2Enabled && activeV2Script && prevActiveV2ScriptRef.current === null) {
-      setChapterState(null);
-    }
-    prevActiveV2ScriptRef.current = activeV2Script;
-  }, [v2Enabled, activeV2Script]);
-
 
   const bgScriptTask = projectId ? getTask(projectId, "script") : undefined;
   const generatingScript = bgScriptTask?.status === "running";

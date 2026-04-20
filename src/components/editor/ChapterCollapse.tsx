@@ -177,7 +177,7 @@ export default function ChapterCollapse({
         onChapterStateChange(normalizeChapterState(chapterState));
       }
     }
-  }, [chaptersFromSections, chapterState, isLegacyChapterState, normalizeChapterState, onChapterStateChange]);
+  }, [activeChapters, chapterState, isLegacyChapterState, normalizeChapterState, onChapterStateChange]);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
