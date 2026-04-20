@@ -181,7 +181,7 @@ export default function Editor() {
 
   // ── Sensitive mode (hierarchy: global → scene → shot) ──────
   const sensitiveMode = useSensitiveMode();
-  const visualStyle = useVisualStyle();
+  const visualStyle = useVisualStyle(id ?? null);
 
   const [pdfAnalysis, setPdfAnalysis] = useState<any>(() => {
     try {
