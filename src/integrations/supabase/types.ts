@@ -307,6 +307,7 @@ export type Database = {
           timeline_state: Json | null
           updated_at: string
           v2_enabled: boolean | null
+          visual_style_global: string | null
         }
         Insert: {
           analysis?: Json | null
@@ -329,6 +330,7 @@ export type Database = {
           timeline_state?: Json | null
           updated_at?: string
           v2_enabled?: boolean | null
+          visual_style_global?: string | null
         }
         Update: {
           analysis?: Json | null
@@ -351,6 +353,7 @@ export type Database = {
           timeline_state?: Json | null
           updated_at?: string
           v2_enabled?: boolean | null
+          visual_style_global?: string | null
         }
         Relationships: [
           {
