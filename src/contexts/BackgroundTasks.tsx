@@ -132,6 +132,7 @@ export interface StoryboardParams {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const STORYBOARD_SCENE_DELAY_MS = 1500;
 const STORYBOARD_RETRY_DELAYS_MS = [4000, 8000, 12000];
+const STORYBOARD_CONCURRENCY = 3;
 
 const isRateLimitMessage = (message?: string) =>
   !!message && /rate limit exceeded|limite de requêtes atteinte/i.test(message);
