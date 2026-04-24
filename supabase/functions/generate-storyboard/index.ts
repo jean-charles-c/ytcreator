@@ -688,8 +688,31 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const { project_id, scene_id, sensitive_level, segment_only, prompt_only, visual_style, aspect_ratio: reqAspectRatio } = body;
+    const { project_id, scene_id, sensitive_level, segment_only, prompt_only, visual_style: reqVisualStyle, aspect_ratio: reqAspectRatio } = body;
     if (!project_id) throw new Error("Missing project_id");
+
+    // Defensive cross-check: if the caller did not send a real style (or sent
+    // the optimistic "none" fallback while their hook was still loading the
+    // project's saved value), look it up from the DB before resolving styles.
+    // This prevents shots from being generated with "Aucun style imposé" when
+    // the project actually has a global style configured.
+    let visual_style: string | undefined = reqVisualStyle;
+    if (!visual_style || visual_style === "none") {
+      try {
+        const { data: stateRow } = await supabase
+          .from("project_scriptcreator_state")
+          .select("visual_style_global")
+          .eq("project_id", project_id)
+          .maybeSingle();
+        const dbStyle = (stateRow?.visual_style_global as string | null) ?? null;
+        if (dbStyle && dbStyle !== "none") {
+          console.log(`[generate-storyboard] visual_style fallback from DB: "${visual_style}" → "${dbStyle}"`);
+          visual_style = dbStyle;
+        }
+      } catch (e) {
+        console.warn("[generate-storyboard] visual_style DB fallback failed:", e);
+      }
+    }
 
     // Visual style from shared definitions
     const { STYLE_SUFFIXES, getStyleSuffixFr, getStyleLabel, isRealisticStyle } = await import("../_shared/visual-styles.ts");
