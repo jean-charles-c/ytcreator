@@ -2721,7 +2721,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                 <div className="pt-2 border-t flex flex-col gap-3 border border-zinc-50 border-dotted">
                   {/* Step 1 — Création des shots */}
                   <div className="flex flex-col gap-1">
-                    <span className="uppercase tracking-wider font-semibold text-lg bg-amber-500 text-primary-foreground px-2 py-0.5 rounded">① Créer les shots</span>
+                    <span className="uppercase tracking-wider font-semibold text-lg bg-amber-500 text-primary-foreground">① Créer les shots</span>
                     <div className="flex gap-2 flex-wrap items-center">
                       <Button variant="outline" size="sm" onClick={() => runStoryboard(undefined, { segmentOnly: true })} disabled={generatingStoryboard} className="min-h-[40px]">
                         {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -2738,7 +2738,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
                   {/* Step 2 — Auto-détection objets/personnages récurrents */}
                   <div className="flex flex-col gap-1">
-                    <span className="uppercase tracking-wider font-semibold text-lg text-primary-foreground bg-amber-500 px-2 py-0.5 rounded">② Détecter les objets récurrents</span>
+                    <span className="uppercase tracking-wider font-semibold text-lg text-primary-foreground bg-amber-500">② Détecter les objets récurrents</span>
                     <div className="flex gap-2 flex-wrap items-center">
                       <Button variant="outline" size="sm" onClick={handleManualDetectObjects} disabled={detectingObjects || shots.length === 0} className="min-h-[40px]">
                         {detectingObjects ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -2749,7 +2749,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
                   {/* Step 3 — Générer les prompts */}
                   <div className="flex flex-col gap-1">
-                    <span className="uppercase tracking-wider font-semibold text-lg text-primary-foreground bg-amber-500 px-2 py-0.5 rounded">③ Générer les prompts</span>
+                    <span className="uppercase tracking-wider font-semibold text-lg text-primary-foreground bg-amber-500">③ Générer les prompts</span>
                     <div className="flex gap-2 flex-wrap items-center">
                       <Button variant="hero" size="sm" onClick={() => runStoryboard(undefined, { promptOnly: true })} disabled={generatingStoryboard || shots.length === 0} className="min-h-[40px]">
                         {generatingStoryboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
@@ -2774,7 +2774,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
                   {/* Step 4 — Générer les visuels */}
                   <div className="flex flex-col gap-1">
-                    <span className="uppercase tracking-wider font-semibold text-lg text-primary-foreground bg-amber-500 px-2 py-0.5 rounded">④ Générer les visuels</span>
+                    <span className="uppercase tracking-wider font-semibold text-lg text-primary-foreground bg-amber-500">④ Générer les visuels</span>
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
