@@ -250,6 +250,21 @@ export default function WhisperAlignmentEditor({
   } | null>(null);
   const [applyingPass, setApplyingPass] = useState(false);
 
+  // Stable signature of shots+scenes to avoid re-running effects when the
+  // parent re-creates these arrays on every render (which makes the panel
+  // refresh in a loop and prevents manual editing).
+  const shotsSignature = useMemo(
+    () =>
+      shots
+        .map((s) => `${s.id}:${s.scene_id}:${s.shot_order}`)
+        .join("|"),
+    [shots]
+  );
+  const scenesSignature = useMemo(
+    () => scenesForSort.map((s) => `${s.id}:${s.scene_order}`).join("|"),
+    [scenesForSort]
+  );
+
   const getSortedShots = useCallback(() => {
     if (!shots.length || !scenesForSort.length) return [];
     const sceneOrderMap = new Map(scenesForSort.map((s) => [s.id, s.scene_order]));
@@ -259,7 +274,8 @@ export default function WhisperAlignmentEditor({
       if (oa !== ob) return oa - ob;
       return a.shot_order - b.shot_order;
     });
-  }, [shots, scenesForSort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shotsSignature, scenesSignature]);
 
   /** Resolve manual anchors from DB timepoints: find whisper word indices */
   const resolveManualAnchorsFromDb = useCallback(
