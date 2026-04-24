@@ -606,6 +606,13 @@ export default function Editor() {
     const segmentOnly = options?.segmentOnly ?? false;
     const promptOnly = options?.promptOnly ?? false;
     const force = options?.force ?? false;
+    // Guard: prevent generations with the optimistic "none" fallback before
+    // the project's global visual style has been loaded from the DB.
+    // Segmentation-only runs don't use the visual style → allow them through.
+    if (!segmentOnly && !visualStyle.isReady) {
+      toast.error("Style visuel en cours de chargement, réessayez dans un instant");
+      return;
+    }
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
@@ -1168,6 +1175,10 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
   /** Auto-regenerate visual prompts for a scene after structural changes (split/merge/delete) */
   const regeneratePromptsForScene = async (sceneId: string) => {
+    if (!visualStyle.isReady) {
+      toast.error("Style visuel en cours de chargement, réessayez dans un instant");
+      return;
+    }
     try {
       toast.info("Régénération des prompts visuels en cours...");
       const session = (await supabase.auth.getSession()).data.session;
@@ -1398,6 +1409,10 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
   };
 
   const handleShotRegenerate = async (shotId: string) => {
+    if (!visualStyle.isReady) {
+      toast.error("Style visuel en cours de chargement, réessayez dans un instant");
+      return;
+    }
     setRegeneratingShots((prev) => ({ ...prev, [shotId]: true }));
     try {
       const session = (await supabase.auth.getSession()).data.session;

@@ -50,6 +50,11 @@ export function useVisualStyle(projectId?: string | null) {
   const [sceneStyles, setSceneStyles] = useState<Map<string, string | null>>(new Map());
   const [shotStyles, setShotStyles] = useState<Map<string, string | null>>(new Map());
 
+  // True only after the DB roundtrip for the current projectId has resolved
+  // (success, error, or no row). Prevents callers from triggering generations
+  // with the optimistic `"none"` fallback before the authoritative value loads.
+  const [isReady, setIsReady] = useState<boolean>(() => !projectId);
+
   // Track the projectId we last loaded from DB to avoid races.
   const loadedForProjectRef = useRef<string | null>(null);
 
@@ -63,8 +68,12 @@ export function useVisualStyle(projectId?: string | null) {
     if (!projectId) {
       setGlobalStyleIdRaw(DEFAULT_VISUAL_STYLE_ID);
       loadedForProjectRef.current = null;
+      setIsReady(true);
       return;
     }
+
+    // New project → not ready until DB responds.
+    setIsReady(false);
 
     // Optimistic restore from per-project cache.
     try {
@@ -86,6 +95,7 @@ export function useVisualStyle(projectId?: string | null) {
         if (cancelled) return;
         if (error) {
           console.warn("[useVisualStyle] DB load failed:", error.message);
+          setIsReady(true);
           return;
         }
         const dbValue = (data?.visual_style_global as string | null) ?? null;
@@ -94,8 +104,10 @@ export function useVisualStyle(projectId?: string | null) {
           try { localStorage.setItem(`${STORAGE_PREFIX}${projectId}`, dbValue); } catch {}
         }
         loadedForProjectRef.current = projectId;
+        setIsReady(true);
       } catch (e) {
         console.warn("[useVisualStyle] DB load exception:", e);
+        if (!cancelled) setIsReady(true);
       }
     })();
 
@@ -176,6 +188,7 @@ export function useVisualStyle(projectId?: string | null) {
   return {
     store,
     globalStyleId,
+    isReady,
     setGlobalStyleId,
     setSceneStyle,
     setShotStyle,
