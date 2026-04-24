@@ -30,10 +30,40 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { shot_id, sensitive_level, visual_style_id } = await req.json();
+    const { shot_id, sensitive_level, visual_style_id: reqVisualStyleId } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
 
     const sensitiveModeBlock = getSensitiveModeInstruction(sensitive_level);
+
+    // Resolve the shot first so we know its project_id (needed for the
+    // defensive style fallback below).
+    const { data: shotForStyle, error: shotForStyleErr } = await supabase
+      .from("shots")
+      .select("project_id")
+      .eq("id", shot_id)
+      .single();
+    if (shotForStyleErr || !shotForStyle) throw new Error("Shot not found");
+
+    // Defensive cross-check: if the caller sent no style or "none" (often the
+    // optimistic fallback while their hook was still loading the project's
+    // saved value), look up the project's global visual style from the DB.
+    let visual_style_id: string | undefined = reqVisualStyleId;
+    if (!visual_style_id || visual_style_id === "none") {
+      try {
+        const { data: stateRow } = await supabase
+          .from("project_scriptcreator_state")
+          .select("visual_style_global")
+          .eq("project_id", shotForStyle.project_id)
+          .maybeSingle();
+        const dbStyle = (stateRow?.visual_style_global as string | null) ?? null;
+        if (dbStyle && dbStyle !== "none") {
+          console.log(`[regenerate-shot] visual_style fallback from DB: "${visual_style_id}" → "${dbStyle}"`);
+          visual_style_id = dbStyle;
+        }
+      } catch (e) {
+        console.warn("[regenerate-shot] visual_style DB fallback failed:", e);
+      }
+    }
 
     // ── Visual style from shared definitions ──
     const { STYLE_SUFFIXES, getStyleSuffix, getStyleLabel, isRealisticStyle } = await import("../_shared/visual-styles.ts");
