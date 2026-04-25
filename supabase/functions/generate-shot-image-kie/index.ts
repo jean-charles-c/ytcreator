@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
 import { getStyleSuffix } from "../_shared/visual-styles.ts";
+import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,51 @@ const ASPECT_RATIOS_KIE: Record<string, string> = {
   "3:4": "3:4",
   "2:3": "2:3",
 };
+
+const ASPECT_RATIO_VALUES: Record<string, number> = {
+  "16:9": 16 / 9,
+  "9:16": 9 / 16,
+  "1:1": 1,
+  "4:3": 4 / 3,
+  "3:2": 3 / 2,
+  "3:4": 3 / 4,
+  "2:3": 2 / 3,
+};
+
+/**
+ * Force the exact aspect ratio by center-cropping. Some Kie models (notably
+ * google/nano-banana, ideogram) ignore the requested aspect_ratio and return
+ * 1:1 or near-square images. We crop to guarantee the user-requested ratio.
+ */
+async function enforceAspectRatio(bytes: Uint8Array, aspectRatio: string): Promise<{ bytes: Uint8Array; mimeType: string; ext: string }> {
+  const targetAR = ASPECT_RATIO_VALUES[aspectRatio] ?? ASPECT_RATIO_VALUES["16:9"];
+  try {
+    const decoded = await Image.decode(bytes);
+    const origW = decoded.width;
+    const origH = decoded.height;
+    const srcAR = origW / origH;
+    if (Math.abs(srcAR - targetAR) > 0.01) {
+      if (srcAR > targetAR) {
+        const cw = Math.max(1, Math.round(origH * targetAR));
+        decoded.crop(Math.floor((origW - cw) / 2), 0, cw, origH);
+      } else {
+        const ch = Math.max(1, Math.round(origW / targetAR));
+        decoded.crop(0, Math.floor((origH - ch) / 2), origW, ch);
+      }
+    }
+    const MAX_DIM = 1280;
+    if (decoded.width > MAX_DIM || decoded.height > MAX_DIM) {
+      const scale = MAX_DIM / Math.max(decoded.width, decoded.height);
+      decoded.resize(Math.max(1, Math.round(decoded.width * scale)), Math.max(1, Math.round(decoded.height * scale)));
+    }
+    console.log(`[KIE] Aspect-ratio crop: ${origW}x${origH} -> ${decoded.width}x${decoded.height} (target ${aspectRatio})`);
+    const out = await decoded.encodeJPEG(85);
+    return { bytes: out, mimeType: "image/jpeg", ext: "jpg" };
+  } catch (err) {
+    console.warn(`[KIE] Aspect-ratio enforcement failed, keeping original: ${(err as Error).message}`);
+    return { bytes, mimeType: "image/png", ext: "png" };
+  }
+}
 
 // Map quality => pixel size (longest side)
 const QUALITY_TO_SIZE: Record<string, number> = {
@@ -269,16 +315,15 @@ async function checkKieTask(apiKey: string, taskId: string, isMidjourney: boolea
 /**
  * Download Kie image, upload to shot-images bucket, return public URL.
  */
-async function rehostImage(supabase: any, imageUrl: string, projectId: string, shotId: string): Promise<string> {
+async function rehostImage(supabase: any, imageUrl: string, projectId: string, shotId: string, aspectRatio: string): Promise<string> {
   const resp = await fetch(imageUrl);
   if (!resp.ok) throw new Error(`Failed to download Kie image: ${resp.status}`);
-  const contentType = resp.headers.get("content-type")?.split(";")[0] || "image/png";
-  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-  const bytes = new Uint8Array(await resp.arrayBuffer());
-  const path = `${projectId}/${shotId}-kie-${Date.now()}.${ext}`;
+  const rawBytes = new Uint8Array(await resp.arrayBuffer());
+  const normalized = await enforceAspectRatio(rawBytes, aspectRatio);
+  const path = `${projectId}/${shotId}-kie-${Date.now()}.${normalized.ext}`;
   const { error: upErr } = await supabase.storage
     .from("shot-images")
-    .upload(path, bytes, { contentType, upsert: true });
+    .upload(path, normalized.bytes, { contentType: normalized.mimeType, upsert: true });
   if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
   const { data } = supabase.storage.from("shot-images").getPublicUrl(path);
   return data.publicUrl;
