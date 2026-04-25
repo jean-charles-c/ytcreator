@@ -445,7 +445,10 @@ Deno.serve(async (req) => {
         structure: parsed.structure ?? {},
         patterns: { items: parsed.patterns ?? [] },
         tone: parsed.tone ?? {},
-        rhythm: parsed.rhythm ?? {},
+        rhythm: {
+          ...(parsed.rhythm ?? {}),
+          cross_source_variations: parsed.variations ?? null,
+        },
         writing_rules: { items: parsed.writing_rules ?? [] },
         recommendations: {
           do: parsed.recommendations?.do ?? [],
