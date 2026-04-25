@@ -1470,40 +1470,34 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
    const [showWarnings, setShowWarnings] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
-  const IMAGE_MODELS = [
-    { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "0.02 $" },
-    { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "0.06 $" },
-    { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "0.10 $" },
-  ];
-
   // Dynamically load Kie models from kie_pricing
   const { engines: kieEngines } = useKieModels();
 
-  // Build the unified IMAGE_MODELS list (Lovable AI + Kie engines).
-  // Each entry stays compatible with the old shape ({ value, label, price }) so the rest
-  // of the UI doesn't need to change. Kie entries get a `provider: "kie"` flag and the
-  // price reflects the currently selected quality.
-  const IMAGE_MODELS_DYNAMIC = [
+  // Unified IMAGE_MODELS list (Lovable AI + Kie engines).
+  // Each entry keeps the old { value, label, price } shape so existing UI stays compatible.
+  // Kie entries get `provider: "kie"` and a `qualities` array; their `price` reflects the
+  // currently selected `imageQuality`.
+  const IMAGE_MODELS = [
     { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "$0.02/img", provider: "lovable" as const },
     { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "$0.06/img", provider: "lovable" as const },
     { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "$0.10/img", provider: "lovable" as const },
     ...kieEngines.map((e) => {
-      // Pick price for current quality, fallback to first quality available
       const q = e.qualities.find((qq) => qq.quality === imageQuality) ?? e.qualities[0];
       return {
         value: e.value,
         label: e.label,
         price: q ? formatKiePrice(q.priceUsd) : "—",
         provider: "kie" as const,
-        qualities: e.qualities,
+        qualities: e.qualities as { quality: "1K" | "2K" | "4K"; priceUsd: number }[],
       };
     }),
-  ];
-
-  // Backward-compat: keep IMAGE_MODELS pointing to the dynamic list
-  // (everything below already references IMAGE_MODELS).
-  // We override the const declaration above with a getter-style binding via a renamed array.
-  // To keep this safe we shadow the original below.
+  ] as Array<{
+    value: string;
+    label: string;
+    price: string;
+    provider: "lovable" | "kie";
+    qualities?: { quality: "1K" | "2K" | "4K"; priceUsd: number }[];
+  }>;
 
   const ASPECT_RATIOS = [
     { value: "16:9", label: "16:9 (Paysage)" },
