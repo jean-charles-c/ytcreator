@@ -80,13 +80,29 @@ async function submitKieTask(params: {
     };
   } else {
     // Generic /jobs/createTask payload (Kie unified market API)
+    const input: Record<string, any> = {
+      prompt,
+      aspect_ratio: aspectRatio,
+      ...(referenceImages.length > 0 ? { image_urls: referenceImages } : {}),
+    };
+
+    // Per-model required parameters
+    if (modelKey.startsWith("ideogram/")) {
+      // Ideogram requires rendering_speed (TURBO | BALANCED | QUALITY)
+      input.rendering_speed = "BALANCED";
+    }
+    if (modelKey.startsWith("flux-2/")) {
+      // Flux 2 supports a quality switch (1K | 2K)
+      input.quality = size >= 2048 ? "2K" : "1K";
+    }
+    if (modelKey === "qwen/text-to-image") {
+      // Qwen supports an acceleration switch
+      input.acceleration = "regular";
+    }
+
     body = {
       model: modelKey,
-      input: {
-        prompt,
-        aspect_ratio: aspectRatio,
-        ...(referenceImages.length > 0 ? { image_urls: referenceImages } : {}),
-      },
+      input,
     };
   }
 
