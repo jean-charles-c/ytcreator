@@ -121,11 +121,25 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
     const parts: string[] = [];
 
+    // Detect tight framings (close-up / insert / macro). For these, the
+    // location is not visible in the frame, so we drop LOCATION identity
+    // locks and reference images — same logic as the edge functions, so the
+    // preview matches what is actually sent to the AI.
+    const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
+    const isTightFraming = tightFramingRegex.test(
+      `${shot.description || ""} ${shot.prompt_export || ""}`,
+    );
+    const effectiveLinkedObjects = (linkedObjects || []).filter((obj) => {
+      if (!isTightFraming) return true;
+      const t = String((obj as any).type || (obj as any).object_type || "").toLowerCase();
+      return t !== "lieu" && t !== "location" && t !== "place";
+    });
+
     // 1. Core rules (condensed) + reference image list if any
     parts.push(CORE_RULES);
-    const hasRefImages = linkedObjects?.some(obj => obj.reference_images && obj.reference_images.length > 0);
+    const hasRefImages = effectiveLinkedObjects.some(obj => obj.reference_images && obj.reference_images.length > 0);
     if (hasRefImages) {
-      const refImgList = linkedObjects?.flatMap(obj =>
+      const refImgList = effectiveLinkedObjects.flatMap(obj =>
         (obj.reference_images || []).map((url, i) => {
           const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
           return `  📷 ${obj.nom} — ${fileName}`;
@@ -156,14 +170,14 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
         .trim();
       return txt;
     };
-    const identityLocks = linkedObjects
-      ?.map(obj => {
+    const identityLocks = effectiveLinkedObjects
+      .map(obj => {
         const cleaned = cleanIdentityLock(obj.identity_prompt || "");
         // Keep only the essential subject line if everything was stripped
         if (!cleaned && obj.nom) return `Subject: ${obj.nom}`;
         return cleaned;
       })
-      .filter(Boolean) || [];
+      .filter(Boolean);
 
     // 3. Generation frame (condensed)
     parts.push("Generate one single cinematic 16:9 image, no borders, no letterboxing, no square crop.");

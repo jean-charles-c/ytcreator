@@ -479,6 +479,28 @@ serve(async (req) => {
       Array.isArray(obj.mentions_shots) && obj.mentions_shots.includes(shot_id)
     );
 
+    // Detect tight framings (close-up / insert / macro / detail). For these
+    // the location/place is not visible in the frame, so we drop LOCATION
+    // identity locks AND we don't pass the location reference image — both
+    // would push the model to render an establishing shot of the place
+    // (sometimes even baking the location's name into the image as text)
+    // instead of the requested detail.
+    const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
+    const isTightFraming = tightFramingRegex.test(
+      `${shot.description || ""} ${shot.prompt_export || ""}`,
+    );
+    const effectiveLinkedObjects = isTightFraming
+      ? shotLinkedObjects.filter((obj: any) => {
+          const t = String(obj.type || obj.object_type || "").toLowerCase();
+          return t !== "lieu" && t !== "location" && t !== "place";
+        })
+      : shotLinkedObjects;
+    if (isTightFraming && effectiveLinkedObjects.length < shotLinkedObjects.length) {
+      console.log(
+        `[KIE] Tight framing detected — dropped ${shotLinkedObjects.length - effectiveLinkedObjects.length} location identity lock(s) so the close-up is not replaced by an establishing shot.`,
+      );
+    }
+
     // Build prompt
     let enrichedPrompt: string;
     if (typeof custom_prompt === "string" && custom_prompt.trim().length > 0) {
@@ -500,7 +522,7 @@ serve(async (req) => {
       // the character/place full-body description and ignore the requested
       // action (e.g. "close-up on the burn"). The action stays first and is
       // explicitly marked as the primary subject of the frame.
-      const identityLocks = shotLinkedObjects
+      const identityLocks = effectiveLinkedObjects
         .map((obj: any) => obj.identity_prompt || "")
         .filter(Boolean);
       if (identityLocks.length > 0) {
@@ -551,7 +573,7 @@ serve(async (req) => {
     // duplicated blocks (REFERENCE IMAGE RULE / ASPECT RATIO / anti-text-leak)
     // to reduce token waste while keeping every constraint.
     const targetAR = ASPECT_RATIOS_KIE[aspect_ratio] ?? "16:9";
-    const hasRefs = shotLinkedObjects.some(
+    const hasRefs = effectiveLinkedObjects.some(
       (o: any) => Array.isArray(o.reference_images) && o.reference_images.length > 0,
     );
     const referenceLines = hasRefs
@@ -588,7 +610,7 @@ serve(async (req) => {
       const actionText = (shot.prompt_export || shot.description || "").trim();
 
       // Build a compact identity-lock summary (one line per recurring entity).
-      const compactLocks = shotLinkedObjects
+      const compactLocks = effectiveLinkedObjects
         .map((obj: any) => {
           const name = obj.nom || obj.name || "subject";
           const type = (obj.type || obj.object_type || "subject").toLowerCase();
@@ -626,7 +648,7 @@ serve(async (req) => {
           rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot):\n${compactLocks}`;
         }
       }
-      console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${shotLinkedObjects.length} identity locks)`);
+      console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${effectiveLinkedObjects.length} identity locks)`);
       enrichedPrompt = rebuilt;
     }
 
@@ -634,7 +656,7 @@ serve(async (req) => {
     const allRefImages: string[] = [];
     const orefImages: string[] = [];
     const srefImages: string[] = [];
-    for (const obj of shotLinkedObjects) {
+    for (const obj of effectiveLinkedObjects) {
       if (!Array.isArray(obj.reference_images)) continue;
       const objType = String(obj.type || obj.object_type || "").toLowerCase();
       const useOref = OREF_OBJECT_TYPES.has(objType);
