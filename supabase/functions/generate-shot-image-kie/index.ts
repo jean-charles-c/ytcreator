@@ -207,7 +207,9 @@ function parseKieTaskData(data: any) {
  * Poll Kie for task result. Returns final image URL.
  */
 async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<string> {
-  const maxAttempts = 60; // ~5 min @ 5s
+  // Edge runtime kills functions around ~150s wall-time. Cap polling at ~110s
+  // (22 attempts × 5s) so we can still return a clean error to the client.
+  const maxAttempts = 22;
   const pollPath = isMidjourney ? `/mj/record-info` : `/jobs/recordInfo`;
 
   for (let i = 0; i < maxAttempts; i++) {
@@ -237,7 +239,7 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
     }
     console.log(`[KIE poll ${i}] state=${parsed.state || "unknown"} successFlag=${Number.isFinite(parsed.successFlag) ? parsed.successFlag : "none"}`);
   }
-  throw new Error("Kie task timed out after 5 minutes");
+  throw new Error("KIE_TIMEOUT_SYNC");
 }
 
 async function checkKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<{ status: "pending" | "success" | "failed"; imageUrl?: string; error?: string }> {
@@ -509,9 +511,16 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-shot-image-kie error:", message);
+    // Timeout in synchronous mode: return 202 + task_id signal so the client
+    // can switch to polling instead of treating it as a hard failure.
+    const isTimeout = message === "KIE_TIMEOUT_SYNC";
     return new Response(
-      JSON.stringify({ error: message, provider: "kie" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({
+        error: isTimeout ? "Kie generation is taking longer than expected. Please retry with async mode." : message,
+        provider: "kie",
+        retryable: isTimeout,
+      }),
+      { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
