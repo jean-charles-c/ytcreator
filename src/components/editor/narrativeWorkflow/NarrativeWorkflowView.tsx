@@ -63,8 +63,10 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
     if (lastSources.length > 0) runAnalysis(lastSources);
   }, [lastSources, runAnalysis]);
 
-  const completedSteps = analysisStatus === "success" ? ["sources" as const] : [];
-  const currentStep = analysisStatus === "success" ? "analysis" : "sources";
+  const completedSteps: ("sources" | "analysis")[] =
+    analysisStatus === "success" ? ["sources"] : [];
+  const currentStep: "sources" | "analysis" =
+    analysisStatus === "success" ? "analysis" : "sources";
 
   return (
     <div className="container max-w-6xl py-3 sm:py-4 lg:py-10 px-2 sm:px-4 animate-fade-in">
@@ -123,8 +125,8 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
           Étapes du workflow
         </h3>
         <NarrativeWorkflowProgress
-          currentStep={currentStep as any}
-          completedSteps={completedSteps as any}
+          currentStep={currentStep}
+          completedSteps={completedSteps}
         />
       </div>
 
