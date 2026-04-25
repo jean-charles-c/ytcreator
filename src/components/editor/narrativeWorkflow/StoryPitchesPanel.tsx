@@ -16,6 +16,9 @@ import {
   ListTree,
   Quote,
   Layers,
+  FolderPlus,
+  ExternalLink,
+  FileBadge2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +30,13 @@ import {
 import { ChevronDown } from "lucide-react";
 import { useStoryPitchBatches, type PitchBatch, type StoryPitch } from "@/hooks/useStoryPitchBatches";
 import { cn } from "@/lib/utils";
+import {
+  createProjectFromPitch,
+  useGeneratedProjectsByAnalysis,
+  type GeneratedProjectFull,
+} from "@/hooks/useGeneratedProjects";
+import type { AnalysisPayload } from "./NarrativeAnalysisPanel";
+import { useNavigate } from "react-router-dom";
 
 interface StoryPitchesPanelProps {
   analysisId?: string | null;
@@ -36,6 +46,8 @@ interface StoryPitchesPanelProps {
   /** Force l'ouverture initiale (par ex. après clic depuis l'analyse). */
   autoTrigger?: boolean;
   onAutoTriggerHandled?: () => void;
+  /** Analyse complète, requise pour figer une forme narrative au moment de la création de projet. */
+  analysisPayload?: AnalysisPayload | null;
 }
 
 /**
@@ -48,9 +60,45 @@ export default function StoryPitchesPanel({
   disabled = false,
   autoTrigger = false,
   onAutoTriggerHandled,
+  analysisPayload = null,
 }: StoryPitchesPanelProps) {
   const { batches, loading, reload } = useStoryPitchBatches({ analysisId, formId });
   const [generating, setGenerating] = useState(false);
+  const navigate = useNavigate();
+  const { items: generatedProjects, reload: reloadProjects } =
+    useGeneratedProjectsByAnalysis(analysisId ?? null);
+  const [creatingPitchId, setCreatingPitchId] = useState<string | null>(null);
+
+  const handleCreateProject = useCallback(
+    async (pitch: StoryPitch) => {
+      if (!analysisId && !formId) {
+        toast.error("Aucune analyse ou forme narrative associée.");
+        return;
+      }
+      setCreatingPitchId(pitch.id);
+      try {
+        const { project_id } = await createProjectFromPitch({
+          pitch,
+          analysisId: analysisId ?? null,
+          existingFormId: formId ?? null,
+          analysis: analysisPayload,
+        });
+        await reloadProjects();
+        toast.success(`Projet « ${pitch.title} » créé`, {
+          action: {
+            label: "Ouvrir",
+            onClick: () => navigate(`/editor/${project_id}`),
+          },
+        });
+      } catch (e: any) {
+        console.error("create project from pitch", e);
+        toast.error(e?.message || "Erreur lors de la création du projet");
+      } finally {
+        setCreatingPitchId(null);
+      }
+    },
+    [analysisId, formId, analysisPayload, reloadProjects, navigate],
+  );
 
   const generate = useCallback(async () => {
     if (!analysisId && !formId) {
@@ -142,16 +190,39 @@ export default function StoryPitchesPanel({
         </div>
       )}
 
+      {generatedProjects.length > 0 && (
+        <ActiveProjectsBanner items={generatedProjects} onOpen={(id) => navigate(`/editor/${id}`)} />
+      )}
+
       <div className="space-y-3">
         {batches.map((batch) => (
-          <BatchBlock key={batch.id} batch={batch} defaultOpen={batch.batch_index === batches.length} />
+          <BatchBlock
+            key={batch.id}
+            batch={batch}
+            defaultOpen={batch.batch_index === batches.length}
+            createdByPitch={new Map(generatedProjects.map((g) => [g.pitch_id ?? "", g]))}
+            onCreateProject={handleCreateProject}
+            creatingPitchId={creatingPitchId}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function BatchBlock({ batch, defaultOpen }: { batch: PitchBatch; defaultOpen?: boolean }) {
+function BatchBlock({
+  batch,
+  defaultOpen,
+  createdByPitch,
+  onCreateProject,
+  creatingPitchId,
+}: {
+  batch: PitchBatch;
+  defaultOpen?: boolean;
+  createdByPitch: Map<string, GeneratedProjectFull>;
+  onCreateProject: (pitch: StoryPitch) => void;
+  creatingPitchId: string | null;
+}) {
   const [open, setOpen] = useState(!!defaultOpen);
   const date = new Date(batch.created_at);
   const formattedDate = date.toLocaleString("fr-FR", {
@@ -192,7 +263,16 @@ function BatchBlock({ batch, defaultOpen }: { batch: PitchBatch; defaultOpen?: b
         <CollapsibleContent>
           <div className="p-3 space-y-3">
             {batch.pitches.map((p) => (
-              <PitchCard key={p.id} pitch={p} />
+              <PitchCard
+                key={p.id}
+                pitch={p}
+                projectsForPitch={
+                  // Plusieurs projets peuvent exister pour un même pitch (recréation manuelle)
+                  Array.from(createdByPitch.values()).filter((g) => g.pitch_id === p.id)
+                }
+                onCreateProject={() => onCreateProject(p)}
+                creating={creatingPitchId === p.id}
+              />
             ))}
           </div>
         </CollapsibleContent>
@@ -201,7 +281,18 @@ function BatchBlock({ batch, defaultOpen }: { batch: PitchBatch; defaultOpen?: b
   );
 }
 
-function PitchCard({ pitch }: { pitch: StoryPitch }) {
+function PitchCard({
+  pitch,
+  projectsForPitch,
+  onCreateProject,
+  creating,
+}: {
+  pitch: StoryPitch;
+  projectsForPitch: GeneratedProjectFull[];
+  onCreateProject: () => void;
+  creating: boolean;
+}) {
+  const navigate = useNavigate();
   return (
     <div className="rounded-md border border-border/70 bg-card p-3 sm:p-4 space-y-3">
       <div className="flex items-start gap-2">
@@ -298,6 +389,98 @@ function PitchCard({ pitch }: { pitch: StoryPitch }) {
           </div>
         </div>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {projectsForPitch.length === 0 ? (
+            <span className="text-[10px] text-muted-foreground">
+              Aucun projet créé depuis ce pitch
+            </span>
+          ) : (
+            projectsForPitch.map((gp) => (
+              <button
+                key={gp.id}
+                type="button"
+                onClick={() => navigate(`/editor/${gp.project_id}`)}
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 border border-emerald-500/30"
+                title={`Ouvrir le projet « ${gp.project_title ?? "?"} »`}
+              >
+                <FileBadge2 className="h-3 w-3" />
+                {gp.project_title || "Projet"}
+                <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+              </button>
+            ))
+          )}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant={projectsForPitch.length > 0 ? "outline" : "default"}
+          onClick={onCreateProject}
+          disabled={creating}
+          className="min-h-[32px] text-xs"
+        >
+          {creating ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Création…</>
+          ) : projectsForPitch.length > 0 ? (
+            <><FolderPlus className="h-3.5 w-3.5" /> Créer un autre projet</>
+          ) : (
+            <><FolderPlus className="h-3.5 w-3.5" /> Créer un projet avec cette proposition</>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ActiveProjectsBanner({
+  items,
+  onOpen,
+}: {
+  items: GeneratedProjectFull[];
+  onOpen: (projectId: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <FileBadge2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <h5 className="text-xs font-semibold text-foreground">
+          Projets créés depuis ces pitchs
+          <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+            ({items.length})
+          </span>
+        </h5>
+      </div>
+      <ul className="space-y-1.5">
+        {items.map((gp) => (
+          <li
+            key={gp.id}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-background/60 border border-border/50 px-2.5 py-1.5"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-foreground truncate">
+                {gp.project_title || "Projet sans titre"}
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate">
+                Pitch : {gp.pitch_title || "—"}
+                {gp.form_name ? (
+                  <> · Forme : <span className="text-foreground/80">{gp.form_name}</span></>
+                ) : null}
+                <> · Statut : <span className="text-foreground/80">{gp.status}</span></>
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => onOpen(gp.project_id)}
+              className="h-7 text-[11px]"
+            >
+              <ExternalLink className="h-3 w-3" /> Ouvrir
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
