@@ -219,6 +219,7 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
             disabled={!analysisId}
             autoTrigger={pitchesAutoTrigger}
             onAutoTriggerHandled={() => setPitchesAutoTrigger(false)}
+            analysisPayload={analysisResult}
           />
         </div>
       )}
