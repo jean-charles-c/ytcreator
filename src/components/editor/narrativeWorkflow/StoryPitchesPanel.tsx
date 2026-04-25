@@ -398,8 +398,8 @@ function PitchCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 pt-2 border-t border-border/40">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           {projectsForPitch.length === 0 ? (
             <span className="text-[10px] text-muted-foreground">
               Aucun projet créé depuis ce pitch
@@ -410,11 +410,11 @@ function PitchCard({
                 key={gp.id}
                 type="button"
                 onClick={() => navigate(`/editor/${gp.project_id}`)}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 border border-emerald-500/30"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-1 border border-emerald-500/30 max-w-full"
                 title={`Ouvrir le projet « ${gp.project_title ?? "?"} »`}
               >
                 <FileBadge2 className="h-3 w-3" />
-                {gp.project_title || "Projet"}
+                <span className="truncate max-w-[160px]">{gp.project_title || "Projet"}</span>
                 <ExternalLink className="h-2.5 w-2.5 opacity-70" />
               </button>
             ))
@@ -426,14 +426,18 @@ function PitchCard({
           variant={projectsForPitch.length > 0 ? "outline" : "default"}
           onClick={onCreateProject}
           disabled={creating}
-          className="min-h-[32px] text-xs"
+          className="min-h-[40px] sm:min-h-[32px] text-xs w-full sm:w-auto justify-center"
         >
           {creating ? (
             <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Création…</>
           ) : projectsForPitch.length > 0 ? (
             <><FolderPlus className="h-3.5 w-3.5" /> Créer un autre projet</>
           ) : (
-            <><FolderPlus className="h-3.5 w-3.5" /> Créer un projet avec cette proposition</>
+            <>
+              <FolderPlus className="h-3.5 w-3.5" />
+              <span className="sm:hidden">Créer un projet</span>
+              <span className="hidden sm:inline">Créer un projet avec cette proposition</span>
+            </>
           )}
         </Button>
       </div>
