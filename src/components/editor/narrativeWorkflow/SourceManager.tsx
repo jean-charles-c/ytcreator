@@ -119,6 +119,32 @@ function wordCount(text: string | null): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+/**
+ * Récupère titre + chaîne d'une vidéo YouTube via l'endpoint oEmbed
+ * public (CORS-friendly, sans clé API). Retourne `null` si l'URL est
+ * invalide ou si YouTube refuse la requête (vidéo privée, supprimée, etc.).
+ */
+async function fetchYoutubeMeta(
+  url: string,
+): Promise<{ title: string; channel: string } | null> {
+  if (!isLikelyYoutubeUrl(url)) return null;
+  try {
+    const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+      url.trim(),
+    )}&format=json`;
+    const r = await fetch(endpoint);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const title = typeof data?.title === "string" ? data.title.trim() : "";
+    const channel =
+      typeof data?.author_name === "string" ? data.author_name.trim() : "";
+    if (!title && !channel) return null;
+    return { title, channel };
+  } catch {
+    return null;
+  }
+}
+
 interface SourceManagerProps {
   onSourcesChange?: (count: number) => void;
   /** Appelé quand l'utilisateur clique sur « Analyser la structure narrative ». */
@@ -135,6 +161,8 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
   const [pendingDelete, setPendingDelete] = useState<NarrativeSourceRow | null>(null);
   /** ID des sources actuellement en cours d'extraction auto. */
   const [fetchingIds, setFetchingIds] = useState<Set<string>>(new Set());
+  /** Indique qu'on récupère le titre/chaîne YouTube depuis l'URL saisie. */
+  const [fetchingMeta, setFetchingMeta] = useState(false);
   /** Ref vers `tryAutoFetch` pour éviter les cycles de dépendances. */
   const tryAutoFetchRef = useRef<
     ((sourceId: string, url: string, language: string | null) => void) | null
@@ -239,12 +267,25 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
 
     const trimmedTranscript = form.transcript.trim();
     const trimmedUrl = form.youtube_url.trim();
-    const trimmedTitle = form.title.trim();
+    let trimmedTitle = form.title.trim();
+    let trimmedChannel = form.channel.trim();
+
+    // Si l'utilisateur ajoute une URL YouTube sans titre/chaîne, on tente
+    // une dernière récupération synchrone via oEmbed avant l'enregistrement
+    // pour que la base contienne déjà les métadonnées.
+    if (trimmedUrl && (!trimmedTitle || !trimmedChannel)) {
+      const meta = await fetchYoutubeMeta(trimmedUrl);
+      if (meta) {
+        if (!trimmedTitle && meta.title) trimmedTitle = meta.title.slice(0, 200);
+        if (!trimmedChannel && meta.channel)
+          trimmedChannel = meta.channel.slice(0, 120);
+      }
+    }
 
     const payload = {
       user_id: user.id,
       title: trimmedTitle || null,
-      channel: form.channel.trim() || null,
+      channel: trimmedChannel || null,
       youtube_url: trimmedUrl || null,
       transcript: trimmedTranscript || null,
       notes: form.notes.trim() || null,
@@ -404,6 +445,44 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
   useEffect(() => {
     tryAutoFetchRef.current = tryAutoFetch;
   }, [tryAutoFetch]);
+
+  /**
+   * Pré-remplit titre + chaîne automatiquement quand l'utilisateur saisit
+   * une URL YouTube valide dans le dialog (création ou édition). Ne touche
+   * jamais à un champ déjà renseigné par l'utilisateur.
+   */
+  useEffect(() => {
+    if (dialog.kind === "closed") return;
+    const url = form.youtube_url.trim();
+    if (!url || !isLikelyYoutubeUrl(url)) return;
+    if (form.title.trim() && form.channel.trim()) return;
+
+    let cancelled = false;
+    const handle = window.setTimeout(async () => {
+      setFetchingMeta(true);
+      const meta = await fetchYoutubeMeta(url);
+      if (cancelled) return;
+      setFetchingMeta(false);
+      if (!meta) return;
+      setForm((f) => {
+        // Vérifie à nouveau côté state au moment de l'application : si
+        // l'utilisateur a tapé entre-temps, on ne l'écrase pas.
+        const next = { ...f };
+        if (!next.title.trim() && meta.title) next.title = meta.title.slice(0, 200);
+        if (!next.channel.trim() && meta.channel)
+          next.channel = meta.channel.slice(0, 120);
+        return next;
+      });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+    // On dépend uniquement de l'URL et de l'ouverture du dialog : le
+    // remplissage manuel ne doit pas re-déclencher le fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.youtube_url, dialog.kind]);
 
   const analyzableSources = useMemo(
     () => sources.filter((s) => isSourceAnalyzable(s)),
@@ -705,7 +784,15 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
 
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label htmlFor="src-title" className="text-xs">Titre (optionnel)</Label>
+              <Label htmlFor="src-title" className="text-xs flex items-center gap-1.5">
+                Titre (optionnel)
+                {fetchingMeta && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    récupération auto…
+                  </span>
+                )}
+              </Label>
               <Input
                 id="src-title"
                 value={form.title}
@@ -723,9 +810,21 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
                 placeholder="https://www.youtube.com/watch?v=…"
                 inputMode="url"
               />
+              <p className="text-[10px] text-muted-foreground">
+                Le titre et la chaîne sont récupérés automatiquement depuis YouTube
+                lorsque l'URL est valide.
+              </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="src-channel" className="text-xs">Chaîne (optionnel)</Label>
+              <Label htmlFor="src-channel" className="text-xs flex items-center gap-1.5">
+                Chaîne (optionnel)
+                {fetchingMeta && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    récupération auto…
+                  </span>
+                )}
+              </Label>
               <Input
                 id="src-channel"
                 value={form.channel}
