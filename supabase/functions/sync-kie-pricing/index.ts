@@ -20,7 +20,7 @@ const corsHeaders = {
 
 const FIRECRAWL_BASE = "https://api.firecrawl.dev/v2";
 const KIE_PRICING_URL = "https://kie.ai/pricing";
-const MAX_PAGES = 6; // Image tab has ~72 entries → 25/page → 3 pages; we add buffer
+const MAX_PAGES = 4; // Image tab ~72 entries → 25/page → 3 pages (+1 buffer)
 
 // Map Kie model labels (markdown header) → our internal model_id used in
 // public.kie_pricing.model_id. Anything not in this map is ignored so we keep
@@ -131,9 +131,10 @@ function parseMarkdown(md: string): ParsedRow[] {
   return [...map.values()];
 }
 
-// Call Firecrawl to scrape one paginated view of the Image tab.
-// `pageOffset` is how many times we click the "next page button" before scraping.
-async function scrapeImagePage(apiKey: string, pageOffset: number): Promise<string> {
+// Single Firecrawl session: filter Image tab, then iterate pages by clicking
+// "next page button" and capture a markdown snapshot at each step. Returns
+// an array of markdown strings (one per page).
+async function scrapeAllImagePages(apiKey: string): Promise<{ markdowns: string[]; rawActions: unknown }> {
   const actions: Array<Record<string, unknown>> = [
     { type: "wait", milliseconds: 5000 },
     {
@@ -141,18 +142,18 @@ async function scrapeImagePage(apiKey: string, pageOffset: number): Promise<stri
       script:
         'const btns=[...document.querySelectorAll("button")]; const img=btns.find(b=>/^\\s*Image\\s*\\d/.test(b.textContent.trim())); if(img) img.click();',
     },
-    { type: "wait", milliseconds: 1500 },
+    { type: "wait", milliseconds: 2000 },
+    { type: "scrape" },
   ];
-  for (let i = 0; i < pageOffset; i++) {
+  for (let i = 0; i < MAX_PAGES - 1; i++) {
     actions.push({
       type: "executeJavascript",
       script:
         'const n=document.querySelector(\'button[aria-label="next page button"]\'); if(n && !n.disabled) n.click();',
     });
-    actions.push({ type: "wait", milliseconds: 1200 });
+    actions.push({ type: "wait", milliseconds: 1800 });
+    actions.push({ type: "scrape" });
   }
-  actions.push({ type: "wait", milliseconds: 1000 });
-  actions.push({ type: "scrape" });
 
   const res = await fetch(`${FIRECRAWL_BASE}/scrape`, {
     method: "POST",
@@ -172,10 +173,19 @@ async function scrapeImagePage(apiKey: string, pageOffset: number): Promise<stri
   const data = await res.json();
   if (!res.ok || !data?.success) {
     throw new Error(
-      `Firecrawl scrape failed [${res.status}] page=${pageOffset}: ${JSON.stringify(data).slice(0, 400)}`,
+      `Firecrawl scrape failed [${res.status}]: ${JSON.stringify(data).slice(0, 400)}`,
     );
   }
-  return (data?.data?.markdown ?? "") as string;
+  // Each {type:"scrape"} action returns its own markdown in actions.scrapes[]
+  const scrapes = data?.data?.actions?.scrapes ?? [];
+  const markdowns: string[] = scrapes
+    .map((s: { markdown?: string; html?: string }) => s.markdown ?? "")
+    .filter((m: string) => m.length > 0);
+  // Fallback: if no per-step scrapes, use the final markdown
+  if (markdowns.length === 0 && data?.data?.markdown) {
+    markdowns.push(data.data.markdown);
+  }
+  return { markdowns, rawActions: data?.data?.actions };
 }
 
 function extractRangeMarker(md: string): { start: number; end: number; total: number } | null {
@@ -214,10 +224,10 @@ serve(async (req) => {
     const allRows: ParsedRow[] = [];
     const pages: Array<{ page: number; sections: number; rows: number; range: string | null }> = [];
     let total: number | null = null;
-    let lastEnd = 0;
 
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const md = await scrapeImagePage(FIRECRAWL_API_KEY, page);
+    const { markdowns } = await scrapeAllImagePages(FIRECRAWL_API_KEY);
+    for (let page = 0; page < markdowns.length; page++) {
+      const md = markdowns[page];
       const range = extractRangeMarker(md);
       if (range) total = range.total;
       const parsed = parseMarkdown(md);
@@ -229,13 +239,6 @@ serve(async (req) => {
         range: range ? `${range.start}-${range.end} of ${range.total}` : null,
       });
       allRows.push(...parsed);
-
-      // Stop early if we've covered the full list
-      if (range) {
-        if (range.end <= lastEnd) break; // pagination did not advance
-        lastEnd = range.end;
-        if (range.end >= range.total) break;
-      }
     }
 
     // Final dedupe across pages
@@ -286,22 +289,26 @@ serve(async (req) => {
       );
     }
 
-    // Mark stale rows (not seen in this sync) as inactive — only for image modality
-    const seenKeys = finalRows.map((r) => `${r.modelId}|${r.quality}`);
-    const { data: existing } = await supabase
-      .from("kie_pricing")
-      .select("id, model_id, quality")
-      .eq("modality", "image");
-    const stale = (existing ?? []).filter(
-      (e) => !seenKeys.includes(`${e.model_id}|${e.quality}`),
-    );
+    // Only deactivate stale rows when we actually scraped most of the catalog
+    // (avoids wiping the table on a partial scrape).
     let deactivated = 0;
-    if (stale.length > 0) {
-      const { error: deactErr } = await supabase
+    const coverageOk = total != null && finalRows.length >= Math.floor(total * 0.6);
+    if (coverageOk) {
+      const seenKeys = finalRows.map((r) => `${r.modelId}|${r.quality}`);
+      const { data: existing } = await supabase
         .from("kie_pricing")
-        .update({ is_active: false, updated_at: now })
-        .in("id", stale.map((s) => s.id));
-      if (!deactErr) deactivated = stale.length;
+        .select("id, model_id, quality")
+        .eq("modality", "image");
+      const stale = (existing ?? []).filter(
+        (e) => !seenKeys.includes(`${e.model_id}|${e.quality}`),
+      );
+      if (stale.length > 0) {
+        const { error: deactErr } = await supabase
+          .from("kie_pricing")
+          .update({ is_active: false, updated_at: now })
+          .in("id", stale.map((s) => s.id));
+        if (!deactErr) deactivated = stale.length;
+      }
     }
 
     return new Response(
