@@ -108,6 +108,10 @@ export interface ScriptGenV2Params {
   charMin: number;
   charMax: number;
   narrativeForm: string;
+  /** Étape 9 — prompt système d'une forme personnalisée (prend le pas sur le mapping serveur). */
+  narrativeFormPrompt?: string;
+  /** Étape 9 — id stocké en DB (custom UUID ou id natif). */
+  narrativeFormId?: string;
   narrativeStyleVoice?: string;
   globalContext?: any;
   onIntentionNote?: (note: string) => void;
