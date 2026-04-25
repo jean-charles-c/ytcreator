@@ -479,10 +479,20 @@ serve(async (req) => {
           )
           .filter(Boolean);
         if (condensed.length > 0) {
+          // Two-tier structure with an explicit hierarchy directive so the
+          // model honors BOTH the requested framing AND the visual identity:
+          //  1) FRAMING & ACTION = what defines the shot (composition, scale,
+          //     subject, what is happening). MUST NOT be overridden.
+          //  2) IDENTITY LOCK = how the person/place/object inside that frame
+          //     must look. MUST NOT be redesigned.
           enrichedPrompt =
-            "PRIMARY ACTION (this is the subject and framing of the image — do not replace it with a wider establishing shot):\n" +
+            "HIERARCHY (read carefully):\n" +
+            "1) FRAMING & ACTION below defines the shot's composition, scale, subject and what is happening. It is mandatory and must not be replaced by a wider or different shot.\n" +
+            "2) IDENTITY LOCK below defines the exact appearance of the person/place/object that appears inside that framing. It is mandatory and must not be redesigned.\n" +
+            "Both blocks apply simultaneously: render the FRAMING & ACTION exactly as described, and within that frame keep the visual identity from IDENTITY LOCK exact.\n\n" +
+            "FRAMING & ACTION (mandatory composition):\n" +
             enrichedPrompt +
-            "\n\nIDENTITY LOCK (use only as fidelity reference for the person/place/object that appears in the action above — do not change the framing or composition to show them in full):\n" +
+            "\n\nIDENTITY LOCK (mandatory appearance of the subject inside that frame — do not widen the shot to show them in full):\n" +
             condensed.join("\n\n");
         }
       }
@@ -563,14 +573,23 @@ serve(async (req) => {
 
       let rebuilt = "";
       if (headDirectives) rebuilt += headDirectives + "\n\n";
-      rebuilt += `PRIMARY ACTION (this is the subject and framing — do not replace it with a wider establishing shot):\n${actionText}`;
-      if (compactLocks) rebuilt += `\n\n${compactLocks}\n(Use identity locks only as fidelity reference; keep the framing of the PRIMARY ACTION above.)`;
+      rebuilt +=
+        "HIERARCHY: FRAMING & ACTION below defines the shot's composition (mandatory). IDENTITY LOCK defines the exact appearance of the subject inside that frame (mandatory). Apply both simultaneously.\n\n" +
+        `FRAMING & ACTION (mandatory composition):\n${actionText}`;
+      if (compactLocks) {
+        rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot to show the subject in full):\n${compactLocks}`;
+      }
 
       if (rebuilt.length > KIE_PROMPT_MAX) {
         const overflow = rebuilt.length - KIE_PROMPT_MAX;
         const trimmedAction = actionText.slice(0, Math.max(200, actionText.length - overflow - 3)) + "...";
-        rebuilt = `${headDirectives}\n\nPRIMARY ACTION (this is the subject and framing — do not replace it with a wider establishing shot):\n${trimmedAction}`;
-        if (compactLocks) rebuilt += `\n\n${compactLocks}\n(Use identity locks only as fidelity reference; keep the framing of the PRIMARY ACTION above.)`;
+        rebuilt =
+          `${headDirectives}\n\n` +
+          "HIERARCHY: FRAMING & ACTION (composition, mandatory) + IDENTITY LOCK (subject appearance, mandatory). Apply both simultaneously.\n\n" +
+          `FRAMING & ACTION (mandatory composition):\n${trimmedAction}`;
+        if (compactLocks) {
+          rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot):\n${compactLocks}`;
+        }
       }
       console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${shotLinkedObjects.length} identity locks)`);
       enrichedPrompt = rebuilt;
