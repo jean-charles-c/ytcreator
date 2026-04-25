@@ -482,29 +482,30 @@ serve(async (req) => {
       console.log(`[KIE] Style enforced: ${visual_style}`);
     }
 
-    // ── REFERENCE IMAGE RULE (aligned with generate-shot-image) ──
-    // When reference images are sent (identity locks), tell the model how to use them
-    // so the action and recurring character/place/object identity are preserved.
-    if (shotLinkedObjects.some((o: any) => Array.isArray(o.reference_images) && o.reference_images.length > 0)) {
-      const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:
-Use the provided reference image(s) only to preserve the exact identity, proportions, structure, materials, distinctive features, and period-specific visual traits of the subject.
-If the subject is a person, preserve the exact facial structure, age, hairstyle, body proportions, posture, clothing logic, and distinctive traits.
-If the subject is a place, preserve the exact architecture, layout, materials, surrounding context and historical state.
-If the subject is an object, preserve the exact shape, proportions, construction, surface treatment and defining details.
-Treat references as a fidelity anchor, not as a composition to copy literally. Do not import unwanted background elements, text, framing or lighting from the reference.
-ALWAYS keep the action described in the prompt — do not replace the action with the pose visible in the reference.`;
-      enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
-    }
-
-    // ── ASPECT RATIO ENFORCEMENT (in-prompt, complements the API parameter) ──
-    // Some Kie models (notably nano-banana family and ideogram) ignore the
-    // top-level aspect_ratio and default to 1:1. Repeat the constraint inside
-    // the prompt so the model composes natively for the requested ratio.
+    // ── UNIFIED DIRECTIVES (condensed) ──
+    // Single compact preamble covering: reference fidelity, no temporal drift,
+    // aspect ratio, and "no prompt-as-text". Replaces three previously
+    // duplicated blocks (REFERENCE IMAGE RULE / ASPECT RATIO / anti-text-leak)
+    // to reduce token waste while keeping every constraint.
     const targetAR = ASPECT_RATIOS_KIE[aspect_ratio] ?? "16:9";
-    enrichedPrompt =
-      `Generate one single cinematic image.\n` +
-      `MANDATORY ASPECT RATIO: ${targetAR}. Compose the framing to work natively in ${targetAR} without letterboxing, white borders, or square crop. Do NOT output a 1:1 square image.\n\n` +
-      enrichedPrompt;
+    const hasRefs = shotLinkedObjects.some(
+      (o: any) => Array.isArray(o.reference_images) && o.reference_images.length > 0,
+    );
+    const referenceLines = hasRefs
+      ? [
+          "Use reference images only as fidelity anchors, not as compositions to copy.",
+          "Preserve the exact identity, proportions, facial structure, age, hairstyle, posture, clothing logic, materials, distinctive traits, and period-specific details of the referenced subjects.",
+          "Do not copy unwanted background, text, lighting, framing, or scene elements from references.",
+          "Do not redesign, beautify, modernize, de-age, age up, hybridize, or create generic lookalikes.",
+          "No temporal drift: never mix eras or versions of the same character, object, or place.",
+        ]
+      : [];
+    const directives = [
+      ...referenceLines,
+      `Generate one single cinematic ${targetAR} image, no borders, no letterboxing, no square crop.`,
+      "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
+    ].join("\n");
+    enrichedPrompt = `${directives}\n\n${enrichedPrompt}`;
 
     // Kie market models cap prompts at 2000 chars (some at 5000). Stay safe at 1900.
     // z-image has a much stricter limit (~800 chars based on API errors).

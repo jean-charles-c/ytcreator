@@ -513,24 +513,16 @@ serve(async (req) => {
       );
     }
 
-    // Add REFERENCE IMAGE RULE if there are reference images
-    const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:
-
-Use the provided reference image(s) only to preserve the exact identity, proportions, structure, materials, distinctive features, and period-specific visual traits of the subject.
-
-If the subject is a person, use the reference only to preserve the exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, and distinctive traits of that specific period.
-
-If the subject is a place, use the reference only to preserve the exact architecture, layout, structural condition, materials, surrounding context, landmark features, and historical state.
-
-If the subject is an object, use the reference only to preserve the exact shape, proportions, construction, surface treatment, materials, and defining details of that exact version.
-
-Treat the reference image(s) as a fidelity anchor, not as a composition to copy literally unless explicitly requested.
-
-Do not import unwanted background elements, text, framing, lighting, or scene details from the reference.
-
-Do not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
-
+    // Condensed reference fidelity directives (replaces the previous verbose
+    // multi-paragraph block — same constraints, ~70% fewer tokens).
     if (referenceImageInputs.length > 0) {
+      const REFERENCE_IMAGE_RULE = [
+        "Use reference images only as fidelity anchors, not as compositions to copy.",
+        "Preserve the exact identity, proportions, facial structure, age, hairstyle, posture, clothing logic, materials, distinctive traits, and period-specific details of the referenced subjects.",
+        "Do not copy unwanted background, text, lighting, framing, or scene elements from references.",
+        "Do not redesign, beautify, modernize, de-age, age up, hybridize, or create generic lookalikes.",
+        "No temporal drift: never mix eras or versions of the same character, object, or place.",
+      ].join("\n");
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
 
@@ -542,13 +534,9 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
 
     const buildPrompt = (text: string) => [
-      "Generate one single cinematic image.",
-      `MANDATORY ASPECT RATIO: ${selectedAspectRatio}. Compose the framing to work natively in ${selectedAspectRatio} without letterboxing, white borders, or square crop. Do NOT output a 1:1 square image — the output MUST be ${selectedAspectRatio}.`,
-      ...(styleSuffix
-        ? [
-            `MANDATORY VISUAL STYLE — apply this style to the entire image without exception. This overrides any other style instruction that may appear later in the prompt:\n${styleSuffix}`,
-          ]
-        : []),
+      `Generate one single cinematic ${selectedAspectRatio} image, no borders, no letterboxing, no square crop.`,
+      "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
+      ...(styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
       text,
     ].join("\n");
 
