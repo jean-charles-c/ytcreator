@@ -2283,11 +2283,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               projectId={projectId}
               projectTitle={title}
               hasExistingScriptInput={Boolean((pdfExtractedText ?? "").trim())}
-              onSendToScriptCreator={(text) => {
+              onSendToScriptCreator={(text, chapterTitles) => {
                 setNarration(cleanNarrationText(text));
                 setPdfExtractedText(text);
                 setPdfAnalysis(null);
                 setGeneratedScript(null);
+                if (chapterTitles && chapterTitles.length > 0) {
+                  setPendingChapterTitles(chapterTitles);
+                }
                 setActiveTab("script-creator");
               }}
               onSentToSegmentation={async () => {
