@@ -38,6 +38,8 @@ export interface BackgroundTask {
   totalShots?: number;
   /** Image gen model used */
   imageGenModel?: string;
+  /** Shot ids currently in flight for this image-gen task (used by UI to show per-shot Stop) */
+  imageGenShotIds?: string[];
 }
 
 type Listener = (task: BackgroundTask) => void;
@@ -1140,6 +1142,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
       successShots: 0,
       totalShots: total,
       imageGenModel: params.model,
+      imageGenShotIds: [...params.shotIds],
     });
 
     (async () => {

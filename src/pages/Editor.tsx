@@ -3518,11 +3518,34 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                                     size="sm"
                                                     variant="outline"
                                                     className="h-6 text-[10px] px-2 gap-1"
-                                                    disabled={generatingAllImages}
-                                                    onClick={() => handleGenerateShotImage(shot.id)}
+                                                    disabled={
+                                                      generatingAllImages &&
+                                                      !imageGenTask?.imageGenShotIds?.includes(shot.id)
+                                                    }
+                                                    onClick={() => {
+                                                      if (
+                                                        generatingAllImages &&
+                                                        imageGenTask?.imageGenShotIds?.includes(shot.id) &&
+                                                        projectId
+                                                      ) {
+                                                        stopTask(projectId, "image-gen");
+                                                        toast.info("Génération arrêtée");
+                                                      } else {
+                                                        handleGenerateShotImage(shot.id);
+                                                      }
+                                                    }}
                                                   >
-                                                    {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
-                                                    Régénérer le visuel
+                                                    {generatingAllImages && imageGenTask?.imageGenShotIds?.includes(shot.id) ? (
+                                                      <>
+                                                        <Square className="h-3 w-3 fill-current" />
+                                                        Stop
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        {generatingAllImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                                                        Régénérer le visuel
+                                                      </>
+                                                    )}
                                                   </Button>
                                                 </div>
                                           </div>
