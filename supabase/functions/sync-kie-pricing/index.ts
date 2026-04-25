@@ -21,6 +21,7 @@ const corsHeaders = {
 const FIRECRAWL_BASE = "https://api.firecrawl.dev/v2";
 const KIE_PRICING_URL = "https://kie.ai/pricing";
 const MAX_PAGES = 4; // Image tab ~72 entries → 25/page → 3 pages (+1 buffer)
+const PAGE_SIZE = 25;
 
 // Map Kie model labels (markdown header) → our internal model_id used in
 // public.kie_pricing.model_id. Anything not in this map is ignored so we keep
@@ -131,28 +132,29 @@ function parseMarkdown(md: string): ParsedRow[] {
   return [...map.values()];
 }
 
-// Single Firecrawl session: filter Image tab, then iterate pages by clicking
-// "next page button" and capture a markdown snapshot at each step. Returns
-// an array of markdown strings (one per page).
-async function scrapeAllImagePages(apiKey: string): Promise<{ markdowns: string[]; rawActions: unknown }> {
+// Scrape one page of the Image tab. `pageIndex` is 0-based.
+// Strategy: switch to Image tab, then click "next page button" `pageIndex`
+// times, then return the final markdown of the page.
+async function scrapeImagePage(
+  apiKey: string,
+  pageIndex: number,
+): Promise<{ markdown: string; range: string | null }> {
   const actions: Array<Record<string, unknown>> = [
-    { type: "wait", milliseconds: 5000 },
+    { type: "wait", milliseconds: 4500 },
     {
       type: "executeJavascript",
       script:
         '(function(){var btns=Array.from(document.querySelectorAll("button"));var img=btns.find(function(b){return /^\\s*Image\\s*\\d/.test(b.textContent.trim());});if(img)img.click();})();',
     },
-    { type: "wait", milliseconds: 2000 },
-    { type: "scrape" },
+    { type: "wait", milliseconds: 1500 },
   ];
-  for (let i = 0; i < MAX_PAGES - 1; i++) {
+  for (let i = 0; i < pageIndex; i++) {
     actions.push({
       type: "executeJavascript",
       script:
         '(function(){var n=document.querySelector(\'button[aria-label="next page button"]\');if(n&&!n.disabled)n.click();})();',
     });
-    actions.push({ type: "wait", milliseconds: 1800 });
-    actions.push({ type: "scrape" });
+    actions.push({ type: "wait", milliseconds: 1500 });
   }
 
   const res = await fetch(`${FIRECRAWL_BASE}/scrape`, {
@@ -165,7 +167,7 @@ async function scrapeAllImagePages(apiKey: string): Promise<{ markdowns: string[
       url: KIE_PRICING_URL,
       formats: ["markdown"],
       onlyMainContent: true,
-      waitFor: 5000,
+      waitFor: 4500,
       actions,
     }),
   });
@@ -173,19 +175,13 @@ async function scrapeAllImagePages(apiKey: string): Promise<{ markdowns: string[
   const data = await res.json();
   if (!res.ok || !data?.success) {
     throw new Error(
-      `Firecrawl scrape failed [${res.status}]: ${JSON.stringify(data).slice(0, 400)}`,
+      `Firecrawl scrape page ${pageIndex} failed [${res.status}]: ${JSON.stringify(data).slice(0, 300)}`,
     );
   }
-  // Each {type:"scrape"} action returns its own markdown in actions.scrapes[]
-  const scrapes = data?.data?.actions?.scrapes ?? [];
-  const markdowns: string[] = scrapes
-    .map((s: { markdown?: string; html?: string }) => s.markdown ?? "")
-    .filter((m: string) => m.length > 0);
-  // Fallback: if no per-step scrapes, use the final markdown
-  if (markdowns.length === 0 && data?.data?.markdown) {
-    markdowns.push(data.data.markdown);
-  }
-  return { markdowns, rawActions: data?.data?.actions };
+  const md = data?.data?.markdown ?? "";
+  const rangeMatch = md.match(/(\d+)\s*-\s*(\d+)\s+of\s+(\d+)/);
+  const range = rangeMatch ? `${rangeMatch[1]}-${rangeMatch[2]} of ${rangeMatch[3]}` : null;
+  return { markdown: md, range };
 }
 
 function extractRangeMarker(md: string): { start: number; end: number; total: number } | null {
@@ -225,20 +221,20 @@ serve(async (req) => {
     const pages: Array<{ page: number; sections: number; rows: number; range: string | null }> = [];
     let total: number | null = null;
 
-    const { markdowns } = await scrapeAllImagePages(FIRECRAWL_API_KEY);
-    for (let page = 0; page < markdowns.length; page++) {
-      const md = markdowns[page];
-      const range = extractRangeMarker(md);
-      if (range) total = range.total;
-      const parsed = parseMarkdown(md);
-      const sections = (md.match(/\n###\s+/g) ?? []).length;
-      pages.push({
-        page,
-        sections,
-        rows: parsed.length,
-        range: range ? `${range.start}-${range.end} of ${range.total}` : null,
-      });
+    // First page (also gives us the total count to compute how many pages remain).
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const { markdown, range } = await scrapeImagePage(FIRECRAWL_API_KEY, page);
+      const rangeInfo = extractRangeMarker(markdown);
+      if (rangeInfo) total = rangeInfo.total;
+      const parsed = parseMarkdown(markdown);
+      const sections = (markdown.match(/\n###\s+/g) ?? []).length;
+      pages.push({ page, sections, rows: parsed.length, range });
       allRows.push(...parsed);
+
+      // Stop if we've covered the full catalogue.
+      if (rangeInfo && rangeInfo.end >= rangeInfo.total) break;
+      // Safety: stop if a page returned nothing useful.
+      if (parsed.length === 0 && page > 0) break;
     }
 
     // Final dedupe across pages
