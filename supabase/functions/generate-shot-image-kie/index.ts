@@ -461,14 +461,14 @@ serve(async (req) => {
       if (!rawPrompt) throw new Error("No prompt available for this shot");
       enrichedPrompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
-      // Inject identity locks
+      // Inject identity locks AFTER the action so the model doesn't anchor on
+      // the character/place full-body description and ignore the requested
+      // action (e.g. "close-up on the burn"). The action stays first and is
+      // explicitly marked as the primary subject of the frame.
       const identityLocks = shotLinkedObjects
         .map((obj: any) => obj.identity_prompt || "")
         .filter(Boolean);
       if (identityLocks.length > 0) {
-        // Strip the repeated "CHARACTER/LOCATION/OBJECT/VEHICLE IDENTITY LOCK:"
-        // headers and the boilerplate "Do not redesign…" lines (already covered
-        // by the unified reference rule block) before injection.
         const condensed = identityLocks
           .map((lock: string) =>
             lock
@@ -479,7 +479,11 @@ serve(async (req) => {
           )
           .filter(Boolean);
         if (condensed.length > 0) {
-          enrichedPrompt = "IDENTITY LOCK:\n" + condensed.join("\n\n") + "\n\n" + enrichedPrompt;
+          enrichedPrompt =
+            "PRIMARY ACTION (this is the subject and framing of the image — do not replace it with a wider establishing shot):\n" +
+            enrichedPrompt +
+            "\n\nIDENTITY LOCK (use only as fidelity reference for the person/place/object that appears in the action above — do not change the framing or composition to show them in full):\n" +
+            condensed.join("\n\n");
         }
       }
     }
@@ -559,15 +563,14 @@ serve(async (req) => {
 
       let rebuilt = "";
       if (headDirectives) rebuilt += headDirectives + "\n\n";
-      if (compactLocks) rebuilt += compactLocks + "\n\n";
-      rebuilt += `ACTION TO ILLUSTRATE (mandatory, do not omit):\n${actionText}`;
+      rebuilt += `PRIMARY ACTION (this is the subject and framing — do not replace it with a wider establishing shot):\n${actionText}`;
+      if (compactLocks) rebuilt += `\n\n${compactLocks}\n(Use identity locks only as fidelity reference; keep the framing of the PRIMARY ACTION above.)`;
 
       if (rebuilt.length > KIE_PROMPT_MAX) {
-        // Still too long: trim the action tail rather than the head, so the
-        // ratio/style/identity directives survive.
         const overflow = rebuilt.length - KIE_PROMPT_MAX;
         const trimmedAction = actionText.slice(0, Math.max(200, actionText.length - overflow - 3)) + "...";
-        rebuilt = `${headDirectives}\n\n${compactLocks}\n\nACTION TO ILLUSTRATE (mandatory, do not omit):\n${trimmedAction}`;
+        rebuilt = `${headDirectives}\n\nPRIMARY ACTION (this is the subject and framing — do not replace it with a wider establishing shot):\n${trimmedAction}`;
+        if (compactLocks) rebuilt += `\n\n${compactLocks}\n(Use identity locks only as fidelity reference; keep the framing of the PRIMARY ACTION above.)`;
       }
       console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${shotLinkedObjects.length} identity locks)`);
       enrichedPrompt = rebuilt;
