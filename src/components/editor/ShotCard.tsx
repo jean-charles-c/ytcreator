@@ -113,9 +113,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
 
-  const ANTI_TEXT_LEAK = `Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene.\nNever render, quote, copy, or spell out the narrative wording of the prompt itself.\nDo not turn the descriptive sentence of the prompt into visible text in the image.\nThe prompt is only an instruction for image creation, not a source of text to display.\nIf written elements appear, they must be context-appropriate and independent from the prompt wording.`;
-
-  const REFERENCE_IMAGE_RULE = `REFERENCE IMAGE RULE:\n\nUse the provided reference image(s) only to preserve the exact identity, proportions, structure, materials, distinctive features, and period-specific visual traits of the subject.\n\nIf the subject is a person, use the reference only to preserve the exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, and distinctive traits of that specific period.\n\nIf the subject is a place, use the reference only to preserve the exact architecture, layout, structural condition, materials, surrounding context, landmark features, and historical state.\n\nIf the subject is an object, use the reference only to preserve the exact shape, proportions, construction, surface treatment, materials, and defining details of that exact version.\n\nTreat the reference image(s) as a fidelity anchor, not as a composition to copy literally unless explicitly requested.\n\nDo not import unwanted background elements, text, framing, lighting, or scene details from the reference.\n\nDo not turn the subject into a generic lookalike, a stylized reinterpretation, a modernized version, a hybrid, or a mixed-era representation.`;
+  const CORE_RULES = `Use reference images only as fidelity anchors, not compositions to copy.\nPreserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.\nDo not redesign, modernize, age-change, hybridize, or create generic lookalikes.\nNo temporal drift.\nNever render the prompt, narrative, metadata, or instructions as visible text. Only natural in-scene writing is allowed.`;
 
   const buildFullPromptPreview = (basePrompt: string) => {
     // If user has a custom edited version, use that
@@ -123,10 +121,10 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
     const parts: string[] = [];
 
-    // 1. Reference image rule if any linked object has reference images
+    // 1. Core rules (condensed) + reference image list if any
+    parts.push(CORE_RULES);
     const hasRefImages = linkedObjects?.some(obj => obj.reference_images && obj.reference_images.length > 0);
     if (hasRefImages) {
-      parts.push(REFERENCE_IMAGE_RULE);
       const refImgList = linkedObjects?.flatMap(obj =>
         (obj.reference_images || []).map((url, i) => {
           const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
@@ -136,28 +134,31 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       if (refImgList) parts.push(`[Images de référence transmises]\n${refImgList}`);
     }
 
-    // 2. Identity locks from linked objects
+    // 2. Identity locks from linked objects (cleaned of redundant headers)
     const identityLocks = linkedObjects
-      ?.map(obj => obj.identity_prompt)
+      ?.map(obj => {
+        const lock = String(obj.identity_prompt || "");
+        return lock
+          .replace(/^(CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:\s*/gim, "")
+          .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+          .trim();
+      })
       .filter(Boolean) || [];
     if (identityLocks.length > 0) {
-      parts.push(identityLocks.join("\n\n"));
+      parts.push("IDENTITY LOCK:\n" + identityLocks.join("\n\n"));
     }
 
-    // 3. Generation frame
-    parts.push("Generate one single cinematic image.\nMandatory aspect ratio: 16:9.\nCompose the framing to work natively in that ratio without letterboxing or white borders.");
+    // 3. Generation frame (condensed)
+    parts.push("Generate one single cinematic 16:9 image, no borders, no letterboxing, no square crop.");
 
-    // 4. Base prompt — merge with description if it adds visual details not in prompt_export
-    parts.push(basePrompt);
+    // 4. Action to illustrate (the actual scene prompt)
+    parts.push("ACTION TO ILLUSTRATE (mandatory, do not omit):\n" + basePrompt);
     if (shot.description && shot.description.length > 30) {
       const descSnippet = shot.description.slice(0, 60).toLowerCase();
       if (!basePrompt.toLowerCase().includes(descSnippet)) {
         parts.push("DETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description);
       }
     }
-
-    // 5. Anti-text-leak
-    parts.push(ANTI_TEXT_LEAK);
 
     return parts.join("\n\n");
   };
