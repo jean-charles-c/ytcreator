@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -80,11 +80,13 @@ export default function StoryPitchesPanel({
     }
   }, [analysisId, formId, reload]);
 
-  // Auto-trigger from analysis panel CTA
-  if (autoTrigger && !generating && batches.length === 0) {
-    onAutoTriggerHandled?.();
-    void generate();
-  }
+  // Auto-trigger from analysis panel CTA (effect to avoid render side-effects)
+  useEffect(() => {
+    if (autoTrigger && !generating && !loading && batches.length === 0) {
+      onAutoTriggerHandled?.();
+      void generate();
+    }
+  }, [autoTrigger, generating, loading, batches.length, generate, onAutoTriggerHandled]);
 
   const totalPitches = batches.reduce((acc, b) => acc + b.pitches.length, 0);
 
