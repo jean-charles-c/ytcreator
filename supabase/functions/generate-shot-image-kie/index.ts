@@ -500,7 +500,28 @@ serve(async (req) => {
       // the character/place full-body description and ignore the requested
       // action (e.g. "close-up on the burn"). The action stays first and is
       // explicitly marked as the primary subject of the frame.
-      const identityLocks = shotLinkedObjects
+      // For tight framings (close-up / insert / macro / detail), drop LOCATION
+      // identity locks: the place is not visible in the frame, and injecting
+      // its full description (including its name) makes Nano Banana / Imagen
+      // generate an establishing shot of the location instead of the requested
+      // detail. Character / object / vehicle locks are kept since they may
+      // still appear inside a tight frame (a hand, a tool, etc.).
+      const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
+      const isTightFraming = tightFramingRegex.test(
+        `${shot.description || ""} ${shot.prompt_export || ""}`,
+      );
+      const filteredLinkedObjects = isTightFraming
+        ? shotLinkedObjects.filter((obj: any) => {
+            const t = String(obj.type || obj.object_type || "").toLowerCase();
+            return t !== "lieu" && t !== "location" && t !== "place";
+          })
+        : shotLinkedObjects;
+      if (isTightFraming && filteredLinkedObjects.length < shotLinkedObjects.length) {
+        console.log(
+          `[KIE] Tight framing detected — dropped ${shotLinkedObjects.length - filteredLinkedObjects.length} location identity lock(s) so the close-up is not replaced by an establishing shot.`,
+        );
+      }
+      const identityLocks = filteredLinkedObjects
         .map((obj: any) => obj.identity_prompt || "")
         .filter(Boolean);
       if (identityLocks.length > 0) {
