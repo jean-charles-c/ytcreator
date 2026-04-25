@@ -165,6 +165,7 @@ export default function PdfDocumentaryTab({
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
   const chapterSaveTimeoutRef = useRef<number | null>(null);
   const chapterHydratedRef = useRef(false);
+  const [chapterHydrated, setChapterHydrated] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [charMin, setCharMin] = useState(8000);
@@ -230,6 +231,7 @@ export default function PdfDocumentaryTab({
         setChapterState(saved);
       }
       chapterHydratedRef.current = true;
+      setChapterHydrated(true);
     })();
   }, [projectId]);
 
@@ -310,7 +312,7 @@ export default function PdfDocumentaryTab({
   useEffect(() => {
     if (!projectId) return;
     if (!pendingChapterTitles || pendingChapterTitles.length === 0) return;
-    if (!chapterHydratedRef.current) return;
+    if (!chapterHydrated) return;
     const newState: ChapterListState = {
       method: "tags",
       lastUpdatedAt: new Date().toISOString(),
@@ -330,7 +332,7 @@ export default function PdfDocumentaryTab({
     setChapterState(newState);
     void saveChapterState(newState);
     onPendingChapterTitlesConsumed?.();
-  }, [projectId, pendingChapterTitles, saveChapterState, onPendingChapterTitlesConsumed]);
+  }, [projectId, pendingChapterTitles, chapterHydrated, saveChapterState, onPendingChapterTitlesConsumed]);
 
   const pendingChapterSaveRef = useRef<ChapterListState | null>(null);
 
