@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { Square, Loader2, Send, List } from "lucide-react";
+import { Square, Loader2, Send, List, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import ResearchDossierView, { parseSections } from "./ResearchDossierView";
 import ResearchSectionNav from "./ResearchSectionNav";
 import PdfExportButton from "./PdfExportButton";
 import ResearchHistory from "./ResearchHistory";
+import NarrativeWorkflowView from "./narrativeWorkflow/NarrativeWorkflowView";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
@@ -27,6 +28,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
   const [generating, setGenerating] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | undefined>();
   const [progress, setProgress] = useState<{ current: number; total: number; section: string } | null>(null);
+  const [view, setView] = useState<"research" | "narrative-workflow">("research");
   const abortRef = useRef<AbortController | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const exportRef = useRef<HTMLDivElement | null>(null);
