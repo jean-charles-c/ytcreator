@@ -218,6 +218,12 @@ export default function Editor() {
   const [scriptVersions, setScriptVersions] = useState<{ id: number; content: string }[]>([]);
   const [currentScriptVersionId, setCurrentScriptVersionId] = useState<number | null>(null);
 
+  // Titres de chapitres en attente d'injection dans ScriptCreator
+  // (alimenté par l'envoi depuis VoiceoverScriptPanel — narrative workflow).
+  const [pendingChapterTitles, setPendingChapterTitles] = useState<
+    { title: string; sourceText: string }[] | null
+  >(null);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
