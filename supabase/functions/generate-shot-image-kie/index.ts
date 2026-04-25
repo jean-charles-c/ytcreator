@@ -329,6 +329,41 @@ async function rehostImage(supabase: any, imageUrl: string, projectId: string, s
   return data.publicUrl;
 }
 
+/**
+ * Soften a prompt to reduce the chance of triggering Google's safety filters.
+ * Replaces explicit injury / violence wording with neutral, documentary-style equivalents.
+ */
+function sanitizePromptForSafety(text: string): string {
+  const sanitized = text
+    // English
+    .replace(/\b(blood|bloody|gore|gory|murder|kill(?:ed|ing)?|dead\s+body|corpse|skull|death|wound(?:ed)?|injur(?:y|ed|ies)|burn(?:ing|ed|t)?|burn\s+mark|cut|gash|scar|bruise|swollen)\b/gi, "mark")
+    // French (the prompts are FR)
+    .replace(/\bbr[ûu]l(?:ure|ures|é|ée|és|ées|ant|ante|er)\b/gi, "marque rougie")
+    .replace(/\bcoupure(?:s)?\b/gi, "petite marque")
+    .replace(/\bblessure(?:s)?\b/gi, "marque")
+    .replace(/\bbless[ée](?:e|s|es)?\b/gi, "marqué")
+    .replace(/\bplaie(?:s)?\b/gi, "marque")
+    .replace(/\bsang|sanglant(?:e|s|es)?\b/gi, "")
+    .replace(/\bdouleur(?:s)?\b/gi, "tension")
+    .replace(/\bsouffrance(?:s)?\b/gi, "tension")
+    .replace(/\bpeau\s+rougie\b/gi, "teinte rosée")
+    .replace(/\bcicatrice(?:s)?\b/gi, "trace")
+    .replace(/\bmort(?:s|e|es)?\b/gi, "silencieux")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return `Stylized cinematic documentary illustration, tasteful and non-graphic. ${sanitized}`;
+}
+
+function isSafetyError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("filtered out") ||
+    m.includes("prohibited use") ||
+    m.includes("safety") ||
+    m.includes("no images found in ai response")
+  );
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
