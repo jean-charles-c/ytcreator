@@ -138,15 +138,43 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
 
     const data = json?.data || {};
     const state = data.state || data.status || data.taskStatus;
+
+    // Kie market API returns resultJson as a STRING containing JSON like
+    // {"resultUrls":["https://..."]}. Parse it before reading.
+    let parsedResult: any = null;
+    if (typeof data.resultJson === "string" && data.resultJson.length > 0) {
+      try { parsedResult = JSON.parse(data.resultJson); } catch { /* ignore */ }
+    } else if (data.resultJson && typeof data.resultJson === "object") {
+      parsedResult = data.resultJson;
+    }
+
     const imageUrl =
-      data?.resultJson?.resultUrls?.[0] ||
+      parsedResult?.resultUrls?.[0] ||
+      parsedResult?.imageUrl ||
       data?.response?.imageUrl ||
       data?.response?.image_url ||
       data?.imageUrl ||
       data?.image_url ||
       (Array.isArray(data?.resultUrls) ? data.resultUrls[0] : null);
 
-    if (state === "success" || state === "SUCCESS" || state === "completed" || imageUrl) {
+    if (imageUrl) return imageUrl;
+
+    if (state === "success" || state === "SUCCESS" || state === "completed") {
+      // Success state but no URL extracted — log full payload for debugging
+      console.error(`[KIE poll ${i}] state=success but no imageUrl. data=${JSON.stringify(data).slice(0, 800)}`);
+      throw new Error(`Kie task ${taskId} reported success but no image URL was returned`);
+    }
+    if (state === "fail" || state === "failed" || state === "FAILED" || state === "error") {
+      throw new Error(`Kie task failed: ${data?.failMsg || data?.errorMessage || JSON.stringify(data).slice(0, 300)}`);
+    }
+    console.log(`[KIE poll ${i}] state=${state}`);
+  }
+  throw new Error("Kie task timed out after 5 minutes");
+}
+
+// (legacy — kept for reference, removed below)
+function _unused_marker_remove_me() {
+    if (false) {
       if (imageUrl) return imageUrl;
     }
     if (state === "failed" || state === "FAILED" || state === "error") {
