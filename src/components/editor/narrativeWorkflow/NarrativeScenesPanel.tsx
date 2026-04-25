@@ -303,7 +303,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             Les scènes validées sont protégées.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <VariantMenu
             label={
               totalScenes > 0 ? (
@@ -332,13 +332,15 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
               disabled={sending || busyKey !== null}
               onClick={onSendClick}
               title="Insère les scènes dans Segmentation View et déclenche l'analyse des récurrences."
+              className="min-h-[40px] sm:min-h-[36px]"
             >
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              <span className="ml-1.5">Envoyer vers Segmentation View</span>
+              <span className="ml-1.5 sm:hidden">Envoyer</span>
+              <span className="ml-1.5 hidden sm:inline">Envoyer vers Segmentation View</span>
             </Button>
           )}
         </div>
@@ -559,11 +561,11 @@ function ChapterScenesGroup({
   const empty = scenes.length === 0;
   return (
     <li className="rounded-md border border-border/70 bg-background/40 p-3 sm:p-4 space-y-3">
-      <div className="flex items-start gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         <button
           type="button"
           onClick={onToggleOpen}
-          className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0 hover:bg-primary/25 transition-colors"
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-6 sm:w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0 hover:bg-primary/25 transition-colors"
           title={open ? "Réduire" : "Développer"}
         >
           {chapter.chapter_order}
@@ -589,7 +591,7 @@ function ChapterScenesGroup({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
           {empty ? (
             <VariantMenu
               size="sm"
@@ -620,11 +622,12 @@ function ChapterScenesGroup({
           <button
             type="button"
             onClick={onToggleOpen}
-            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary min-w-[36px] sm:min-w-0 inline-flex items-center justify-center"
             title={open ? "Réduire" : "Développer"}
+            aria-label={open ? "Réduire le chapitre" : "Développer le chapitre"}
           >
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
+              className={`h-4 w-4 sm:h-3.5 sm:w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
             />
           </button>
         </div>
@@ -674,7 +677,7 @@ function SceneCard({
         scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border/60"
       }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         <span className="inline-flex items-center justify-center h-5 min-w-5 rounded bg-secondary text-foreground/80 text-[10px] font-semibold px-1 shrink-0">
           #{scene.scene_order}
         </span>
@@ -703,18 +706,19 @@ function SceneCard({
             <p className="mt-1 text-[11px] text-foreground/80 leading-relaxed">{scene.summary}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
           <button
             type="button"
             onClick={onToggleValidated}
-            className={`p-1.5 rounded transition-colors ${
+            className={`p-2 sm:p-1.5 rounded transition-colors min-w-[36px] sm:min-w-0 inline-flex items-center justify-center ${
               scene.validated
                 ? "text-primary hover:bg-secondary"
                 : "text-muted-foreground hover:text-primary hover:bg-secondary"
             }`}
             title={scene.validated ? "Déverrouiller" : "Valider"}
+            aria-label={scene.validated ? "Déverrouiller la scène" : "Valider la scène"}
           >
-            {scene.validated ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+            {scene.validated ? <Lock className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> : <Unlock className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
           </button>
           <VariantMenu
             size="sm"
@@ -735,19 +739,21 @@ function SceneCard({
             type="button"
             onClick={onDelete}
             disabled={scene.validated}
-            className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed min-w-[36px] sm:min-w-0 inline-flex items-center justify-center"
             title={scene.validated ? "Verrouillée" : "Supprimer"}
+            aria-label={scene.validated ? "Scène verrouillée" : "Supprimer la scène"}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
           </button>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary min-w-[36px] sm:min-w-0 inline-flex items-center justify-center"
             title={open ? "Réduire" : "Détails"}
+            aria-label={open ? "Réduire la scène" : "Voir les détails"}
           >
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
+              className={`h-4 w-4 sm:h-3.5 sm:w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
             />
           </button>
         </div>
@@ -805,7 +811,7 @@ function Tag({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
       {icon}
-      <span className="truncate max-w-[140px]">{text}</span>
+      <span className="truncate max-w-[100px] sm:max-w-[140px]">{text}</span>
     </span>
   );
 }

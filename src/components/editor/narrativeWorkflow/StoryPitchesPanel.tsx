@@ -164,14 +164,22 @@ export default function StoryPitchesPanel({
           size="sm"
           onClick={generate}
           disabled={disabled || generating}
-          className="min-h-[36px]"
+          className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
         >
           {generating ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>
           ) : batches.length === 0 ? (
-            <><Wand2 className="h-4 w-4" /> Générer 5 propositions d'histoires</>
+            <>
+              <Wand2 className="h-4 w-4" />
+              <span className="sm:hidden">Générer 5 pitchs</span>
+              <span className="hidden sm:inline">Générer 5 propositions d'histoires</span>
+            </>
           ) : (
-            <><RefreshCw className="h-4 w-4" /> Générer 5 autres propositions</>
+            <>
+              <RefreshCw className="h-4 w-4" />
+              <span className="sm:hidden">5 autres pitchs</span>
+              <span className="hidden sm:inline">Générer 5 autres propositions</span>
+            </>
           )}
         </Button>
       </div>
@@ -238,9 +246,9 @@ function BatchBlock({
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-secondary/30 rounded-t-lg"
+            className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 min-h-[44px] text-left hover:bg-secondary/30 rounded-t-lg"
           >
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0">
                 #{batch.batch_index}
               </span>
@@ -390,8 +398,8 @@ function PitchCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 pt-2 border-t border-border/40">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           {projectsForPitch.length === 0 ? (
             <span className="text-[10px] text-muted-foreground">
               Aucun projet créé depuis ce pitch
@@ -402,11 +410,11 @@ function PitchCard({
                 key={gp.id}
                 type="button"
                 onClick={() => navigate(`/editor/${gp.project_id}`)}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 border border-emerald-500/30"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-1 border border-emerald-500/30 max-w-full"
                 title={`Ouvrir le projet « ${gp.project_title ?? "?"} »`}
               >
                 <FileBadge2 className="h-3 w-3" />
-                {gp.project_title || "Projet"}
+                <span className="truncate max-w-[160px]">{gp.project_title || "Projet"}</span>
                 <ExternalLink className="h-2.5 w-2.5 opacity-70" />
               </button>
             ))
@@ -418,14 +426,18 @@ function PitchCard({
           variant={projectsForPitch.length > 0 ? "outline" : "default"}
           onClick={onCreateProject}
           disabled={creating}
-          className="min-h-[32px] text-xs"
+          className="min-h-[40px] sm:min-h-[32px] text-xs w-full sm:w-auto justify-center"
         >
           {creating ? (
             <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Création…</>
           ) : projectsForPitch.length > 0 ? (
             <><FolderPlus className="h-3.5 w-3.5" /> Créer un autre projet</>
           ) : (
-            <><FolderPlus className="h-3.5 w-3.5" /> Créer un projet avec cette proposition</>
+            <>
+              <FolderPlus className="h-3.5 w-3.5" />
+              <span className="sm:hidden">Créer un projet</span>
+              <span className="hidden sm:inline">Créer un projet avec cette proposition</span>
+            </>
           )}
         </Button>
       </div>
