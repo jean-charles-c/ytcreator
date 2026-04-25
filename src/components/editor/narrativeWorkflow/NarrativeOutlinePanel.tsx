@@ -15,6 +15,9 @@ import {
   AlertTriangle,
   Clock,
   FileBadge2,
+  ChevronDown,
+  ChevronRight,
+  Film,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +45,7 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
   const { data, loading, reload } = useNarrativeOutline(projectId);
   const [generating, setGenerating] = useState(false);
   const [confirmRegenOpen, setConfirmRegenOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const runGenerate = useCallback(
     async (overwrite: boolean) => {
@@ -83,11 +87,37 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
   const outline = data?.outline ?? null;
   const chapters = data?.chapters ?? [];
 
+  const goToScenes = () => {
+    const target = document.getElementById("narrative-scenes-panel");
+    if (target) {
+      setCollapsed(true);
+      // Wait for collapse to complete before scrolling
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  };
+
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
+            {outline && chapters.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setCollapsed((v) => !v)}
+                className="inline-flex items-center justify-center h-6 w-6 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label={collapsed ? "Déplier le sommaire" : "Replier le sommaire"}
+                title={collapsed ? "Déplier" : "Replier"}
+              >
+                {collapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+            )}
             <ListTree className="h-4 w-4 text-primary shrink-0" />
             <h4 className="font-display text-sm sm:text-base font-semibold text-foreground">
               Sommaire narratif
@@ -117,30 +147,47 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
             </div>
           )}
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant={outline ? "outline" : "default"}
-          onClick={() => (outline ? setConfirmRegenOpen(true) : runGenerate(false))}
-          disabled={generating || loading}
-          className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
-        >
-          {generating ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>
-          ) : outline ? (
-            <>
-              <RefreshCw className="h-4 w-4" />
-              <span className="sm:hidden">Régénérer</span>
-              <span className="hidden sm:inline">Régénérer le sommaire</span>
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-4 w-4" />
-              <span className="sm:hidden">Générer</span>
-              <span className="hidden sm:inline">Générer le sommaire</span>
-            </>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {outline && chapters.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              onClick={goToScenes}
+              className="min-h-[40px] sm:min-h-[36px] justify-center"
+              title="Passer à la génération des scènes"
+            >
+              <Film className="h-4 w-4" />
+              <span className="sm:hidden">Aux scènes</span>
+              <span className="hidden sm:inline">Aller aux scènes</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           )}
-        </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={outline ? "outline" : "default"}
+            onClick={() => (outline ? setConfirmRegenOpen(true) : runGenerate(false))}
+            disabled={generating || loading}
+            className="min-h-[40px] sm:min-h-[36px] justify-center"
+          >
+            {generating ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>
+            ) : outline ? (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                <span className="sm:hidden">Régénérer</span>
+                <span className="hidden sm:inline">Régénérer le sommaire</span>
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4" />
+                <span className="sm:hidden">Générer</span>
+                <span className="hidden sm:inline">Générer le sommaire</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {loading && !outline && (
@@ -158,7 +205,7 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
         </div>
       )}
 
-      {outline && (
+      {outline && !collapsed && (
         <OutlineHeader
           title={outline.title}
           intention={outline.intention}
@@ -166,12 +213,25 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
         />
       )}
 
-      {outline && chapters.length > 0 && (
+      {outline && chapters.length > 0 && !collapsed && (
         <ol className="space-y-3">
           {chapters.map((ch) => (
             <ChapterCard key={ch.id} chapter={ch} />
           ))}
         </ol>
+      )}
+
+      {outline && chapters.length > 0 && collapsed && (
+        <div className="rounded-md border border-dashed border-border/40 bg-muted/10 p-2.5 text-center">
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+            Afficher les {chapters.length} chapitre{chapters.length > 1 ? "s" : ""} du sommaire
+          </button>
+        </div>
       )}
 
       <AlertDialog open={confirmRegenOpen} onOpenChange={setConfirmRegenOpen}>
