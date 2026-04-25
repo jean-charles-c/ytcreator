@@ -3755,6 +3755,13 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         onRegenerateShot={handleShotRegenerate}
         onGenerateImage={handleGenerateShotImage}
         totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
+        activeShotIds={generatingAllImages ? imageGenTask?.imageGenShotIds : undefined}
+        onStopGeneration={() => {
+          if (projectId) {
+            stopTask(projectId, "image-gen");
+            toast.info("Génération arrêtée");
+          }
+        }}
       />
     </div>
   );
