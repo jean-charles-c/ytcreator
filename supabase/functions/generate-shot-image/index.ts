@@ -394,6 +394,28 @@ serve(async (req) => {
       return false;
     });
 
+    // Detect tight framings (close-up / insert / macro / detail). For these
+    // the location/place is not visible in the frame, so we drop LOCATION
+    // identity locks AND we don't pass the location reference image — both
+    // would push the model to render an establishing shot of the place
+    // (sometimes even baking the location's name into the image as text)
+    // instead of the requested detail.
+    const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
+    const isTightFraming = tightFramingRegex.test(
+      `${shot.description || ""} ${shot.prompt_export || ""}`,
+    );
+    const effectiveLinkedObjects = isTightFraming
+      ? shotLinkedObjects.filter((obj: any) => {
+          const t = String(obj.type || obj.object_type || "").toLowerCase();
+          return t !== "lieu" && t !== "location" && t !== "place";
+        })
+      : shotLinkedObjects;
+    if (isTightFraming && effectiveLinkedObjects.length < shotLinkedObjects.length) {
+      console.log(
+        `[generate-shot-image] Tight framing detected — dropped ${shotLinkedObjects.length - effectiveLinkedObjects.length} location identity lock(s) so the close-up is not replaced by an establishing shot.`,
+      );
+    }
+
     // If a custom_prompt is provided (user edited the full prompt in UI), use it directly
     let enrichedPrompt: string;
     if (typeof custom_prompt === "string" && custom_prompt.trim().length > 0) {
@@ -422,8 +444,8 @@ serve(async (req) => {
 
       // Inject identity lock prompts for linked objects
       enrichedPrompt = prompt;
-      if (shotLinkedObjects.length > 0) {
-        const identityLocks = shotLinkedObjects
+      if (effectiveLinkedObjects.length > 0) {
+        const identityLocks = effectiveLinkedObjects
           .map((obj: any) => {
             let lock = obj.identity_prompt || "";
             // Replace old placeholder features with reference image list
@@ -486,7 +508,7 @@ serve(async (req) => {
 
     // Collect reference images from linked objects
     const referenceImageUrls: string[] = [];
-    for (const obj of shotLinkedObjects) {
+    for (const obj of effectiveLinkedObjects) {
       if (Array.isArray(obj.reference_images)) {
         for (const url of obj.reference_images) {
           if (typeof url === "string" && url.startsWith("http")) {
