@@ -473,7 +473,16 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
       ) : (
         <ul className="space-y-2 sm:space-y-3">
           {sources.map((s, i) => {
-            const st = statusLabel(s);
+            const semantic: SourceSemanticStatus = getSourceSemanticStatus(s);
+            const st = STATUS_LABELS[semantic];
+            const isFetching =
+              fetchingIds.has(s.id) || semantic === "fetching_transcript";
+            const canRetry =
+              !!s.youtube_url &&
+              !isFetching &&
+              (semantic === "fetch_failed" ||
+                semantic === "url_added" ||
+                semantic === "manual_transcript_required");
             const transcriptText = s.transcript?.trim() ?? "";
             const preview =
               transcriptText.length > TRANSCRIPT_PREVIEW
@@ -520,11 +529,17 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
                             "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                           st.tone === "warn" &&
                             "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                          st.tone === "error" &&
+                            "bg-destructive/10 text-destructive",
+                          st.tone === "info" &&
+                            "bg-primary/10 text-primary",
                           st.tone === "muted" && "bg-muted text-muted-foreground",
                         )}
                       >
                         {st.tone === "ok" ? (
                           <CheckCircle2 className="h-3 w-3" />
+                        ) : st.tone === "info" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <AlertCircle className="h-3 w-3" />
                         )}
@@ -547,9 +562,14 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
                       <p className="text-[11px] sm:text-xs text-muted-foreground whitespace-pre-wrap line-clamp-3">
                         {preview}
                       </p>
+                    ) : semantic === "fetch_failed" ? (
+                      <p className="text-[11px] sm:text-xs text-destructive">
+                        L'extraction automatique n'a pas abouti. Ouvrez la vidéo, copiez la
+                        transcription depuis YouTube, puis collez-la via « Modifier ».
+                      </p>
                     ) : (
                       <p className="text-[11px] sm:text-xs italic text-muted-foreground">
-                        Aucune transcription. Modifiez la source pour en coller une.
+                        Aucune transcription. {hasUrl ? "Tentative d'extraction en attente, ou collez-la manuellement via « Modifier »." : "Modifiez la source pour en coller une."}
                       </p>
                     )}
 
@@ -559,6 +579,19 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col sm:flex-row gap-1">
+                    {canRetry && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRetryFetch(s)}
+                        aria-label="Réessayer l'extraction automatique"
+                        title="Réessayer l'extraction automatique"
+                        className="h-8 px-2"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
