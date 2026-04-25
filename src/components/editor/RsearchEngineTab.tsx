@@ -13,6 +13,7 @@ import ResearchSectionNav from "./ResearchSectionNav";
 import PdfExportButton from "./PdfExportButton";
 import ResearchHistory from "./ResearchHistory";
 import NarrativeWorkflowView from "./narrativeWorkflow/NarrativeWorkflowView";
+import NarrativeOutlinePanel from "./narrativeWorkflow/NarrativeOutlinePanel";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
@@ -237,6 +238,13 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
 
       {!hasContent && !generating && (
         <>
+          {/* Étape 12 — Sommaire narratif du projet (si lié à un pitch) */}
+          {projectId && (
+            <div className="mb-4 sm:mb-6">
+              <NarrativeOutlinePanel projectId={projectId} />
+            </div>
+          )}
+
           {/* Entrée Narrative Form Generator (Étape 4) */}
           <button
             type="button"
