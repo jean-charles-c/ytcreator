@@ -20,7 +20,10 @@ import VoiceoverScriptPanel from "./narrativeWorkflow/VoiceoverScriptPanel";
 interface RsearchEngineTabProps {
   projectId: string | null;
   projectTitle: string;
-  onSendToScriptCreator?: (content: string) => void;
+  onSendToScriptCreator?: (
+    content: string,
+    chapterTitles?: { title: string; sourceText: string }[],
+  ) => void;
   /**
    * Étape 15 — Indique si un script est déjà chargé côté ScriptCreator
    * (scriptInput non vide). Utilisé pour demander confirmation avant
