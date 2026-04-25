@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw, Play, Square } from "lucide-react";
+import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw, Play, Square, Pencil, MoreVertical, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID, getNarrativeStyleById } from "@/config/narrativeStyles";
 import { NARRATIVE_FORMS, DEFAULT_NARRATIVE_FORM_ID } from "@/config/narrativeForms";
+import { useCustomNarrativeForms, type CustomNarrativeForm } from "@/hooks/useCustomNarrativeForms";
+import CustomFormCard from "./narrativeWorkflow/CustomFormCard";
 import { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
 import NarrativeScriptBlock, { type ScriptVersion, getPersistedScriptAiModel, persistScriptAiModel, type ScriptAiModelId } from "./NarrativeScriptBlock";
 import ChapterCollapse from "./ChapterCollapse";
