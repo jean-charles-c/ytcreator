@@ -447,10 +447,26 @@ serve(async (req) => {
           })
           .filter(Boolean);
         if (identityLocks.length > 0) {
-          const lockPrefix = identityLocks.join("\n\n") + "\n\n";
-          const firstSnippet = identityLocks[0].slice(0, 40).toLowerCase();
-          if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
-            enrichedPrompt = lockPrefix + enrichedPrompt;
+          // Condense verbose lock templates: strip the repeated
+          // "CHARACTER/LOCATION/OBJECT/VEHICLE IDENTITY LOCK:" headers
+          // and the boilerplate "Do not redesign, modernize..." lines
+          // (already covered by the unified REFERENCE_IMAGE_RULE block).
+          const condensed = identityLocks
+            .map((lock: string) => {
+              const cleaned = lock
+                .replace(/^(CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:\s*/gim, "")
+                .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+              return cleaned;
+            })
+            .filter(Boolean);
+          if (condensed.length > 0) {
+            const lockPrefix = "IDENTITY LOCK:\n" + condensed.join("\n\n") + "\n\n";
+            const firstSnippet = condensed[0].slice(0, 40).toLowerCase();
+            if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
+              enrichedPrompt = lockPrefix + enrichedPrompt;
+            }
           }
         }
       }
@@ -518,10 +534,10 @@ serve(async (req) => {
     if (referenceImageInputs.length > 0) {
       const REFERENCE_IMAGE_RULE = [
         "Use reference images only as fidelity anchors, not as compositions to copy.",
-        "Preserve the exact identity, proportions, facial structure, age, hairstyle, posture, clothing logic, materials, distinctive traits, and period-specific details of the referenced subjects.",
-        "Do not copy unwanted background, text, lighting, framing, or scene elements from references.",
-        "Do not redesign, beautify, modernize, de-age, age up, hybridize, or create generic lookalikes.",
+        "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
+        "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
         "No temporal drift: never mix eras or versions of the same character, object, or place.",
+        "Never render prompt or narrative text inside the image.",
       ].join("\n");
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }

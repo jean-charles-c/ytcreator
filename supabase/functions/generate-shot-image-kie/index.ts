@@ -466,7 +466,21 @@ serve(async (req) => {
         .map((obj: any) => obj.identity_prompt || "")
         .filter(Boolean);
       if (identityLocks.length > 0) {
-        enrichedPrompt = identityLocks.join("\n\n") + "\n\n" + enrichedPrompt;
+        // Strip the repeated "CHARACTER/LOCATION/OBJECT/VEHICLE IDENTITY LOCK:"
+        // headers and the boilerplate "Do not redesign…" lines (already covered
+        // by the unified reference rule block) before injection.
+        const condensed = identityLocks
+          .map((lock: string) =>
+            lock
+              .replace(/^(CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:\s*/gim, "")
+              .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+              .replace(/\n{3,}/g, "\n\n")
+              .trim(),
+          )
+          .filter(Boolean);
+        if (condensed.length > 0) {
+          enrichedPrompt = "IDENTITY LOCK:\n" + condensed.join("\n\n") + "\n\n" + enrichedPrompt;
+        }
       }
     }
 
@@ -494,16 +508,15 @@ serve(async (req) => {
     const referenceLines = hasRefs
       ? [
           "Use reference images only as fidelity anchors, not as compositions to copy.",
-          "Preserve the exact identity, proportions, facial structure, age, hairstyle, posture, clothing logic, materials, distinctive traits, and period-specific details of the referenced subjects.",
-          "Do not copy unwanted background, text, lighting, framing, or scene elements from references.",
-          "Do not redesign, beautify, modernize, de-age, age up, hybridize, or create generic lookalikes.",
+          "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
+          "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
           "No temporal drift: never mix eras or versions of the same character, object, or place.",
         ]
       : [];
     const directives = [
       ...referenceLines,
       `Generate one single cinematic ${targetAR} image, no borders, no letterboxing, no square crop.`,
-      "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
+      "Never render prompt or narrative text inside the image. Only natural in-scene writing is allowed.",
     ].join("\n");
     enrichedPrompt = `${directives}\n\n${enrichedPrompt}`;
 
@@ -541,7 +554,7 @@ serve(async (req) => {
 
       // Reconstruct: head directives (style + reference rule + aspect ratio) +
       // compact locks + full action prompt.
-      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
+      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:IDENTITY LOCK|CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
       const headDirectives = (headMatch?.[0] || "").trim();
 
       let rebuilt = "";
