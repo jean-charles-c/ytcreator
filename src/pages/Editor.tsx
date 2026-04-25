@@ -34,6 +34,7 @@ import {
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useKieModels, isKieEngine, formatKiePrice, KIE_PREFIX } from "@/hooks/useKieModels";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
@@ -1459,6 +1460,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
   // --- Image generation handlers ---
   // generatingSceneImages removed — all image gen routes through bgStartImageGen
   const [imageModel, setImageModel] = useState("google/gemini-2.5-flash-image");
+  const [imageQuality, setImageQuality] = useState<"1K" | "2K" | "4K">("1K");
   const [imageAspectRatio, setImageAspectRatio] = useState("16:9");
   const [shotImageModelOverrides, setShotImageModelOverrides] = useState<Record<string, string>>({});
   const [sceneImageModelOverrides, setSceneImageModelOverrides] = useState<Record<string, string>>({});
@@ -1468,11 +1470,34 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
    const [showWarnings, setShowWarnings] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<ManifestAction[]>([]);
 
+  // Dynamically load Kie models from kie_pricing
+  const { engines: kieEngines } = useKieModels();
+
+  // Unified IMAGE_MODELS list (Lovable AI + Kie engines).
+  // Each entry keeps the old { value, label, price } shape so existing UI stays compatible.
+  // Kie entries get `provider: "kie"` and a `qualities` array; their `price` reflects the
+  // currently selected `imageQuality`.
   const IMAGE_MODELS = [
-    { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "0.02 $" },
-    { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "0.06 $" },
-    { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "0.10 $" },
-  ];
+    { value: "google/gemini-2.5-flash-image", label: "Nano Banana", price: "$0.02/img", provider: "lovable" as const },
+    { value: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2", price: "$0.06/img", provider: "lovable" as const },
+    { value: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro", price: "$0.10/img", provider: "lovable" as const },
+    ...kieEngines.map((e) => {
+      const q = e.qualities.find((qq) => qq.quality === imageQuality) ?? e.qualities[0];
+      return {
+        value: e.value,
+        label: e.label,
+        price: q ? formatKiePrice(q.priceUsd) : "—",
+        provider: "kie" as const,
+        qualities: e.qualities as { quality: "1K" | "2K" | "4K"; priceUsd: number }[],
+      };
+    }),
+  ] as Array<{
+    value: string;
+    label: string;
+    price: string;
+    provider: "lovable" | "kie";
+    qualities?: { quality: "1K" | "2K" | "4K"; priceUsd: number }[];
+  }>;
 
   const ASPECT_RATIOS = [
     { value: "16:9", label: "16:9 (Paysage)" },
@@ -1499,6 +1524,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: [shotId],
       model: shotModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
       ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
     });
@@ -1763,6 +1789,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: missingShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       sensitiveLevels: buildSensitiveLevelsMap(missingShots),
       visualStyles: buildVisualStylesMap(missingShots),
     });
@@ -1785,6 +1812,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: allShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       sensitiveLevels: buildSensitiveLevelsMap(allShots),
       visualStyles: buildVisualStylesMap(allShots),
     });
@@ -1884,6 +1912,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: sceneShots.map((s) => s.id),
       model: sceneModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
       visualStyles: buildVisualStylesMap(sceneShots),
     });
@@ -2800,10 +2829,24 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         >
                           {IMAGE_MODELS.map((m) => (
                             <option key={m.value} value={m.value}>
-                              {m.label} — {m.price}
+                              {m.provider === "kie" ? "🟣 " : ""}{m.label}{m.provider === "kie" ? " (Kie)" : ""} — {m.price}
                             </option>
                           ))}
                         </select>
+                        {isKieEngine(imageModel) && (
+                          <select
+                            value={imageQuality}
+                            onChange={(e) => setImageQuality(e.target.value as "1K" | "2K" | "4K")}
+                            className="rounded border border-violet-500/40 bg-violet-500/5 px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            title="Qualité de sortie Kie"
+                          >
+                            {(IMAGE_MODELS.find((m) => m.value === imageModel)?.qualities ?? []).map((q) => (
+                              <option key={q.quality} value={q.quality}>
+                                {q.quality} — {formatKiePrice(q.priceUsd)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">Format :</span>
@@ -2837,11 +2880,18 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                               : ""}
                           </Button>
                           {imageGenTask?.imageGenModel && (
-                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
-                              🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
-                              {" — "}
-                              {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
-                            </span>
+                            (() => {
+                              const m = IMAGE_MODELS.find((mm) => mm.value === imageGenTask.imageGenModel);
+                              const isKie = isKieEngine(imageGenTask.imageGenModel);
+                              return (
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium ${isKie ? "border-violet-500/40 bg-violet-500/10 text-violet-300" : "border-primary/20 bg-primary/10 text-primary"}`}>
+                                  {isKie ? "🟣" : "🤖"} {m?.label ?? imageGenTask.imageGenModel}
+                                  {isKie && <span className="rounded bg-violet-500/30 px-1 text-[9px] uppercase tracking-wide">Kie</span>}
+                                  {" — "}
+                                  {m?.price ?? "?"}
+                                </span>
+                              );
+                            })()
                           )}
                         </div>
                       ) : (() => {
@@ -3337,7 +3387,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       >
                                         {IMAGE_MODELS.map((m) => (
                                           <option key={m.value} value={m.value}>
-                                            {m.label} — {m.price}
+                                            {m.provider === "kie" ? "🟣 " : ""}{m.label}{m.provider === "kie" ? " (Kie)" : ""} — {m.price}
                                           </option>
                                         ))}
                                       </select>
@@ -3450,7 +3500,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                                   >
                                                     {IMAGE_MODELS.map((m) => (
                                                       <option key={m.value} value={m.value}>
-                                                        {m.label} — {m.price}
+                                                        {m.provider === "kie" ? "🟣 " : ""}{m.label}{m.provider === "kie" ? " (Kie)" : ""} — {m.price}
                                                       </option>
                                                     ))}
                                                   </select>

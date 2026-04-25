@@ -60,6 +60,8 @@ export interface ImageGenParams {
   shotIds: string[];
   model: string;
   aspectRatio: string;
+  /** Output quality (1K/2K/4K). Only used when model is a Kie engine (prefix "kie:"). */
+  quality?: "1K" | "2K" | "4K";
   /** Maps shotId → effective sensitive level (1-4). Omitted shots have no constraint. */
   sensitiveLevels?: Record<string, number>;
   /** Maps shotId → visual style id. Omitted shots have no style constraint. */
@@ -1205,8 +1207,12 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                   const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
 
                   try {
+                    // Route to Kie edge function when model uses the "kie:" prefix
+                    const isKie = typeof params.model === "string" && params.model.startsWith("kie:");
+                    const kieModelId = isKie ? params.model.slice(4) : null;
+                    const endpoint = isKie ? "generate-shot-image-kie" : "generate-shot-image";
                     return await fetch(
-                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`,
                       {
                         method: "POST",
                         headers: {
@@ -1216,8 +1222,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                         },
                         body: JSON.stringify({
                           shot_id: remainingShotIds[i],
-                          model: params.model,
+                          model: isKie ? kieModelId : params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...(isKie ? { quality: params.quality ?? "1K" } : {}),
                           ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
                             ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
                             : {}),
