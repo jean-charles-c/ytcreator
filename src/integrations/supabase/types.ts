@@ -1143,49 +1143,76 @@ export type Database = {
       story_pitches: {
         Row: {
           angle: string | null
+          central_tension: string | null
+          concept: string | null
           created_at: string
+          dominant_emotion: string | null
           estimated_format: string | null
+          form_compliance_justification: string | null
           hook: string | null
           id: string
+          narrative_promise: string | null
           pitch_batch_id: string
           pitch_order: number
+          point_of_view: string | null
+          progression: string | null
           status: string
           synopsis: string | null
           target_audience: string | null
+          theme: string | null
           title: string
           tone: string | null
+          twists: Json | null
           updated_at: string
           user_id: string
         }
         Insert: {
           angle?: string | null
+          central_tension?: string | null
+          concept?: string | null
           created_at?: string
+          dominant_emotion?: string | null
           estimated_format?: string | null
+          form_compliance_justification?: string | null
           hook?: string | null
           id?: string
+          narrative_promise?: string | null
           pitch_batch_id: string
           pitch_order?: number
+          point_of_view?: string | null
+          progression?: string | null
           status?: string
           synopsis?: string | null
           target_audience?: string | null
+          theme?: string | null
           title: string
           tone?: string | null
+          twists?: Json | null
           updated_at?: string
           user_id: string
         }
         Update: {
           angle?: string | null
+          central_tension?: string | null
+          concept?: string | null
           created_at?: string
+          dominant_emotion?: string | null
           estimated_format?: string | null
+          form_compliance_justification?: string | null
           hook?: string | null
           id?: string
+          narrative_promise?: string | null
           pitch_batch_id?: string
           pitch_order?: number
+          point_of_view?: string | null
+          progression?: string | null
           status?: string
           synopsis?: string | null
           target_audience?: string | null
+          theme?: string | null
           title?: string
           tone?: string | null
+          twists?: Json | null
           updated_at?: string
           user_id?: string
         }
