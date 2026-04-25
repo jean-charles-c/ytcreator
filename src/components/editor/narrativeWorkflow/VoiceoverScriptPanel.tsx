@@ -10,6 +10,8 @@ import {
   Filter,
   Clock,
   Hash,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +34,16 @@ import { useVoiceoverScript } from "@/hooks/useVoiceoverScript";
 
 interface VoiceoverScriptPanelProps {
   projectId: string | null;
+  /**
+   * Étape 15 — Callback pour envoyer le script complet vers le scriptInput
+   * de ScriptCreator. Le contenu est passé tel quel (titres + sauts de ligne).
+   */
+  onSendToScriptCreator?: (content: string) => void;
+  /**
+   * Indique si un script est déjà chargé côté ScriptCreator. Utilisé pour
+   * demander confirmation avant écrasement.
+   */
+  hasExistingScriptInput?: boolean;
 }
 
 /**
@@ -40,7 +52,11 @@ interface VoiceoverScriptPanelProps {
  * `SCÈNE X — Titre de la scène`.
  * N'envoie PAS automatiquement au ScriptCreator.
  */
-export default function VoiceoverScriptPanel({ projectId }: VoiceoverScriptPanelProps) {
+export default function VoiceoverScriptPanel({
+  projectId,
+  onSendToScriptCreator,
+  hasExistingScriptInput = false,
+}: VoiceoverScriptPanelProps) {
   const { data: outlineData, loading: loadingOutline } = useNarrativeOutline(projectId);
   const outline = outlineData?.outline ?? null;
   const chapters = outlineData?.chapters ?? [];
@@ -59,6 +75,8 @@ export default function VoiceoverScriptPanel({ projectId }: VoiceoverScriptPanel
   const [askOverwrite, setAskOverwrite] = useState(false);
   const [instructions, setInstructions] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [askSendOverwrite, setAskSendOverwrite] = useState(false);
 
   const allScenes = useMemo(
     () => Object.values(scenesByChapter).flat(),
@@ -134,6 +152,49 @@ export default function VoiceoverScriptPanel({ projectId }: VoiceoverScriptPanel
       toast.error("Impossible de copier.");
     }
   }, [script]);
+
+  /**
+   * Étape 15 — Envoi du script vers le scriptInput de ScriptCreator.
+   * - Disponible uniquement si script_created (script existe).
+   * - Préserve titres de scène et sauts de ligne (envoi du contenu tel quel).
+   * - Marque sent_to_scriptcreator_at sur la ligne voiceover_scripts.
+   * - Demande confirmation si un script est déjà présent dans ScriptCreator.
+   */
+  const doSendToScriptCreator = useCallback(async () => {
+    if (!script?.content || !onSendToScriptCreator) return;
+    setSending(true);
+    try {
+      // 1. Insertion dans scriptInput (contenu inchangé, titres + \n préservés).
+      onSendToScriptCreator(script.content);
+
+      // 2. Marquage du statut côté DB (non-bloquant pour l'envoi).
+      try {
+        await supabase
+          .from("voiceover_scripts")
+          .update({
+            status: "sent_to_scriptcreator",
+            sent_to_scriptcreator_at: new Date().toISOString(),
+          })
+          .eq("id", script.id);
+        await reload();
+      } catch (e) {
+        console.warn("[VoiceoverScriptPanel] mark sent failed", e);
+      }
+
+      toast.success("Script envoyé dans ScriptCreator.");
+    } finally {
+      setSending(false);
+    }
+  }, [script, onSendToScriptCreator, reload]);
+
+  const onSendClick = useCallback(() => {
+    if (!script?.content || !onSendToScriptCreator) return;
+    if (hasExistingScriptInput) {
+      setAskSendOverwrite(true);
+      return;
+    }
+    void doSendToScriptCreator();
+  }, [script, onSendToScriptCreator, hasExistingScriptInput, doSendToScriptCreator]);
 
   if (!projectId) return null;
   if (loadingOutline) {
@@ -284,9 +345,41 @@ export default function VoiceoverScriptPanel({ projectId }: VoiceoverScriptPanel
             className="font-mono text-[12px] leading-relaxed min-h-[400px] whitespace-pre-wrap bg-background/60"
           />
 
+          {/* Étape 15 — Envoi vers ScriptCreator */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {onSendToScriptCreator ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={onSendClick}
+                disabled={sending || !script.content?.trim()}
+              >
+                {sending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                <span className="ml-1.5">Envoyer vers ScriptCreator</span>
+              </Button>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Copie le script pour le coller dans ScriptCreator.
+              </p>
+            )}
+            {script.sent_to_scriptcreator_at && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Envoyé le{" "}
+                {new Date(script.sent_to_scriptcreator_at).toLocaleString("fr-FR", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              </span>
+            )}
+          </div>
           <p className="text-[11px] text-muted-foreground">
-            Le script est conservé tel quel. Pour l'envoyer au ScriptCreator, copie-le manuellement —
-            aucun transfert automatique n'est effectué à cette étape.
+            L'envoi insère le script tel quel dans le scriptInput de ScriptCreator,
+            en préservant les titres de scènes et les sauts de ligne.
           </p>
         </div>
       )}
@@ -306,6 +399,31 @@ export default function VoiceoverScriptPanel({ projectId }: VoiceoverScriptPanel
               onClick={() => {
                 setAskOverwrite(false);
                 void callGenerate(true);
+              }}
+            >
+              Remplacer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Étape 15 — Confirmation d'écrasement du scriptInput existant */}
+      <AlertDialog open={askSendOverwrite} onOpenChange={setAskSendOverwrite}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remplacer le script présent dans ScriptCreator ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Un texte est déjà chargé dans le scriptInput de ScriptCreator. L'envoi va le
+              remplacer par le script voix off généré ici. Cette action est sans effet sur
+              les autres fonctionnalités de ScriptCreator.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setAskSendOverwrite(false);
+                void doSendToScriptCreator();
               }}
             >
               Remplacer

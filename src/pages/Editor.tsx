@@ -2282,6 +2282,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
             <RsearchEngineTab
               projectId={projectId}
               projectTitle={title}
+              hasExistingScriptInput={Boolean((pdfExtractedText ?? "").trim())}
               onSendToScriptCreator={(text) => {
                 setNarration(cleanNarrationText(text));
                 setPdfExtractedText(text);
