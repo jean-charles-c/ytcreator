@@ -1,7 +1,11 @@
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NarrativeWorkflowProgress from "./NarrativeWorkflowProgress";
-import SourceManager from "./SourceManager";
+import SourceManager, { type NarrativeSourceRow } from "./SourceManager";
+import NarrativeAnalysisPanel, { type AnalysisPayload } from "./NarrativeAnalysisPanel";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NarrativeWorkflowViewProps {
   projectId: string | null;
@@ -16,6 +20,54 @@ interface NarrativeWorkflowViewProps {
  * dans les prompts dédiés (étapes 5+).
  */
 export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewProps) {
+  const [analysisStatus, setAnalysisStatus] = useState<
+    "idle" | "running" | "success" | "error"
+  >("idle");
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisPayload | null>(null);
+  const [sourcesUsed, setSourcesUsed] = useState<number | undefined>();
+  const [lastSources, setLastSources] = useState<NarrativeSourceRow[]>([]);
+
+  const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
+    if (sources.length === 0) {
+      toast.error("Au moins une transcription valide est requise.");
+      return;
+    }
+    setLastSources(sources);
+    setAnalysisStatus("running");
+    setAnalysisError(null);
+    setAnalysisResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "analyze-narrative-sources",
+        { body: { source_ids: sources.map((s) => s.id) } },
+      );
+      if (error) throw error;
+      if (!data?.ok) {
+        throw new Error(data?.error || "Analyse échouée");
+      }
+      setAnalysisResult(data.analysis as AnalysisPayload);
+      setSourcesUsed(data.sources_used);
+      setAnalysisStatus("success");
+      toast.success("Analyse narrative terminée");
+    } catch (e: any) {
+      console.error("analyze error", e);
+      const msg = e?.message || "Erreur lors de l'analyse";
+      setAnalysisError(msg);
+      setAnalysisStatus("error");
+      toast.error(msg);
+    }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    if (lastSources.length > 0) runAnalysis(lastSources);
+  }, [lastSources, runAnalysis]);
+
+  const completedSteps: ("sources" | "analysis")[] =
+    analysisStatus === "success" ? ["sources"] : [];
+  const currentStep: "sources" | "analysis" =
+    analysisStatus === "success" ? "analysis" : "sources";
+
   return (
     <div className="container max-w-6xl py-3 sm:py-4 lg:py-10 px-2 sm:px-4 animate-fade-in">
       {/* Header */}
@@ -72,13 +124,29 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
         <h3 className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 sm:mb-4">
           Étapes du workflow
         </h3>
-        <NarrativeWorkflowProgress currentStep="sources" completedSteps={[]} />
+        <NarrativeWorkflowProgress
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+        />
       </div>
 
       {/* Étape 1 : gestion des sources (1 à 4) */}
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4 lg:p-5">
-        <SourceManager />
+        <SourceManager onAnalyze={runAnalysis} />
       </div>
+
+      {/* Étape 2 : analyse narrative IA */}
+      {analysisStatus !== "idle" && (
+        <div className="mt-4 sm:mt-5">
+          <NarrativeAnalysisPanel
+            status={analysisStatus}
+            errorMessage={analysisError}
+            result={analysisResult}
+            sourcesUsed={sourcesUsed}
+            onRetry={handleRetry}
+          />
+        </div>
+      )}
     </div>
   );
 }
