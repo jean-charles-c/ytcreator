@@ -386,6 +386,7 @@ export type Database = {
           error_message: string | null
           id: string
           patterns: Json | null
+          project_id: string | null
           recommendations: Json | null
           rhythm: Json | null
           source_ids: string[]
@@ -404,6 +405,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           patterns?: Json | null
+          project_id?: string | null
           recommendations?: Json | null
           rhythm?: Json | null
           source_ids?: string[]
@@ -422,6 +424,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           patterns?: Json | null
+          project_id?: string | null
           recommendations?: Json | null
           rhythm?: Json | null
           source_ids?: string[]
