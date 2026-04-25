@@ -89,6 +89,8 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [overwriteAsk, setOverwriteAsk] = useState<{ kind: "all" | "chapter" | "scene"; id?: string } | null>(null);
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
+  // Repli/dépli global du panneau "Scènes narratives"
+  const [panelOpen, setPanelOpen] = useState(true);
 
   // Étape 16 — état d'envoi vers Segmentation View.
   const [sending, setSending] = useState(false);
@@ -313,6 +315,18 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPanelOpen((v) => !v)}
+              aria-expanded={panelOpen}
+              aria-controls="narrative-scenes-panel-body"
+              aria-label={panelOpen ? "Replier les scènes narratives" : "Déplier les scènes narratives"}
+              className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${panelOpen ? "" : "-rotate-90"}`}
+              />
+            </button>
             <Film className="h-4 w-4 text-primary shrink-0" />
             <h4 className="font-display text-sm sm:text-base font-semibold text-foreground">
               Scènes narratives
@@ -371,6 +385,8 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
         </div>
       </div>
 
+      {panelOpen && (
+      <div id="narrative-scenes-panel-body" className="space-y-4">
       {sentAt && (
         <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -439,6 +455,8 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             );
           })}
         </ol>
+      )}
+      </div>
       )}
 
       <AlertDialog
