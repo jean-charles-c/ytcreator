@@ -21,9 +21,15 @@ interface RsearchEngineTabProps {
   projectId: string | null;
   projectTitle: string;
   onSendToScriptCreator?: (content: string) => void;
+  /**
+   * Étape 15 — Indique si un script est déjà chargé côté ScriptCreator
+   * (scriptInput non vide). Utilisé pour demander confirmation avant
+   * d'écraser via l'envoi du script voix off.
+   */
+  hasExistingScriptInput?: boolean;
 }
 
-export default function RsearchEngineTab({ projectId, projectTitle, onSendToScriptCreator }: RsearchEngineTabProps) {
+export default function RsearchEngineTab({ projectId, projectTitle, onSendToScriptCreator, hasExistingScriptInput }: RsearchEngineTabProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [content, setContent] = useState("");
@@ -257,7 +263,11 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           {/* Étape 14 — Script voix off final */}
           {projectId && (
             <div className="mb-4 sm:mb-6">
-              <VoiceoverScriptPanel projectId={projectId} />
+              <VoiceoverScriptPanel
+                projectId={projectId}
+                onSendToScriptCreator={onSendToScriptCreator}
+                hasExistingScriptInput={hasExistingScriptInput}
+              />
             </div>
           )}
 
