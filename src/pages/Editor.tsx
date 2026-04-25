@@ -2377,6 +2377,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               onStopSegmentation={stopSegmentation}
               shots={shots}
               scenesForShotOrder={scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order }))}
+              pendingChapterTitles={pendingChapterTitles}
+              onPendingChapterTitlesConsumed={() => setPendingChapterTitles(null)}
             />
           </div>
         )}
