@@ -63,6 +63,18 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
     if (lastSources.length > 0) runAnalysis(lastSources);
   }, [lastSources, runAnalysis]);
 
+  const handleSaveAsForm = useCallback(() => {
+    toast.info(
+      "Sauvegarde comme forme narrative — disponible à l'étape suivante du workflow.",
+    );
+  }, []);
+
+  const handleGeneratePitches = useCallback(() => {
+    toast.info(
+      "Génération des 5 propositions d'histoires — disponible à l'étape suivante.",
+    );
+  }, []);
+
   const completedSteps: ("sources" | "analysis")[] =
     analysisStatus === "success" ? ["sources"] : [];
   const currentStep: "sources" | "analysis" =
@@ -144,6 +156,8 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
             result={analysisResult}
             sourcesUsed={sourcesUsed}
             onRetry={handleRetry}
+            onSaveAsForm={handleSaveAsForm}
+            onGeneratePitches={handleGeneratePitches}
           />
         </div>
       )}
