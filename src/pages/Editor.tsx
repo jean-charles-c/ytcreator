@@ -34,6 +34,7 @@ import {
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useKieModels, isKieEngine, formatKiePrice, KIE_PREFIX } from "@/hooks/useKieModels";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
