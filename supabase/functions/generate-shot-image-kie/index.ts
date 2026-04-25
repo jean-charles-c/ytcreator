@@ -172,19 +172,6 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
   throw new Error("Kie task timed out after 5 minutes");
 }
 
-// (legacy — kept for reference, removed below)
-function _unused_marker_remove_me() {
-    if (false) {
-      if (imageUrl) return imageUrl;
-    }
-    if (state === "failed" || state === "FAILED" || state === "error") {
-      throw new Error(`Kie task failed: ${data?.errorMessage || data?.failMsg || JSON.stringify(data).slice(0, 300)}`);
-    }
-    console.log(`[KIE poll ${i}] state=${state}`);
-  }
-  throw new Error("Kie task timed out after 5 minutes");
-}
-
 /**
  * Download Kie image, upload to shot-images bucket, return public URL.
  */
