@@ -72,11 +72,15 @@ async function submitKieTask(params: {
     // Append --oref / --sref params
     for (const url of orefImages) mjPrompt += ` --oref ${url} --ow 100`;
     for (const url of srefImages) mjPrompt += ` --sref ${url} --sw 200`;
-    mjPrompt += ` --ar ${aspectRatio} --v 7`;
 
     body = {
       prompt: mjPrompt,
       taskType: "mj_txt2img",
+      // Kie Midjourney API requires a lowercase speed tier.
+      // Omitting it can return: "The speed parameter is incorrect."
+      speed: "relaxed",
+      aspectRatio,
+      version: "7",
     };
   } else {
     // Generic /jobs/createTask payload (Kie unified market API)
