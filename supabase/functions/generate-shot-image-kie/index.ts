@@ -29,15 +29,16 @@ const QUALITY_TO_SIZE: Record<string, number> = {
 
 // Map our internal model_id => Kie API model parameter
 const MODEL_TO_KIE_MODEL: Record<string, string> = {
-  "gpt-4o-image": "gpt-4o-image",
-  "gpt-image-2": "gpt-image-2",
-  "mj-v7": "mj-v7",
-  "flux-pro-1.1": "flux-pro-1.1",
-  "flux-dev": "flux-dev",
-  "ideogram-v3": "ideogram-v3",
-  "imagen-4": "imagen-4-ultra",
-  "grok-imagine": "grok-imagine",
-  "qwen-image": "qwen-image",
+  // Kie market models use slash-namespaced identifiers on /jobs/createTask
+  "gpt-image-2":  "gpt-image-2/text-to-image",
+  "ideogram-v3":  "ideogram/v3-text-to-image",
+  "imagen-4":     "google/imagen4",
+  "grok-imagine": "grok-imagine/text-to-image",
+  "qwen-image":   "qwen/text-to-image",
+  "flux-2-flex":  "flux-2/flex-text-to-image",
+  "flux-2-pro":   "flux-2/pro-text-to-image",
+  // Midjourney still uses its dedicated /mj/generate endpoint
+  "mj-v7":        "mj-v7",
 };
 
 // Object types that should use --oref (identity lock) vs --sref (style transfer) on Midjourney
@@ -78,13 +79,12 @@ async function submitKieTask(params: {
       taskType: "mj_txt2img",
     };
   } else {
-    // Generic /playground/createTask payload
+    // Generic /jobs/createTask payload (Kie unified market API)
     body = {
       model: modelKey,
       input: {
         prompt,
         aspect_ratio: aspectRatio,
-        size: `${size}x${size}`,
         ...(referenceImages.length > 0 ? { image_urls: referenceImages } : {}),
       },
     };
@@ -121,7 +121,7 @@ async function submitKieTask(params: {
  */
 async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<string> {
   const maxAttempts = 60; // ~5 min @ 5s
-  const pollPath = isMidjourney ? `/mj/recordInfo` : `/playground/recordInfo`;
+  const pollPath = isMidjourney ? `/mj/recordInfo` : `/jobs/recordInfo`;
 
   for (let i = 0; i < maxAttempts; i++) {
     await sleep(5000);
