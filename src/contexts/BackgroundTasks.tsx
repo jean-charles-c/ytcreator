@@ -60,6 +60,8 @@ export interface ImageGenParams {
   shotIds: string[];
   model: string;
   aspectRatio: string;
+  /** Output quality (1K/2K/4K). Only used when model is a Kie engine (prefix "kie:"). */
+  quality?: "1K" | "2K" | "4K";
   /** Maps shotId → effective sensitive level (1-4). Omitted shots have no constraint. */
   sensitiveLevels?: Record<string, number>;
   /** Maps shotId → visual style id. Omitted shots have no style constraint. */
