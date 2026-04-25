@@ -5,7 +5,7 @@ import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_sh
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-kie-async, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const KIE_BASE_URL = "https://api.kie.ai/api/v1";
@@ -276,7 +276,7 @@ serve(async (req) => {
       });
     }
 
-    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt, mode, task_id } = await req.json();
+    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt, mode, task_id, kie_async } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
     if (!model && mode !== "poll") throw new Error("Missing model");
 
@@ -432,7 +432,7 @@ serve(async (req) => {
       isMidjourney,
     });
 
-    if (req.headers.get("x-kie-async") === "1") {
+    if (kie_async === true || req.headers.get("x-kie-async") === "1") {
       return new Response(
         JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
         { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
