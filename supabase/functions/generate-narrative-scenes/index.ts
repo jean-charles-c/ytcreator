@@ -653,6 +653,7 @@ serve(async (req) => {
         created: totalCreated,
         deleted: totalDeleted,
         errors,
+        remaining_chapter_ids: remainingChapterIds,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
