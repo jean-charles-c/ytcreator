@@ -41,6 +41,27 @@ const MODEL_TO_KIE_MODEL: Record<string, string> = {
   "qwen-image":   "qwen/text-to-image",
   "flux-2-flex":  "flux-2/flex-text-to-image",
   "flux-2-pro":   "flux-2/pro-text-to-image",
+  // Seedream family (ByteDance)
+  "seedream-3":      "bytedance/seedream",
+  "seedream-4":      "bytedance/seedream-v4-text-to-image",
+  "seedream-4-5":    "seedream/4.5-text-to-image",
+  "seedream-5-lite": "seedream/5-lite-text-to-image",
+  // Z-Image (low cost)
+  "z-image":         "z-image",
+  // Google Nano Banana family
+  "nano-banana":     "google/nano-banana",
+  "nano-banana-2":   "nano-banana-2",
+  "nano-banana-pro": "nano-banana-pro",
+  // Qwen Image 2.0
+  "qwen2-image":     "qwen2/text-to-image",
+  // Wan 2.7
+  "wan-2-7":         "wan/2-7-image",
+  "wan-2-7-pro":     "wan/2-7-image-pro",
+  // OpenAI GPT Image 1.5
+  "gpt-image-1-5":   "gpt-image/1.5-text-to-image",
+  // Google Imagen 4 variants
+  "imagen-4-fast":   "google/imagen4-fast",
+  "imagen-4-ultra":  "google/imagen4-ultra",
 };
 
 // Object types that should use --oref (identity lock) vs --sref (style transfer) on Midjourney
