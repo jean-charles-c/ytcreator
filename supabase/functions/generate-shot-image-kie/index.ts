@@ -432,6 +432,13 @@ serve(async (req) => {
       isMidjourney,
     });
 
+    if (req.headers.get("x-kie-async") === "1") {
+      return new Response(
+        JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
+        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
     const finalUrl = await rehostImage(supabase, kieImageUrl, shot.project_id, shot_id);
     const elapsedMs = Date.now() - startTime;
