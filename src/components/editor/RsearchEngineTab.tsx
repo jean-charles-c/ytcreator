@@ -27,9 +27,15 @@ interface RsearchEngineTabProps {
    * d'écraser via l'envoi du script voix off.
    */
   hasExistingScriptInput?: boolean;
+  /**
+   * Étape 16 — Callback déclenché après transfert des scènes narratives
+   * vers la Segmentation View. Permet de basculer sur l'onglet Segmentation
+   * et de rafraîchir scenes / globalContext.
+   */
+  onSentToSegmentation?: () => void;
 }
 
-export default function RsearchEngineTab({ projectId, projectTitle, onSendToScriptCreator, hasExistingScriptInput }: RsearchEngineTabProps) {
+export default function RsearchEngineTab({ projectId, projectTitle, onSendToScriptCreator, hasExistingScriptInput, onSentToSegmentation }: RsearchEngineTabProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [content, setContent] = useState("");
@@ -256,7 +262,10 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           {/* Étape 13 — Scènes narratives par chapitre */}
           {projectId && (
             <div className="mb-4 sm:mb-6">
-              <NarrativeScenesPanel projectId={projectId} />
+              <NarrativeScenesPanel
+                projectId={projectId}
+                onSentToSegmentation={onSentToSegmentation}
+              />
             </div>
           )}
 
