@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus,
@@ -135,6 +135,10 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
   const [pendingDelete, setPendingDelete] = useState<NarrativeSourceRow | null>(null);
   /** ID des sources actuellement en cours d'extraction auto. */
   const [fetchingIds, setFetchingIds] = useState<Set<string>>(new Set());
+  /** Ref vers `tryAutoFetch` pour éviter les cycles de dépendances. */
+  const tryAutoFetchRef = useRef<
+    ((sourceId: string, url: string, language: string | null) => void) | null
+  >(null);
 
   const count = sources.length;
   const canAdd = count < MAX_SOURCES;
@@ -260,7 +264,7 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
         // Si on vient d'ajouter une URL et qu'aucune transcription n'existe → tenter l'auto-fetch.
         const hadTranscript = !!dialog.source.transcript?.trim();
         if (!trimmedTranscript && trimmedUrl && !hadTranscript) {
-          void tryAutoFetch(dialog.source.id, trimmedUrl, dialog.source.language ?? "fr");
+          tryAutoFetchRef.current?.(dialog.source.id, trimmedUrl, dialog.source.language ?? "fr");
         }
       } else {
         if (!canAdd) {
@@ -277,7 +281,7 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
         toast.success("Source ajoutée");
         // Création par URL sans transcription → tenter l'extraction automatique.
         if (!trimmedTranscript && trimmedUrl && inserted?.id) {
-          void tryAutoFetch(inserted.id, trimmedUrl, inserted.language ?? "fr");
+          tryAutoFetchRef.current?.(inserted.id, trimmedUrl, inserted.language ?? "fr");
         }
       }
       await fetchSources();
@@ -289,7 +293,7 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
     } finally {
       setSaving(false);
     }
-  }, [user, dialog, form, validateForm, canAdd, fetchSources, tryAutoFetch]);
+  }, [user, dialog, form, validateForm, canAdd, fetchSources]);
 
   const handleDelete = useCallback(async () => {
     if (!pendingDelete) return;
