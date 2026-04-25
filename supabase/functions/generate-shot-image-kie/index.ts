@@ -10,6 +10,10 @@ const corsHeaders = {
 
 const KIE_BASE_URL = "https://api.kie.ai/api/v1";
 
+const DEPRECATED_KIE_MODELS: Record<string, string> = {
+  "mj-v7": "Midjourney v7 n'est plus listé dans la documentation Kie actuelle. Choisis GPT Image 2, Imagen 4, Flux 2, Ideogram, Grok ou Qwen.",
+};
+
 const ASPECT_RATIOS_KIE: Record<string, string> = {
   "16:9": "16:9",
   "9:16": "9:16",
@@ -27,18 +31,16 @@ const QUALITY_TO_SIZE: Record<string, number> = {
   "4K": 4096,
 };
 
-// Map our internal model_id => Kie API model parameter
+  // Map our internal model_id => Kie API model parameter
 const MODEL_TO_KIE_MODEL: Record<string, string> = {
   // Kie market models use slash-namespaced identifiers on /jobs/createTask
-  "gpt-image-2":  "gpt-image-2/text-to-image",
+  "gpt-image-2":  "gpt-image-2-text-to-image",
   "ideogram-v3":  "ideogram/v3-text-to-image",
   "imagen-4":     "google/imagen4",
   "grok-imagine": "grok-imagine/text-to-image",
   "qwen-image":   "qwen/text-to-image",
   "flux-2-flex":  "flux-2/flex-text-to-image",
   "flux-2-pro":   "flux-2/pro-text-to-image",
-  // Midjourney still uses its dedicated /mj/generate endpoint
-  "mj-v7":        "mj-v7",
 };
 
 // Object types that should use --oref (identity lock) vs --sref (style transfer) on Midjourney
