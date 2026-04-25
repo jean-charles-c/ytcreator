@@ -1524,6 +1524,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: [shotId],
       model: shotModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
       ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
     });
@@ -1788,6 +1789,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: missingShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       sensitiveLevels: buildSensitiveLevelsMap(missingShots),
       visualStyles: buildVisualStylesMap(missingShots),
     });
@@ -1810,6 +1812,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: allShots.map((s) => s.id),
       model: imageModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       sensitiveLevels: buildSensitiveLevelsMap(allShots),
       visualStyles: buildVisualStylesMap(allShots),
     });
@@ -1909,6 +1912,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       shotIds: sceneShots.map((s) => s.id),
       model: sceneModel,
       aspectRatio: imageAspectRatio,
+      quality: imageQuality,
       sensitiveLevels: buildSensitiveLevelsMap(sceneShots),
       visualStyles: buildVisualStylesMap(sceneShots),
     });
