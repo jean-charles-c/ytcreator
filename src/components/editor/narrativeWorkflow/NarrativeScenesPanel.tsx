@@ -129,43 +129,65 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
       if (!projectId) return;
       setBusyKey(params.key);
       try {
-        const { data: res, error } = await supabase.functions.invoke(
-          "generate-narrative-scenes",
-          {
-            body: {
-              project_id: projectId,
-              mode: params.mode,
-              variant: params.variant ?? "default",
-              chapter_id: params.chapter_id ?? null,
-              scene_id: params.scene_id ?? null,
-              overwrite: params.overwrite === true,
-              requested_count: params.requested_count ?? null,
+        // Anti-timeout : la fonction edge traite UN chapitre par appel quand
+        // aucun chapitre n'est ciblé. On itère côté client tant qu'il reste
+        // des chapitres à générer.
+        let totalCreated = 0;
+        let nextChapterId: string | null = params.chapter_id ?? null;
+        let firstCall = true;
+        // Limite de sécurité pour éviter les boucles infinies
+        for (let i = 0; i < 50; i++) {
+          const { data: res, error } = await supabase.functions.invoke(
+            "generate-narrative-scenes",
+            {
+              body: {
+                project_id: projectId,
+                mode: params.mode,
+                variant: params.variant ?? "default",
+                chapter_id: firstCall ? nextChapterId : nextChapterId,
+                scene_id: params.scene_id ?? null,
+                overwrite: params.overwrite === true,
+                requested_count: params.requested_count ?? null,
+              },
             },
-          },
-        );
-        if (error) {
-          const msg =
-            (error as any)?.context?.body?.error ||
-            (error as any)?.message ||
-            "Erreur lors de la génération";
-          throw new Error(msg);
-        }
-        if (!res?.ok) {
-          if (res?.error === "scene_validated") {
-            setOverwriteAsk({ kind: "scene", id: params.scene_id });
-            return;
+          );
+          if (error) {
+            const msg =
+              (error as any)?.context?.body?.error ||
+              (error as any)?.message ||
+              "Erreur lors de la génération";
+            throw new Error(msg);
           }
-          if (Array.isArray(res?.errors) && res.errors.some((e: string) => e.includes("scenes_exist"))) {
-            setOverwriteAsk(
-              params.chapter_id
-                ? { kind: "chapter", id: params.chapter_id }
-                : { kind: "all" },
-            );
-            return;
+          if (!res?.ok) {
+            if (res?.error === "scene_validated") {
+              setOverwriteAsk({ kind: "scene", id: params.scene_id });
+              return;
+            }
+            if (Array.isArray(res?.errors) && res.errors.some((e: string) => e.includes("scenes_exist"))) {
+              setOverwriteAsk(
+                params.chapter_id
+                  ? { kind: "chapter", id: params.chapter_id }
+                  : { kind: "all" },
+              );
+              return;
+            }
+            throw new Error(res?.error || "Génération échouée");
           }
-          throw new Error(res?.error || "Génération échouée");
+          totalCreated += Number(res.created ?? 0);
+          firstCall = false;
+          const remaining: string[] = Array.isArray(res?.remaining_chapter_ids)
+            ? res.remaining_chapter_ids
+            : [];
+          // Si un chapitre cible explicite a été passé, on ne boucle pas.
+          if (params.chapter_id || params.scene_id) break;
+          if (remaining.length === 0) break;
+          nextChapterId = remaining[0];
+          // feedback progressif
+          toast.message(
+            `Scènes générées pour un chapitre — ${remaining.length} restant${remaining.length > 1 ? "s" : ""}…`,
+          );
         }
-        toast.success(`${res.created ?? 0} scène(s) générée(s).`);
+        toast.success(`${totalCreated} scène(s) générée(s).`);
         await reload();
       } catch (e: any) {
         console.error("generate scenes", e);
