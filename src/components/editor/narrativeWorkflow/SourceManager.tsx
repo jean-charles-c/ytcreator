@@ -11,6 +11,9 @@ import {
   AlertCircle,
   FileText,
   Youtube,
+  RefreshCw,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +40,12 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import {
+  getSourceSemanticStatus,
+  isSourceAnalyzable,
+  STATUS_LABELS,
+  type SourceSemanticStatus,
+} from "./sourceStatus";
 
 /**
  * Étape 5 — Source Manager 1 à 4 sources.
@@ -105,16 +114,6 @@ function isLikelyYoutubeUrl(url: string): boolean {
   }
 }
 
-function statusLabel(s: NarrativeSourceRow): { label: string; tone: "muted" | "warn" | "ok" } {
-  if (s.transcript && s.transcript.trim().length > 0) {
-    return { label: "Transcription prête", tone: "ok" };
-  }
-  if (s.youtube_url) {
-    return { label: "URL en attente de transcription", tone: "warn" };
-  }
-  return { label: "Source incomplète", tone: "warn" };
-}
-
 function wordCount(text: string | null): number {
   if (!text) return 0;
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -122,9 +121,11 @@ function wordCount(text: string | null): number {
 
 interface SourceManagerProps {
   onSourcesChange?: (count: number) => void;
+  /** Appelé quand l'utilisateur clique sur « Analyser la structure narrative ». */
+  onAnalyze?: (analyzableSources: NarrativeSourceRow[]) => void;
 }
 
-export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
+export default function SourceManager({ onSourcesChange, onAnalyze }: SourceManagerProps) {
   const { user } = useAuth();
   const [sources, setSources] = useState<NarrativeSourceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +133,8 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
   const [dialog, setDialog] = useState<DialogMode>({ kind: "closed" });
   const [form, setForm] = useState<SourceFormState>(EMPTY_FORM);
   const [pendingDelete, setPendingDelete] = useState<NarrativeSourceRow | null>(null);
+  /** ID des sources actuellement en cours d'extraction auto. */
+  const [fetchingIds, setFetchingIds] = useState<Set<string>>(new Set());
 
   const count = sources.length;
   const canAdd = count < MAX_SOURCES;
