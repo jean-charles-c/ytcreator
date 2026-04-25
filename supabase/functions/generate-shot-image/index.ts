@@ -447,10 +447,26 @@ serve(async (req) => {
           })
           .filter(Boolean);
         if (identityLocks.length > 0) {
-          const lockPrefix = identityLocks.join("\n\n") + "\n\n";
-          const firstSnippet = identityLocks[0].slice(0, 40).toLowerCase();
-          if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
-            enrichedPrompt = lockPrefix + enrichedPrompt;
+          // Condense verbose lock templates: strip the repeated
+          // "CHARACTER/LOCATION/OBJECT/VEHICLE IDENTITY LOCK:" headers
+          // and the boilerplate "Do not redesign, modernize..." lines
+          // (already covered by the unified REFERENCE_IMAGE_RULE block).
+          const condensed = identityLocks
+            .map((lock: string) => {
+              const cleaned = lock
+                .replace(/^(CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:\s*/gim, "")
+                .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+              return cleaned;
+            })
+            .filter(Boolean);
+          if (condensed.length > 0) {
+            const lockPrefix = "IDENTITY LOCK:\n" + condensed.join("\n\n") + "\n\n";
+            const firstSnippet = condensed[0].slice(0, 40).toLowerCase();
+            if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
+              enrichedPrompt = lockPrefix + enrichedPrompt;
+            }
           }
         }
       }
