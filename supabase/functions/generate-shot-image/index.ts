@@ -518,10 +518,10 @@ serve(async (req) => {
     if (referenceImageInputs.length > 0) {
       const REFERENCE_IMAGE_RULE = [
         "Use reference images only as fidelity anchors, not as compositions to copy.",
-        "Preserve the exact identity, proportions, facial structure, age, hairstyle, posture, clothing logic, materials, distinctive traits, and period-specific details of the referenced subjects.",
-        "Do not copy unwanted background, text, lighting, framing, or scene elements from references.",
-        "Do not redesign, beautify, modernize, de-age, age up, hybridize, or create generic lookalikes.",
+        "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
+        "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
         "No temporal drift: never mix eras or versions of the same character, object, or place.",
+        "Never render prompt or narrative text inside the image.",
       ].join("\n");
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
