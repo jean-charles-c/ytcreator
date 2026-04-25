@@ -221,20 +221,31 @@ serve(async (req) => {
     const pages: Array<{ page: number; sections: number; rows: number; range: string | null }> = [];
     let total: number | null = null;
 
-    // First page (also gives us the total count to compute how many pages remain).
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const { markdown, range } = await scrapeImagePage(FIRECRAWL_API_KEY, page);
+    // Fire all page scrapes in parallel (Firecrawl handles each as its own
+    // browser session). Sequential calls would exceed the function timeout.
+    const results = await Promise.allSettled(
+      Array.from({ length: MAX_PAGES }, (_, page) =>
+        scrapeImagePage(FIRECRAWL_API_KEY, page).then((r) => ({ page, ...r })),
+      ),
+    );
+
+    for (const r of results) {
+      if (r.status !== "fulfilled") {
+        console.warn("[sync-kie-pricing] page failed:", r.reason);
+        continue;
+      }
+      const { page, markdown } = r.value;
       const rangeInfo = extractRangeMarker(markdown);
       if (rangeInfo) total = rangeInfo.total;
       const parsed = parseMarkdown(markdown);
       const sections = (markdown.match(/\n###\s+/g) ?? []).length;
-      pages.push({ page, sections, rows: parsed.length, range });
+      pages.push({
+        page,
+        sections,
+        rows: parsed.length,
+        range: rangeInfo ? `${rangeInfo.start}-${rangeInfo.end} of ${rangeInfo.total}` : null,
+      });
       allRows.push(...parsed);
-
-      // Stop if we've covered the full catalogue.
-      if (rangeInfo && rangeInfo.end >= rangeInfo.total) break;
-      // Safety: stop if a page returned nothing useful.
-      if (parsed.length === 0 && page > 0) break;
     }
 
     // Final dedupe across pages
