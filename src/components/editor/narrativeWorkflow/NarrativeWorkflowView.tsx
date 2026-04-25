@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import SaveNarrativeFormDialog from "./SaveNarrativeFormDialog";
 import { buildCustomFormPrompt, buildNarrativeSignature } from "./buildCustomFormPrompt";
 import { useCustomNarrativeForms } from "@/hooks/useCustomNarrativeForms";
+import StoryPitchesPanel from "./StoryPitchesPanel";
 
 interface NarrativeWorkflowViewProps {
   projectId: string | null;
@@ -33,6 +34,8 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pitchesAutoTrigger, setPitchesAutoTrigger] = useState(false);
+  const [pitchesVisible, setPitchesVisible] = useState(false);
   const { createForm } = useCustomNarrativeForms();
 
   const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
@@ -108,10 +111,17 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
   );
 
   const handleGeneratePitches = useCallback(() => {
-    toast.info(
-      "Génération des 5 propositions d'histoires — disponible à l'étape suivante.",
-    );
-  }, []);
+    if (!analysisId) {
+      toast.error("L'analyse doit être enregistrée avant de générer des pitchs.");
+      return;
+    }
+    setPitchesVisible(true);
+    setPitchesAutoTrigger(true);
+    // Smooth scroll to pitches once mounted
+    setTimeout(() => {
+      document.getElementById("story-pitches-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, [analysisId]);
 
   const completedSteps: ("sources" | "analysis")[] =
     analysisStatus === "success" ? ["sources"] : [];
@@ -197,6 +207,18 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
             onSaveAsForm={handleSaveAsForm}
             onGeneratePitches={handleGeneratePitches}
             saving={saving}
+          />
+        </div>
+      )}
+
+      {/* Étape 3 : lots de pitchs */}
+      {(pitchesVisible || (analysisStatus === "success" && analysisId)) && (
+        <div id="story-pitches-panel" className="mt-4 sm:mt-5">
+          <StoryPitchesPanel
+            analysisId={analysisId}
+            disabled={!analysisId}
+            autoTrigger={pitchesAutoTrigger}
+            onAutoTriggerHandled={() => setPitchesAutoTrigger(false)}
           />
         </div>
       )}
