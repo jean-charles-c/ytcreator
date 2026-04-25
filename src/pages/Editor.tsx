@@ -3387,7 +3387,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       >
                                         {IMAGE_MODELS.map((m) => (
                                           <option key={m.value} value={m.value}>
-                                            {m.label} — {m.price}
+                                            {m.provider === "kie" ? "🟣 " : ""}{m.label}{m.provider === "kie" ? " (Kie)" : ""} — {m.price}
                                           </option>
                                         ))}
                                       </select>
@@ -3500,7 +3500,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                                   >
                                                     {IMAGE_MODELS.map((m) => (
                                                       <option key={m.value} value={m.value}>
-                                                        {m.label} — {m.price}
+                                                        {m.provider === "kie" ? "🟣 " : ""}{m.label}{m.provider === "kie" ? " (Kie)" : ""} — {m.price}
                                                       </option>
                                                     ))}
                                                   </select>
