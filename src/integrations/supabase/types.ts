@@ -440,36 +440,54 @@ export type Database = {
         Row: {
           chapter_order: number
           created_at: string
+          dramatic_tension: string | null
+          emotional_progression: string | null
           estimated_duration_seconds: number | null
           id: string
           intention: string | null
+          main_event: string | null
           outline_id: string
+          revelation: string | null
+          structural_role: string | null
           summary: string | null
           title: string
+          transition_to_next: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           chapter_order?: number
           created_at?: string
+          dramatic_tension?: string | null
+          emotional_progression?: string | null
           estimated_duration_seconds?: number | null
           id?: string
           intention?: string | null
+          main_event?: string | null
           outline_id: string
+          revelation?: string | null
+          structural_role?: string | null
           summary?: string | null
           title: string
+          transition_to_next?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           chapter_order?: number
           created_at?: string
+          dramatic_tension?: string | null
+          emotional_progression?: string | null
           estimated_duration_seconds?: number | null
           id?: string
           intention?: string | null
+          main_event?: string | null
           outline_id?: string
+          revelation?: string | null
+          structural_role?: string | null
           summary?: string | null
           title?: string
+          transition_to_next?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -532,9 +550,12 @@ export type Database = {
       }
       narrative_outlines: {
         Row: {
+          ai_model: string | null
           created_at: string
+          form_id: string | null
           id: string
           intention: string | null
+          pitch_id: string | null
           project_id: string
           status: string
           target_duration_seconds: number | null
@@ -543,9 +564,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_model?: string | null
           created_at?: string
+          form_id?: string | null
           id?: string
           intention?: string | null
+          pitch_id?: string | null
           project_id: string
           status?: string
           target_duration_seconds?: number | null
@@ -554,9 +578,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_model?: string | null
           created_at?: string
+          form_id?: string | null
           id?: string
           intention?: string | null
+          pitch_id?: string | null
           project_id?: string
           status?: string
           target_duration_seconds?: number | null
