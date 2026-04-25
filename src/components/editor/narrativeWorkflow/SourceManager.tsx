@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus,
@@ -11,6 +11,9 @@ import {
   AlertCircle,
   FileText,
   Youtube,
+  RefreshCw,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +40,12 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import {
+  getSourceSemanticStatus,
+  isSourceAnalyzable,
+  STATUS_LABELS,
+  type SourceSemanticStatus,
+} from "./sourceStatus";
 
 /**
  * Étape 5 — Source Manager 1 à 4 sources.
@@ -105,16 +114,6 @@ function isLikelyYoutubeUrl(url: string): boolean {
   }
 }
 
-function statusLabel(s: NarrativeSourceRow): { label: string; tone: "muted" | "warn" | "ok" } {
-  if (s.transcript && s.transcript.trim().length > 0) {
-    return { label: "Transcription prête", tone: "ok" };
-  }
-  if (s.youtube_url) {
-    return { label: "URL en attente de transcription", tone: "warn" };
-  }
-  return { label: "Source incomplète", tone: "warn" };
-}
-
 function wordCount(text: string | null): number {
   if (!text) return 0;
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -122,9 +121,11 @@ function wordCount(text: string | null): number {
 
 interface SourceManagerProps {
   onSourcesChange?: (count: number) => void;
+  /** Appelé quand l'utilisateur clique sur « Analyser la structure narrative ». */
+  onAnalyze?: (analyzableSources: NarrativeSourceRow[]) => void;
 }
 
-export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
+export default function SourceManager({ onSourcesChange, onAnalyze }: SourceManagerProps) {
   const { user } = useAuth();
   const [sources, setSources] = useState<NarrativeSourceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +133,12 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
   const [dialog, setDialog] = useState<DialogMode>({ kind: "closed" });
   const [form, setForm] = useState<SourceFormState>(EMPTY_FORM);
   const [pendingDelete, setPendingDelete] = useState<NarrativeSourceRow | null>(null);
+  /** ID des sources actuellement en cours d'extraction auto. */
+  const [fetchingIds, setFetchingIds] = useState<Set<string>>(new Set());
+  /** Ref vers `tryAutoFetch` pour éviter les cycles de dépendances. */
+  const tryAutoFetchRef = useRef<
+    ((sourceId: string, url: string, language: string | null) => void) | null
+  >(null);
 
   const count = sources.length;
   const canAdd = count < MAX_SOURCES;
@@ -254,17 +261,28 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
           .eq("id", dialog.source.id);
         if (error) throw error;
         toast.success("Source mise à jour");
+        // Si on vient d'ajouter une URL et qu'aucune transcription n'existe → tenter l'auto-fetch.
+        const hadTranscript = !!dialog.source.transcript?.trim();
+        if (!trimmedTranscript && trimmedUrl && !hadTranscript) {
+          tryAutoFetchRef.current?.(dialog.source.id, trimmedUrl, dialog.source.language ?? "fr");
+        }
       } else {
         if (!canAdd) {
           toast.error(`Maximum ${MAX_SOURCES} sources atteint`);
           setSaving(false);
           return;
         }
-        const { error } = await (supabase as any)
+        const { data: inserted, error } = await (supabase as any)
           .from("narrative_sources")
-          .insert(payload);
+          .insert(payload)
+          .select("id, language")
+          .single();
         if (error) throw error;
         toast.success("Source ajoutée");
+        // Création par URL sans transcription → tenter l'extraction automatique.
+        if (!trimmedTranscript && trimmedUrl && inserted?.id) {
+          tryAutoFetchRef.current?.(inserted.id, trimmedUrl, inserted.language ?? "fr");
+        }
       }
       await fetchSources();
       setDialog({ kind: "closed" });
@@ -300,6 +318,114 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
     if (dialog.kind === "edit") return "Modifier la source";
     return "";
   }, [dialog]);
+
+  /**
+   * Tente l'extraction automatique de la transcription via l'edge function
+   * `fetch-youtube-transcript`. Met à jour `fetch_status` et `transcript`
+   * en base. En cas d'échec → `fetch_status = "failed"` (l'utilisateur
+   * passe alors en fallback manuel).
+   *
+   * Ne bloque jamais les autres sources : chaque appel est isolé et les
+   * erreurs sont catchées localement.
+   */
+  const tryAutoFetch = useCallback(
+    async (sourceId: string, url: string, language: string | null) => {
+      if (!user) return;
+      setFetchingIds((prev) => new Set(prev).add(sourceId));
+      await (supabase as any)
+        .from("narrative_sources")
+        .update({ fetch_status: "fetching" })
+        .eq("id", sourceId);
+      setSources((prev) =>
+        prev.map((s) => (s.id === sourceId ? { ...s, fetch_status: "fetching" } : s)),
+      );
+
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "fetch-youtube-transcript",
+          { body: { url, language: language || "fr" } },
+        );
+        if (error) throw error;
+
+        if (data?.ok && typeof data.transcript === "string") {
+          await (supabase as any)
+            .from("narrative_sources")
+            .update({
+              transcript: data.transcript,
+              language: data.language ?? language ?? "fr",
+              fetch_status: "auto_fetched",
+              transcript_source: "youtube_auto",
+            })
+            .eq("id", sourceId);
+          toast.success("Transcription extraite automatiquement");
+        } else {
+          await (supabase as any)
+            .from("narrative_sources")
+            .update({ fetch_status: "failed" })
+            .eq("id", sourceId);
+          toast.warning(
+            "Extraction automatique impossible — collez la transcription manuellement.",
+          );
+        }
+      } catch (e) {
+        console.error("auto-fetch error", e);
+        await (supabase as any)
+          .from("narrative_sources")
+          .update({ fetch_status: "failed" })
+          .eq("id", sourceId);
+        toast.warning(
+          "Extraction automatique indisponible — collez la transcription manuellement.",
+        );
+      } finally {
+        setFetchingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sourceId);
+          return next;
+        });
+        await fetchSources();
+      }
+    },
+    [user, fetchSources],
+  );
+
+  const handleRetryFetch = useCallback(
+    (s: NarrativeSourceRow) => {
+      if (!s.youtube_url) {
+        toast.error("Aucune URL à utiliser pour la récupération automatique.");
+        return;
+      }
+      tryAutoFetch(s.id, s.youtube_url, s.language);
+    },
+    [tryAutoFetch],
+  );
+
+  // Synchronise le ref avec la dernière version de tryAutoFetch pour permettre
+  // à handleSubmit (déclaré plus haut) de l'invoquer sans cycle de dépendances.
+  useEffect(() => {
+    tryAutoFetchRef.current = tryAutoFetch;
+  }, [tryAutoFetch]);
+
+  const analyzableSources = useMemo(
+    () => sources.filter((s) => isSourceAnalyzable(s)),
+    [sources],
+  );
+  const canAnalyze = analyzableSources.length >= 1;
+
+  const handleAnalyze = useCallback(() => {
+    if (!canAnalyze) {
+      toast.error(
+        "Au moins une transcription valide est requise pour lancer l'analyse.",
+      );
+      return;
+    }
+    if (onAnalyze) {
+      onAnalyze(analyzableSources);
+    } else {
+      toast.info(
+        "Analyse narrative — branchement à venir à l'étape suivante du workflow.",
+      );
+    }
+  }, [canAnalyze, onAnalyze, analyzableSources]);
 
   return (
     <section className="space-y-3 sm:space-y-4">
@@ -368,7 +494,16 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
       ) : (
         <ul className="space-y-2 sm:space-y-3">
           {sources.map((s, i) => {
-            const st = statusLabel(s);
+            const semantic: SourceSemanticStatus = getSourceSemanticStatus(s);
+            const st = STATUS_LABELS[semantic];
+            const isFetching =
+              fetchingIds.has(s.id) || semantic === "fetching_transcript";
+            const canRetry =
+              !!s.youtube_url &&
+              !isFetching &&
+              (semantic === "fetch_failed" ||
+                semantic === "url_added" ||
+                semantic === "manual_transcript_required");
             const transcriptText = s.transcript?.trim() ?? "";
             const preview =
               transcriptText.length > TRANSCRIPT_PREVIEW
@@ -415,11 +550,17 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
                             "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                           st.tone === "warn" &&
                             "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                          st.tone === "error" &&
+                            "bg-destructive/10 text-destructive",
+                          st.tone === "info" &&
+                            "bg-primary/10 text-primary",
                           st.tone === "muted" && "bg-muted text-muted-foreground",
                         )}
                       >
                         {st.tone === "ok" ? (
                           <CheckCircle2 className="h-3 w-3" />
+                        ) : st.tone === "info" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <AlertCircle className="h-3 w-3" />
                         )}
@@ -442,9 +583,14 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
                       <p className="text-[11px] sm:text-xs text-muted-foreground whitespace-pre-wrap line-clamp-3">
                         {preview}
                       </p>
+                    ) : semantic === "fetch_failed" ? (
+                      <p className="text-[11px] sm:text-xs text-destructive">
+                        L'extraction automatique n'a pas abouti. Ouvrez la vidéo, copiez la
+                        transcription depuis YouTube, puis collez-la via « Modifier ».
+                      </p>
                     ) : (
                       <p className="text-[11px] sm:text-xs italic text-muted-foreground">
-                        Aucune transcription. Modifiez la source pour en coller une.
+                        Aucune transcription. {hasUrl ? "Tentative d'extraction en attente, ou collez-la manuellement via « Modifier »." : "Modifiez la source pour en coller une."}
                       </p>
                     )}
 
@@ -454,6 +600,19 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col sm:flex-row gap-1">
+                    {canRetry && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRetryFetch(s)}
+                        aria-label="Réessayer l'extraction automatique"
+                        title="Réessayer l'extraction automatique"
+                        className="h-8 px-2"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
@@ -486,6 +645,47 @@ export default function SourceManager({ onSourcesChange }: SourceManagerProps) {
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
           Limite atteinte ({MAX_SOURCES}/{MAX_SOURCES}). Supprimez une source pour en ajouter une nouvelle.
         </p>
+      )}
+
+      {/* CTA Analyse — apparaît dès qu'au moins une transcription est exploitable. */}
+      {!loading && sources.length > 0 && (
+        <div
+          className={cn(
+            "rounded-lg border p-3 sm:p-4 transition-colors",
+            canAnalyze
+              ? "border-primary/30 bg-primary/5"
+              : "border-border bg-muted/20",
+          )}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <p className="text-[11px] sm:text-xs font-medium text-foreground">
+                  {analyzableSources.length} source
+                  {analyzableSources.length > 1 ? "s" : ""} prête
+                  {analyzableSources.length > 1 ? "s" : ""} pour l'analyse
+                </p>
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                {canAnalyze
+                  ? "Vous pouvez lancer l'analyse, ou ajouter d'autres sources pour enrichir la mécanique narrative."
+                  : "Au moins une transcription valide (≥ 50 caractères) est requise pour lancer l'analyse."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={handleAnalyze}
+              disabled={!canAnalyze}
+              className="min-h-[36px] shrink-0"
+            >
+              <Sparkles className="h-4 w-4" />
+              Analyser la structure narrative
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Create / Edit dialog */}
