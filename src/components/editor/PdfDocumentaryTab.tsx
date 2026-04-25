@@ -1465,7 +1465,26 @@ export default function PdfDocumentaryTab({
                   </button>
                 );
               })}
+              {customForms.map((form) => (
+                <CustomFormCard
+                  key={form.id}
+                  form={form}
+                  isSelected={form.id === selectedForm}
+                  onSelect={() => setSelectedForm(form.id)}
+                  onUpdate={updateCustomForm}
+                  onDelete={async (id) => {
+                    await deleteCustomForm(id);
+                    if (selectedForm === id) setSelectedForm(DEFAULT_NARRATIVE_FORM_ID);
+                  }}
+                />
+              ))}
             </div>
+            {customForms.length === 0 && !loadingCustomForms && (
+              <p className="text-[10px] text-muted-foreground -mt-2 mb-3">
+                Astuce : crée une forme personnalisée depuis le Narrative Form Generator pour
+                la retrouver ici aux côtés d'Enquête, Essai…
+              </p>
+            )}
             <Button
               variant="hero"
               disabled={generatingScriptV2}
