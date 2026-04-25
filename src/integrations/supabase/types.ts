@@ -181,6 +181,57 @@ export type Database = {
         }
         Relationships: []
       }
+      kie_pricing: {
+        Row: {
+          created_at: string
+          endpoint_path: string
+          id: string
+          is_active: boolean
+          last_synced_at: string | null
+          model_id: string
+          model_label: string
+          notes: string | null
+          price_usd: number
+          quality: string
+          supports_image_input: boolean
+          supports_oref: boolean
+          supports_sref: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint_path?: string
+          id?: string
+          is_active?: boolean
+          last_synced_at?: string | null
+          model_id: string
+          model_label: string
+          notes?: string | null
+          price_usd?: number
+          quality: string
+          supports_image_input?: boolean
+          supports_oref?: boolean
+          supports_sref?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint_path?: string
+          id?: string
+          is_active?: boolean
+          last_synced_at?: string | null
+          model_id?: string
+          model_label?: string
+          notes?: string | null
+          price_usd?: number
+          quality?: string
+          supports_image_input?: boolean
+          supports_oref?: boolean
+          supports_sref?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       music_history: {
         Row: {
           created_at: string | null
@@ -370,6 +421,8 @@ export type Database = {
           created_at: string
           group_id: string | null
           id: string
+          image_engine: string | null
+          image_quality: string | null
           narration: string | null
           scene_count: number
           script_language: string
@@ -383,6 +436,8 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          image_engine?: string | null
+          image_quality?: string | null
           narration?: string | null
           scene_count?: number
           script_language?: string
@@ -396,6 +451,8 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          image_engine?: string | null
+          image_quality?: string | null
           narration?: string | null
           scene_count?: number
           script_language?: string
@@ -531,6 +588,8 @@ export type Database = {
           continuity: string | null
           created_at: string
           id: string
+          image_engine: string | null
+          image_quality: string | null
           location: string | null
           narrative_action: string | null
           project_id: string
@@ -549,6 +608,8 @@ export type Database = {
           continuity?: string | null
           created_at?: string
           id?: string
+          image_engine?: string | null
+          image_quality?: string | null
           location?: string | null
           narrative_action?: string | null
           project_id: string
@@ -567,6 +628,8 @@ export type Database = {
           continuity?: string | null
           created_at?: string
           id?: string
+          image_engine?: string | null
+          image_quality?: string | null
           location?: string | null
           narrative_action?: string | null
           project_id?: string
@@ -597,6 +660,8 @@ export type Database = {
           generation_cost: number
           guardrails: string | null
           id: string
+          image_engine: string | null
+          image_quality: string | null
           image_url: string | null
           project_id: string
           prompt_export: string | null
@@ -613,6 +678,8 @@ export type Database = {
           generation_cost?: number
           guardrails?: string | null
           id?: string
+          image_engine?: string | null
+          image_quality?: string | null
           image_url?: string | null
           project_id: string
           prompt_export?: string | null
@@ -629,6 +696,8 @@ export type Database = {
           generation_cost?: number
           guardrails?: string | null
           id?: string
+          image_engine?: string | null
+          image_quality?: string | null
           image_url?: string | null
           project_id?: string
           prompt_export?: string | null
