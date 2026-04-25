@@ -1649,43 +1649,58 @@ export type Database = {
       }
       voiceover_scripts: {
         Row: {
+          ai_model: string | null
           content: string
           created_at: string
           estimated_duration_seconds: number | null
+          form_id: string | null
+          generation_index: number
           id: string
           outline_id: string | null
+          pitch_id: string | null
           project_id: string
           sent_to_scriptcreator_at: string | null
           sent_to_segmentation_at: string | null
           status: string
+          title: string | null
           updated_at: string
           user_id: string
           word_count: number
         }
         Insert: {
+          ai_model?: string | null
           content?: string
           created_at?: string
           estimated_duration_seconds?: number | null
+          form_id?: string | null
+          generation_index?: number
           id?: string
           outline_id?: string | null
+          pitch_id?: string | null
           project_id: string
           sent_to_scriptcreator_at?: string | null
           sent_to_segmentation_at?: string | null
           status?: string
+          title?: string | null
           updated_at?: string
           user_id: string
           word_count?: number
         }
         Update: {
+          ai_model?: string | null
           content?: string
           created_at?: string
           estimated_duration_seconds?: number | null
+          form_id?: string | null
+          generation_index?: number
           id?: string
           outline_id?: string | null
+          pitch_id?: string | null
           project_id?: string
           sent_to_scriptcreator_at?: string | null
           sent_to_segmentation_at?: string | null
           status?: string
+          title?: string | null
           updated_at?: string
           user_id?: string
           word_count?: number
