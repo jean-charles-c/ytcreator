@@ -192,6 +192,45 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
   throw new Error("Kie task timed out after 5 minutes");
 }
 
+async function checkKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<{ status: "pending" | "success" | "failed"; imageUrl?: string; error?: string }> {
+  const pollPath = isMidjourney ? `/mj/recordInfo` : `/jobs/recordInfo`;
+  const resp = await fetch(`${KIE_BASE_URL}${pollPath}?taskId=${encodeURIComponent(taskId)}`, {
+    headers: { "Authorization": `Bearer ${apiKey}` },
+  });
+  const txt = await resp.text();
+  if (!resp.ok) return { status: "pending", error: `Kie poll HTTP ${resp.status}: ${txt.slice(0, 200)}` };
+
+  let json: any;
+  try { json = JSON.parse(txt); } catch { return { status: "pending", error: "Kie returned non-JSON while polling" }; }
+  const data = json?.data || {};
+  const state = data.state || data.status || data.taskStatus;
+
+  let parsedResult: any = null;
+  if (typeof data.resultJson === "string" && data.resultJson.length > 0) {
+    try { parsedResult = JSON.parse(data.resultJson); } catch { /* ignore */ }
+  } else if (data.resultJson && typeof data.resultJson === "object") {
+    parsedResult = data.resultJson;
+  }
+
+  const imageUrl =
+    parsedResult?.resultUrls?.[0] ||
+    parsedResult?.imageUrl ||
+    data?.response?.imageUrl ||
+    data?.response?.image_url ||
+    data?.imageUrl ||
+    data?.image_url ||
+    (Array.isArray(data?.resultUrls) ? data.resultUrls[0] : null);
+
+  if (imageUrl) return { status: "success", imageUrl };
+  if (state === "success" || state === "SUCCESS" || state === "completed") {
+    return { status: "failed", error: `Kie task ${taskId} reported success but no image URL was returned` };
+  }
+  if (state === "fail" || state === "failed" || state === "FAILED" || state === "error") {
+    return { status: "failed", error: data?.failMsg || data?.errorMessage || JSON.stringify(data).slice(0, 300) };
+  }
+  return { status: "pending" };
+}
+
 /**
  * Download Kie image, upload to shot-images bucket, return public URL.
  */
