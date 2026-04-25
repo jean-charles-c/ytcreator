@@ -784,7 +784,15 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
 
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label htmlFor="src-title" className="text-xs">Titre (optionnel)</Label>
+              <Label htmlFor="src-title" className="text-xs flex items-center gap-1.5">
+                Titre (optionnel)
+                {fetchingMeta && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    récupération auto…
+                  </span>
+                )}
+              </Label>
               <Input
                 id="src-title"
                 value={form.title}
@@ -802,9 +810,21 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
                 placeholder="https://www.youtube.com/watch?v=…"
                 inputMode="url"
               />
+              <p className="text-[10px] text-muted-foreground">
+                Le titre et la chaîne sont récupérés automatiquement depuis YouTube
+                lorsque l'URL est valide.
+              </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="src-channel" className="text-xs">Chaîne (optionnel)</Label>
+              <Label htmlFor="src-channel" className="text-xs flex items-center gap-1.5">
+                Chaîne (optionnel)
+                {fetchingMeta && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    récupération auto…
+                  </span>
+                )}
+              </Label>
               <Input
                 id="src-channel"
                 value={form.channel}
