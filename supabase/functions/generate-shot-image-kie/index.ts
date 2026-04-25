@@ -276,13 +276,38 @@ serve(async (req) => {
       });
     }
 
-    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt } = await req.json();
+    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt, mode, task_id } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
-    if (!model) throw new Error("Missing model");
+    if (!model && mode !== "poll") throw new Error("Missing model");
 
     const selectedQuality = ["1K", "2K", "4K"].includes(quality) ? quality : "1K";
     const selectedAspectRatio = ASPECT_RATIOS_KIE[aspect_ratio] || "16:9";
     const size = QUALITY_TO_SIZE[selectedQuality];
+
+    if (mode === "poll") {
+      if (!task_id) throw new Error("Missing task_id");
+      const isMidjourneyPoll = model === "mj-v7";
+      const { data: shot, error: shotErr } = await supabase
+        .from("shots").select("id, project_id, generation_cost").eq("id", shot_id).single();
+      if (shotErr || !shot) throw new Error("Shot not found");
+      const { data: project } = await supabase
+        .from("projects").select("id").eq("id", shot.project_id).eq("user_id", user.id).single();
+      if (!project) throw new Error("Unauthorized");
+
+      const result = await checkKieTask(KIE_API_KEY, String(task_id), isMidjourneyPoll);
+      if (result.status === "pending") {
+        return new Response(JSON.stringify({ status: "pending", provider: "kie" }), {
+          status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (result.status === "failed" || !result.imageUrl) throw new Error(result.error || "Kie task failed");
+
+      const finalUrl = await rehostImage(supabase, result.imageUrl, shot.project_id, shot_id);
+      await supabase.from("shots").update({ image_url: finalUrl }).eq("id", shot_id);
+      return new Response(JSON.stringify({ success: true, image_url: finalUrl, status: "success", provider: "kie" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Lookup pricing & endpoint
     const { data: pricingRow, error: priceErr } = await supabase
