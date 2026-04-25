@@ -515,8 +515,48 @@ ALWAYS keep the action described in the prompt — do not replace the action wit
     };
     const KIE_PROMPT_MAX = PER_MODEL_PROMPT_MAX[model] ?? 1900;
     if (enrichedPrompt.length > KIE_PROMPT_MAX) {
-      console.warn(`[KIE] Prompt truncated from ${enrichedPrompt.length} to ${KIE_PROMPT_MAX} chars`);
-      enrichedPrompt = enrichedPrompt.slice(0, KIE_PROMPT_MAX - 3) + "...";
+      // Smart truncation: the prompt is built as
+      //   [HEAD = aspect ratio + reference rule + style] + [IDENTITY LOCKS] + [prompt_export with the ACTION]
+      // A naive .slice(0, MAX) drops the prompt_export entirely, so the model
+      // generates the right character/place but ignores the action.
+      // We preserve the HEAD + the prompt_export (action) and only compress
+      // the long identity-lock block.
+      const originalLen = enrichedPrompt.length;
+      const actionText = (shot.prompt_export || shot.description || "").trim();
+
+      // Build a compact identity-lock summary (one line per recurring entity).
+      const compactLocks = shotLinkedObjects
+        .map((obj: any) => {
+          const name = obj.nom || obj.name || "subject";
+          const type = (obj.type || obj.object_type || "subject").toLowerCase();
+          // Use the first sentence of the identity prompt as the fidelity anchor.
+          const fullLock = String(obj.identity_prompt || "").trim();
+          const firstSentence = fullLock.split(/(?<=[.!?])\s+/)[0]?.slice(0, 220) || "";
+          return firstSentence
+            ? `IDENTITY LOCK (${type}) — ${name}: ${firstSentence}`
+            : `IDENTITY LOCK (${type}) — ${name}: keep exact identity from reference image.`;
+        })
+        .join("\n");
+
+      // Reconstruct: head directives (style + reference rule + aspect ratio) +
+      // compact locks + full action prompt.
+      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
+      const headDirectives = (headMatch?.[0] || "").trim();
+
+      let rebuilt = "";
+      if (headDirectives) rebuilt += headDirectives + "\n\n";
+      if (compactLocks) rebuilt += compactLocks + "\n\n";
+      rebuilt += `ACTION TO ILLUSTRATE (mandatory, do not omit):\n${actionText}`;
+
+      if (rebuilt.length > KIE_PROMPT_MAX) {
+        // Still too long: trim the action tail rather than the head, so the
+        // ratio/style/identity directives survive.
+        const overflow = rebuilt.length - KIE_PROMPT_MAX;
+        const trimmedAction = actionText.slice(0, Math.max(200, actionText.length - overflow - 3)) + "...";
+        rebuilt = `${headDirectives}\n\n${compactLocks}\n\nACTION TO ILLUSTRATE (mandatory, do not omit):\n${trimmedAction}`;
+      }
+      console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${shotLinkedObjects.length} identity locks)`);
+      enrichedPrompt = rebuilt;
     }
 
     // Collect reference images and split by type for MJ omni-reference
