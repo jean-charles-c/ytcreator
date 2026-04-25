@@ -462,17 +462,21 @@ serve(async (req) => {
             })
             .filter(Boolean);
           if (condensed.length > 0) {
-            // Action FIRST so the model anchors on the requested framing
-            // (e.g. "close-up on the burn") instead of defaulting to a wide
-            // establishing shot built from the character's full identity
-            // description. Identity locks are kept as a secondary fidelity
-            // reference, never as the framing source.
             const firstSnippet = condensed[0].slice(0, 40).toLowerCase();
             if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
+              // Two-tier structure with explicit hierarchy: FRAMING & ACTION
+              // defines the composition (mandatory), IDENTITY LOCK defines
+              // the exact appearance of the subject inside that frame
+              // (mandatory). Both apply simultaneously — the identity lock
+              // must NOT be downgraded, and the framing must NOT be widened.
               enrichedPrompt =
-                "PRIMARY ACTION (this is the subject and framing of the image — do not replace it with a wider establishing shot):\n" +
+                "HIERARCHY (read carefully):\n" +
+                "1) FRAMING & ACTION below defines the shot's composition, scale, subject and what is happening. It is mandatory and must not be replaced by a wider or different shot.\n" +
+                "2) IDENTITY LOCK below defines the exact appearance of the person/place/object that appears inside that framing. It is mandatory and must not be redesigned.\n" +
+                "Both blocks apply simultaneously: render the FRAMING & ACTION exactly as described, and within that frame keep the visual identity from IDENTITY LOCK exact.\n\n" +
+                "FRAMING & ACTION (mandatory composition):\n" +
                 enrichedPrompt +
-                "\n\nIDENTITY LOCK (use only as fidelity reference for the person/place/object that appears in the action above — do not change the framing or composition to show them in full):\n" +
+                "\n\nIDENTITY LOCK (mandatory appearance of the subject inside that frame — do not widen the shot to show them in full):\n" +
                 condensed.join("\n\n");
             }
           }
