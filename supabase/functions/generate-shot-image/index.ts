@@ -543,8 +543,7 @@ Do not turn the subject into a generic lookalike, a stylized reinterpretation, a
 
     const buildPrompt = (text: string) => [
       "Generate one single cinematic image.",
-      `Mandatory aspect ratio: ${selectedAspectRatio}.`,
-      "Compose the framing to work natively in that ratio without letterboxing or white borders.",
+      `MANDATORY ASPECT RATIO: ${selectedAspectRatio}. Compose the framing to work natively in ${selectedAspectRatio} without letterboxing, white borders, or square crop. Do NOT output a 1:1 square image — the output MUST be ${selectedAspectRatio}.`,
       ...(styleSuffix
         ? [
             `MANDATORY VISUAL STYLE — apply this style to the entire image without exception. This overrides any other style instruction that may appear later in the prompt:\n${styleSuffix}`,
