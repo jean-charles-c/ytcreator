@@ -303,7 +303,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             Les scènes validées sont protégées.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <VariantMenu
             label={
               totalScenes > 0 ? (
@@ -332,13 +332,15 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
               disabled={sending || busyKey !== null}
               onClick={onSendClick}
               title="Insère les scènes dans Segmentation View et déclenche l'analyse des récurrences."
+              className="min-h-[40px] sm:min-h-[36px]"
             >
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              <span className="ml-1.5">Envoyer vers Segmentation View</span>
+              <span className="ml-1.5 sm:hidden">Envoyer</span>
+              <span className="ml-1.5 hidden sm:inline">Envoyer vers Segmentation View</span>
             </Button>
           )}
         </div>
