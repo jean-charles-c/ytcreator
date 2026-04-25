@@ -811,7 +811,7 @@ function Tag({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
       {icon}
-      <span className="truncate max-w-[140px]">{text}</span>
+      <span className="truncate max-w-[100px] sm:max-w-[140px]">{text}</span>
     </span>
   );
 }
