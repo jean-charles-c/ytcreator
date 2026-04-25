@@ -164,14 +164,22 @@ export default function StoryPitchesPanel({
           size="sm"
           onClick={generate}
           disabled={disabled || generating}
-          className="min-h-[36px]"
+          className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
         >
           {generating ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>
           ) : batches.length === 0 ? (
-            <><Wand2 className="h-4 w-4" /> Générer 5 propositions d'histoires</>
+            <>
+              <Wand2 className="h-4 w-4" />
+              <span className="sm:hidden">Générer 5 pitchs</span>
+              <span className="hidden sm:inline">Générer 5 propositions d'histoires</span>
+            </>
           ) : (
-            <><RefreshCw className="h-4 w-4" /> Générer 5 autres propositions</>
+            <>
+              <RefreshCw className="h-4 w-4" />
+              <span className="sm:hidden">5 autres pitchs</span>
+              <span className="hidden sm:inline">Générer 5 autres propositions</span>
+            </>
           )}
         </Button>
       </div>
@@ -238,9 +246,9 @@ function BatchBlock({
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-secondary/30 rounded-t-lg"
+            className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 min-h-[44px] text-left hover:bg-secondary/30 rounded-t-lg"
           >
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0">
                 #{batch.batch_index}
               </span>
