@@ -136,6 +136,50 @@ async function submitKieTask(params: {
   return String(taskId);
 }
 
+function parseMaybeJson(value: unknown): any {
+  if (typeof value === "string" && value.trim().length > 0) {
+    try { return JSON.parse(value); } catch { return value; }
+  }
+  return value;
+}
+
+function firstImageUrl(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value.startsWith("http") ? value : null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = firstImageUrl(item);
+      if (url) return url;
+    }
+    return null;
+  }
+  if (typeof value === "object") {
+    const data = value as Record<string, unknown>;
+    return firstImageUrl(data.resultUrl) ||
+      firstImageUrl(data.url) ||
+      firstImageUrl(data.imageUrl) ||
+      firstImageUrl(data.image_url) ||
+      firstImageUrl(data.resultUrls) ||
+      firstImageUrl(data.urls) ||
+      firstImageUrl(data.images) ||
+      firstImageUrl(data.output) ||
+      firstImageUrl(data.outputs);
+  }
+  return null;
+}
+
+function parseKieTaskData(data: any) {
+  const state = String(data?.state || data?.status || data?.taskStatus || "").toLowerCase();
+  const successFlag = Number(data?.successFlag);
+  const resultJson = parseMaybeJson(data?.resultJson);
+  const resultInfoJson = parseMaybeJson(data?.resultInfoJson);
+  const imageUrl = firstImageUrl(resultInfoJson) || firstImageUrl(resultJson) || firstImageUrl(data?.response) || firstImageUrl(data);
+  const failed = state === "fail" || state === "failed" || state === "error" || successFlag === 2 || successFlag === 3;
+  const succeeded = Boolean(imageUrl) || state === "success" || state === "completed" || successFlag === 1;
+  const error = data?.failMsg || data?.errorMessage || data?.error || data?.message;
+  return { state, successFlag, imageUrl, failed, succeeded, error };
+}
+
 /**
  * Poll Kie for task result. Returns final image URL.
  */
@@ -157,37 +201,18 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
     try { json = JSON.parse(txt); } catch { continue; }
 
     const data = json?.data || {};
-    const state = data.state || data.status || data.taskStatus;
+    const parsed = parseKieTaskData(data);
+    if (parsed.imageUrl) return parsed.imageUrl;
 
-    // Kie market API returns resultJson as a STRING containing JSON like
-    // {"resultUrls":["https://..."]}. Parse it before reading.
-    let parsedResult: any = null;
-    if (typeof data.resultJson === "string" && data.resultJson.length > 0) {
-      try { parsedResult = JSON.parse(data.resultJson); } catch { /* ignore */ }
-    } else if (data.resultJson && typeof data.resultJson === "object") {
-      parsedResult = data.resultJson;
-    }
-
-    const imageUrl =
-      parsedResult?.resultUrls?.[0] ||
-      parsedResult?.imageUrl ||
-      data?.response?.imageUrl ||
-      data?.response?.image_url ||
-      data?.imageUrl ||
-      data?.image_url ||
-      (Array.isArray(data?.resultUrls) ? data.resultUrls[0] : null);
-
-    if (imageUrl) return imageUrl;
-
-    if (state === "success" || state === "SUCCESS" || state === "completed") {
+    if (parsed.succeeded) {
       // Success state but no URL extracted — log full payload for debugging
       console.error(`[KIE poll ${i}] state=success but no imageUrl. data=${JSON.stringify(data).slice(0, 800)}`);
       throw new Error(`Kie task ${taskId} reported success but no image URL was returned`);
     }
-    if (state === "fail" || state === "failed" || state === "FAILED" || state === "error") {
-      throw new Error(`Kie task failed: ${data?.failMsg || data?.errorMessage || JSON.stringify(data).slice(0, 300)}`);
+    if (parsed.failed) {
+      throw new Error(`Kie task failed: ${parsed.error || JSON.stringify(data).slice(0, 300)}`);
     }
-    console.log(`[KIE poll ${i}] state=${state}`);
+    console.log(`[KIE poll ${i}] state=${parsed.state || "unknown"} successFlag=${Number.isFinite(parsed.successFlag) ? parsed.successFlag : "none"}`);
   }
   throw new Error("Kie task timed out after 5 minutes");
 }
@@ -203,30 +228,14 @@ async function checkKieTask(apiKey: string, taskId: string, isMidjourney: boolea
   let json: any;
   try { json = JSON.parse(txt); } catch { return { status: "pending", error: "Kie returned non-JSON while polling" }; }
   const data = json?.data || {};
-  const state = data.state || data.status || data.taskStatus;
+  const parsed = parseKieTaskData(data);
 
-  let parsedResult: any = null;
-  if (typeof data.resultJson === "string" && data.resultJson.length > 0) {
-    try { parsedResult = JSON.parse(data.resultJson); } catch { /* ignore */ }
-  } else if (data.resultJson && typeof data.resultJson === "object") {
-    parsedResult = data.resultJson;
-  }
-
-  const imageUrl =
-    parsedResult?.resultUrls?.[0] ||
-    parsedResult?.imageUrl ||
-    data?.response?.imageUrl ||
-    data?.response?.image_url ||
-    data?.imageUrl ||
-    data?.image_url ||
-    (Array.isArray(data?.resultUrls) ? data.resultUrls[0] : null);
-
-  if (imageUrl) return { status: "success", imageUrl };
-  if (state === "success" || state === "SUCCESS" || state === "completed") {
+  if (parsed.imageUrl) return { status: "success", imageUrl: parsed.imageUrl };
+  if (parsed.succeeded) {
     return { status: "failed", error: `Kie task ${taskId} reported success but no image URL was returned` };
   }
-  if (state === "fail" || state === "failed" || state === "FAILED" || state === "error") {
-    return { status: "failed", error: data?.failMsg || data?.errorMessage || JSON.stringify(data).slice(0, 300) };
+  if (parsed.failed) {
+    return { status: "failed", error: parsed.error || JSON.stringify(data).slice(0, 300) };
   }
   return { status: "pending" };
 }
