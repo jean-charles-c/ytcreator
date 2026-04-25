@@ -36,9 +36,14 @@ interface VoiceoverScriptPanelProps {
   projectId: string | null;
   /**
    * Étape 15 — Callback pour envoyer le script complet vers le scriptInput
-   * de ScriptCreator. Le contenu est passé tel quel (titres + sauts de ligne).
+   * de ScriptCreator. Le contenu est nettoyé des en-têtes "SCÈNE N — Titre"
+   * (le texte voix off seul est transféré). Les titres extraits sont passés
+   * en second paramètre pour pré-remplir les chapitres vidéo.
    */
-  onSendToScriptCreator?: (content: string) => void;
+  onSendToScriptCreator?: (
+    content: string,
+    chapterTitles?: { title: string; sourceText: string }[],
+  ) => void;
   /**
    * Indique si un script est déjà chargé côté ScriptCreator. Utilisé pour
    * demander confirmation avant écrasement.
@@ -164,8 +169,30 @@ export default function VoiceoverScriptPanel({
     if (!script?.content || !onSendToScriptCreator) return;
     setSending(true);
     try {
-      // 1. Insertion dans scriptInput (contenu inchangé, titres + \n préservés).
-      onSendToScriptCreator(script.content);
+      // 1. Extraction des titres de scènes + nettoyage du texte voix off.
+      //    Format source : "SCÈNE N — Titre\n<voix off>\n\nSCÈNE N+1 — ..."
+      const sceneHeaderRe = /^\s*SC[ÈE]NE\s+\d+\s*[—\-–:]\s*(.+?)\s*$/i;
+      const blocks = script.content.split(/\n\s*\n+/);
+      const chapters: { title: string; sourceText: string }[] = [];
+      const cleanedBlocks: string[] = [];
+      for (const block of blocks) {
+        const lines = block.split(/\r?\n/);
+        const first = lines[0] ?? "";
+        const m = first.match(sceneHeaderRe);
+        if (m) {
+          const title = m[1].trim();
+          const body = lines.slice(1).join("\n").trim();
+          if (body) {
+            chapters.push({ title, sourceText: body });
+            cleanedBlocks.push(body);
+          }
+        } else {
+          const trimmed = block.trim();
+          if (trimmed) cleanedBlocks.push(trimmed);
+        }
+      }
+      const cleanedContent = cleanedBlocks.join("\n\n").trim();
+      onSendToScriptCreator(cleanedContent, chapters);
 
       // 2. Marquage du statut côté DB (non-bloquant pour l'envoi).
       try {
@@ -181,7 +208,11 @@ export default function VoiceoverScriptPanel({
         console.warn("[VoiceoverScriptPanel] mark sent failed", e);
       }
 
-      toast.success("Script envoyé dans ScriptCreator.");
+      toast.success(
+        chapters.length
+          ? `Script envoyé (${chapters.length} chapitres pré-remplis).`
+          : "Script envoyé dans ScriptCreator.",
+      );
     } finally {
       setSending(false);
     }
