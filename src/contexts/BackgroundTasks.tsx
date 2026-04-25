@@ -1223,12 +1223,12 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           "Content-Type": "application/json",
                           Authorization: `Bearer ${token}`,
                           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                          ...(isKie && !extraBody.mode ? { "x-kie-async": "1" } : {}),
                         },
                         body: JSON.stringify({
                           shot_id: remainingShotIds[i],
                           model: isKie ? kieModelId : params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...(isKie && !extraBody.mode ? { kie_async: true } : {}),
                           ...extraBody,
                           ...(isKie ? { quality: params.quality ?? "1K" } : {}),
                           ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
