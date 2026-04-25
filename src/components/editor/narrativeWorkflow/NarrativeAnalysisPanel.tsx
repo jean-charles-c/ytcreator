@@ -1,4 +1,4 @@
-import { Loader2, Sparkles, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { Loader2, Sparkles, AlertCircle, CheckCircle2, RefreshCw, Save, Wand2, Info, GitCompareArrows } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,10 @@ export type AnalysisPayload = {
   };
   writing_rules?: { rule: string; rationale: string }[];
   recommendations?: { do?: string[]; avoid?: string[] };
+  variations?: {
+    summary?: string;
+    items?: { axis: string; observation: string }[];
+  };
 };
 
 interface NarrativeAnalysisPanelProps {
@@ -34,6 +38,9 @@ interface NarrativeAnalysisPanelProps {
   result?: AnalysisPayload | null;
   sourcesUsed?: number;
   onRetry?: () => void;
+  onSaveAsForm?: () => void;
+  onGeneratePitches?: () => void;
+  saving?: boolean;
 }
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -52,6 +59,9 @@ export default function NarrativeAnalysisPanel({
   result,
   sourcesUsed,
   onRetry,
+  onSaveAsForm,
+  onGeneratePitches,
+  saving = false,
 }: NarrativeAnalysisPanelProps) {
   if (status === "idle") return null;
 
@@ -95,6 +105,8 @@ export default function NarrativeAnalysisPanel({
 
   if (!result) return null;
   const conf = result.confidence_level ?? "medium";
+  const showSingleSourceWarning = (sourcesUsed ?? 0) <= 1;
+  const showLowSourceTip = !showSingleSourceWarning && (sourcesUsed ?? 0) < 3;
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-5">
@@ -127,6 +139,44 @@ export default function NarrativeAnalysisPanel({
           )}
         </div>
       </div>
+
+      {/* Bandeau de recommandation sur le nombre de sources */}
+      {(showSingleSourceWarning || showLowSourceTip) && (
+        <div
+          className={cn(
+            "rounded-md border p-2.5 flex items-start gap-2",
+            showSingleSourceWarning
+              ? "border-warn/30 bg-warn/5"
+              : "border-primary/20 bg-primary/5",
+          )}
+        >
+          <Info
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 mt-0.5",
+              showSingleSourceWarning ? "text-warn" : "text-primary",
+            )}
+          />
+          <div className="text-[11px] sm:text-xs space-y-0.5">
+            {showSingleSourceWarning ? (
+              <>
+                <p className="font-medium text-foreground">
+                  Analyse basée sur une seule source.
+                </p>
+                <p className="text-muted-foreground">
+                  La mécanique extraite reflète uniquement cette vidéo et peut
+                  manquer de robustesse. Idéalement, ajoute 3 vidéos ou
+                  transcriptions pour détecter une structure commune plus fiable.
+                </p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">
+                Idéalement, ajoute 3 vidéos ou transcriptions pour détecter
+                une structure commune plus fiable.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Synthèse */}
       {result.summary && (
@@ -248,6 +298,34 @@ export default function NarrativeAnalysisPanel({
         </Section>
       )}
 
+      {/* Variations entre sources */}
+      {result.variations && (
+        result.variations.summary || (result.variations.items && result.variations.items.length > 0)
+      ) && (
+        <Section title="Variations observées entre sources">
+          <div className="rounded-md border border-border/60 bg-muted/20 p-2.5 space-y-2">
+            <div className="flex items-start gap-2">
+              <GitCompareArrows className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+              {result.variations.summary && (
+                <p className="text-xs text-foreground/90 leading-relaxed">
+                  {result.variations.summary}
+                </p>
+              )}
+            </div>
+            {result.variations.items && result.variations.items.length > 0 && (
+              <ul className="space-y-1 pl-5">
+                {result.variations.items.map((v, i) => (
+                  <li key={i} className="text-[11px] sm:text-xs">
+                    <span className="font-semibold text-foreground">{v.axis} :</span>{" "}
+                    <span className="text-muted-foreground">{v.observation}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Section>
+      )}
+
       {/* Recommandations */}
       {result.recommendations && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -272,9 +350,36 @@ export default function NarrativeAnalysisPanel({
         </div>
       )}
 
-      <div className="pt-2 border-t border-border/60 flex items-center gap-2 text-[10px] text-muted-foreground">
-        <Sparkles className="h-3 w-3" />
-        Étape suivante : génération de pitchs (à venir).
+      {/* Actions étape suivante */}
+      <div className="pt-3 border-t border-border/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3 text-primary" />
+          Que souhaites-tu faire de cette analyse ?
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onSaveAsForm}
+            disabled={!onSaveAsForm || saving}
+            className="min-h-[36px]"
+          >
+            <Save className="h-3.5 w-3.5" />
+            Sauvegarder comme forme narrative
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={onGeneratePitches}
+            disabled={!onGeneratePitches || saving}
+            className="min-h-[36px]"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            Générer 5 propositions d'histoires
+          </Button>
+        </div>
       </div>
     </div>
   );
