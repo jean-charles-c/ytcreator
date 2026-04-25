@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
+import { getStyleSuffix } from "../_shared/visual-styles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -310,7 +311,7 @@ serve(async (req) => {
       });
     }
 
-    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt, mode, task_id, kie_async } = await req.json();
+    const { shot_id, model, quality, aspect_ratio, sensitive_level, visual_style, custom_prompt, mode, task_id, kie_async } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
     if (!model && mode !== "poll") throw new Error("Missing model");
 
@@ -422,6 +423,18 @@ serve(async (req) => {
       if (identityLocks.length > 0) {
         enrichedPrompt = identityLocks.join("\n\n") + "\n\n" + enrichedPrompt;
       }
+    }
+
+    // ── VISUAL STYLE ENFORCEMENT (aligned with generate-shot-image) ──
+    // Inject the style at the head of the prompt so the UI-selected style
+    // always wins over whatever style was baked into prompt_export.
+    const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
+    if (styleSuffix) {
+      enrichedPrompt =
+        `MANDATORY VISUAL STYLE — apply this style to the entire image without exception. ` +
+        `This overrides any other style instruction that may appear later in the prompt:\n${styleSuffix}\n\n` +
+        enrichedPrompt;
+      console.log(`[KIE] Style enforced: ${visual_style}`);
     }
 
     // Kie market models cap prompts at 2000 chars (some at 5000). Stay safe at 1900.
