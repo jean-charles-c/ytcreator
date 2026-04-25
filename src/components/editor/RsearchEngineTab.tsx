@@ -15,6 +15,7 @@ import ResearchHistory from "./ResearchHistory";
 import NarrativeWorkflowView from "./narrativeWorkflow/NarrativeWorkflowView";
 import NarrativeOutlinePanel from "./narrativeWorkflow/NarrativeOutlinePanel";
 import NarrativeScenesPanel from "./narrativeWorkflow/NarrativeScenesPanel";
+import VoiceoverScriptPanel from "./narrativeWorkflow/VoiceoverScriptPanel";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
@@ -250,6 +251,13 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           {projectId && (
             <div className="mb-4 sm:mb-6">
               <NarrativeScenesPanel projectId={projectId} />
+            </div>
+          )}
+
+          {/* Étape 14 — Script voix off final */}
+          {projectId && (
+            <div className="mb-4 sm:mb-6">
+              <VoiceoverScriptPanel projectId={projectId} />
             </div>
           )}
 
