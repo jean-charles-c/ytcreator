@@ -181,6 +181,64 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_projects: {
+        Row: {
+          analysis_id: string | null
+          created_at: string
+          form_id: string | null
+          id: string
+          pitch_id: string | null
+          project_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          pitch_id?: string | null
+          project_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          pitch_id?: string | null
+          project_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_projects_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_projects_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_projects_pitch_id_fkey"
+            columns: ["pitch_id"]
+            isOneToOne: false
+            referencedRelation: "story_pitches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kie_pricing: {
         Row: {
           created_at: string
@@ -320,6 +378,351 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      narrative_analyses: {
+        Row: {
+          ai_model: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          patterns: Json | null
+          recommendations: Json | null
+          rhythm: Json | null
+          source_ids: string[]
+          status: string
+          structure: Json | null
+          summary: string | null
+          title: string | null
+          tone: Json | null
+          updated_at: string
+          user_id: string
+          writing_rules: Json | null
+        }
+        Insert: {
+          ai_model?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          patterns?: Json | null
+          recommendations?: Json | null
+          rhythm?: Json | null
+          source_ids?: string[]
+          status?: string
+          structure?: Json | null
+          summary?: string | null
+          title?: string | null
+          tone?: Json | null
+          updated_at?: string
+          user_id: string
+          writing_rules?: Json | null
+        }
+        Update: {
+          ai_model?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          patterns?: Json | null
+          recommendations?: Json | null
+          rhythm?: Json | null
+          source_ids?: string[]
+          status?: string
+          structure?: Json | null
+          summary?: string | null
+          title?: string | null
+          tone?: Json | null
+          updated_at?: string
+          user_id?: string
+          writing_rules?: Json | null
+        }
+        Relationships: []
+      }
+      narrative_chapters: {
+        Row: {
+          chapter_order: number
+          created_at: string
+          estimated_duration_seconds: number | null
+          id: string
+          intention: string | null
+          outline_id: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_order?: number
+          created_at?: string
+          estimated_duration_seconds?: number | null
+          id?: string
+          intention?: string | null
+          outline_id: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_order?: number
+          created_at?: string
+          estimated_duration_seconds?: number | null
+          id?: string
+          intention?: string | null
+          outline_id?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "narrative_chapters_outline_id_fkey"
+            columns: ["outline_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      narrative_forms: {
+        Row: {
+          analysis_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          narrative_signature: Json | null
+          status: string
+          system_prompt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          narrative_signature?: Json | null
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          narrative_signature?: Json | null
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "narrative_forms_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      narrative_outlines: {
+        Row: {
+          created_at: string
+          id: string
+          intention: string | null
+          project_id: string
+          status: string
+          target_duration_seconds: number | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          intention?: string | null
+          project_id: string
+          status?: string
+          target_duration_seconds?: number | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          intention?: string | null
+          project_id?: string
+          status?: string
+          target_duration_seconds?: number | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      narrative_scenes: {
+        Row: {
+          chapter_id: string
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          scene_context: Json | null
+          scene_order: number
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          visual_intention: string | null
+        }
+        Insert: {
+          chapter_id: string
+          content?: string
+          created_at?: string
+          id?: string
+          project_id: string
+          scene_context?: Json | null
+          scene_order?: number
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          visual_intention?: string | null
+        }
+        Update: {
+          chapter_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          scene_context?: Json | null
+          scene_order?: number
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          visual_intention?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "narrative_scenes_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      narrative_sources: {
+        Row: {
+          channel: string | null
+          created_at: string
+          duration_seconds: number | null
+          fetch_status: string
+          id: string
+          language: string | null
+          notes: string | null
+          status: string
+          title: string | null
+          transcript: string | null
+          transcript_source: string
+          updated_at: string
+          user_id: string
+          youtube_url: string | null
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          fetch_status?: string
+          id?: string
+          language?: string | null
+          notes?: string | null
+          status?: string
+          title?: string | null
+          transcript?: string | null
+          transcript_source?: string
+          updated_at?: string
+          user_id: string
+          youtube_url?: string | null
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          fetch_status?: string
+          id?: string
+          language?: string | null
+          notes?: string | null
+          status?: string
+          title?: string | null
+          transcript?: string | null
+          transcript_source?: string
+          updated_at?: string
+          user_id?: string
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      pitch_batches: {
+        Row: {
+          ai_model: string | null
+          analysis_id: string | null
+          batch_index: number
+          created_at: string
+          form_id: string | null
+          id: string
+          instructions: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_model?: string | null
+          analysis_id?: string | null
+          batch_index?: number
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          instructions?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_model?: string | null
+          analysis_id?: string | null
+          batch_index?: number
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          instructions?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pitch_batches_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pitch_batches_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_forms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_groups: {
         Row: {
@@ -737,6 +1140,65 @@ export type Database = {
           },
         ]
       }
+      story_pitches: {
+        Row: {
+          angle: string | null
+          created_at: string
+          estimated_format: string | null
+          hook: string | null
+          id: string
+          pitch_batch_id: string
+          pitch_order: number
+          status: string
+          synopsis: string | null
+          target_audience: string | null
+          title: string
+          tone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          angle?: string | null
+          created_at?: string
+          estimated_format?: string | null
+          hook?: string | null
+          id?: string
+          pitch_batch_id: string
+          pitch_order?: number
+          status?: string
+          synopsis?: string | null
+          target_audience?: string | null
+          title: string
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          angle?: string | null
+          created_at?: string
+          estimated_format?: string | null
+          hook?: string | null
+          id?: string
+          pitch_batch_id?: string
+          pitch_order?: number
+          status?: string
+          synopsis?: string | null
+          target_audience?: string | null
+          title?: string
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_pitches_pitch_batch_id_fkey"
+            columns: ["pitch_batch_id"]
+            isOneToOne: false
+            referencedRelation: "pitch_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_generations: {
         Row: {
           aspect_ratio: string
@@ -1091,6 +1553,59 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voiceover_scripts: {
+        Row: {
+          content: string
+          created_at: string
+          estimated_duration_seconds: number | null
+          id: string
+          outline_id: string | null
+          project_id: string
+          sent_to_scriptcreator_at: string | null
+          sent_to_segmentation_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          word_count: number
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          estimated_duration_seconds?: number | null
+          id?: string
+          outline_id?: string | null
+          project_id: string
+          sent_to_scriptcreator_at?: string | null
+          sent_to_segmentation_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          word_count?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          estimated_duration_seconds?: number | null
+          id?: string
+          outline_id?: string | null
+          project_id?: string
+          sent_to_scriptcreator_at?: string | null
+          sent_to_segmentation_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          word_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voiceover_scripts_outline_id_fkey"
+            columns: ["outline_id"]
+            isOneToOne: false
+            referencedRelation: "narrative_outlines"
             referencedColumns: ["id"]
           },
         ]
