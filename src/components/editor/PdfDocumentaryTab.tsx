@@ -144,6 +144,13 @@ interface PdfDocumentaryTabProps {
   onStopSegmentation: () => void;
   shots?: Array<{ id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
   scenesForShotOrder?: Array<{ id: string; scene_order: number }>;
+  /**
+   * Titres de chapitres pré-extraits (depuis le Narrative Form Generator).
+   * Quand fournis, ils sont injectés dans le chapterState courant et
+   * persistés en base, puis consommés via onPendingChapterTitlesConsumed.
+   */
+  pendingChapterTitles?: { title: string; sourceText: string }[] | null;
+  onPendingChapterTitlesConsumed?: () => void;
 }
 
 export default function PdfDocumentaryTab({
@@ -152,6 +159,7 @@ export default function PdfDocumentaryTab({
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
   narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation, shots, scenesForShotOrder,
+  pendingChapterTitles, onPendingChapterTitlesConsumed,
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, startScriptGenerationV2, triggerRevision, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
