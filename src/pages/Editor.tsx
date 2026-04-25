@@ -2290,6 +2290,35 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                 setGeneratedScript(null);
                 setActiveTab("script-creator");
               }}
+              onSentToSegmentation={async () => {
+                // Étape 16 — Recharge les scènes + globalContext puis bascule sur l'onglet.
+                if (!projectId) return;
+                try {
+                  const [scenesRes, shotsRes, scState] = await Promise.all([
+                    supabase
+                      .from("scenes")
+                      .select("*")
+                      .eq("project_id", projectId)
+                      .order("scene_order", { ascending: true }),
+                    supabase
+                      .from("shots")
+                      .select("*")
+                      .eq("project_id", projectId)
+                      .order("shot_order", { ascending: true }),
+                    (supabase as any)
+                      .from("project_scriptcreator_state")
+                      .select("global_context")
+                      .eq("project_id", projectId)
+                      .maybeSingle(),
+                  ]);
+                  if (scenesRes.data) setScenes(scenesRes.data as Scene[]);
+                  if (shotsRes.data) setShots(shotsRes.data as Shot[]);
+                  if (scState?.data?.global_context) setGlobalContext(scState.data.global_context);
+                } catch (e) {
+                  console.warn("[Editor] refresh after send-to-segmentation", e);
+                }
+                setActiveTab("segmentation");
+              }}
             />
           </div>
         )}

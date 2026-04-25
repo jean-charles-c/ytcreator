@@ -21,6 +21,8 @@ import {
   Gauge,
   Maximize2,
   Minimize2,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +49,12 @@ import { useNarrativeScenes, type NarrativeSceneRow } from "@/hooks/useNarrative
 
 interface NarrativeScenesPanelProps {
   projectId: string | null;
+  /**
+   * Étape 16 — Callback déclenché après transfert réussi vers la
+   * Segmentation View. Permet à l'écran parent (Editor) de rafraîchir
+   * `scenes`, `globalContext` et de basculer sur l'onglet Segmentation.
+   */
+  onSentToSegmentation?: () => void;
 }
 
 type Variant = "default" | "shorter" | "more_dramatic" | "more_rhythmic" | "more_detailed";
@@ -68,7 +76,7 @@ const VARIANT_LABELS: Record<Variant, { label: string; icon: any }> = {
  *  - régénérer un chapitre (préserve les scènes validées)
  *  - régénérer une scène (refuse si validée, sauf confirmation)
  */
-export default function NarrativeScenesPanel({ projectId }: NarrativeScenesPanelProps) {
+export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }: NarrativeScenesPanelProps) {
   const { data: outlineData, loading: loadingOutline } = useNarrativeOutline(projectId);
   const outline = outlineData?.outline ?? null;
   const chapters = outlineData?.chapters ?? [];
@@ -82,9 +90,30 @@ export default function NarrativeScenesPanel({ projectId }: NarrativeScenesPanel
   const [overwriteAsk, setOverwriteAsk] = useState<{ kind: "all" | "chapter" | "scene"; id?: string } | null>(null);
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
 
+  // Étape 16 — état d'envoi vers Segmentation View.
+  const [sending, setSending] = useState(false);
+  const [askSendOverwrite, setAskSendOverwrite] = useState<{
+    existing: number;
+    incoming: number;
+    incomplete: number;
+  } | null>(null);
+  const [askIncomplete, setAskIncomplete] = useState<number | null>(null);
+  const [sentAt, setSentAt] = useState<string | null>(null);
+
   const totalScenes = useMemo(
     () => Object.values(scenesByChapter).reduce((acc, arr) => acc + arr.length, 0),
     [scenesByChapter],
+  );
+  const allScenesFlat = useMemo(
+    () => Object.values(scenesByChapter).flat(),
+    [scenesByChapter],
+  );
+  const incompleteCount = useMemo(
+    () =>
+      allScenesFlat.filter(
+        (s) => !((s.voice_over_text ?? s.content ?? "").trim()),
+      ).length,
+    [allScenesFlat],
   );
 
   const callGenerate = useCallback(
@@ -175,6 +204,75 @@ export default function NarrativeScenesPanel({ projectId }: NarrativeScenesPanel
     [deleteScene],
   );
 
+  /**
+   * Étape 16 — Envoi des scènes narratives vers la Segmentation View.
+   * - Insère les scènes dans la table `scenes` consommée par Segmentation.
+   * - Conserve voix off, personnages, lieux, objets, contexte et ordre.
+   * - Déclenche `analyze-context` pour préparer l'analyse des récurrences.
+   * - Demande confirmation si des scènes existent déjà côté Segmentation.
+   */
+  const callSendToSegmentation = useCallback(
+    async (overwrite: boolean) => {
+      if (!projectId || !outline) return;
+      setSending(true);
+      try {
+        const { data: res, error } = await supabase.functions.invoke(
+          "send-narrative-to-segmentation",
+          {
+            body: {
+              project_id: projectId,
+              outline_id: outline.id,
+              overwrite,
+              trigger_context_analysis: true,
+              validated_only: false,
+            },
+          },
+        );
+        if (error) {
+          const msg =
+            (error as any)?.context?.body?.error ||
+            (error as any)?.message ||
+            "Erreur lors du transfert";
+          throw new Error(msg);
+        }
+        if (!res?.ok) {
+          if (res?.error === "scenes_exist") {
+            setAskSendOverwrite({
+              existing: res.existing_count ?? 0,
+              incoming: res.incoming_count ?? 0,
+              incomplete: res.incomplete_count ?? 0,
+            });
+            return;
+          }
+          throw new Error(res?.error || "Transfert échoué");
+        }
+        setSentAt(new Date().toISOString());
+        toast.success(
+          `${res.scenes_inserted ?? 0} scène(s) transférée(s) vers Segmentation View.${
+            res.context_analysis_triggered ? " Analyse des récurrences en cours." : ""
+          }`,
+        );
+        if (res.warning) toast.message(res.warning);
+        onSentToSegmentation?.();
+      } catch (e: any) {
+        console.error("send-narrative-to-segmentation", e);
+        toast.error(e?.message || "Erreur lors du transfert");
+      } finally {
+        setSending(false);
+      }
+    },
+    [projectId, outline, onSentToSegmentation],
+  );
+
+  const onSendClick = useCallback(() => {
+    if (totalScenes === 0) return;
+    if (incompleteCount > 0) {
+      setAskIncomplete(incompleteCount);
+      return;
+    }
+    void callSendToSegmentation(false);
+  }, [totalScenes, incompleteCount, callSendToSegmentation]);
+
   if (!projectId) return null;
   if (loadingOutline) {
     return (
@@ -225,8 +323,34 @@ export default function NarrativeScenesPanel({ projectId }: NarrativeScenesPanel
               })
             }
           />
+          {/* Étape 16 — Envoi vers Segmentation View */}
+          {totalScenes > 0 && onSentToSegmentation && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={sending || busyKey !== null}
+              onClick={onSendClick}
+              title="Insère les scènes dans Segmentation View et déclenche l'analyse des récurrences."
+            >
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              <span className="ml-1.5">Envoyer vers Segmentation View</span>
+            </Button>
+          )}
         </div>
       </div>
+
+      {sentAt && (
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Scènes transférées vers Segmentation View le{" "}
+          {new Date(sentAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+        </div>
+      )}
 
       {chapters.length === 0 && (
         <div className="rounded-md border border-dashed border-border/60 bg-muted/20 p-4 text-center text-xs text-muted-foreground">
@@ -338,6 +462,67 @@ export default function NarrativeScenesPanel({ projectId }: NarrativeScenesPanel
               }}
             >
               Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Étape 16 — Confirmation : scènes déjà présentes côté Segmentation View */}
+      <AlertDialog
+        open={askSendOverwrite !== null}
+        onOpenChange={(o) => !o && setAskSendOverwrite(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remplacer les scènes existantes ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {askSendOverwrite ? (
+                <>
+                  Segmentation View contient déjà {askSendOverwrite.existing} scène(s).
+                  Le transfert va les remplacer par {askSendOverwrite.incoming} nouvelle(s)
+                  scène(s) issues du workflow narratif. Les shots associés seront effacés
+                  (Segmentation View elle-même n'est pas recréée).
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setAskSendOverwrite(null);
+                void callSendToSegmentation(true);
+              }}
+            >
+              Remplacer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Étape 16 — Avertissement : scènes incomplètes (sans voix off) */}
+      <AlertDialog
+        open={askIncomplete !== null}
+        onOpenChange={(o) => !o && setAskIncomplete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{askIncomplete} scène(s) sans voix off</AlertDialogTitle>
+            <AlertDialogDescription>
+              Certaines scènes n'ont pas encore de texte voix off. Elles seront tout de même
+              transférées vers Segmentation View, mais leur contenu narratif sera vide.
+              Souhaites-tu poursuivre ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setAskIncomplete(null);
+                void callSendToSegmentation(false);
+              }}
+            >
+              Transférer quand même
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
