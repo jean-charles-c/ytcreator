@@ -134,14 +134,34 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       if (refImgList) parts.push(`[Images de référence transmises]\n${refImgList}`);
     }
 
-    // 2. Identity locks from linked objects (cleaned of redundant headers)
+    // 2. Identity locks from linked objects (cleaned of redundant verbose blocks)
+    const cleanIdentityLock = (raw: string): string => {
+      let txt = String(raw || "");
+      // Remove full verbose blocks (header + following paragraph until blank line)
+      const blockHeaders = [
+        /^(?:CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+        /^IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+        /^TIME\s+PERIOD(?:\s*\/\s*HISTORICAL\s+STATE)?\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+        /^REFERENCE\s+IMAGES(?:\s+PROVIDED)?:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+        /^NO\s+TEMPORAL\s+DRIFT:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      ];
+      for (const re of blockHeaders) txt = txt.replace(re, "");
+      // Remove leftover boilerplate sentences
+      txt = txt
+        .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+        .replace(/^\s*Do not (?:combine|mix) (?:visual )?(?:traits|features)[^\n]*\n?/gim, "")
+        .replace(/^\s*Use these reference images[^\n]*\n?/gim, "")
+        .replace(/^\s*Preserve (?:their|its) (?:exact )?[^\n]*\n?/gim, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+      return txt;
+    };
     const identityLocks = linkedObjects
       ?.map(obj => {
-        const lock = String(obj.identity_prompt || "");
-        return lock
-          .replace(/^(CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:\s*/gim, "")
-          .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
-          .trim();
+        const cleaned = cleanIdentityLock(obj.identity_prompt || "");
+        // Keep only the essential subject line if everything was stripped
+        if (!cleaned && obj.nom) return `Subject: ${obj.nom}`;
+        return cleaned;
       })
       .filter(Boolean) || [];
     if (identityLocks.length > 0) {
