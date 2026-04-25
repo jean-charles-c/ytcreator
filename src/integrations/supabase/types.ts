@@ -184,10 +184,13 @@ export type Database = {
       kie_pricing: {
         Row: {
           created_at: string
+          currency: string
           endpoint_path: string
           id: string
           is_active: boolean
+          kie_slug: string | null
           last_synced_at: string | null
+          modality: string
           model_id: string
           model_label: string
           notes: string | null
@@ -196,14 +199,18 @@ export type Database = {
           supports_image_input: boolean
           supports_oref: boolean
           supports_sref: boolean
+          unit: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          currency?: string
           endpoint_path?: string
           id?: string
           is_active?: boolean
+          kie_slug?: string | null
           last_synced_at?: string | null
+          modality?: string
           model_id: string
           model_label: string
           notes?: string | null
@@ -212,14 +219,18 @@ export type Database = {
           supports_image_input?: boolean
           supports_oref?: boolean
           supports_sref?: boolean
+          unit?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          currency?: string
           endpoint_path?: string
           id?: string
           is_active?: boolean
+          kie_slug?: string | null
           last_synced_at?: string | null
+          modality?: string
           model_id?: string
           model_label?: string
           notes?: string | null
@@ -228,6 +239,7 @@ export type Database = {
           supports_image_input?: boolean
           supports_oref?: boolean
           supports_sref?: boolean
+          unit?: string
           updated_at?: string
         }
         Relationships: []
