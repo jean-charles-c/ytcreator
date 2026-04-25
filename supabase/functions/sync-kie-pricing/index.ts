@@ -140,7 +140,7 @@ async function scrapeAllImagePages(apiKey: string): Promise<{ markdowns: string[
     {
       type: "executeJavascript",
       script:
-        'const btns=[...document.querySelectorAll("button")]; const img=btns.find(b=>/^\\s*Image\\s*\\d/.test(b.textContent.trim())); if(img) img.click();',
+        '(function(){var btns=Array.from(document.querySelectorAll("button"));var img=btns.find(function(b){return /^\\s*Image\\s*\\d/.test(b.textContent.trim());});if(img)img.click();})();',
     },
     { type: "wait", milliseconds: 2000 },
     { type: "scrape" },
@@ -149,7 +149,7 @@ async function scrapeAllImagePages(apiKey: string): Promise<{ markdowns: string[
     actions.push({
       type: "executeJavascript",
       script:
-        'const n=document.querySelector(\'button[aria-label="next page button"]\'); if(n && !n.disabled) n.click();',
+        '(function(){var n=document.querySelector(\'button[aria-label="next page button"]\');if(n&&!n.disabled)n.click();})();',
     });
     actions.push({ type: "wait", milliseconds: 1800 });
     actions.push({ type: "scrape" });
