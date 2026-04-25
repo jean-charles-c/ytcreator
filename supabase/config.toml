@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.chirp-shot-mapping]
 verify_jwt = false
+
+[functions.sync-kie-pricing]
+verify_jwt = false
