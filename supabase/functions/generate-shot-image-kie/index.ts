@@ -299,6 +299,13 @@ serve(async (req) => {
       }
     }
 
+    // Kie market models cap prompts at 2000 chars (some at 5000). Stay safe at 1900.
+    const KIE_PROMPT_MAX = 1900;
+    if (enrichedPrompt.length > KIE_PROMPT_MAX) {
+      console.warn(`[KIE] Prompt truncated from ${enrichedPrompt.length} to ${KIE_PROMPT_MAX} chars`);
+      enrichedPrompt = enrichedPrompt.slice(0, KIE_PROMPT_MAX - 3) + "...";
+    }
+
     // Collect reference images and split by type for MJ omni-reference
     const allRefImages: string[] = [];
     const orefImages: string[] = [];
