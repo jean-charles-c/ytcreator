@@ -561,11 +561,11 @@ function ChapterScenesGroup({
   const empty = scenes.length === 0;
   return (
     <li className="rounded-md border border-border/70 bg-background/40 p-3 sm:p-4 space-y-3">
-      <div className="flex items-start gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         <button
           type="button"
           onClick={onToggleOpen}
-          className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0 hover:bg-primary/25 transition-colors"
+          className="inline-flex items-center justify-center h-7 w-7 sm:h-6 sm:w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0 hover:bg-primary/25 transition-colors"
           title={open ? "Réduire" : "Développer"}
         >
           {chapter.chapter_order}
@@ -591,7 +591,7 @@ function ChapterScenesGroup({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
           {empty ? (
             <VariantMenu
               size="sm"
@@ -622,11 +622,12 @@ function ChapterScenesGroup({
           <button
             type="button"
             onClick={onToggleOpen}
-            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary min-w-[36px] sm:min-w-0 inline-flex items-center justify-center"
             title={open ? "Réduire" : "Développer"}
+            aria-label={open ? "Réduire le chapitre" : "Développer le chapitre"}
           >
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
+              className={`h-4 w-4 sm:h-3.5 sm:w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
             />
           </button>
         </div>
