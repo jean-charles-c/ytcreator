@@ -377,6 +377,50 @@ serve(async (req) => {
       );
     }
 
+    // Anti-timeout : si aucun chapitre spécifique demandé et qu'on est en mode
+    // batch ("generate"/"regenerate_chapter"), on traite UN seul chapitre par
+    // appel et on renvoie la liste des chapitres restants au client pour qu'il
+    // poursuive itérativement. Cela évite les 504 IDLE_TIMEOUT (150s) sur les
+    // sommaires longs avec Gemini 2.5 Pro.
+    let remainingChapterIds: string[] = [];
+    if (
+      !targetChapterId &&
+      !targetSceneId &&
+      (mode === "generate" || mode === "regenerate_chapter") &&
+      chapters.length > 1
+    ) {
+      // Trouver le premier chapitre qui n'a pas encore de scènes (ou non validées si overwrite/regenerate)
+      const chapterIds = chapters.map((c) => c.id);
+      const { data: existingAll } = await supaAdmin
+        .from("narrative_scenes")
+        .select("chapter_id, validated")
+        .in("chapter_id", chapterIds);
+      const sceneCountByChapter = new Map<string, { total: number; validated: number }>();
+      (existingAll ?? []).forEach((s: any) => {
+        const cur = sceneCountByChapter.get(s.chapter_id) ?? { total: 0, validated: 0 };
+        cur.total += 1;
+        if (s.validated) cur.validated += 1;
+        sceneCountByChapter.set(s.chapter_id, cur);
+      });
+      const isChapterPending = (cId: string) => {
+        const c = sceneCountByChapter.get(cId);
+        if (!c || c.total === 0) return true;
+        if (mode === "generate" && overwrite && c.total - c.validated > 0) return true;
+        if (mode === "regenerate_chapter" && c.total - c.validated > 0) return true;
+        return false;
+      };
+      const pending = chapters.filter((c) => isChapterPending(c.id));
+      if (pending.length === 0) {
+        return new Response(
+          JSON.stringify({ ok: true, created: 0, deleted: 0, errors: [], remaining_chapter_ids: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const next = pending[0];
+      remainingChapterIds = pending.slice(1).map((c) => c.id);
+      chapters = [next];
+    }
+
     const model = "google/gemini-2.5-pro";
     const systemPrompt = buildSystemPrompt(formPrompt);
 
