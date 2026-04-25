@@ -456,6 +456,8 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
           })}
         </ol>
       )}
+      </div>
+      )}
 
       <AlertDialog
         open={overwriteAsk !== null}
