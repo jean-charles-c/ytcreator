@@ -291,6 +291,13 @@ serve(async (req) => {
     if (!shot_id) throw new Error("Missing shot_id");
     if (!model && mode !== "poll") throw new Error("Missing model");
 
+    if (typeof model === "string" && DEPRECATED_KIE_MODELS[model]) {
+      return new Response(JSON.stringify({ error: DEPRECATED_KIE_MODELS[model], provider: "kie", deprecated: true }), {
+        status: 410,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const selectedQuality = ["1K", "2K", "4K"].includes(quality) ? quality : "1K";
     const selectedAspectRatio = ASPECT_RATIOS_KIE[aspect_ratio] || "16:9";
     const size = QUALITY_TO_SIZE[selectedQuality];
