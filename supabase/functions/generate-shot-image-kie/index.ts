@@ -389,7 +389,7 @@ serve(async (req) => {
       }
       if (result.status === "failed" || !result.imageUrl) throw new Error(result.error || "Kie task failed");
 
-      const finalUrl = await rehostImage(supabase, result.imageUrl, shot.project_id, shot_id);
+      const finalUrl = await rehostImage(supabase, result.imageUrl, shot.project_id, shot_id, selectedAspectRatio);
       await supabase.from("shots").update({ image_url: finalUrl }).eq("id", shot_id);
       return new Response(JSON.stringify({ success: true, image_url: finalUrl, status: "success", provider: "kie" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -569,7 +569,7 @@ ALWAYS keep the action described in the prompt — do not replace the action wit
     }
 
     const kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
-    const finalUrl = await rehostImage(supabase, kieImageUrl, shot.project_id, shot_id);
+    const finalUrl = await rehostImage(supabase, kieImageUrl, shot.project_id, shot_id, selectedAspectRatio);
     const elapsedMs = Date.now() - startTime;
 
     const cost = Number(pricingRow.price_usd) || 0;
