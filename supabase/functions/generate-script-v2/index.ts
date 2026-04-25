@@ -157,8 +157,12 @@ function buildSystemPrompt(
   language: string,
   charMin: number,
   charMax: number,
+  narrativeFormPromptOverride?: string,
 ): string {
-  const formPrompt = FORM_PROMPTS[narrativeForm] ?? FORM_PROMPTS["essai"];
+  const formPrompt =
+    (narrativeFormPromptOverride && narrativeFormPromptOverride.trim().length > 0)
+      ? narrativeFormPromptOverride
+      : (FORM_PROMPTS[narrativeForm] ?? FORM_PROMPTS["essai"]);
   const langLabel = language === "fr" ? "français" : language === "en" ? "English" : language;
   const isEnglish = language === "en";
 
