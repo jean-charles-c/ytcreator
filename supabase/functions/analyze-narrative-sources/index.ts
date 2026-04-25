@@ -289,7 +289,7 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub as string;
 
-    let body: { source_ids?: string[] } = {};
+    let body: { source_ids?: string[]; project_id?: string | null } = {};
     try {
       body = await req.json();
     } catch {
@@ -299,6 +299,7 @@ Deno.serve(async (req) => {
     const ids = Array.isArray(body.source_ids)
       ? body.source_ids.filter((x) => typeof x === "string")
       : [];
+    const projectId = typeof body.project_id === "string" ? body.project_id : null;
     if (ids.length === 0) {
       return jsonResponse({ error: "source_ids required" }, 400);
     }
@@ -342,6 +343,7 @@ Deno.serve(async (req) => {
         source_ids: sources.map((s) => s.id),
         status: "analysis_in_progress",
         ai_model: AI_MODEL,
+        project_id: projectId,
       })
       .select("id")
       .single();

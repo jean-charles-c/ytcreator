@@ -218,6 +218,12 @@ export default function Editor() {
   const [scriptVersions, setScriptVersions] = useState<{ id: number; content: string }[]>([]);
   const [currentScriptVersionId, setCurrentScriptVersionId] = useState<number | null>(null);
 
+  // Titres de chapitres en attente d'injection dans ScriptCreator
+  // (alimenté par l'envoi depuis VoiceoverScriptPanel — narrative workflow).
+  const [pendingChapterTitles, setPendingChapterTitles] = useState<
+    { title: string; sourceText: string }[] | null
+  >(null);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
@@ -2283,11 +2289,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               projectId={projectId}
               projectTitle={title}
               hasExistingScriptInput={Boolean((pdfExtractedText ?? "").trim())}
-              onSendToScriptCreator={(text) => {
+              onSendToScriptCreator={(text, chapterTitles) => {
                 setNarration(cleanNarrationText(text));
                 setPdfExtractedText(text);
                 setPdfAnalysis(null);
                 setGeneratedScript(null);
+                if (chapterTitles && chapterTitles.length > 0) {
+                  setPendingChapterTitles(chapterTitles);
+                }
                 setActiveTab("script-creator");
               }}
               onSentToSegmentation={async () => {
@@ -2368,6 +2377,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               onStopSegmentation={stopSegmentation}
               shots={shots}
               scenesForShotOrder={scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order }))}
+              pendingChapterTitles={pendingChapterTitles}
+              onPendingChapterTitlesConsumed={() => setPendingChapterTitles(null)}
             />
           </div>
         )}

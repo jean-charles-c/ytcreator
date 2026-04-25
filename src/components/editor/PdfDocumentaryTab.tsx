@@ -144,6 +144,13 @@ interface PdfDocumentaryTabProps {
   onStopSegmentation: () => void;
   shots?: Array<{ id: string; scene_id: string; shot_order: number; source_sentence: string | null; source_sentence_fr: string | null }>;
   scenesForShotOrder?: Array<{ id: string; scene_order: number }>;
+  /**
+   * Titres de chapitres pré-extraits (depuis le Narrative Form Generator).
+   * Quand fournis, ils sont injectés dans le chapterState courant et
+   * persistés en base, puis consommés via onPendingChapterTitlesConsumed.
+   */
+  pendingChapterTitles?: { title: string; sourceText: string }[] | null;
+  onPendingChapterTitlesConsumed?: () => void;
 }
 
 export default function PdfDocumentaryTab({
@@ -152,6 +159,7 @@ export default function PdfDocumentaryTab({
   analysis, onAnalysisChange, docStructure, onDocStructureChange, script, onScriptChange,
   scriptVersions, onScriptVersionsChange, currentVersionId, onCurrentVersionIdChange,
   narration, onNarrationChange, onRunSegmentation, segmenting, onStopSegmentation, shots, scenesForShotOrder,
+  pendingChapterTitles, onPendingChapterTitlesConsumed,
 }: PdfDocumentaryTabProps) {
   const { startScriptGeneration, startScriptGenerationV2, triggerRevision, getTask, subscribe, stopTask } = useBackgroundTasks();
   const [chapterState, setChapterState] = useState<ChapterListState | null>(null);
@@ -295,6 +303,34 @@ export default function PdfDocumentaryTab({
       console.error("Failed to persist chapterState:", e);
     }
   }, [projectId]);
+
+  // ── Consume pendingChapterTitles (envoi depuis Narrative Form Generator) ──
+  // Construit un chapterState à partir des titres "Le premier ticket"
+  // (déjà nettoyés du préfixe "SCÈNE N — ") et persiste immédiatement.
+  useEffect(() => {
+    if (!projectId) return;
+    if (!pendingChapterTitles || pendingChapterTitles.length === 0) return;
+    if (!chapterHydratedRef.current) return;
+    const newState: ChapterListState = {
+      method: "tags",
+      lastUpdatedAt: new Date().toISOString(),
+      chapters: pendingChapterTitles.map((c, idx) => ({
+        id: `narr-${idx}-${Date.now()}`,
+        index: idx,
+        sectionType: null,
+        startSentence: c.sourceText.split(/[.!?]\s/)[0]?.trim().slice(0, 120) ?? "",
+        summary: "",
+        title: c.title,
+        variants: [],
+        titleFR: null,
+        validated: true,
+        sourceText: c.sourceText,
+      })),
+    };
+    setChapterState(newState);
+    void saveChapterState(newState);
+    onPendingChapterTitlesConsumed?.();
+  }, [projectId, pendingChapterTitles, saveChapterState, onPendingChapterTitlesConsumed]);
 
   const pendingChapterSaveRef = useRef<ChapterListState | null>(null);
 

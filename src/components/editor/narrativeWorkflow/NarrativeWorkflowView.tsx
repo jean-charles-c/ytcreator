@@ -23,7 +23,7 @@ interface NarrativeWorkflowViewProps {
  * Le détail des sources, de l'analyse et des étapes suivantes sera ajouté
  * dans les prompts dédiés (étapes 5+).
  */
-export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewProps) {
+export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWorkflowViewProps) {
   const [analysisStatus, setAnalysisStatus] = useState<
     "idle" | "running" | "success" | "error"
   >("idle");
@@ -49,16 +49,34 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
         const { data: auth } = await supabase.auth.getUser();
         const uid = auth.user?.id;
         if (!uid) return;
-        const { data, error } = await supabase
+        // Restaure en priorité l'analyse rattachée au projet courant.
+        // À défaut, retombe sur la dernière analyse complétée de l'utilisateur
+        // (compatibilité historique : avant l'ajout de project_id).
+        let { data, error } = await supabase
           .from("narrative_analyses")
           .select(
             "id, title, summary, structure, patterns, tone, rhythm, writing_rules, recommendations, source_ids, status",
           )
           .eq("user_id", uid)
+          .eq("project_id", projectId ?? "")
           .eq("status", "analysis_completed")
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        if ((!data || error) && !projectId) {
+          const fallback = await supabase
+            .from("narrative_analyses")
+            .select(
+              "id, title, summary, structure, patterns, tone, rhythm, writing_rules, recommendations, source_ids, status",
+            )
+            .eq("user_id", uid)
+            .eq("status", "analysis_completed")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          data = fallback.data;
+          error = fallback.error;
+        }
         if (cancelled || error || !data) return;
         const payload: AnalysisPayload = {
           title: data.title ?? undefined,
@@ -84,7 +102,7 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [projectId]);
 
   const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
     if (sources.length === 0) {
@@ -98,7 +116,7 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
     try {
       const { data, error } = await supabase.functions.invoke(
         "analyze-narrative-sources",
-        { body: { source_ids: sources.map((s) => s.id) } },
+        { body: { source_ids: sources.map((s) => s.id), project_id: projectId } },
       );
       if (error) throw error;
       if (!data?.ok) {
@@ -107,6 +125,17 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
       setAnalysisResult(data.analysis as AnalysisPayload);
       setSourcesUsed(data.sources_used);
       setAnalysisId(data.analysis_id ?? null);
+      // Rattache l'analyse au projet courant (idempotent).
+      if (data.analysis_id && projectId) {
+        try {
+          await supabase
+            .from("narrative_analyses")
+            .update({ project_id: projectId })
+            .eq("id", data.analysis_id);
+        } catch (e) {
+          console.warn("[NarrativeWorkflowView] attach project_id", e);
+        }
+      }
       setAnalysisStatus("success");
       toast.success("Analyse narrative terminée");
     } catch (e: any) {
@@ -116,7 +145,7 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
       setAnalysisStatus("error");
       toast.error(msg);
     }
-  }, []);
+  }, [projectId]);
 
   const handleRetry = useCallback(() => {
     if (lastSources.length > 0) runAnalysis(lastSources);
