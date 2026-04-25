@@ -164,20 +164,33 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
         return cleaned;
       })
       .filter(Boolean) || [];
-    if (identityLocks.length > 0) {
-      parts.push("IDENTITY LOCK:\n" + identityLocks.join("\n\n"));
-    }
 
     // 3. Generation frame (condensed)
     parts.push("Generate one single cinematic 16:9 image, no borders, no letterboxing, no square crop.");
 
-    // 4. Action to illustrate (the actual scene prompt)
-    parts.push("ACTION TO ILLUSTRATE (mandatory, do not omit):\n" + basePrompt);
+    // 4. Two-tier hierarchy: FRAMING & ACTION (composition) + IDENTITY LOCK
+    //    (subject appearance). Both are mandatory and apply simultaneously.
+    let actionBlock = basePrompt;
     if (shot.description && shot.description.length > 30) {
       const descSnippet = shot.description.slice(0, 60).toLowerCase();
       if (!basePrompt.toLowerCase().includes(descSnippet)) {
-        parts.push("DETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description);
+        actionBlock += "\n\nDETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description;
       }
+    }
+
+    if (identityLocks.length > 0) {
+      parts.push(
+        "HIERARCHY: FRAMING & ACTION below defines the shot's composition (mandatory — must not be replaced by a wider or different shot). " +
+        "IDENTITY LOCK below defines the exact appearance of the subject inside that frame (mandatory — must not be redesigned). " +
+        "Both apply simultaneously."
+      );
+      parts.push("FRAMING & ACTION (mandatory composition):\n" + actionBlock);
+      parts.push(
+        "IDENTITY LOCK (mandatory appearance of the subject inside that frame — do not widen the shot to show them in full):\n" +
+        identityLocks.join("\n\n")
+      );
+    } else {
+      parts.push("FRAMING & ACTION (mandatory composition):\n" + actionBlock);
     }
 
     return parts.join("\n\n");
