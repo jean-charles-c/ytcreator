@@ -108,6 +108,10 @@ export interface ScriptGenV2Params {
   charMin: number;
   charMax: number;
   narrativeForm: string;
+  /** Étape 9 — prompt système d'une forme personnalisée (prend le pas sur le mapping serveur). */
+  narrativeFormPrompt?: string;
+  /** Étape 9 — id stocké en DB (custom UUID ou id natif). */
+  narrativeFormId?: string;
   narrativeStyleVoice?: string;
   globalContext?: any;
   onIntentionNote?: (note: string) => void;
@@ -399,6 +403,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               charMin: params.charMin,
               charMax: params.charMax,
               narrativeForm: params.narrativeForm,
+              narrativeFormPrompt: params.narrativeFormPrompt,
               narrativeStyleVoice: params.narrativeStyleVoice || "",
               globalContext: params.globalContext || null,
             }),
@@ -480,7 +485,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
         await (supabase as any).from("project_scriptcreator_state").update({
           script_v2_raw: finalScript,
           intention_note: finalIntentionNote || null,
-          narrative_form: params.narrativeForm,
+          narrative_form: params.narrativeFormId ?? params.narrativeForm,
         }).eq("project_id", params.projectId);
 
         updateTask(key, { status: "done", streamedText: finalScript, intentionNote: finalIntentionNote });

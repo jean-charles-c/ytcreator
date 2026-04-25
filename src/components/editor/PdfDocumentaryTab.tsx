@@ -7,6 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useBackgroundTasks } from "@/contexts/BackgroundTasks";
 import { NARRATIVE_STYLES, DEFAULT_NARRATIVE_STYLE_ID, getNarrativeStyleById } from "@/config/narrativeStyles";
 import { NARRATIVE_FORMS, DEFAULT_NARRATIVE_FORM_ID } from "@/config/narrativeForms";
+import { useCustomNarrativeForms, type CustomNarrativeForm } from "@/hooks/useCustomNarrativeForms";
+import CustomFormCard from "./narrativeWorkflow/CustomFormCard";
 import { parseScriptIntoSections, reassembleSections, sanitizeNarrativeSections, type NarrativeSection, type SectionHistoryEntry } from "./SectionCard";
 import NarrativeScriptBlock, { type ScriptVersion, getPersistedScriptAiModel, persistScriptAiModel, type ScriptAiModelId } from "./NarrativeScriptBlock";
 import ChapterCollapse from "./ChapterCollapse";
@@ -197,6 +199,14 @@ export default function PdfDocumentaryTab({
   const [scriptV2, setScriptV2] = useState<string | null>(null);
   const [scriptV2Revised, setScriptV2Revised] = useState<string | null>(null);
   const [showV2Revised, setShowV2Revised] = useState(false);
+
+  // Étape 9 — formes narratives personnalisées
+  const {
+    forms: customForms,
+    loading: loadingCustomForms,
+    updateForm: updateCustomForm,
+    deleteForm: deleteCustomForm,
+  } = useCustomNarrativeForms();
 
   // ── Hydrate chapterState from DB on mount ──
   useEffect(() => {
@@ -963,6 +973,7 @@ export default function PdfDocumentaryTab({
     setScriptV2("");
     setScriptV2Revised(null);
     setShowV2Revised(false);
+    const customForm = customForms.find((f) => f.id === selectedForm);
     startScriptGenerationV2({
       projectId,
       analysis,
@@ -970,11 +981,13 @@ export default function PdfDocumentaryTab({
       scriptLanguage,
       charMin,
       charMax,
-      narrativeForm: selectedForm,
+      narrativeForm: customForm ? "custom" : selectedForm,
+      narrativeFormPrompt: customForm?.system_prompt,
+      narrativeFormId: selectedForm,
       narrativeStyleVoice: narrativeStyleId === "custom" ? customStyleLabel : styleVoice,
       onIntentionNote: (note) => setV2IntentionNote(note),
     });
-  }, [analysis, extractedText, projectId, scriptLanguage, charMin, charMax, selectedForm, narrativeStyleId, customStyleLabel, startScriptGenerationV2]);
+  }, [analysis, extractedText, projectId, scriptLanguage, charMin, charMax, selectedForm, narrativeStyleId, customStyleLabel, startScriptGenerationV2, customForms]);
 
   // Delegate script generation to background context
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
@@ -1452,7 +1465,26 @@ export default function PdfDocumentaryTab({
                   </button>
                 );
               })}
+              {customForms.map((form) => (
+                <CustomFormCard
+                  key={form.id}
+                  form={form}
+                  isSelected={form.id === selectedForm}
+                  onSelect={() => setSelectedForm(form.id)}
+                  onUpdate={updateCustomForm}
+                  onDelete={async (id) => {
+                    await deleteCustomForm(id);
+                    if (selectedForm === id) setSelectedForm(DEFAULT_NARRATIVE_FORM_ID);
+                  }}
+                />
+              ))}
             </div>
+            {customForms.length === 0 && !loadingCustomForms && (
+              <p className="text-[10px] text-muted-foreground -mt-2 mb-3">
+                Astuce : crée une forme personnalisée depuis le Narrative Form Generator pour
+                la retrouver ici aux côtés d'Enquête, Essai…
+              </p>
+            )}
             <Button
               variant="hero"
               disabled={generatingScriptV2}

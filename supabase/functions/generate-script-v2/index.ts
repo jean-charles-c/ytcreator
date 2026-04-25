@@ -157,8 +157,12 @@ function buildSystemPrompt(
   language: string,
   charMin: number,
   charMax: number,
+  narrativeFormPromptOverride?: string,
 ): string {
-  const formPrompt = FORM_PROMPTS[narrativeForm] ?? FORM_PROMPTS["essai"];
+  const formPrompt =
+    (narrativeFormPromptOverride && narrativeFormPromptOverride.trim().length > 0)
+      ? narrativeFormPromptOverride
+      : (FORM_PROMPTS[narrativeForm] ?? FORM_PROMPTS["essai"]);
   const langLabel = language === "fr" ? "français" : language === "en" ? "English" : language;
   const isEnglish = language === "en";
 
@@ -267,6 +271,7 @@ serve(async (req) => {
         charMin = 3000,
         charMax = 6000,
         narrativeForm = "essai",
+        narrativeFormPrompt,
         narrativeStyleVoice = "",
         globalContext,
       } = await req.json();
@@ -281,10 +286,17 @@ serve(async (req) => {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-      const systemPrompt = buildSystemPrompt(narrativeForm, narrativeStyleVoice, language || "fr", charMin, charMax);
+      const systemPrompt = buildSystemPrompt(
+        narrativeForm,
+        narrativeStyleVoice,
+        language || "fr",
+        charMin,
+        charMax,
+        narrativeFormPrompt,
+      );
       const userMessage = buildUserMessage(analysis, extractedText, globalContext);
 
-      console.log(`[generate-script-v2] form=${narrativeForm}, lang=${language}, range=${charMin}-${charMax}`);
+      console.log(`[generate-script-v2] form=${narrativeForm}${narrativeFormPrompt ? "(custom)" : ""}, lang=${language}, range=${charMin}-${charMax}`);
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
