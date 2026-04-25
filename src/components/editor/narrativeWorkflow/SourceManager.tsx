@@ -161,6 +161,8 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
   const [pendingDelete, setPendingDelete] = useState<NarrativeSourceRow | null>(null);
   /** ID des sources actuellement en cours d'extraction auto. */
   const [fetchingIds, setFetchingIds] = useState<Set<string>>(new Set());
+  /** Indique qu'on récupère le titre/chaîne YouTube depuis l'URL saisie. */
+  const [fetchingMeta, setFetchingMeta] = useState(false);
   /** Ref vers `tryAutoFetch` pour éviter les cycles de dépendances. */
   const tryAutoFetchRef = useRef<
     ((sourceId: string, url: string, language: string | null) => void) | null
@@ -265,12 +267,25 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
 
     const trimmedTranscript = form.transcript.trim();
     const trimmedUrl = form.youtube_url.trim();
-    const trimmedTitle = form.title.trim();
+    let trimmedTitle = form.title.trim();
+    let trimmedChannel = form.channel.trim();
+
+    // Si l'utilisateur ajoute une URL YouTube sans titre/chaîne, on tente
+    // une dernière récupération synchrone via oEmbed avant l'enregistrement
+    // pour que la base contienne déjà les métadonnées.
+    if (trimmedUrl && (!trimmedTitle || !trimmedChannel)) {
+      const meta = await fetchYoutubeMeta(trimmedUrl);
+      if (meta) {
+        if (!trimmedTitle && meta.title) trimmedTitle = meta.title.slice(0, 200);
+        if (!trimmedChannel && meta.channel)
+          trimmedChannel = meta.channel.slice(0, 120);
+      }
+    }
 
     const payload = {
       user_id: user.id,
       title: trimmedTitle || null,
-      channel: form.channel.trim() || null,
+      channel: trimmedChannel || null,
       youtube_url: trimmedUrl || null,
       transcript: trimmedTranscript || null,
       notes: form.notes.trim() || null,
