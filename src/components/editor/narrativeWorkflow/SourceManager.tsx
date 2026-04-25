@@ -399,6 +399,12 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
     [tryAutoFetch],
   );
 
+  // Synchronise le ref avec la dernière version de tryAutoFetch pour permettre
+  // à handleSubmit (déclaré plus haut) de l'invoquer sans cycle de dépendances.
+  useEffect(() => {
+    tryAutoFetchRef.current = tryAutoFetch;
+  }, [tryAutoFetch]);
+
   const analyzableSources = useMemo(
     () => sources.filter((s) => isSourceAnalyzable(s)),
     [sources],
