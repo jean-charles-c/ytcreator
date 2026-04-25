@@ -200,6 +200,14 @@ export default function PdfDocumentaryTab({
   const [scriptV2Revised, setScriptV2Revised] = useState<string | null>(null);
   const [showV2Revised, setShowV2Revised] = useState(false);
 
+  // Étape 9 — formes narratives personnalisées
+  const {
+    forms: customForms,
+    loading: loadingCustomForms,
+    updateForm: updateCustomForm,
+    deleteForm: deleteCustomForm,
+  } = useCustomNarrativeForms();
+
   // ── Hydrate chapterState from DB on mount ──
   useEffect(() => {
     if (!projectId) return;
