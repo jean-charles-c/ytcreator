@@ -1207,8 +1207,12 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                   const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
 
                   try {
+                    // Route to Kie edge function when model uses the "kie:" prefix
+                    const isKie = typeof params.model === "string" && params.model.startsWith("kie:");
+                    const kieModelId = isKie ? params.model.slice(4) : null;
+                    const endpoint = isKie ? "generate-shot-image-kie" : "generate-shot-image";
                     return await fetch(
-                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-shot-image`,
+                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`,
                       {
                         method: "POST",
                         headers: {
@@ -1218,8 +1222,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                         },
                         body: JSON.stringify({
                           shot_id: remainingShotIds[i],
-                          model: params.model,
+                          model: isKie ? kieModelId : params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...(isKie ? { quality: params.quality ?? "1K" } : {}),
                           ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
                             ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
                             : {}),
