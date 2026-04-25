@@ -466,7 +466,21 @@ serve(async (req) => {
         .map((obj: any) => obj.identity_prompt || "")
         .filter(Boolean);
       if (identityLocks.length > 0) {
-        enrichedPrompt = identityLocks.join("\n\n") + "\n\n" + enrichedPrompt;
+        // Strip the repeated "CHARACTER/LOCATION/OBJECT/VEHICLE IDENTITY LOCK:"
+        // headers and the boilerplate "Do not redesign…" lines (already covered
+        // by the unified reference rule block) before injection.
+        const condensed = identityLocks
+          .map((lock: string) =>
+            lock
+              .replace(/^(CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:\s*/gim, "")
+              .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+              .replace(/\n{3,}/g, "\n\n")
+              .trim(),
+          )
+          .filter(Boolean);
+        if (condensed.length > 0) {
+          enrichedPrompt = "IDENTITY LOCK:\n" + condensed.join("\n\n") + "\n\n" + enrichedPrompt;
+        }
       }
     }
 
