@@ -257,17 +257,28 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
           .eq("id", dialog.source.id);
         if (error) throw error;
         toast.success("Source mise à jour");
+        // Si on vient d'ajouter une URL et qu'aucune transcription n'existe → tenter l'auto-fetch.
+        const hadTranscript = !!dialog.source.transcript?.trim();
+        if (!trimmedTranscript && trimmedUrl && !hadTranscript) {
+          void tryAutoFetch(dialog.source.id, trimmedUrl, dialog.source.language ?? "fr");
+        }
       } else {
         if (!canAdd) {
           toast.error(`Maximum ${MAX_SOURCES} sources atteint`);
           setSaving(false);
           return;
         }
-        const { error } = await (supabase as any)
+        const { data: inserted, error } = await (supabase as any)
           .from("narrative_sources")
-          .insert(payload);
+          .insert(payload)
+          .select("id, language")
+          .single();
         if (error) throw error;
         toast.success("Source ajoutée");
+        // Création par URL sans transcription → tenter l'extraction automatique.
+        if (!trimmedTranscript && trimmedUrl && inserted?.id) {
+          void tryAutoFetch(inserted.id, trimmedUrl, inserted.language ?? "fr");
+        }
       }
       await fetchSources();
       setDialog({ kind: "closed" });
@@ -278,7 +289,7 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
     } finally {
       setSaving(false);
     }
-  }, [user, dialog, form, validateForm, canAdd, fetchSources]);
+  }, [user, dialog, form, validateForm, canAdd, fetchSources, tryAutoFetch]);
 
   const handleDelete = useCallback(async () => {
     if (!pendingDelete) return;
@@ -624,6 +635,47 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
           Limite atteinte ({MAX_SOURCES}/{MAX_SOURCES}). Supprimez une source pour en ajouter une nouvelle.
         </p>
+      )}
+
+      {/* CTA Analyse — apparaît dès qu'au moins une transcription est exploitable. */}
+      {!loading && sources.length > 0 && (
+        <div
+          className={cn(
+            "rounded-lg border p-3 sm:p-4 transition-colors",
+            canAnalyze
+              ? "border-primary/30 bg-primary/5"
+              : "border-border bg-muted/20",
+          )}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <p className="text-[11px] sm:text-xs font-medium text-foreground">
+                  {analyzableSources.length} source
+                  {analyzableSources.length > 1 ? "s" : ""} prête
+                  {analyzableSources.length > 1 ? "s" : ""} pour l'analyse
+                </p>
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                {canAnalyze
+                  ? "Vous pouvez lancer l'analyse, ou ajouter d'autres sources pour enrichir la mécanique narrative."
+                  : "Au moins une transcription valide (≥ 50 caractères) est requise pour lancer l'analyse."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={handleAnalyze}
+              disabled={!canAnalyze}
+              className="min-h-[36px] shrink-0"
+            >
+              <Sparkles className="h-4 w-4" />
+              Analyser la structure narrative
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Create / Edit dialog */}
