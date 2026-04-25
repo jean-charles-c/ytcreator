@@ -119,6 +119,32 @@ function wordCount(text: string | null): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+/**
+ * Récupère titre + chaîne d'une vidéo YouTube via l'endpoint oEmbed
+ * public (CORS-friendly, sans clé API). Retourne `null` si l'URL est
+ * invalide ou si YouTube refuse la requête (vidéo privée, supprimée, etc.).
+ */
+async function fetchYoutubeMeta(
+  url: string,
+): Promise<{ title: string; channel: string } | null> {
+  if (!isLikelyYoutubeUrl(url)) return null;
+  try {
+    const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+      url.trim(),
+    )}&format=json`;
+    const r = await fetch(endpoint);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const title = typeof data?.title === "string" ? data.title.trim() : "";
+    const channel =
+      typeof data?.author_name === "string" ? data.author_name.trim() : "";
+    if (!title && !channel) return null;
+    return { title, channel };
+  } catch {
+    return null;
+  }
+}
+
 interface SourceManagerProps {
   onSourcesChange?: (count: number) => void;
   /** Appelé quand l'utilisateur clique sur « Analyser la structure narrative ». */
