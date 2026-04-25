@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, RefreshCw, ImageIcon, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, RefreshCw, ImageIcon, X, ChevronLeft, ChevronRight, Square } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Shot = Tables<"shots">;
@@ -23,6 +23,10 @@ interface VisualGalleryProps {
   onRegenerateShot: (shotId: string) => Promise<void>;
   onGenerateImage: (shotId: string, customPrompt?: string) => Promise<void>;
   totalCost: number;
+  /** Shot ids currently being generated (used to switch the per-shot button to Stop) */
+  activeShotIds?: string[];
+  /** Called when the user clicks Stop on a shot whose generation is in flight */
+  onStopGeneration?: () => void;
 }
 
 const formatUsd = (value: number | string | null | undefined) => {
@@ -41,6 +45,8 @@ export default function VisualGallery({
   onRegenerateShot,
   onGenerateImage,
   totalCost,
+  activeShotIds,
+  onStopGeneration,
 }: VisualGalleryProps) {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
@@ -71,6 +77,9 @@ export default function VisualGallery({
     setGeneratingImageId(shotId);
     try { await onGenerateImage(shotId); } finally { setGeneratingImageId(null); }
   };
+
+  const isShotGenerating = (shotId: string) =>
+    (activeShotIds?.includes(shotId) ?? false) || generatingImageId === shotId;
 
   const lightboxShot = lightboxIndex !== null ? shotsWithImages[lightboxIndex] : null;
 
@@ -164,13 +173,31 @@ export default function VisualGallery({
                           Shot
                         </button>
                         <button
-                          onClick={() => handleRegenImage(shot.id)}
-                          disabled={generatingImageId === shot.id}
-                          className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-                          title="Regénérer le visuel"
+                          onClick={() => {
+                            if (isShotGenerating(shot.id) && onStopGeneration) {
+                              onStopGeneration();
+                            } else {
+                              handleRegenImage(shot.id);
+                            }
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10px] transition-colors ${
+                            isShotGenerating(shot.id)
+                              ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                              : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                          }`}
+                          title={isShotGenerating(shot.id) ? "Arrêter la génération" : "Regénérer le visuel"}
                         >
-                          {generatingImageId === shot.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
-                          Visuel
+                          {isShotGenerating(shot.id) ? (
+                            <>
+                              <Square className="h-3 w-3 fill-current" />
+                              Stop
+                            </>
+                          ) : (
+                            <>
+                              <ImageIcon className="h-3 w-3" />
+                              Visuel
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
