@@ -1,7 +1,7 @@
 import { ArrowLeft, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NarrativeWorkflowProgress from "./NarrativeWorkflowProgress";
-import { NARRATIVE_WORKFLOW_STEPS } from "./NarrativeWorkflowSteps";
+import SourceManager from "./SourceManager";
 
 interface NarrativeWorkflowViewProps {
   projectId: string | null;
@@ -75,15 +75,9 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
         <NarrativeWorkflowProgress currentStep="sources" completedSteps={[]} />
       </div>
 
-      {/* Placeholder pour la suite du workflow */}
-      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 sm:p-10 text-center">
-        <Sparkles className="h-6 w-6 mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
-        <h3 className="text-sm sm:text-base font-medium text-foreground mb-1">
-          Étape 1 : {NARRATIVE_WORKFLOW_STEPS[0].label}
-        </h3>
-        <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground max-w-md mx-auto">
-          La gestion détaillée des sources (1 à 4) sera disponible à l'étape suivante du build.
-        </p>
+      {/* Étape 1 : gestion des sources (1 à 4) */}
+      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 lg:p-5">
+        <SourceManager />
       </div>
     </div>
   );
