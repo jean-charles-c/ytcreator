@@ -446,6 +446,44 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
     tryAutoFetchRef.current = tryAutoFetch;
   }, [tryAutoFetch]);
 
+  /**
+   * Pré-remplit titre + chaîne automatiquement quand l'utilisateur saisit
+   * une URL YouTube valide dans le dialog (création ou édition). Ne touche
+   * jamais à un champ déjà renseigné par l'utilisateur.
+   */
+  useEffect(() => {
+    if (dialog.kind === "closed") return;
+    const url = form.youtube_url.trim();
+    if (!url || !isLikelyYoutubeUrl(url)) return;
+    if (form.title.trim() && form.channel.trim()) return;
+
+    let cancelled = false;
+    const handle = window.setTimeout(async () => {
+      setFetchingMeta(true);
+      const meta = await fetchYoutubeMeta(url);
+      if (cancelled) return;
+      setFetchingMeta(false);
+      if (!meta) return;
+      setForm((f) => {
+        // Vérifie à nouveau côté state au moment de l'application : si
+        // l'utilisateur a tapé entre-temps, on ne l'écrase pas.
+        const next = { ...f };
+        if (!next.title.trim() && meta.title) next.title = meta.title.slice(0, 200);
+        if (!next.channel.trim() && meta.channel)
+          next.channel = meta.channel.slice(0, 120);
+        return next;
+      });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+    // On dépend uniquement de l'URL et de l'ouverture du dialog : le
+    // remplissage manuel ne doit pas re-déclencher le fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.youtube_url, dialog.kind]);
+
   const analyzableSources = useMemo(
     () => sources.filter((s) => isSourceAnalyzable(s)),
     [sources],
