@@ -304,6 +304,108 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
     return "";
   }, [dialog]);
 
+  /**
+   * Tente l'extraction automatique de la transcription via l'edge function
+   * `fetch-youtube-transcript`. Met à jour `fetch_status` et `transcript`
+   * en base. En cas d'échec → `fetch_status = "failed"` (l'utilisateur
+   * passe alors en fallback manuel).
+   *
+   * Ne bloque jamais les autres sources : chaque appel est isolé et les
+   * erreurs sont catchées localement.
+   */
+  const tryAutoFetch = useCallback(
+    async (sourceId: string, url: string, language: string | null) => {
+      if (!user) return;
+      setFetchingIds((prev) => new Set(prev).add(sourceId));
+      await (supabase as any)
+        .from("narrative_sources")
+        .update({ fetch_status: "fetching" })
+        .eq("id", sourceId);
+      setSources((prev) =>
+        prev.map((s) => (s.id === sourceId ? { ...s, fetch_status: "fetching" } : s)),
+      );
+
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "fetch-youtube-transcript",
+          { body: { url, language: language || "fr" } },
+        );
+        if (error) throw error;
+
+        if (data?.ok && typeof data.transcript === "string") {
+          await (supabase as any)
+            .from("narrative_sources")
+            .update({
+              transcript: data.transcript,
+              language: data.language ?? language ?? "fr",
+              fetch_status: "auto_fetched",
+              transcript_source: "youtube_auto",
+            })
+            .eq("id", sourceId);
+          toast.success("Transcription extraite automatiquement");
+        } else {
+          await (supabase as any)
+            .from("narrative_sources")
+            .update({ fetch_status: "failed" })
+            .eq("id", sourceId);
+          toast.warning(
+            "Extraction automatique impossible — collez la transcription manuellement.",
+          );
+        }
+      } catch (e) {
+        console.error("auto-fetch error", e);
+        await (supabase as any)
+          .from("narrative_sources")
+          .update({ fetch_status: "failed" })
+          .eq("id", sourceId);
+        toast.warning(
+          "Extraction automatique indisponible — collez la transcription manuellement.",
+        );
+      } finally {
+        setFetchingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sourceId);
+          return next;
+        });
+        await fetchSources();
+      }
+    },
+    [user, fetchSources],
+  );
+
+  const handleRetryFetch = useCallback(
+    (s: NarrativeSourceRow) => {
+      if (!s.youtube_url) {
+        toast.error("Aucune URL à utiliser pour la récupération automatique.");
+        return;
+      }
+      tryAutoFetch(s.id, s.youtube_url, s.language);
+    },
+    [tryAutoFetch],
+  );
+
+  const analyzableSources = useMemo(
+    () => sources.filter((s) => isSourceAnalyzable(s)),
+    [sources],
+  );
+  const canAnalyze = analyzableSources.length >= 1;
+
+  const handleAnalyze = useCallback(() => {
+    if (!canAnalyze) {
+      toast.error(
+        "Au moins une transcription valide est requise pour lancer l'analyse.",
+      );
+      return;
+    }
+    if (onAnalyze) {
+      onAnalyze(analyzableSources);
+    } else {
+      toast.info(
+        "Analyse narrative — branchement à venir à l'étape suivante du workflow.",
+      );
+    }
+  }, [canAnalyze, onAnalyze, analyzableSources]);
+
   return (
     <section className="space-y-3 sm:space-y-4">
       {/* Header + counter + actions */}
