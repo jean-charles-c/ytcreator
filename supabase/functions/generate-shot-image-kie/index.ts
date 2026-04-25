@@ -329,6 +329,41 @@ async function rehostImage(supabase: any, imageUrl: string, projectId: string, s
   return data.publicUrl;
 }
 
+/**
+ * Soften a prompt to reduce the chance of triggering Google's safety filters.
+ * Replaces explicit injury / violence wording with neutral, documentary-style equivalents.
+ */
+function sanitizePromptForSafety(text: string): string {
+  const sanitized = text
+    // English
+    .replace(/\b(blood|bloody|gore|gory|murder|kill(?:ed|ing)?|dead\s+body|corpse|skull|death|wound(?:ed)?|injur(?:y|ed|ies)|burn(?:ing|ed|t)?|burn\s+mark|cut|gash|scar|bruise|swollen)\b/gi, "mark")
+    // French (the prompts are FR)
+    .replace(/\bbr[ûu]l(?:ure|ures|é|ée|és|ées|ant|ante|er)\b/gi, "marque rougie")
+    .replace(/\bcoupure(?:s)?\b/gi, "petite marque")
+    .replace(/\bblessure(?:s)?\b/gi, "marque")
+    .replace(/\bbless[ée](?:e|s|es)?\b/gi, "marqué")
+    .replace(/\bplaie(?:s)?\b/gi, "marque")
+    .replace(/\bsang|sanglant(?:e|s|es)?\b/gi, "")
+    .replace(/\bdouleur(?:s)?\b/gi, "tension")
+    .replace(/\bsouffrance(?:s)?\b/gi, "tension")
+    .replace(/\bpeau\s+rougie\b/gi, "teinte rosée")
+    .replace(/\bcicatrice(?:s)?\b/gi, "trace")
+    .replace(/\bmort(?:s|e|es)?\b/gi, "silencieux")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return `Stylized cinematic documentary illustration, tasteful and non-graphic. ${sanitized}`;
+}
+
+function isSafetyError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("filtered out") ||
+    m.includes("prohibited use") ||
+    m.includes("safety") ||
+    m.includes("no images found in ai response")
+  );
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -623,28 +658,56 @@ serve(async (req) => {
     console.log(`[KIE] Generating shot ${shot_id} with ${model} @${selectedQuality}, refs=${cappedRefs.length} oref=${cappedOref.length} sref=${cappedSref.length}`);
     const startTime = Date.now();
 
-    // Submit & poll
-    const taskId = await submitKieTask({
-      apiKey: KIE_API_KEY,
-      endpointPath: pricingRow.endpoint_path,
-      modelKey,
-      prompt: enrichedPrompt,
-      aspectRatio: selectedAspectRatio,
-      size,
-      referenceImages: cappedRefs,
-      orefImages: cappedOref,
-      srefImages: cappedSref,
-      isMidjourney,
-    });
+    // Submit & poll — with one automatic retry using a sanitized prompt if the
+    // first attempt is blocked by Google's safety filter.
+    const promptVariants = [enrichedPrompt, sanitizePromptForSafety(enrichedPrompt)];
+    let taskId = "";
+    let kieImageUrl = "";
+    let lastError: unknown = null;
 
-    if (kie_async === true || req.headers.get("x-kie-async") === "1") {
-      return new Response(
-        JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
-        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    for (let attempt = 0; attempt < promptVariants.length; attempt++) {
+      const promptToUse = promptVariants[attempt];
+      if (attempt > 0) {
+        console.warn(`[KIE] Safety filter triggered — retrying with sanitized prompt (attempt ${attempt + 1})`);
+      }
+      try {
+        taskId = await submitKieTask({
+          apiKey: KIE_API_KEY,
+          endpointPath: pricingRow.endpoint_path,
+          modelKey,
+          prompt: promptToUse,
+          aspectRatio: selectedAspectRatio,
+          size,
+          referenceImages: cappedRefs,
+          orefImages: cappedOref,
+          srefImages: cappedSref,
+          isMidjourney,
+        });
+
+        if (attempt === 0 && (kie_async === true || req.headers.get("x-kie-async") === "1")) {
+          return new Response(
+            JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
+            { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
+        break; // success
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg === "KIE_TIMEOUT_SYNC") throw err;
+        if (!isSafetyError(msg) || attempt === promptVariants.length - 1) {
+          throw err;
+        }
+        // else loop and retry with sanitized prompt
+      }
     }
 
-    const kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
+    if (!kieImageUrl) {
+      throw lastError instanceof Error ? lastError : new Error("Kie generation failed without image URL");
+    }
+
     const finalUrl = await rehostImage(supabase, kieImageUrl, shot.project_id, shot_id, selectedAspectRatio);
     const elapsedMs = Date.now() - startTime;
 
