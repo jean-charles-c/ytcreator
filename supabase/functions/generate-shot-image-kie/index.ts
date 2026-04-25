@@ -141,7 +141,7 @@ async function submitKieTask(params: {
  */
 async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<string> {
   const maxAttempts = 60; // ~5 min @ 5s
-  const pollPath = isMidjourney ? `/mj/recordInfo` : `/jobs/recordInfo`;
+  const pollPath = isMidjourney ? `/mj/record-info` : `/jobs/recordInfo`;
 
   for (let i = 0; i < maxAttempts; i++) {
     await sleep(5000);
@@ -193,7 +193,7 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
 }
 
 async function checkKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<{ status: "pending" | "success" | "failed"; imageUrl?: string; error?: string }> {
-  const pollPath = isMidjourney ? `/mj/recordInfo` : `/jobs/recordInfo`;
+  const pollPath = isMidjourney ? `/mj/record-info` : `/jobs/recordInfo`;
   const resp = await fetch(`${KIE_BASE_URL}${pollPath}?taskId=${encodeURIComponent(taskId)}`, {
     headers: { "Authorization": `Bearer ${apiKey}` },
   });
