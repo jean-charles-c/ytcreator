@@ -123,14 +123,22 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
           variant={outline ? "outline" : "default"}
           onClick={() => (outline ? setConfirmRegenOpen(true) : runGenerate(false))}
           disabled={generating || loading}
-          className="min-h-[36px]"
+          className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
         >
           {generating ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Génération…</>
           ) : outline ? (
-            <><RefreshCw className="h-4 w-4" /> Régénérer le sommaire</>
+            <>
+              <RefreshCw className="h-4 w-4" />
+              <span className="sm:hidden">Régénérer</span>
+              <span className="hidden sm:inline">Régénérer le sommaire</span>
+            </>
           ) : (
-            <><Wand2 className="h-4 w-4" /> Générer le sommaire</>
+            <>
+              <Wand2 className="h-4 w-4" />
+              <span className="sm:hidden">Générer</span>
+              <span className="hidden sm:inline">Générer le sommaire</span>
+            </>
           )}
         </Button>
       </div>
