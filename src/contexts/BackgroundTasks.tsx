@@ -1164,6 +1164,10 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
           const MAX_RETRIES = 3;
           const SHOT_TIMEOUT_MS = 120_000;
+          const KIE_START_TIMEOUT_MS = 45_000;
+          const KIE_POLL_TIMEOUT_MS = 30_000;
+          const KIE_POLL_INTERVAL_MS = 8_000;
+          const KIE_MAX_POLL_ATTEMPTS = 60;
           const failedThisRound: string[] = [];
 
           for (let i = 0; i < remainingShotIds.length; i++) {
@@ -1200,11 +1204,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
                 const accessToken = await getFreshAccessToken();
 
-                const callGenerateShotImage = async (token: string) => {
+                const callGenerateShotImage = async (token: string, extraBody: Record<string, unknown> = {}, timeoutMs = SHOT_TIMEOUT_MS) => {
                   const shotAc = new AbortController();
                   const onParentAbort = () => shotAc.abort();
                   ac.signal.addEventListener("abort", onParentAbort, { once: true });
-                  const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
+                  const timer = setTimeout(() => shotAc.abort(), timeoutMs);
 
                   try {
                     // Route to Kie edge function when model uses the "kie:" prefix
@@ -1219,11 +1223,13 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           "Content-Type": "application/json",
                           Authorization: `Bearer ${token}`,
                           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                          ...(isKie && !extraBody.mode ? { "x-kie-async": "1" } : {}),
                         },
                         body: JSON.stringify({
                           shot_id: remainingShotIds[i],
                           model: isKie ? kieModelId : params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...extraBody,
                           ...(isKie ? { quality: params.quality ?? "1K" } : {}),
                           ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
                             ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
