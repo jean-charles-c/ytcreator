@@ -973,6 +973,7 @@ export default function PdfDocumentaryTab({
     setScriptV2("");
     setScriptV2Revised(null);
     setShowV2Revised(false);
+    const customForm = customForms.find((f) => f.id === selectedForm);
     startScriptGenerationV2({
       projectId,
       analysis,
@@ -980,11 +981,13 @@ export default function PdfDocumentaryTab({
       scriptLanguage,
       charMin,
       charMax,
-      narrativeForm: selectedForm,
+      narrativeForm: customForm ? "custom" : selectedForm,
+      narrativeFormPrompt: customForm?.system_prompt,
+      narrativeFormId: selectedForm,
       narrativeStyleVoice: narrativeStyleId === "custom" ? customStyleLabel : styleVoice,
       onIntentionNote: (note) => setV2IntentionNote(note),
     });
-  }, [analysis, extractedText, projectId, scriptLanguage, charMin, charMax, selectedForm, narrativeStyleId, customStyleLabel, startScriptGenerationV2]);
+  }, [analysis, extractedText, projectId, scriptLanguage, charMin, charMax, selectedForm, narrativeStyleId, customStyleLabel, startScriptGenerationV2, customForms]);
 
   // Delegate script generation to background context
   const runFullScriptGeneration = useCallback(async (isRegenerate = false) => {
