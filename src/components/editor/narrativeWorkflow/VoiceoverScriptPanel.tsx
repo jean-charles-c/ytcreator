@@ -233,12 +233,13 @@ export default function VoiceoverScriptPanel({
             la forme narrative et reste copiable vers ScriptCreator.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             type="button"
             size="sm"
             disabled={busy || loadingScenes || eligibleScenes === 0}
             onClick={() => callGenerate(script !== null)}
+            className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -247,7 +248,10 @@ export default function VoiceoverScriptPanel({
             ) : (
               <Wand2 className="h-4 w-4" />
             )}
-            <span className="ml-1.5">
+            <span className="ml-1.5 sm:hidden">
+              {script ? "Régénérer" : "Générer le script"}
+            </span>
+            <span className="ml-1.5 hidden sm:inline">
               {script ? "Régénérer le script" : "Générer le script voix off"}
             </span>
           </Button>
@@ -255,8 +259,8 @@ export default function VoiceoverScriptPanel({
       </div>
 
       {/* Filtres et options */}
-      <div className="flex flex-wrap items-center gap-3 rounded-md border border-border/60 bg-background/40 p-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border/60 bg-background/40 p-3">
+        <div className="flex items-center gap-2 min-h-[36px]">
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
           <Switch
             id="validated-only"
@@ -276,7 +280,7 @@ export default function VoiceoverScriptPanel({
         <button
           type="button"
           onClick={() => setShowInstructions((v) => !v)}
-          className="ml-auto text-[11px] text-primary hover:underline"
+          className="sm:ml-auto text-[11px] text-primary hover:underline min-h-[32px] inline-flex items-center"
         >
           {showInstructions ? "Masquer" : "Ajouter"} des consignes
         </button>
@@ -306,9 +310,9 @@ export default function VoiceoverScriptPanel({
 
       {script && (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-muted-foreground">
             {script.title && (
-              <span className="font-semibold text-foreground text-xs">{script.title}</span>
+              <span className="font-semibold text-foreground text-xs w-full sm:w-auto truncate">{script.title}</span>
             )}
             <span className="inline-flex items-center gap-1">
               <Hash className="h-3 w-3" /> {script.word_count} mots
@@ -317,7 +321,7 @@ export default function VoiceoverScriptPanel({
               <Clock className="h-3 w-3" /> ≈ {formatDuration(script.estimated_duration_seconds)}
             </span>
             {script.ai_model && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary border border-border">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary border border-border truncate max-w-[140px]">
                 {script.ai_model}
               </span>
             )}
@@ -325,7 +329,7 @@ export default function VoiceoverScriptPanel({
               type="button"
               size="sm"
               variant="outline"
-              className="ml-auto h-7"
+              className="sm:ml-auto h-9 sm:h-7"
               onClick={onCopy}
             >
               {copied ? (
@@ -334,7 +338,7 @@ export default function VoiceoverScriptPanel({
                 <Copy className="h-3.5 w-3.5" />
               )}
               <span className="ml-1.5 text-[11px]">
-                {copied ? "Copié" : "Copier le script"}
+                {copied ? "Copié" : "Copier"}
               </span>
             </Button>
           </div>
@@ -342,17 +346,18 @@ export default function VoiceoverScriptPanel({
           <Textarea
             value={script.content}
             readOnly
-            className="font-mono text-[12px] leading-relaxed min-h-[400px] whitespace-pre-wrap bg-background/60"
+            className="font-mono text-[12px] leading-relaxed min-h-[280px] sm:min-h-[400px] whitespace-pre-wrap bg-background/60"
           />
 
           {/* Étape 15 — Envoi vers ScriptCreator */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pt-1">
             {onSendToScriptCreator ? (
               <Button
                 type="button"
                 size="sm"
                 onClick={onSendClick}
                 disabled={sending || !script.content?.trim()}
+                className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
               >
                 {sending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
