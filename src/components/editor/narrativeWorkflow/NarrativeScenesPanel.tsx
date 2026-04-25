@@ -677,7 +677,7 @@ function SceneCard({
         scene.validated ? "border-primary/40 shadow-sm shadow-primary/5" : "border-border/60"
       }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         <span className="inline-flex items-center justify-center h-5 min-w-5 rounded bg-secondary text-foreground/80 text-[10px] font-semibold px-1 shrink-0">
           #{scene.scene_order}
         </span>
@@ -706,18 +706,19 @@ function SceneCard({
             <p className="mt-1 text-[11px] text-foreground/80 leading-relaxed">{scene.summary}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
           <button
             type="button"
             onClick={onToggleValidated}
-            className={`p-1.5 rounded transition-colors ${
+            className={`p-2 sm:p-1.5 rounded transition-colors min-w-[36px] sm:min-w-0 inline-flex items-center justify-center ${
               scene.validated
                 ? "text-primary hover:bg-secondary"
                 : "text-muted-foreground hover:text-primary hover:bg-secondary"
             }`}
             title={scene.validated ? "Déverrouiller" : "Valider"}
+            aria-label={scene.validated ? "Déverrouiller la scène" : "Valider la scène"}
           >
-            {scene.validated ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+            {scene.validated ? <Lock className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> : <Unlock className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
           </button>
           <VariantMenu
             size="sm"
@@ -738,19 +739,21 @@ function SceneCard({
             type="button"
             onClick={onDelete}
             disabled={scene.validated}
-            className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed min-w-[36px] sm:min-w-0 inline-flex items-center justify-center"
             title={scene.validated ? "Verrouillée" : "Supprimer"}
+            aria-label={scene.validated ? "Scène verrouillée" : "Supprimer la scène"}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
           </button>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="p-2 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary min-w-[36px] sm:min-w-0 inline-flex items-center justify-center"
             title={open ? "Réduire" : "Détails"}
+            aria-label={open ? "Réduire la scène" : "Voir les détails"}
           >
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
+              className={`h-4 w-4 sm:h-3.5 sm:w-3.5 transition-transform ${open ? "" : "-rotate-90"}`}
             />
           </button>
         </div>
