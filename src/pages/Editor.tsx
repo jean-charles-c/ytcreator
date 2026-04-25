@@ -2825,10 +2825,24 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         >
                           {IMAGE_MODELS.map((m) => (
                             <option key={m.value} value={m.value}>
-                              {m.label} — {m.price}
+                              {m.provider === "kie" ? "🟣 " : ""}{m.label}{m.provider === "kie" ? " (Kie)" : ""} — {m.price}
                             </option>
                           ))}
                         </select>
+                        {isKieEngine(imageModel) && (
+                          <select
+                            value={imageQuality}
+                            onChange={(e) => setImageQuality(e.target.value as "1K" | "2K" | "4K")}
+                            className="rounded border border-violet-500/40 bg-violet-500/5 px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            title="Qualité de sortie Kie"
+                          >
+                            {(IMAGE_MODELS.find((m) => m.value === imageModel)?.qualities ?? []).map((q) => (
+                              <option key={q.quality} value={q.quality}>
+                                {q.quality} — {formatKiePrice(q.priceUsd)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">Format :</span>
