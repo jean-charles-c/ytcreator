@@ -2876,11 +2876,18 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                               : ""}
                           </Button>
                           {imageGenTask?.imageGenModel && (
-                            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
-                              🤖 {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.label ?? imageGenTask.imageGenModel}
-                              {" — "}
-                              {IMAGE_MODELS.find((m) => m.value === imageGenTask.imageGenModel)?.price ?? "?"}
-                            </span>
+                            (() => {
+                              const m = IMAGE_MODELS.find((mm) => mm.value === imageGenTask.imageGenModel);
+                              const isKie = isKieEngine(imageGenTask.imageGenModel);
+                              return (
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium ${isKie ? "border-violet-500/40 bg-violet-500/10 text-violet-300" : "border-primary/20 bg-primary/10 text-primary"}`}>
+                                  {isKie ? "🟣" : "🤖"} {m?.label ?? imageGenTask.imageGenModel}
+                                  {isKie && <span className="rounded bg-violet-500/30 px-1 text-[9px] uppercase tracking-wide">Kie</span>}
+                                  {" — "}
+                                  {m?.price ?? "?"}
+                                </span>
+                              );
+                            })()
                           )}
                         </div>
                       ) : (() => {
