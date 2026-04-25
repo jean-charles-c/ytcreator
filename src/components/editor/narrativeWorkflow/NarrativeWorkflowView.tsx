@@ -6,6 +6,9 @@ import NarrativeWorkflowProgress from "./NarrativeWorkflowProgress";
 import SourceManager, { type NarrativeSourceRow } from "./SourceManager";
 import NarrativeAnalysisPanel, { type AnalysisPayload } from "./NarrativeAnalysisPanel";
 import { supabase } from "@/integrations/supabase/client";
+import SaveNarrativeFormDialog from "./SaveNarrativeFormDialog";
+import { buildCustomFormPrompt, buildNarrativeSignature } from "./buildCustomFormPrompt";
+import { useCustomNarrativeForms } from "@/hooks/useCustomNarrativeForms";
 
 interface NarrativeWorkflowViewProps {
   projectId: string | null;
@@ -27,6 +30,10 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
   const [analysisResult, setAnalysisResult] = useState<AnalysisPayload | null>(null);
   const [sourcesUsed, setSourcesUsed] = useState<number | undefined>();
   const [lastSources, setLastSources] = useState<NarrativeSourceRow[]>([]);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { createForm } = useCustomNarrativeForms();
 
   const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
     if (sources.length === 0) {
@@ -48,6 +55,7 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
       }
       setAnalysisResult(data.analysis as AnalysisPayload);
       setSourcesUsed(data.sources_used);
+      setAnalysisId(data.analysis_id ?? null);
       setAnalysisStatus("success");
       toast.success("Analyse narrative terminée");
     } catch (e: any) {
@@ -64,10 +72,40 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
   }, [lastSources, runAnalysis]);
 
   const handleSaveAsForm = useCallback(() => {
-    toast.info(
-      "Sauvegarde comme forme narrative — disponible à l'étape suivante du workflow.",
-    );
-  }, []);
+    if (!analysisResult) {
+      toast.error("Aucune analyse à sauvegarder.");
+      return;
+    }
+    setSaveOpen(true);
+  }, [analysisResult]);
+
+  const handleConfirmSave = useCallback(
+    async ({ name, description, userNotes }: { name: string; description: string; userNotes: string }) => {
+      if (!analysisResult) return;
+      setSaving(true);
+      try {
+        const system_prompt = buildCustomFormPrompt(analysisResult, userNotes);
+        const narrative_signature = buildNarrativeSignature(analysisResult, userNotes);
+        await createForm({
+          name,
+          description,
+          system_prompt,
+          analysis_id: analysisId,
+          narrative_signature,
+        });
+        setSaveOpen(false);
+        toast.success(
+          `« ${name} » est disponible dans ScriptCreator v2 (badge Personnalisée).`,
+        );
+      } catch (e: any) {
+        console.error("save form", e);
+        toast.error(e?.message || "Erreur lors de la sauvegarde");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [analysisResult, analysisId, createForm],
+  );
 
   const handleGeneratePitches = useCallback(() => {
     toast.info(
@@ -158,9 +196,24 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
             onRetry={handleRetry}
             onSaveAsForm={handleSaveAsForm}
             onGeneratePitches={handleGeneratePitches}
+            saving={saving}
           />
         </div>
       )}
+
+      {/* Dialog de sauvegarde — Étape 9 */}
+      <SaveNarrativeFormDialog
+        open={saveOpen}
+        onOpenChange={setSaveOpen}
+        defaultName={analysisResult?.title || ""}
+        defaultDescription={
+          analysisResult?.summary
+            ? analysisResult.summary.split("\n")[0].slice(0, 140)
+            : ""
+        }
+        saving={saving}
+        onSave={handleConfirmSave}
+      />
     </div>
   );
 }
