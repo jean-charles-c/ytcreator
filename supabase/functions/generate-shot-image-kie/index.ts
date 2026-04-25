@@ -554,7 +554,7 @@ serve(async (req) => {
 
       // Reconstruct: head directives (style + reference rule + aspect ratio) +
       // compact locks + full action prompt.
-      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
+      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:IDENTITY LOCK|CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
       const headDirectives = (headMatch?.[0] || "").trim();
 
       let rebuilt = "";
