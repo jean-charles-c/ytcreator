@@ -658,28 +658,56 @@ serve(async (req) => {
     console.log(`[KIE] Generating shot ${shot_id} with ${model} @${selectedQuality}, refs=${cappedRefs.length} oref=${cappedOref.length} sref=${cappedSref.length}`);
     const startTime = Date.now();
 
-    // Submit & poll
-    const taskId = await submitKieTask({
-      apiKey: KIE_API_KEY,
-      endpointPath: pricingRow.endpoint_path,
-      modelKey,
-      prompt: enrichedPrompt,
-      aspectRatio: selectedAspectRatio,
-      size,
-      referenceImages: cappedRefs,
-      orefImages: cappedOref,
-      srefImages: cappedSref,
-      isMidjourney,
-    });
+    // Submit & poll — with one automatic retry using a sanitized prompt if the
+    // first attempt is blocked by Google's safety filter.
+    const promptVariants = [enrichedPrompt, sanitizePromptForSafety(enrichedPrompt)];
+    let taskId = "";
+    let kieImageUrl = "";
+    let lastError: unknown = null;
 
-    if (kie_async === true || req.headers.get("x-kie-async") === "1") {
-      return new Response(
-        JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
-        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    for (let attempt = 0; attempt < promptVariants.length; attempt++) {
+      const promptToUse = promptVariants[attempt];
+      if (attempt > 0) {
+        console.warn(`[KIE] Safety filter triggered — retrying with sanitized prompt (attempt ${attempt + 1})`);
+      }
+      try {
+        taskId = await submitKieTask({
+          apiKey: KIE_API_KEY,
+          endpointPath: pricingRow.endpoint_path,
+          modelKey,
+          prompt: promptToUse,
+          aspectRatio: selectedAspectRatio,
+          size,
+          referenceImages: cappedRefs,
+          orefImages: cappedOref,
+          srefImages: cappedSref,
+          isMidjourney,
+        });
+
+        if (attempt === 0 && (kie_async === true || req.headers.get("x-kie-async") === "1")) {
+          return new Response(
+            JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
+            { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
+        break; // success
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg === "KIE_TIMEOUT_SYNC") throw err;
+        if (!isSafetyError(msg) || attempt === promptVariants.length - 1) {
+          throw err;
+        }
+        // else loop and retry with sanitized prompt
+      }
     }
 
-    const kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
+    if (!kieImageUrl) {
+      throw lastError instanceof Error ? lastError : new Error("Kie generation failed without image URL");
+    }
+
     const finalUrl = await rehostImage(supabase, kieImageUrl, shot.project_id, shot_id, selectedAspectRatio);
     const elapsedMs = Date.now() - startTime;
 
