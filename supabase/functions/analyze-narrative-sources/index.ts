@@ -66,6 +66,10 @@ interface AnalysisToolPayload {
     do: string[];
     avoid: string[];
   };
+  variations?: {
+    summary?: string;
+    items?: { axis: string; observation: string }[];
+  };
 }
 
 function buildSystemPrompt(): string {
@@ -89,6 +93,10 @@ function buildSystemPrompt(): string {
     "  • 1 source courte/moyenne → low",
     "  • 1 source riche OU 2 sources cohérentes → medium",
     "  • 3+ sources cohérentes → high",
+    "- Si plusieurs sources sont fournies, remplis `variations` avec les",
+    "  divergences observées entre elles (structure, ton, rythme, ouverture…).",
+    "  Si une seule source : `variations.summary` doit l'indiquer explicitement",
+    "  et `variations.items` peut rester vide.",
     "- Tu réponds OBLIGATOIREMENT via l'appel d'outil `submit_narrative_analysis`.",
   ].join("\n");
 }
@@ -211,6 +219,25 @@ const ANALYSIS_TOOL = {
             avoid: { type: "array", items: { type: "string" } },
           },
           required: ["do", "avoid"],
+        },
+        variations: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            summary: { type: "string" },
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  axis: { type: "string", description: "Axe de variation (structure, ton, rythme…)." },
+                  observation: { type: "string" },
+                },
+                required: ["axis", "observation"],
+              },
+            },
+          },
         },
       },
       required: [
