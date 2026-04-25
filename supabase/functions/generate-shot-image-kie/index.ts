@@ -438,7 +438,13 @@ serve(async (req) => {
     }
 
     // Kie market models cap prompts at 2000 chars (some at 5000). Stay safe at 1900.
-    const KIE_PROMPT_MAX = 1900;
+    // z-image has a much stricter limit (~800 chars based on API errors).
+    const PER_MODEL_PROMPT_MAX: Record<string, number> = {
+      "z-image": 800,
+      "qwen-image": 1500,
+      "qwen2-image": 1500,
+    };
+    const KIE_PROMPT_MAX = PER_MODEL_PROMPT_MAX[model] ?? 1900;
     if (enrichedPrompt.length > KIE_PROMPT_MAX) {
       console.warn(`[KIE] Prompt truncated from ${enrichedPrompt.length} to ${KIE_PROMPT_MAX} chars`);
       enrichedPrompt = enrichedPrompt.slice(0, KIE_PROMPT_MAX - 3) + "...";
