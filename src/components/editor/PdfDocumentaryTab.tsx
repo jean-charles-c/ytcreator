@@ -304,6 +304,34 @@ export default function PdfDocumentaryTab({
     }
   }, [projectId]);
 
+  // ── Consume pendingChapterTitles (envoi depuis Narrative Form Generator) ──
+  // Construit un chapterState à partir des titres "Le premier ticket"
+  // (déjà nettoyés du préfixe "SCÈNE N — ") et persiste immédiatement.
+  useEffect(() => {
+    if (!projectId) return;
+    if (!pendingChapterTitles || pendingChapterTitles.length === 0) return;
+    if (!chapterHydratedRef.current) return;
+    const newState: ChapterListState = {
+      method: "tags",
+      lastUpdatedAt: new Date().toISOString(),
+      chapters: pendingChapterTitles.map((c, idx) => ({
+        id: `narr-${idx}-${Date.now()}`,
+        index: idx,
+        sectionType: null,
+        startSentence: c.sourceText.split(/[.!?]\s/)[0]?.trim().slice(0, 120) ?? "",
+        summary: "",
+        title: c.title,
+        variants: [],
+        titleFR: null,
+        validated: true,
+        sourceText: c.sourceText,
+      })),
+    };
+    setChapterState(newState);
+    void saveChapterState(newState);
+    onPendingChapterTitlesConsumed?.();
+  }, [projectId, pendingChapterTitles, saveChapterState, onPendingChapterTitlesConsumed]);
+
   const pendingChapterSaveRef = useRef<ChapterListState | null>(null);
 
   useEffect(() => {
