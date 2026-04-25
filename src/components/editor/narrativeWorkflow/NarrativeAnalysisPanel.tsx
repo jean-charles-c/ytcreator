@@ -363,10 +363,11 @@ export default function NarrativeAnalysisPanel({
             size="sm"
             onClick={onSaveAsForm}
             disabled={!onSaveAsForm || saving}
-            className="min-h-[36px]"
+            className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
           >
             <Save className="h-3.5 w-3.5" />
-            Sauvegarder comme forme narrative
+            <span className="sm:hidden">Sauvegarder la forme</span>
+            <span className="hidden sm:inline">Sauvegarder comme forme narrative</span>
           </Button>
           <Button
             type="button"
@@ -374,10 +375,11 @@ export default function NarrativeAnalysisPanel({
             size="sm"
             onClick={onGeneratePitches}
             disabled={!onGeneratePitches || saving}
-            className="min-h-[36px]"
+            className="min-h-[40px] sm:min-h-[36px] w-full sm:w-auto justify-center"
           >
             <Wand2 className="h-3.5 w-3.5" />
-            Générer 5 propositions d'histoires
+            <span className="sm:hidden">Générer 5 pitchs</span>
+            <span className="hidden sm:inline">Générer 5 propositions d'histoires</span>
           </Button>
         </div>
       </div>
