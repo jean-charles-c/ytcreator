@@ -221,6 +221,12 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
   );
 
   return (
+    view === "narrative-workflow" ? (
+      <NarrativeWorkflowView
+        projectId={projectId}
+        onBack={() => setView("research")}
+      />
+    ) : (
     <div className="container max-w-6xl py-3 sm:py-4 lg:py-10 px-2 sm:px-4 animate-fade-in">
       <div className="mb-3 sm:mb-6">
         <h2 className="font-display text-base sm:text-lg lg:text-2xl font-semibold text-foreground mb-0.5 sm:mb-1">RsearchEngine</h2>
@@ -230,6 +236,39 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
       </div>
 
       {!hasContent && !generating && (
+        <>
+          {/* Entrée Narrative Form Generator (Étape 4) */}
+          <button
+            type="button"
+            onClick={() => setView("narrative-workflow")}
+            className="group mb-4 sm:mb-6 w-full text-left rounded-lg border border-primary/30 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent p-3 sm:p-4 lg:p-5 transition-all hover:border-primary/50 hover:from-primary/12 hover:to-primary/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Ouvrir le Narrative Form Generator"
+          >
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
+                  <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">
+                    Créer une forme narrative depuis des vidéos
+                  </h3>
+                  <span className="hidden sm:inline-block rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                    Nouveau
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground">
+                  Analysez 1 à 4 vidéos YouTube ou transcriptions pour extraire une mécanique narrative
+                  réutilisable, puis générez des histoires originales jusqu'au script voix off.
+                </p>
+              </div>
+              <ArrowRight
+                className="hidden sm:block h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary mt-1"
+                aria-hidden="true"
+              />
+            </div>
+          </button>
+
         <div className="grid items-start gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
@@ -240,6 +279,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
             className="lg:sticky lg:top-6"
           />
         </div>
+        </>
       )}
 
       {(hasContent || generating) && (
@@ -310,5 +350,6 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
         </div>
       )}
     </div>
+    )
   );
 }
