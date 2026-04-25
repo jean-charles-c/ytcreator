@@ -14,6 +14,7 @@ import PdfExportButton from "./PdfExportButton";
 import ResearchHistory from "./ResearchHistory";
 import NarrativeWorkflowView from "./narrativeWorkflow/NarrativeWorkflowView";
 import NarrativeOutlinePanel from "./narrativeWorkflow/NarrativeOutlinePanel";
+import NarrativeScenesPanel from "./narrativeWorkflow/NarrativeScenesPanel";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
@@ -242,6 +243,13 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           {projectId && (
             <div className="mb-4 sm:mb-6">
               <NarrativeOutlinePanel projectId={projectId} />
+            </div>
+          )}
+
+          {/* Étape 13 — Scènes narratives par chapitre */}
+          {projectId && (
+            <div className="mb-4 sm:mb-6">
+              <NarrativeScenesPanel projectId={projectId} />
             </div>
           )}
 

@@ -595,46 +595,82 @@ export type Database = {
       }
       narrative_scenes: {
         Row: {
+          ai_model: string | null
           chapter_id: string
+          characters: Json
           content: string
           created_at: string
+          dominant_emotion: string | null
+          generation_index: number
           id: string
+          locations: Json
+          narrative_role: string | null
+          objects: Json
+          outline_id: string | null
           project_id: string
           scene_context: Json | null
           scene_order: number
           status: string
+          summary: string | null
           title: string | null
+          transition_to_next: string | null
           updated_at: string
           user_id: string
+          validated: boolean
           visual_intention: string | null
+          voice_over_text: string | null
         }
         Insert: {
+          ai_model?: string | null
           chapter_id: string
+          characters?: Json
           content?: string
           created_at?: string
+          dominant_emotion?: string | null
+          generation_index?: number
           id?: string
+          locations?: Json
+          narrative_role?: string | null
+          objects?: Json
+          outline_id?: string | null
           project_id: string
           scene_context?: Json | null
           scene_order?: number
           status?: string
+          summary?: string | null
           title?: string | null
+          transition_to_next?: string | null
           updated_at?: string
           user_id: string
+          validated?: boolean
           visual_intention?: string | null
+          voice_over_text?: string | null
         }
         Update: {
+          ai_model?: string | null
           chapter_id?: string
+          characters?: Json
           content?: string
           created_at?: string
+          dominant_emotion?: string | null
+          generation_index?: number
           id?: string
+          locations?: Json
+          narrative_role?: string | null
+          objects?: Json
+          outline_id?: string | null
           project_id?: string
           scene_context?: Json | null
           scene_order?: number
           status?: string
+          summary?: string | null
           title?: string | null
+          transition_to_next?: string | null
           updated_at?: string
           user_id?: string
+          validated?: boolean
           visual_intention?: string | null
+          voice_over_text?: string | null
         }
         Relationships: [
           {
