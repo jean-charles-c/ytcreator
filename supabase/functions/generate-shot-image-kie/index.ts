@@ -136,6 +136,50 @@ async function submitKieTask(params: {
   return String(taskId);
 }
 
+function parseMaybeJson(value: unknown): any {
+  if (typeof value === "string" && value.trim().length > 0) {
+    try { return JSON.parse(value); } catch { return value; }
+  }
+  return value;
+}
+
+function firstImageUrl(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value.startsWith("http") ? value : null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = firstImageUrl(item);
+      if (url) return url;
+    }
+    return null;
+  }
+  if (typeof value === "object") {
+    const data = value as Record<string, unknown>;
+    return firstImageUrl(data.resultUrl) ||
+      firstImageUrl(data.url) ||
+      firstImageUrl(data.imageUrl) ||
+      firstImageUrl(data.image_url) ||
+      firstImageUrl(data.resultUrls) ||
+      firstImageUrl(data.urls) ||
+      firstImageUrl(data.images) ||
+      firstImageUrl(data.output) ||
+      firstImageUrl(data.outputs);
+  }
+  return null;
+}
+
+function parseKieTaskData(data: any) {
+  const state = String(data?.state || data?.status || data?.taskStatus || "").toLowerCase();
+  const successFlag = Number(data?.successFlag);
+  const resultJson = parseMaybeJson(data?.resultJson);
+  const resultInfoJson = parseMaybeJson(data?.resultInfoJson);
+  const imageUrl = firstImageUrl(resultInfoJson) || firstImageUrl(resultJson) || firstImageUrl(data?.response) || firstImageUrl(data);
+  const failed = state === "fail" || state === "failed" || state === "error" || successFlag === 2 || successFlag === 3;
+  const succeeded = Boolean(imageUrl) || state === "success" || state === "completed" || successFlag === 1;
+  const error = data?.failMsg || data?.errorMessage || data?.error || data?.message;
+  return { state, successFlag, imageUrl, failed, succeeded, error };
+}
+
 /**
  * Poll Kie for task result. Returns final image URL.
  */
