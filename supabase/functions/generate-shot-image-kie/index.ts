@@ -192,6 +192,45 @@ async function pollKieTask(apiKey: string, taskId: string, isMidjourney: boolean
   throw new Error("Kie task timed out after 5 minutes");
 }
 
+async function checkKieTask(apiKey: string, taskId: string, isMidjourney: boolean): Promise<{ status: "pending" | "success" | "failed"; imageUrl?: string; error?: string }> {
+  const pollPath = isMidjourney ? `/mj/recordInfo` : `/jobs/recordInfo`;
+  const resp = await fetch(`${KIE_BASE_URL}${pollPath}?taskId=${encodeURIComponent(taskId)}`, {
+    headers: { "Authorization": `Bearer ${apiKey}` },
+  });
+  const txt = await resp.text();
+  if (!resp.ok) return { status: "pending", error: `Kie poll HTTP ${resp.status}: ${txt.slice(0, 200)}` };
+
+  let json: any;
+  try { json = JSON.parse(txt); } catch { return { status: "pending", error: "Kie returned non-JSON while polling" }; }
+  const data = json?.data || {};
+  const state = data.state || data.status || data.taskStatus;
+
+  let parsedResult: any = null;
+  if (typeof data.resultJson === "string" && data.resultJson.length > 0) {
+    try { parsedResult = JSON.parse(data.resultJson); } catch { /* ignore */ }
+  } else if (data.resultJson && typeof data.resultJson === "object") {
+    parsedResult = data.resultJson;
+  }
+
+  const imageUrl =
+    parsedResult?.resultUrls?.[0] ||
+    parsedResult?.imageUrl ||
+    data?.response?.imageUrl ||
+    data?.response?.image_url ||
+    data?.imageUrl ||
+    data?.image_url ||
+    (Array.isArray(data?.resultUrls) ? data.resultUrls[0] : null);
+
+  if (imageUrl) return { status: "success", imageUrl };
+  if (state === "success" || state === "SUCCESS" || state === "completed") {
+    return { status: "failed", error: `Kie task ${taskId} reported success but no image URL was returned` };
+  }
+  if (state === "fail" || state === "failed" || state === "FAILED" || state === "error") {
+    return { status: "failed", error: data?.failMsg || data?.errorMessage || JSON.stringify(data).slice(0, 300) };
+  }
+  return { status: "pending" };
+}
+
 /**
  * Download Kie image, upload to shot-images bucket, return public URL.
  */
@@ -237,13 +276,38 @@ serve(async (req) => {
       });
     }
 
-    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt } = await req.json();
+    const { shot_id, model, quality, aspect_ratio, sensitive_level, custom_prompt, mode, task_id } = await req.json();
     if (!shot_id) throw new Error("Missing shot_id");
-    if (!model) throw new Error("Missing model");
+    if (!model && mode !== "poll") throw new Error("Missing model");
 
     const selectedQuality = ["1K", "2K", "4K"].includes(quality) ? quality : "1K";
     const selectedAspectRatio = ASPECT_RATIOS_KIE[aspect_ratio] || "16:9";
     const size = QUALITY_TO_SIZE[selectedQuality];
+
+    if (mode === "poll") {
+      if (!task_id) throw new Error("Missing task_id");
+      const isMidjourneyPoll = model === "mj-v7";
+      const { data: shot, error: shotErr } = await supabase
+        .from("shots").select("id, project_id, generation_cost").eq("id", shot_id).single();
+      if (shotErr || !shot) throw new Error("Shot not found");
+      const { data: project } = await supabase
+        .from("projects").select("id").eq("id", shot.project_id).eq("user_id", user.id).single();
+      if (!project) throw new Error("Unauthorized");
+
+      const result = await checkKieTask(KIE_API_KEY, String(task_id), isMidjourneyPoll);
+      if (result.status === "pending") {
+        return new Response(JSON.stringify({ status: "pending", provider: "kie" }), {
+          status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (result.status === "failed" || !result.imageUrl) throw new Error(result.error || "Kie task failed");
+
+      const finalUrl = await rehostImage(supabase, result.imageUrl, shot.project_id, shot_id);
+      await supabase.from("shots").update({ image_url: finalUrl }).eq("id", shot_id);
+      return new Response(JSON.stringify({ success: true, image_url: finalUrl, status: "success", provider: "kie" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Lookup pricing & endpoint
     const { data: pricingRow, error: priceErr } = await supabase
@@ -367,6 +431,13 @@ serve(async (req) => {
       srefImages: cappedSref,
       isMidjourney,
     });
+
+    if (req.headers.get("x-kie-async") === "1") {
+      return new Response(
+        JSON.stringify({ success: true, status: "pending", task_id: taskId, model, quality: selectedQuality, provider: "kie" }),
+        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const kieImageUrl = await pollKieTask(KIE_API_KEY, taskId, isMidjourney);
     const finalUrl = await rehostImage(supabase, kieImageUrl, shot.project_id, shot_id);

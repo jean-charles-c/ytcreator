@@ -1164,6 +1164,10 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
           const MAX_RETRIES = 3;
           const SHOT_TIMEOUT_MS = 120_000;
+          const KIE_START_TIMEOUT_MS = 45_000;
+          const KIE_POLL_TIMEOUT_MS = 30_000;
+          const KIE_POLL_INTERVAL_MS = 8_000;
+          const KIE_MAX_POLL_ATTEMPTS = 60;
           const failedThisRound: string[] = [];
 
           for (let i = 0; i < remainingShotIds.length; i++) {
@@ -1200,11 +1204,11 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
 
                 const accessToken = await getFreshAccessToken();
 
-                const callGenerateShotImage = async (token: string) => {
+                const callGenerateShotImage = async (token: string, extraBody: Record<string, unknown> = {}, timeoutMs = SHOT_TIMEOUT_MS) => {
                   const shotAc = new AbortController();
                   const onParentAbort = () => shotAc.abort();
                   ac.signal.addEventListener("abort", onParentAbort, { once: true });
-                  const timer = setTimeout(() => shotAc.abort(), SHOT_TIMEOUT_MS);
+                  const timer = setTimeout(() => shotAc.abort(), timeoutMs);
 
                   try {
                     // Route to Kie edge function when model uses the "kie:" prefix
@@ -1219,11 +1223,13 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                           "Content-Type": "application/json",
                           Authorization: `Bearer ${token}`,
                           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                          ...(isKie && !extraBody.mode ? { "x-kie-async": "1" } : {}),
                         },
                         body: JSON.stringify({
                           shot_id: remainingShotIds[i],
                           model: isKie ? kieModelId : params.model,
                           aspect_ratio: params.aspectRatio,
+                          ...extraBody,
                           ...(isKie ? { quality: params.quality ?? "1K" } : {}),
                           ...(params.sensitiveLevels?.[remainingShotIds[i]] != null
                             ? { sensitive_level: params.sensitiveLevels[remainingShotIds[i]] }
@@ -1244,13 +1250,34 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                   }
                 };
 
-                let response = await callGenerateShotImage(accessToken);
+                const isKieRequest = typeof params.model === "string" && params.model.startsWith("kie:");
+                let response = await callGenerateShotImage(accessToken, {}, isKieRequest ? KIE_START_TIMEOUT_MS : SHOT_TIMEOUT_MS);
 
                 if (response.status === 401 && attempt < MAX_RETRIES) {
-                  response = await callGenerateShotImage(await getFreshAccessToken());
+                  response = await callGenerateShotImage(await getFreshAccessToken(), {}, isKieRequest ? KIE_START_TIMEOUT_MS : SHOT_TIMEOUT_MS);
                 }
 
-                const data = await response.json();
+                let data = await response.json();
+                if (isKieRequest && response.status === 202 && data?.task_id) {
+                  let pollResponse: Response | null = null;
+                  for (let pollAttempt = 1; pollAttempt <= KIE_MAX_POLL_ATTEMPTS; pollAttempt++) {
+                    if (ac.signal.aborted) break;
+                    await new Promise((r) => setTimeout(r, KIE_POLL_INTERVAL_MS));
+                    pollResponse = await callGenerateShotImage(
+                      await getFreshAccessToken(),
+                      { mode: "poll", task_id: data.task_id },
+                      KIE_POLL_TIMEOUT_MS,
+                    );
+                    const pollData = await pollResponse.json();
+                    if (pollResponse.status === 202 || pollData?.status === "pending") continue;
+                    response = pollResponse;
+                    data = pollData;
+                    break;
+                  }
+                  if (pollResponse?.status === 202 || data?.status === "pending") {
+                    throw new Error("Kie generation still pending after polling window");
+                  }
+                }
                 if (data?.auth_expired) {
                   throw new Error("Session expired, please log in again");
                 } else if (data?.safety_blocked) {
