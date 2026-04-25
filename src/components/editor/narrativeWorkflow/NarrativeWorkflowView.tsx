@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Info } from "lucide-react";
+import { ArrowLeft, Sparkles, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NarrativeWorkflowProgress from "./NarrativeWorkflowProgress";
 import SourceManager, { type NarrativeSourceRow } from "./SourceManager";
@@ -36,7 +36,55 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
   const [saving, setSaving] = useState(false);
   const [pitchesAutoTrigger, setPitchesAutoTrigger] = useState(false);
   const [pitchesVisible, setPitchesVisible] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
   const { createForm } = useCustomNarrativeForms();
+
+  // Hydrate la dernière analyse complétée de l'utilisateur au montage,
+  // pour ne pas perdre l'analyse / pitchs / forme déjà générés en
+  // changeant d'onglet ou en rafraîchissant la page.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid) return;
+        const { data, error } = await supabase
+          .from("narrative_analyses")
+          .select(
+            "id, title, summary, structure, patterns, tone, rhythm, writing_rules, recommendations, source_ids, status",
+          )
+          .eq("user_id", uid)
+          .eq("status", "analysis_completed")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled || error || !data) return;
+        const payload: AnalysisPayload = {
+          title: data.title ?? undefined,
+          summary: data.summary ?? undefined,
+          structure: (data.structure as any) ?? undefined,
+          patterns: (data.patterns as any) ?? undefined,
+          tone: (data.tone as any) ?? undefined,
+          rhythm: (data.rhythm as any) ?? undefined,
+          writing_rules: (data.writing_rules as any) ?? undefined,
+          recommendations: (data.recommendations as any) ?? undefined,
+        };
+        setAnalysisResult(payload);
+        setAnalysisId(data.id);
+        setSourcesUsed(Array.isArray(data.source_ids) ? data.source_ids.length : undefined);
+        setAnalysisStatus("success");
+        setPitchesVisible(true);
+      } catch (e) {
+        console.error("[NarrativeWorkflowView] hydrate", e);
+      } finally {
+        if (!cancelled) setHydrating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
     if (sources.length === 0) {
@@ -130,6 +178,12 @@ export default function NarrativeWorkflowView({ onBack }: NarrativeWorkflowViewP
 
   return (
     <div className="container max-w-6xl py-3 sm:py-4 lg:py-10 px-2 sm:px-4 animate-fade-in">
+      {hydrating && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Restauration de votre dernière analyse…
+        </div>
+      )}
       {/* Header */}
       <div className="mb-4 sm:mb-6 flex items-start gap-3">
         <Button
