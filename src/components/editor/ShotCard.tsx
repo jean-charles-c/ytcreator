@@ -486,8 +486,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
           )}
         </div>
         {/* Linked recurring objects */}
-        {(linkedObjects && linkedObjects.length > 0 || (allObjects && allObjects.length > 0 && onLinkObject) || true) && (
-          <div className="flex flex-wrap items-center gap-1 mb-2">
+        <div className="flex flex-wrap items-center gap-1 mb-2">
             {linkedObjects?.map((obj) => (
               <span
                 key={obj.id}
@@ -557,8 +556,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               <UserX className="h-2.5 w-2.5" />
               {(shot as any).force_no_character ? "Sans personnage : ON" : "Sans personnage"}
             </button>
-          </div>
-        )}
+        </div>
         <details className="group/shot-details">
           <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
             Phrase illustrée / Prompt
