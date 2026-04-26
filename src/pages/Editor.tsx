@@ -3478,7 +3478,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { segmentOnly: true }); }}
                                       title="Refaire tout le découpage des shots de cette scène"
                                     >
-                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                      {isRegenerating && regeneratingMode === "segment" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                                       Refaire le découpage
                                     </Button>
                                     <Button
@@ -3489,7 +3489,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { promptOnly: true }); }}
                                       title="Régénérer les prompts visuels de cette scène via IA"
                                     >
-                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
+                                      {isRegenerating && regeneratingMode === "prompt" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
                                       Générer les prompts
                                     </Button>
                                   </div>
