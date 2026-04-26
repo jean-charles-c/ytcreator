@@ -76,10 +76,35 @@ export const STYLE_SUFFIXES: Record<string, StyleDef> = {
     promptSuffix: "Classic Western animated cartoon style. Bold thick outlines with rubbery exaggerated shapes. Flat bright solid colors, no shading or minimal cel shading. Highly expressive slapstick-ready characters with extreme poses and squash-and-stretch proportions. Visual references: Looney Tunes, Hanna-Barbera, early Disney shorts, Ren & Stimpy. Playful, energetic, immediately readable.",
     promptSuffixFr: "Style : cartoon occidental classique. Contours épais avec formes exagérées. Couleurs vives en aplats. Personnages expressifs avec proportions squash-and-stretch. Références : Looney Tunes, Hanna-Barbera, Disney.",
   },
-  modernanimation: {
-    label: "Animation moderne (Pixar, Ghibli…)",
-    promptSuffix: "Contemporary animation studio style, 2D or 3D. Soft wrap-around lighting with warm ambient occlusion. Richly detailed and painterly backgrounds. Characters stylized yet emotionally expressive with nuanced facial rigging. Lush color palette with careful attention to light temperature and atmospheric depth. Visual references: Pixar feature films, Studio Ghibli backgrounds, Dreamworks Animation, Sony Pictures Animation.",
-    promptSuffixFr: "Style : animation contemporaine de studio. Éclairage doux enveloppant. Décors détaillés et picturaux. Personnages stylisés mais émotionnellement expressifs. Palette riche. Références : Pixar, Studio Ghibli, Dreamworks.",
+  pixar: {
+    label: "Pixar feature films",
+    promptSuffix: "High-end contemporary 3D animated feature film style. Characters have appealing stylized proportions, expressive faces, clear silhouettes, and emotionally readable acting. Soft cinematic lighting with warm global illumination, subtle subsurface scattering, polished materials, and carefully balanced color grading. Environments are clean, richly designed, story-driven, and physically coherent, with strong depth, atmospheric perspective, and a premium family-adventure animation look. Avoid painterly 2D texture, anime influence, sketchy lines, or overly realistic live-action rendering.",
+    promptSuffixFr: "Style : long-métrage 3D Pixar contemporain haut de gamme. Personnages aux proportions stylisées attachantes, visages expressifs, silhouettes claires, jeu émotionnellement lisible. Éclairage cinématographique doux, illumination globale chaude, subsurface scattering subtil, matériaux soignés. Environnements riches et cohérents, profondeur marquée. Éviter texture 2D peinte, influence anime, traits esquissés, rendu live-action.",
+  },
+  ghibli: {
+    label: "Studio Ghibli backgrounds",
+    promptSuffix: "Hand-painted Japanese animation background style inspired by poetic environmental storytelling. Rich painterly landscapes, soft natural light, delicate atmospheric haze, organic textures, watercolor-like surfaces, and subtle imperfections. Emphasis on nature, architecture, quiet emotional mood, and lived-in details. Characters, if present, should remain simple, gentle, and traditionally animated rather than glossy 3D. Avoid polished CGI, plastic materials, exaggerated cartoon comedy, or hyper-detailed photorealism.",
+    promptSuffixFr: "Style : décors d'animation japonaise peints à la main façon Studio Ghibli. Paysages picturaux riches, lumière naturelle douce, brume atmosphérique, textures organiques, surfaces aquarellées. Accent sur la nature, l'architecture, l'atmosphère silencieuse. Personnages simples et traditionnellement animés. Éviter CGI brillant, matériaux plastiques, comédie cartoon exagérée, photoréalisme.",
+  },
+  dreamworks: {
+    label: "DreamWorks Animation",
+    promptSuffix: "Contemporary 3D animated adventure-comedy feature style. Bold character design, expressive facial acting, dynamic poses, strong silhouettes, cinematic staging, and a slightly more playful, energetic visual tone. Lighting is dramatic but colorful, with crisp contrast, vibrant environments, stylized realism, and polished 3D materials. Backgrounds should feel cinematic, readable, and designed for action or comedy timing. Avoid soft hand-painted anime backgrounds, overly delicate watercolor textures, or ultra-realistic live-action rendering.",
+    promptSuffixFr: "Style : long-métrage 3D DreamWorks aventure-comédie. Design de personnages audacieux, jeu facial expressif, poses dynamiques, silhouettes fortes, mise en scène cinématographique, ton ludique et énergique. Éclairage dramatique mais coloré, fort contraste, environnements vibrants, réalisme stylisé, matériaux 3D polis. Éviter décors peints anime, aquarelle délicate, rendu live-action.",
+  },
+  sonyanimation: {
+    label: "Sony Pictures Animation",
+    promptSuffix: "Stylized contemporary animation with bold graphic design, energetic composition, expressive shapes, and a strong illustrative identity. Mix polished 3D structure with 2D-inspired texture, visible artistic stylization, dynamic lighting, vibrant color blocking, and playful exaggeration. Characters have strong silhouettes, elastic expressiveness, and a modern visual rhythm. Backgrounds can include painterly, comic-book, or design-driven textures while staying cinematic and coherent. Avoid generic glossy 3D, muted realism, traditional anime softness, or photorealistic live-action aesthetics.",
+    promptSuffixFr: "Style : animation contemporaine Sony Pictures, design graphique audacieux, composition énergique, formes expressives, identité illustrative forte. Mélange structure 3D polie et texture 2D, stylisation artistique visible, éclairage dynamique, blocs de couleurs vibrants, exagération ludique. Décors picturaux, comic-book ou design-driven mais cinématographiques. Éviter 3D générique brillante, réalisme, douceur anime, photoréalisme.",
+  },
+  modern2dcartoon: {
+    label: "Cartoon 2D moderne / Storybook",
+    promptSuffix: "Modern 2D cartoon animation style with cinematic storybook illustration aesthetics. Expressive stylized characters with simplified facial features, rounded proportions, clean silhouettes, and emotional readability. Warm painterly backgrounds with soft lighting, atmospheric depth, cozy color grading, and rich environmental details. Family-friendly animated film mood, polished digital painting, gentle texture, clear composition, and narrative-driven staging. Avoid photorealism, glossy 3D CGI, anime realism, and overly sketchy hand-drawn lines.",
+    promptSuffixFr: "Style : animation cartoon 2D moderne, esthétique illustration storybook cinématographique. Personnages stylisés expressifs, traits simplifiés, proportions arrondies, silhouettes nettes. Décors picturaux chaleureux, lumière douce, étalonnage cosy, détails environnementaux riches. Ambiance long-métrage familial, peinture numérique soignée, texture douce. Éviter photoréalisme, CGI 3D brillante, réalisme anime, traits esquissés.",
+  },
+  modern3dfeature: {
+    label: "Long-métrage 3D moderne (Pixar/DreamWorks inspired)",
+    promptSuffix: "Stylized 3D animated feature film style, cinematic family adventure animation, expressive cartoon characters with exaggerated proportions, polished CGI surfaces, soft global illumination, warm dramatic lighting, volumetric fire glow, rich environmental detail, dynamic composition, highly readable facial expressions, premium animated movie look. Avoid photorealism, hand-painted 2D backgrounds, anime softness, flat illustration, and sketchy linework.",
+    promptSuffixFr: "Style : long-métrage d'animation 3D stylisé, aventure familiale cinématographique. Personnages cartoon expressifs aux proportions exagérées, surfaces CGI soignées, illumination globale douce, éclairage chaud dramatique, halos volumétriques, détails environnementaux riches, composition dynamique, expressions faciales très lisibles, rendu film d'animation premium. Éviter photoréalisme, décors 2D peints, douceur anime, illustration plate, traits esquissés.",
   },
   anime: {
     label: "Anime japonais",
@@ -161,22 +186,35 @@ export const STYLE_SUFFIXES: Record<string, StyleDef> = {
 /** Default style when none is selected */
 export const DEFAULT_STYLE_ID = "none";
 
+/** Legacy id → current id mapping for backwards compatibility */
+const LEGACY_STYLE_ID_MAP: Record<string, string> = {
+  modernanimation: "pixar",
+};
+
+function resolveStyleId(styleId: string | null | undefined): string {
+  if (!styleId) return "none";
+  return LEGACY_STYLE_ID_MAP[styleId] ?? styleId;
+}
+
 /** Get English prompt suffix for a given style ID */
 export function getStyleSuffix(styleId: string | null | undefined): string {
-  if (!styleId || styleId === "none") return STYLE_SUFFIXES.none.promptSuffix;
-  return STYLE_SUFFIXES[styleId]?.promptSuffix ?? STYLE_SUFFIXES.none.promptSuffix;
+  const id = resolveStyleId(styleId);
+  if (id === "none") return STYLE_SUFFIXES.none.promptSuffix;
+  return STYLE_SUFFIXES[id]?.promptSuffix ?? STYLE_SUFFIXES.none.promptSuffix;
 }
 
 /** Get French prompt suffix for a given style ID */
 export function getStyleSuffixFr(styleId: string | null | undefined): string {
-  if (!styleId || styleId === "none") return STYLE_SUFFIXES.none.promptSuffixFr;
-  return STYLE_SUFFIXES[styleId]?.promptSuffixFr ?? STYLE_SUFFIXES.none.promptSuffixFr;
+  const id = resolveStyleId(styleId);
+  if (id === "none") return STYLE_SUFFIXES.none.promptSuffixFr;
+  return STYLE_SUFFIXES[id]?.promptSuffixFr ?? STYLE_SUFFIXES.none.promptSuffixFr;
 }
 
 /** Get label for a given style ID */
 export function getStyleLabel(styleId: string | null | undefined): string {
-  if (!styleId || styleId === "none") return STYLE_SUFFIXES.none.label;
-  return STYLE_SUFFIXES[styleId]?.label ?? STYLE_SUFFIXES.none.label;
+  const id = resolveStyleId(styleId);
+  if (id === "none") return STYLE_SUFFIXES.none.label;
+  return STYLE_SUFFIXES[id]?.label ?? STYLE_SUFFIXES.none.label;
 }
 
 /** Check if the style is "realistic" (for photorealism enforcement) */
