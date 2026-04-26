@@ -135,20 +135,9 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       return t !== "lieu" && t !== "location" && t !== "place";
     });
 
-    // 1. Core rules (condensed) + reference image list if any
-    parts.push(CORE_RULES);
     const hasRefImages = effectiveLinkedObjects.some(obj => obj.reference_images && obj.reference_images.length > 0);
-    if (hasRefImages) {
-      const refImgList = effectiveLinkedObjects.flatMap(obj =>
-        (obj.reference_images || []).map((url, i) => {
-          const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
-          return `  📷 ${obj.nom} — ${fileName}`;
-        })
-      ).join("\n");
-      if (refImgList) parts.push(`[Images de référence transmises]\n${refImgList}`);
-    }
 
-    // 2. Identity locks from linked objects (cleaned of redundant verbose blocks)
+    // 1. Identity locks from linked objects (cleaned of redundant verbose blocks)
     const cleanIdentityLock = (raw: string): string => {
       let txt = String(raw || "");
       // Remove full verbose blocks (header + following paragraph until blank line)
@@ -179,11 +168,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       })
       .filter(Boolean);
 
-    // 3. Generation frame (condensed)
-    parts.push("Generate one single cinematic 16:9 image, no borders, no letterboxing, no square crop.");
-
-    // 4. Two-tier hierarchy: FRAMING & ACTION (composition) + IDENTITY LOCK
-    //    (subject appearance). Both are mandatory and apply simultaneously.
+    // 2. SCENE-FIRST hierarchy: the scene/action leads the prompt so the
+    //    image model anchors on WHAT to draw. Identity locks come right
+    //    after as appearance-only anchors. Technical constraints (aspect
+    //    ratio, no-text, reference rules) are placed at the END so they
+    //    don't pollute the model's primary subject.
     let actionBlock = basePrompt;
     if (shot.description && shot.description.length > 30) {
       const descSnippet = shot.description.slice(0, 60).toLowerCase();
@@ -194,17 +183,41 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
     if (identityLocks.length > 0) {
       parts.push(
-        "HIERARCHY: FRAMING & ACTION below defines the shot's composition (mandatory — must not be replaced by a wider or different shot). " +
-        "IDENTITY LOCK below defines the exact appearance of the subject inside that frame (mandatory — must not be redesigned). " +
-        "Both apply simultaneously."
+        "SCENE TO RENDER (primary subject of the image — this defines the entire composition, setting, action and framing; it must NOT be replaced by a generic scene built from reference images):\n" +
+        actionBlock
       );
-      parts.push("FRAMING & ACTION (mandatory composition):\n" + actionBlock);
       parts.push(
-        "IDENTITY LOCK (mandatory appearance of the subject inside that frame — do not widen the shot to show them in full):\n" +
+        "--- SUBJECT IDENTITY ANCHORS (apply only to the appearance of the people/objects inside the SCENE TO RENDER above — do NOT copy their original setting, do NOT change the requested scene) ---\n" +
         identityLocks.join("\n\n")
       );
     } else {
-      parts.push("FRAMING & ACTION (mandatory composition):\n" + actionBlock);
+      parts.push(
+        "SCENE TO RENDER (primary subject of the image):\n" + actionBlock
+      );
+    }
+
+    // 3. Technical constraints block (mirrors what edge functions append)
+    const techLines: string[] = [
+      "Generate one single cinematic 16:9 image, no borders, no letterboxing, no square crop.",
+      "Never render the prompt, narrative, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
+    ];
+    if (hasRefImages) {
+      techLines.push(
+        "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
+        "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
+        "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
+      );
+    }
+    parts.push("--- TECHNICAL CONSTRAINTS ---\n" + techLines.join("\n"));
+
+    if (hasRefImages) {
+      const refImgList = effectiveLinkedObjects.flatMap(obj =>
+        (obj.reference_images || []).map((url, i) => {
+          const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
+          return `  📷 ${obj.nom} — ${fileName}`;
+        })
+      ).join("\n");
+      if (refImgList) parts.push(`[Images de référence transmises au modèle]\n${refImgList}`);
     }
 
     return parts.join("\n\n");
