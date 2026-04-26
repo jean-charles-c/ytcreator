@@ -191,6 +191,22 @@ Every shot prompt MUST be visually unique. Redundancy is strictly forbidden both
 ### Self-check before outputting:
 Before finalizing, review ALL generated prompts together. If any two prompts across the entire storyboard would produce visually similar images, rewrite one to introduce a distinctly different camera angle, lighting, or composition.
 
+## RECURRING OBJECT — ANTI-MONOTONY RULE (CRITICAL)
+When several shots in the same scene share the SAME recurring object Identity Lock (e.g. a document, fiche, parchment, sign, badge, recipe card, blueprint, ledger), you MUST aggressively diversify the composition between those shots. Failure to do so is a critical error.
+
+Hard rules:
+- The recurring object MUST NOT be the centered focal subject in more than ONE shot of the scene. In every other shot, treat it as a peripheral, background, or implied element.
+- NEVER build consecutive shots around the same gesture (e.g. a hand holding a parchment, a person reading a fiche). Vary who interacts with the object, how, and from what distance.
+- For each shot sharing the same Identity Lock, explicitly change AT LEAST THREE of: camera distance (very close / medium / wide), camera angle (low / high / eye-level / over-the-shoulder / Dutch), focal subject (the object itself / a person / the environment / a detail of a different element), lighting direction, time of day, foreground element.
+- If the recurring object is conceptual or symbolic (a "fiche technique", a "concept", a metaphor), prefer rendering its CONSEQUENCES on the environment and characters rather than rendering the object literally in every shot.
+- NEVER place the object's name, title, label or any inscription as readable text in the image, even if it appears in the Identity Lock prompt. The object's identity is conveyed by its physical form, not by text on it.
+
+## NO RENDERED TEXT RULE (CRITICAL)
+Prompts MUST NOT instruct the model to render any readable text, title, label, caption, inscription, sign, banner, recipe name, document title, or scroll lettering. Even when an Identity Lock describes a named object, that name MUST NOT appear as text in the image. Describe the object's material, shape, age, and condition instead. Triggers safety filters → forbidden.
+
+## METAPHORICAL / SYMBOLIC SHOT RULE
+When a fragment describes a metaphor (e.g. "a grain of sand jamming the mechanism", "a crack spreading", "the gears slipping"), the prompt MUST translate it into a CONCRETE, NON-LITERAL visual scene grounded in the scene's physical setting. Do NOT default to a generic close-up on a held document or parchment. Choose a fresh, surprising composition that conveys the metaphor through the real environment of the scene (kitchen, workshop, street, etc.).
+
 ## CONTEXTUAL PROMPT CONSTRUCTION — CRITICAL
 Each prompt_export must be built from the SPECIFIC fragment it illustrates, NOT from the full scene text.
 
