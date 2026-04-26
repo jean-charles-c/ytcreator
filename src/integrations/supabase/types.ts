@@ -1138,6 +1138,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          force_no_character: boolean
           generation_cost: number
           guardrails: string | null
           id: string
@@ -1156,6 +1157,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          force_no_character?: boolean
           generation_cost?: number
           guardrails?: string | null
           id?: string
@@ -1174,6 +1176,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          force_no_character?: boolean
           generation_cost?: number
           guardrails?: string | null
           id?: string

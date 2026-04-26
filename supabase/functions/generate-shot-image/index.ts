@@ -409,7 +409,19 @@ serve(async (req) => {
     // character and renders them instead of the requested object.
     const characterMentionRegex = /\b(chef|chefs|personnage|personnages|visage|visages|portrait|silhouette|silhouettes|homme|hommes|femme|femmes|enfant|enfants|cuisinier|cuisini[èe]re|cuisiniers|serveur|serveuse|serveurs|client|clients|main|mains|doigt|doigts|bras|jambe|jambes|pied|pieds|t[êe]te|character|characters|person|people|hand|hands|face|faces|finger|fingers|arm|arms|leg|legs|foot|feet|head|heads|man|men|woman|women|child|children|cook|cooks|waiter|waitress|customer|customers)\b/i;
     const hasCharacterMention = characterMentionRegex.test(promptText);
-    const isObjectOnlyInsert = isTightFraming && !hasCharacterMention;
+    // Metaphorical / symbolic prompts: when the prompt explicitly frames the
+    // subject as a metaphor, symbol or evocation, the character is mentioned
+    // only as a narrative reference, not as something that should appear in
+    // the frame. Treat those as object-only inserts even if a character word
+    // is present.
+    const metaphoricalRegex = /\b(m[ée]taphor[ie]\w*|symbolis\w*|symbolique|symbole|[ée]voqu\w*|sugg[èe]r\w*|allegor\w*|repr[ée]sentation\s+de|metaphor\w*|symboliz\w*|symbolic|allegor\w*|evok\w*|suggest\w*)\b/i;
+    const isMetaphoricalPrompt = metaphoricalRegex.test(promptText);
+    // Manual override stored on the shot row.
+    const forceNoCharacter = (shot as any).force_no_character === true;
+    const isObjectOnlyInsert =
+      forceNoCharacter ||
+      (isTightFraming && !hasCharacterMention) ||
+      (isTightFraming && isMetaphoricalPrompt);
     const effectiveLinkedObjects = (isTightFraming || isObjectOnlyInsert)
       ? shotLinkedObjects.filter((obj: any) => {
           const t = String(obj.type || obj.object_type || "").toLowerCase();
@@ -420,7 +432,7 @@ serve(async (req) => {
       : shotLinkedObjects;
     if (effectiveLinkedObjects.length < shotLinkedObjects.length) {
       console.log(
-        `[generate-shot-image] Tight framing=${isTightFraming} objectOnlyInsert=${isObjectOnlyInsert} — dropped ${shotLinkedObjects.length - effectiveLinkedObjects.length} identity lock(s) so the close-up is not replaced by an establishing/character shot.`,
+        `[generate-shot-image] tight=${isTightFraming} objectOnly=${isObjectOnlyInsert} metaphor=${isMetaphoricalPrompt} forceNoChar=${forceNoCharacter} — dropped ${shotLinkedObjects.length - effectiveLinkedObjects.length} identity lock(s).`,
       );
     }
 

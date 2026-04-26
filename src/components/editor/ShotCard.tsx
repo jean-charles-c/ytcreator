@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 
@@ -275,6 +275,24 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     } finally {
       setGeneratingImage(false);
     }
+  };
+
+  const handleToggleNoCharacter = async () => {
+    const next = !((shot as any).force_no_character === true);
+    const { error } = await supabase
+      .from("shots")
+      .update({ force_no_character: next } as any)
+      .eq("id", shot.id);
+    if (error) {
+      toast.error("Impossible de mettre à jour le mode sans personnage");
+      return;
+    }
+    onUpdate({ ...(shot as any), force_no_character: next } as Shot);
+    toast.success(
+      next
+        ? "Mode sans personnage activé : les références personnage seront ignorées"
+        : "Mode sans personnage désactivé",
+    );
   };
 
   const handleDelete = async () => {
@@ -585,6 +603,19 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               </div>
             )}
             <p className="text-xs text-muted-foreground leading-relaxed break-words">{shot.description}</p>
+            <button
+              type="button"
+              onClick={handleToggleNoCharacter}
+              className={`inline-flex items-center gap-1.5 self-start rounded border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors min-h-[28px] ${
+                (shot as any).force_no_character
+                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                  : "border-border bg-secondary/40 text-muted-foreground hover:bg-secondary"
+              }`}
+              title="Force le retrait des images de référence personnage et de leur identity lock — utile pour les plans métaphoriques (gros plan sur un objet, un détail, un symbole)."
+            >
+              <UserX className="h-3 w-3" />
+              {(shot as any).force_no_character ? "Sans personnage : ON" : "Sans personnage"}
+            </button>
         {shot.prompt_export && (
               <details className="group/details">
                 <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">

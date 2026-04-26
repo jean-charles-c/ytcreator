@@ -1,0 +1,2 @@
+ALTER TABLE public.shots ADD COLUMN IF NOT EXISTS force_no_character boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.shots.force_no_character IS 'When true, drops character identity locks and reference images during generation (for metaphorical/object-only inserts).';
