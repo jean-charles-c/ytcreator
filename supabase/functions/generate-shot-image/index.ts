@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Image } from "jsr:@matmen/imagescript";
 import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
 import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
+import { stripBakedStylePrefix, getStyleSuffixFr } from "../_shared/visual-styles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -475,6 +476,13 @@ serve(async (req) => {
       // inject the lock for an object that doesn't actually appear in
       // this shot, biasing the model toward making it the centered subject.
       rawPrompt = stripLegacyIdentityLockPrefix(rawPrompt);
+      // Strip any baked-in "Style : ..." prefix from prompt_export so the
+      // CURRENT visual style (resolved global → scene → shot) always wins.
+      rawPrompt = stripBakedStylePrefix(rawPrompt);
+      if (visual_style && visual_style !== "none") {
+        const styleLine = getStyleSuffixFr(visual_style).trim();
+        if (styleLine) rawPrompt = `Style : ${styleLine}\n\n${rawPrompt}`;
+      }
 
       // Apply sensitive mode transformation with structured scene context
       const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
