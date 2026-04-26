@@ -307,6 +307,27 @@ export default function Editor() {
         setShots(shotsRes.data);
       }
 
+      // Hydrate per-scene / per-shot AI engine overrides from DB so manual
+      // selections survive a reload. Empty/null = falls back to global engine.
+      if (scenesRes.data) {
+        const sceneOverrides: Record<string, string> = {};
+        for (const sc of scenesRes.data as any[]) {
+          if (typeof sc.image_engine === "string" && sc.image_engine.length > 0) {
+            sceneOverrides[sc.id] = sc.image_engine;
+          }
+        }
+        setSceneImageModelOverrides(sceneOverrides);
+      }
+      if (shotsRes.data) {
+        const shotOverrides: Record<string, string> = {};
+        for (const sh of shotsRes.data as any[]) {
+          if (typeof sh.image_engine === "string" && sh.image_engine.length > 0) {
+            shotOverrides[sh.id] = sh.image_engine;
+          }
+        }
+        setShotImageModelOverrides(shotOverrides);
+      }
+
       const scriptCreatorState = scriptCreatorRes?.data;
       if (scriptCreatorState) {
         setPdfAnalysis(scriptCreatorState.analysis ?? null);
