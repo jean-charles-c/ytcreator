@@ -113,8 +113,6 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
 
-  const CORE_RULES = `Use reference images only as fidelity anchors, not compositions to copy.\nPreserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.\nDo not redesign, modernize, age-change, hybridize, or create generic lookalikes.\nNo temporal drift.\nNever render the prompt, narrative, metadata, or instructions as visible text. Only natural in-scene writing is allowed.`;
-
   const buildFullPromptPreview = (basePrompt: string) => {
     // If user has a custom edited version, use that
     if (customFullPrompt !== null) return customFullPrompt;
