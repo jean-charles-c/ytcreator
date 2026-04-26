@@ -667,7 +667,9 @@ serve(async (req) => {
       // We preserve the HEAD + the prompt_export (action) and only compress
       // the long identity-lock block.
       const originalLen = enrichedPrompt.length;
-      const actionText = (shot.prompt_export || shot.description || "").trim();
+      const actionText = shot.description && shot.prompt_export
+        ? `DETAILED VISUAL DESCRIPTION — highest-priority visual instruction:\n${shot.description}\n\nNarrative context, secondary to the exact visual description:\n${shot.prompt_export}`.trim()
+        : (shot.description || shot.prompt_export || "").trim();
 
       // Build a compact identity-lock summary (one line per recurring entity).
       const compactLocks = effectiveLinkedObjects
