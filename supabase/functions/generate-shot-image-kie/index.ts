@@ -112,7 +112,7 @@ const MODEL_TO_KIE_MODEL: Record<string, string> = {
   "imagen-4-ultra":  "google/imagen4-ultra",
 };
 
-const TEXT_ONLY_REFERENCE_MODELS = new Set(["nano-banana", "nano-banana-2", "nano-banana-pro"]);
+const FILTERED_REFERENCE_MODELS = new Set(["nano-banana", "nano-banana-2", "nano-banana-pro"]);
 
 // Object types that should use --oref (identity lock) vs --sref (style transfer) on Midjourney
 const OREF_OBJECT_TYPES = new Set(["personnage", "character", "vehicule", "vehicle", "véhicule"]);
