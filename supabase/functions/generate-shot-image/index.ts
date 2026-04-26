@@ -444,7 +444,8 @@ serve(async (req) => {
 
     // If a custom_prompt is provided (user edited the full prompt in UI), use it directly
     let enrichedPrompt: string;
-    if (typeof custom_prompt === "string" && custom_prompt.trim().length > 0) {
+    const usingCustomPrompt = typeof custom_prompt === "string" && custom_prompt.trim().length > 0;
+    if (usingCustomPrompt) {
       enrichedPrompt = custom_prompt.trim();
       console.log("Using custom_prompt from client (user-edited full prompt)");
     } else {
@@ -596,7 +597,7 @@ serve(async (req) => {
 
     // Condensed reference fidelity directives (replaces the previous verbose
     // multi-paragraph block — same constraints, ~70% fewer tokens).
-    if (referenceImageInputs.length > 0) {
+    if (!usingCustomPrompt && referenceImageInputs.length > 0) {
       const REFERENCE_IMAGE_RULE = [
         "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
         "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
@@ -621,7 +622,7 @@ serve(async (req) => {
     const buildPrompt = (text: string) => [
       `Generate one single cinematic ${selectedAspectRatio} image, no borders, no letterboxing, no square crop.`,
       "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
-      ...(styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
+      ...(!usingCustomPrompt && styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
       text,
     ].join("\n");
 
