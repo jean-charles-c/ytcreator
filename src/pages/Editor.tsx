@@ -929,7 +929,19 @@ export default function Editor() {
       persistShotObjectOverrides(next);
       return next;
     });
-  }, [persistShotObjectOverrides]);
+    // Mirror to the registry's mentions_shots so the backend
+    // (generate-shot-image / generate-shot-image-kie) sees the link.
+    const objects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+    const updated = objects.map(o => {
+      if (o.id !== objectId) return o;
+      const existing = Array.isArray(o.mentions_shots) ? o.mentions_shots : [];
+      if (existing.includes(shotId)) return o;
+      return { ...o, mentions_shots: [...existing, shotId] };
+    });
+    if (updated.some((o, i) => o !== objects[i])) {
+      void handleObjectRegistryChange(updated);
+    }
+  }, [persistShotObjectOverrides, globalContext, handleObjectRegistryChange]);
 
   const handleUnlinkObjectFromShot = useCallback((shotId: string, objectId: string) => {
     setShotObjectOverrides(prev => {
@@ -945,7 +957,19 @@ export default function Editor() {
       persistShotObjectOverrides(next);
       return next;
     });
-  }, [persistShotObjectOverrides]);
+    // Mirror to the registry's mentions_shots so the backend stops
+    // injecting this object's identity lock for this shot.
+    const objects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+    const updated = objects.map(o => {
+      if (o.id !== objectId) return o;
+      const existing = Array.isArray(o.mentions_shots) ? o.mentions_shots : [];
+      if (!existing.includes(shotId)) return o;
+      return { ...o, mentions_shots: existing.filter(id => id !== shotId) };
+    });
+    if (updated.some((o, i) => o !== objects[i])) {
+      void handleObjectRegistryChange(updated);
+    }
+  }, [persistShotObjectOverrides, globalContext, handleObjectRegistryChange]);
 
   // Sync mentions_shots from recurring objects → shotObjectOverrides for VisualPrompts
   useEffect(() => {
@@ -959,10 +983,15 @@ export default function Editor() {
           const shot = shots.find(s => s.id === shotId);
           if (!shot) continue;
           const current = next[shotId] || { added: [], removed: [] };
-          if (!current.added.includes(obj.id)) {
-            next[shotId] = { ...current, added: [...current.added, obj.id], removed: current.removed.filter(id => id !== obj.id) };
-            changed = true;
-          }
+          // Respect explicit user removal: if the user already unlinked this
+          // object from this shot, do NOT re-add it from mentions_shots.
+          // Only fill `added` when there's no prior decision (neither added
+          // nor removed) so the registry's mentions_shots only seeds the
+          // override map for shots the user hasn't touched yet.
+          if (current.removed.includes(obj.id)) continue;
+          if (current.added.includes(obj.id)) continue;
+          next[shotId] = { ...current, added: [...current.added, obj.id] };
+          changed = true;
         }
       }
       if (changed) {
