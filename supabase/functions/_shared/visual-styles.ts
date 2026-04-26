@@ -186,22 +186,35 @@ export const STYLE_SUFFIXES: Record<string, StyleDef> = {
 /** Default style when none is selected */
 export const DEFAULT_STYLE_ID = "none";
 
+/** Legacy id → current id mapping for backwards compatibility */
+const LEGACY_STYLE_ID_MAP: Record<string, string> = {
+  modernanimation: "pixar",
+};
+
+function resolveStyleId(styleId: string | null | undefined): string {
+  if (!styleId) return "none";
+  return LEGACY_STYLE_ID_MAP[styleId] ?? styleId;
+}
+
 /** Get English prompt suffix for a given style ID */
 export function getStyleSuffix(styleId: string | null | undefined): string {
-  if (!styleId || styleId === "none") return STYLE_SUFFIXES.none.promptSuffix;
-  return STYLE_SUFFIXES[styleId]?.promptSuffix ?? STYLE_SUFFIXES.none.promptSuffix;
+  const id = resolveStyleId(styleId);
+  if (id === "none") return STYLE_SUFFIXES.none.promptSuffix;
+  return STYLE_SUFFIXES[id]?.promptSuffix ?? STYLE_SUFFIXES.none.promptSuffix;
 }
 
 /** Get French prompt suffix for a given style ID */
 export function getStyleSuffixFr(styleId: string | null | undefined): string {
-  if (!styleId || styleId === "none") return STYLE_SUFFIXES.none.promptSuffixFr;
-  return STYLE_SUFFIXES[styleId]?.promptSuffixFr ?? STYLE_SUFFIXES.none.promptSuffixFr;
+  const id = resolveStyleId(styleId);
+  if (id === "none") return STYLE_SUFFIXES.none.promptSuffixFr;
+  return STYLE_SUFFIXES[id]?.promptSuffixFr ?? STYLE_SUFFIXES.none.promptSuffixFr;
 }
 
 /** Get label for a given style ID */
 export function getStyleLabel(styleId: string | null | undefined): string {
-  if (!styleId || styleId === "none") return STYLE_SUFFIXES.none.label;
-  return STYLE_SUFFIXES[styleId]?.label ?? STYLE_SUFFIXES.none.label;
+  const id = resolveStyleId(styleId);
+  if (id === "none") return STYLE_SUFFIXES.none.label;
+  return STYLE_SUFFIXES[id]?.label ?? STYLE_SUFFIXES.none.label;
 }
 
 /** Check if the style is "realistic" (for photorealism enforcement) */
