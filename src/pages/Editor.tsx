@@ -148,6 +148,7 @@ export default function Editor() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
+  const [regeneratingMode, setRegeneratingMode] = useState<"segment" | "prompt" | "full" | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedMusicTracks, setSelectedMusicTracks] = useState<{ url: string; name: string }[]>([]);
   const [qaExportAllowed, setQaExportAllowed] = useState(true);
@@ -634,6 +635,7 @@ export default function Editor() {
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
+      setRegeneratingMode(segmentOnly ? "segment" : promptOnly ? "prompt" : "full");
       try {
         const session = (await supabase.auth.getSession()).data.session;
         const response = await fetch(
@@ -670,6 +672,7 @@ export default function Editor() {
         toast.error(e?.message || "Erreur inattendue");
       }
       setRegeneratingSceneId(null);
+      setRegeneratingMode(null);
     } else {
       // Full storyboard — delegate to background
       if (shots.length > 0) {
@@ -3475,7 +3478,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { segmentOnly: true }); }}
                                       title="Refaire tout le découpage des shots de cette scène"
                                     >
-                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                      {isRegenerating && regeneratingMode === "segment" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                                       Refaire le découpage
                                     </Button>
                                     <Button
@@ -3486,7 +3489,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       onClick={() => { if (scene.validated) { toast.error("Scène validée — déverrouillez-la pour modifier."); return; } runStoryboard(scene.id, { promptOnly: true }); }}
                                       title="Régénérer les prompts visuels de cette scène via IA"
                                     >
-                                      {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
+                                      {isRegenerating && regeneratingMode === "prompt" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
                                       Générer les prompts
                                     </Button>
                                   </div>
