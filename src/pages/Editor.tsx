@@ -959,10 +959,15 @@ export default function Editor() {
           const shot = shots.find(s => s.id === shotId);
           if (!shot) continue;
           const current = next[shotId] || { added: [], removed: [] };
-          if (!current.added.includes(obj.id)) {
-            next[shotId] = { ...current, added: [...current.added, obj.id], removed: current.removed.filter(id => id !== obj.id) };
-            changed = true;
-          }
+          // Respect explicit user removal: if the user already unlinked this
+          // object from this shot, do NOT re-add it from mentions_shots.
+          // Only fill `added` when there's no prior decision (neither added
+          // nor removed) so the registry's mentions_shots only seeds the
+          // override map for shots the user hasn't touched yet.
+          if (current.removed.includes(obj.id)) continue;
+          if (current.added.includes(obj.id)) continue;
+          next[shotId] = { ...current, added: [...current.added, obj.id] };
+          changed = true;
         }
       }
       if (changed) {
