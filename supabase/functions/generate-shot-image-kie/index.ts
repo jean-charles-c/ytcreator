@@ -618,27 +618,56 @@ serve(async (req) => {
       }
     }
 
-    // ── VISUAL STYLE ENFORCEMENT — STYLE FIRST, STYLE LAST ──
-    // Kie Nano Banana (and most diffusion models) heavily weights what comes
-    // FIRST in the prompt and tends to default to photorealism when style
-    // instructions are buried after a long SCENE TO RENDER block. We sandwich
-    // the active style: imperative MANDATORY block at the top, then a final
-    // STYLE LOCK reminder at the bottom — so neither the scene description
-    // nor the reference images can override the requested rendering style.
+    // ── PROMPT ARCHITECTURE — STYLE → IDENTITY ANCHORS → SCENE → STYLE LOCK ──
+    // Order rationale (Kie Nano Banana weights tokens by position):
+    //  1. STYLE first  → forces rendering technique before anything else.
+    //  2. IDENTITY ANCHORS second → the recurring subject's appearance is
+    //     declared BEFORE the scene so the model treats the attached
+    //     reference images as the canonical look of that subject and does
+    //     not invent a new face/outfit while reading the scene.
+    //  3. SCENE TO RENDER third → composition/action authority.
+    //  4. STYLE LOCK last → final reminder to prevent style drift.
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
     const styleLabel = (visual_style && visual_style !== "none") ? getStyleLabel(visual_style) : null;
+
+    // Pull the IDENTITY ANCHORS block (added above) back out so we can move
+    // it to the very top of the prompt, just under the style header.
+    let identityAnchorsBlock = "";
+    const anchorMatch = enrichedPrompt.match(
+      /\n\n--- SUBJECT IDENTITY ANCHORS[\s\S]*$/,
+    );
+    if (anchorMatch) {
+      identityAnchorsBlock = anchorMatch[0].trim();
+      enrichedPrompt = enrichedPrompt.slice(0, anchorMatch.index).trim();
+    }
+
     if (!usingCustomPrompt && styleSuffix && styleLabel) {
       const styleHeader =
         `MANDATORY VISUAL STYLE — HIGHEST PRIORITY, OVERRIDES EVERYTHING ELSE:\n` +
         `The entire image MUST be rendered in this style: "${styleLabel}".\n` +
         `${styleSuffix}\n` +
-        `Reference images attached below are ONLY identity cues for face/clothing — IGNORE their rendering technique, IGNORE their photographic or alternative style, and TRANSPOSE the subject's identity into the mandatory style above. The final image must NOT be photorealistic unless the mandatory style explicitly says so.\n` +
+        `Reference images attached to this request are ONLY identity cues for face/clothing — IGNORE their rendering technique, IGNORE their photographic or alternative style, and TRANSPOSE the subject's identity into the mandatory style above. The final image must NOT be photorealistic unless the mandatory style explicitly says so.\n` +
         `---`;
+
+      const refAnnounce = (hasRefs ?? false)
+        ? `\n\nATTACHED REFERENCE IMAGES — RECURRING SUBJECT IDENTITY (highest priority for face/clothing fidelity):\n` +
+          `One or more reference images of the recurring subject(s) are attached to this request. Treat them as the CANONICAL appearance of those subjects — same face, same hair, same clothing, same distinctive traits, exactly as shown in the references. Do NOT invent an alternative look. Do NOT copy their original background, pose, props or action — only their identity.\n` +
+          `---`
+        : "";
+
+      const anchorsBlock = identityAnchorsBlock
+        ? `\n\n${identityAnchorsBlock}\n\n---`
+        : "";
+
       const styleFooter =
         `\n\n--- FINAL STYLE LOCK (re-stated to prevent style drift) ---\n` +
-        `Render the entire image strictly in the "${styleLabel}" style described at the top of this prompt. Do not fall back to photorealism, do not mimic the rendering of any reference image, do not blend styles.`;
-      enrichedPrompt = `${styleHeader}\n\n${enrichedPrompt}${styleFooter}`;
-      console.log(`[KIE] Style enforced (sandwich): ${visual_style}`);
+        `Render the entire image strictly in the "${styleLabel}" style described at the top of this prompt. Do not fall back to photorealism, do not mimic the rendering of any reference image, do not blend styles. Keep the recurring subject's identity exactly as shown in the attached reference images.`;
+
+      enrichedPrompt = `${styleHeader}${refAnnounce}${anchorsBlock}\n\n${enrichedPrompt}${styleFooter}`;
+      console.log(`[KIE] Prompt architecture: STYLE → REFS → ANCHORS → SCENE → LOCK (style=${visual_style})`);
+    } else if (identityAnchorsBlock) {
+      // No active style: just put anchors at the top before the scene.
+      enrichedPrompt = `${identityAnchorsBlock}\n\n---\n\n${enrichedPrompt}`;
     }
 
     // ── UNIFIED DIRECTIVES (condensed) ──
