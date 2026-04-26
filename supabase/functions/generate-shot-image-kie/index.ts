@@ -567,7 +567,8 @@ serve(async (req) => {
         const descSnippet = shot.description.slice(0, 60).toLowerCase();
         rawPrompt = shot.prompt_export.toLowerCase().includes(descSnippet)
           ? shot.prompt_export
-          : shot.prompt_export + "\n\nDETAILED VISUAL DESCRIPTION:\n" + shot.description;
+          : "DETAILED VISUAL DESCRIPTION — highest-priority visual instruction:\n" + shot.description +
+            "\n\nNarrative context, secondary to the exact visual description:\n" + shot.prompt_export;
       } else {
         rawPrompt = shot.prompt_export || shot.description;
       }
@@ -616,9 +617,8 @@ serve(async (req) => {
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
     if (!usingCustomPrompt && styleSuffix) {
       enrichedPrompt =
-        `MANDATORY VISUAL STYLE — apply this style to the entire image without exception. ` +
-        `This overrides any other style instruction that may appear later in the prompt:\n${styleSuffix}\n\n` +
-        enrichedPrompt;
+        `${enrichedPrompt}\n\n--- STYLE MODIFIER ONLY ---\n` +
+        `Apply this rendering style without changing the requested setting, action, composition, number of subjects, or props:\n${styleSuffix}`;
       console.log(`[KIE] Style enforced: ${visual_style}`);
     }
 
