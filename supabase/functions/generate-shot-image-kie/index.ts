@@ -585,12 +585,6 @@ serve(async (req) => {
       // this, a stale style sentence at the head of prompt_export silently
       // overrides the user's latest selection.
       rawPrompt = stripBakedStylePrefix(rawPrompt);
-      // Re-inject the active style at the very top, in French, mirroring the
-      // original `Style : ...` shape so the prompt remains human-readable.
-      if (visual_style && visual_style !== "none") {
-        const styleLine = getStyleSuffixFr(visual_style).trim();
-        if (styleLine) rawPrompt = `Style : ${styleLine}\n\n${rawPrompt}`;
-      }
       enrichedPrompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
       // Inject identity locks AFTER the action so the model doesn't anchor on
@@ -624,15 +618,27 @@ serve(async (req) => {
       }
     }
 
-    // ── VISUAL STYLE ENFORCEMENT (aligned with generate-shot-image) ──
-    // Inject the style at the head of the prompt so the UI-selected style
-    // always wins over whatever style was baked into prompt_export.
+    // ── VISUAL STYLE ENFORCEMENT — STYLE FIRST, STYLE LAST ──
+    // Kie Nano Banana (and most diffusion models) heavily weights what comes
+    // FIRST in the prompt and tends to default to photorealism when style
+    // instructions are buried after a long SCENE TO RENDER block. We sandwich
+    // the active style: imperative MANDATORY block at the top, then a final
+    // STYLE LOCK reminder at the bottom — so neither the scene description
+    // nor the reference images can override the requested rendering style.
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
-    if (!usingCustomPrompt && styleSuffix) {
-      enrichedPrompt =
-        `${enrichedPrompt}\n\n--- STYLE MODIFIER ONLY ---\n` +
-        `Apply this rendering style without changing the requested setting, action, composition, number of subjects, or props:\n${styleSuffix}`;
-      console.log(`[KIE] Style enforced: ${visual_style}`);
+    const styleLabel = (visual_style && visual_style !== "none") ? getStyleLabel(visual_style) : null;
+    if (!usingCustomPrompt && styleSuffix && styleLabel) {
+      const styleHeader =
+        `MANDATORY VISUAL STYLE — HIGHEST PRIORITY, OVERRIDES EVERYTHING ELSE:\n` +
+        `The entire image MUST be rendered in this style: "${styleLabel}".\n` +
+        `${styleSuffix}\n` +
+        `Reference images attached below are ONLY identity cues for face/clothing — IGNORE their rendering technique, IGNORE their photographic or alternative style, and TRANSPOSE the subject's identity into the mandatory style above. The final image must NOT be photorealistic unless the mandatory style explicitly says so.\n` +
+        `---`;
+      const styleFooter =
+        `\n\n--- FINAL STYLE LOCK (re-stated to prevent style drift) ---\n` +
+        `Render the entire image strictly in the "${styleLabel}" style described at the top of this prompt. Do not fall back to photorealism, do not mimic the rendering of any reference image, do not blend styles.`;
+      enrichedPrompt = `${styleHeader}\n\n${enrichedPrompt}${styleFooter}`;
+      console.log(`[KIE] Style enforced (sandwich): ${visual_style}`);
     }
 
     // ── UNIFIED DIRECTIVES (condensed) ──
