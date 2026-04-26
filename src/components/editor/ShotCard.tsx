@@ -180,7 +180,18 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       }
     }
 
-    const styleBlock = resolvedStyle
+    const resolvedStyleLabel = visualStyleId && visualStyleId !== "none" ? getVisualStyleById(visualStyleId)?.label : null;
+    // For Kie models we sandwich the style: imperative header at the very
+    // top + final lock at the very bottom. This mirrors the edge function
+    // and prevents Nano Banana from defaulting to photorealism.
+    const styleHeaderBlock = (isKie && resolvedStyle && resolvedStyleLabel)
+      ? `MANDATORY VISUAL STYLE — HIGHEST PRIORITY, OVERRIDES EVERYTHING ELSE\nThe entire image MUST be rendered in this style: "${resolvedStyleLabel}".\n${resolvedStyle}\nReference images attached below are ONLY identity cues for face/clothing — IGNORE their rendering technique, IGNORE their photographic or alternative style, and TRANSPOSE the subject's identity into the mandatory style above. The final image must NOT be photorealistic unless the mandatory style explicitly says so.`
+      : null;
+    const styleFooterBlock = (isKie && resolvedStyleLabel)
+      ? `FINAL STYLE LOCK (re-stated to prevent style drift)\nRender the entire image strictly in the "${resolvedStyleLabel}" style described at the top of this prompt. Do not fall back to photorealism, do not mimic the rendering of any reference image, do not blend styles.`
+      : null;
+    // Lovable-AI flow keeps the legacy single STYLE MODIFIER block.
+    const legacyStyleBlock = (!isKie && resolvedStyle)
       ? `STYLE MODIFIER ONLY — apply this rendering style without changing the requested setting/action/composition:\n${resolvedStyle}`
       : null;
     const identityLocks = effectiveLinkedObjects
@@ -212,9 +223,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     }
 
     const build = (scene: string, locks: string[]) => [
+      styleHeaderBlock,
       `SCENE TO RENDER — PRIMARY INSTRUCTION\n${scene}`,
-      styleBlock,
+      legacyStyleBlock,
       locks.length > 0 ? `SUBJECT IDENTITY ANCHORS — appearance only, never composition/setting\n${locks.join("\n\n")}` : null,
+      styleFooterBlock,
       `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
       hasRefImages
         ? `[Images de référence transmises au modèle]\n${effectiveLinkedObjects.flatMap(obj =>
