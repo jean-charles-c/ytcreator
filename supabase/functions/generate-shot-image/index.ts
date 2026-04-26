@@ -401,18 +401,26 @@ serve(async (req) => {
     // (sometimes even baking the location's name into the image as text)
     // instead of the requested detail.
     const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
-    const isTightFraming = tightFramingRegex.test(
-      `${shot.description || ""} ${shot.prompt_export || ""}`,
-    );
-    const effectiveLinkedObjects = isTightFraming
+    const promptText = `${shot.description || ""} ${shot.prompt_export || ""}`;
+    const isTightFraming = tightFramingRegex.test(promptText);
+    // Detect "object-only" inserts (metaphor / mechanism / texture close-ups)
+    // where NO character is visible in the frame. In those cases we must also
+    // drop CHARACTER identity locks — otherwise the model anchors on the
+    // character and renders them instead of the requested object.
+    const characterMentionRegex = /\b(chef|chefs|personnage|personnages|visage|visages|portrait|silhouette|silhouettes|homme|hommes|femme|femmes|enfant|enfants|cuisinier|cuisini[èe]re|cuisiniers|serveur|serveuse|serveurs|client|clients|main|mains|doigt|doigts|bras|jambe|jambes|pied|pieds|t[êe]te|character|characters|person|people|hand|hands|face|faces|finger|fingers|arm|arms|leg|legs|foot|feet|head|heads|man|men|woman|women|child|children|cook|cooks|waiter|waitress|customer|customers)\b/i;
+    const hasCharacterMention = characterMentionRegex.test(promptText);
+    const isObjectOnlyInsert = isTightFraming && !hasCharacterMention;
+    const effectiveLinkedObjects = (isTightFraming || isObjectOnlyInsert)
       ? shotLinkedObjects.filter((obj: any) => {
           const t = String(obj.type || obj.object_type || "").toLowerCase();
-          return t !== "lieu" && t !== "location" && t !== "place";
+          if (isTightFraming && (t === "lieu" || t === "location" || t === "place")) return false;
+          if (isObjectOnlyInsert && (t === "character" || t === "personnage" || t === "person" || t === "people")) return false;
+          return true;
         })
       : shotLinkedObjects;
-    if (isTightFraming && effectiveLinkedObjects.length < shotLinkedObjects.length) {
+    if (effectiveLinkedObjects.length < shotLinkedObjects.length) {
       console.log(
-        `[generate-shot-image] Tight framing detected — dropped ${shotLinkedObjects.length - effectiveLinkedObjects.length} location identity lock(s) so the close-up is not replaced by an establishing shot.`,
+        `[generate-shot-image] Tight framing=${isTightFraming} objectOnlyInsert=${isObjectOnlyInsert} — dropped ${shotLinkedObjects.length - effectiveLinkedObjects.length} identity lock(s) so the close-up is not replaced by an establishing/character shot.`,
       );
     }
 
