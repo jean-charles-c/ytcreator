@@ -1580,60 +1580,115 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
   // Persist the manually selected image engine / quality onto the project so it
   // survives a reload. When no selection has ever been made, the project keeps
   // NULL and the UI falls back to "Nano Banana" + "1K".
-  const persistImageEngine = (engine: string) => {
+  const persistImageEngine = async (engine: string) => {
+    const previous = imageModel;
     setImageModel(engine);
     if (!projectId) return;
-    void supabase.from("projects").update({ image_engine: engine }).eq("id", projectId);
     // Hierarchy rule — "le plus grand écrase le plus petit" :
     // Changing the global selection clears every per-scene and per-shot
-    // override, both in memory and in DB. Any scene/shot that had a manual
-    // pick will now follow the new global engine.
+    // override, both in memory and in DB.
     setSceneImageModelOverrides({});
     setShotImageModelOverrides({});
-    void supabase
-      .from("scenes")
-      .update({ image_engine: null })
-      .eq("project_id", projectId)
-      .not("image_engine", "is", null);
-    void supabase
-      .from("shots")
-      .update({ image_engine: null })
-      .eq("project_id", projectId)
-      .not("image_engine", "is", null);
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ image_engine: engine })
+        .eq("id", projectId);
+      if (error) throw error;
+      // Cascade clears (best-effort, non-blocking is fine here).
+      void supabase
+        .from("scenes")
+        .update({ image_engine: null })
+        .eq("project_id", projectId)
+        .not("image_engine", "is", null);
+      void supabase
+        .from("shots")
+        .update({ image_engine: null })
+        .eq("project_id", projectId)
+        .not("image_engine", "is", null);
+      toast.success("Moteur d'image sauvegardé");
+    } catch (err) {
+      console.error("[persistImageEngine] save failed:", err);
+      setImageModel(previous);
+      toast.error("Impossible de sauvegarder le moteur d'image. Réessayez.");
+    }
   };
-  const persistImageQuality = (quality: "1K" | "2K" | "4K") => {
+  const persistImageQuality = async (quality: "1K" | "2K" | "4K") => {
+    const previous = imageQuality;
     setImageQuality(quality);
     if (!projectId) return;
-    void supabase.from("projects").update({ image_quality: quality }).eq("id", projectId);
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ image_quality: quality })
+        .eq("id", projectId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("[persistImageQuality] save failed:", err);
+      setImageQuality(previous);
+      toast.error("Impossible de sauvegarder la qualité d'image.");
+    }
   };
 
   // Per-scene engine override — persists in scenes.image_engine and clears
   // any per-shot override inside that scene (scene wins over shot).
-  const persistSceneImageEngine = (sceneId: string, engine: string) => {
+  const persistSceneImageEngine = async (sceneId: string, engine: string) => {
+    const previous = sceneImageModelOverrides[sceneId];
     setSceneImageModelOverrides((prev) => ({ ...prev, [sceneId]: engine }));
-    void supabase.from("scenes").update({ image_engine: engine }).eq("id", sceneId);
-    // Cascade: clear shot overrides belonging to this scene.
-    const shotIdsInScene = shots
-      .filter((s) => s.scene_id === sceneId)
-      .map((s) => s.id);
-    if (shotIdsInScene.length > 0) {
-      setShotImageModelOverrides((prev) => {
+    try {
+      const { error } = await supabase
+        .from("scenes")
+        .update({ image_engine: engine })
+        .eq("id", sceneId);
+      if (error) throw error;
+      // Cascade: clear shot overrides belonging to this scene.
+      const shotIdsInScene = shots
+        .filter((s) => s.scene_id === sceneId)
+        .map((s) => s.id);
+      if (shotIdsInScene.length > 0) {
+        setShotImageModelOverrides((prev) => {
+          const next = { ...prev };
+          for (const id of shotIdsInScene) delete next[id];
+          return next;
+        });
+        void supabase
+          .from("shots")
+          .update({ image_engine: null })
+          .in("id", shotIdsInScene);
+      }
+    } catch (err) {
+      console.error("[persistSceneImageEngine] save failed:", err);
+      setSceneImageModelOverrides((prev) => {
         const next = { ...prev };
-        for (const id of shotIdsInScene) delete next[id];
+        if (previous === undefined) delete next[sceneId];
+        else next[sceneId] = previous;
         return next;
       });
-      void supabase
-        .from("shots")
-        .update({ image_engine: null })
-        .in("id", shotIdsInScene);
+      toast.error("Impossible de sauvegarder le moteur de la scène.");
     }
   };
 
   // Per-shot engine override — persists in shots.image_engine. Always
   // honoured unless the user later changes the scene or global selection.
-  const persistShotImageEngine = (shotId: string, engine: string) => {
+  const persistShotImageEngine = async (shotId: string, engine: string) => {
+    const previous = shotImageModelOverrides[shotId];
     setShotImageModelOverrides((prev) => ({ ...prev, [shotId]: engine }));
-    void supabase.from("shots").update({ image_engine: engine }).eq("id", shotId);
+    try {
+      const { error } = await supabase
+        .from("shots")
+        .update({ image_engine: engine })
+        .eq("id", shotId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("[persistShotImageEngine] save failed:", err);
+      setShotImageModelOverrides((prev) => {
+        const next = { ...prev };
+        if (previous === undefined) delete next[shotId];
+        else next[shotId] = previous;
+        return next;
+      });
+      toast.error("Impossible de sauvegarder le moteur du shot.");
+    }
   };
 
   const handleGenerateShotImage = async (shotId: string, customPrompt?: string) => {
