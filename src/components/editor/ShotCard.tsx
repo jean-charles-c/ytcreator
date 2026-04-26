@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
+import { getVisualStyleById } from "@/components/editor/visualStyle/types";
 
 type Shot = Tables<"shots">;
 
@@ -57,6 +58,9 @@ interface ShotCardProps {
   imageExpanded?: boolean;
   onToggleImageExpanded?: () => void;
   scriptLanguage?: string;
+  aspectRatio?: string;
+  visualStyleId?: string | null;
+  imageModel?: string;
   linkedObjects?: RecurringObject[];
   allObjects?: RecurringObject[];
   onLinkObject?: (shotSceneOrder: number, objectId: string) => void;
@@ -76,7 +80,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, linkedObjects, allObjects, onLinkObject, onUnlinkObject, sceneOrder, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, aspectRatio = "16:9", visualStyleId, imageModel, linkedObjects, allObjects, onLinkObject, onUnlinkObject, sceneOrder, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [showObjectPicker, setShowObjectPicker] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
