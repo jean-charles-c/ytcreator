@@ -354,6 +354,38 @@ function sanitizePromptForSafety(text: string): string {
   return `Stylized cinematic documentary illustration, tasteful and non-graphic. ${sanitized}`;
 }
 
+/**
+ * Aggressive fallback sanitizer used as a last resort when the soft
+ * sanitization is still blocked by Google's safety filters. Strips emotional
+ * tension, conflict and chaos vocabulary that can be misinterpreted as
+ * harmful content, and forces a calm, neutral framing.
+ */
+function ultraNeutralPrompt(text: string): string {
+  const sanitized = sanitizePromptForSafety(text)
+    // Stress / tension / chaos vocabulary (FR)
+    .replace(/\bstress[ée]?(?:e|s|es)?\b/gi, "concentré")
+    .replace(/\bchaotique(?:s)?\b/gi, "animée")
+    .replace(/\bchaos\b/gi, "activité")
+    .replace(/\bpanique(?:r|s)?\b/gi, "attention")
+    .replace(/\battaqu(?:e|er|é|ée|és|ées)\b/gi, "approche")
+    .replace(/\bagress(?:if|ive|ion|er|é|ée)\b/gi, "vif")
+    .replace(/\bviolen(?:t|te|ce|ces)\b/gi, "intense")
+    .replace(/\bdanger(?:eux|euse)?\b/gi, "délicat")
+    .replace(/\btendu(?:e|s|es)?\b/gi, "calme")
+    .replace(/\btension(?:s)?\b/gi, "atmosphère")
+    .replace(/\bcris?\b/gi, "voix")
+    .replace(/\bd[ée]sordre\b/gi, "mouvement")
+    .replace(/\bperturbation(?:s)?\b/gi, "léger décalage")
+    .replace(/\bdysfonctionnement(?:s)?\b/gi, "détail mécanique")
+    .replace(/\bavarie(?:s)?\b/gi, "détail mécanique")
+    .replace(/\bparalys(?:ant|ante|er|é|ée)\b/gi, "immobile")
+    // English equivalents
+    .replace(/\b(stress(?:ed|ful)?|chaotic|chaos|panic|attack(?:ing|ed)?|aggressive|violent|violence|dangerous|tense|tension|scream|screaming|shout(?:ing)?)\b/gi, "calm")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return `Calm, neutral, family-friendly cinematic illustration. Peaceful documentary still frame. ${sanitized}`;
+}
+
 function isSafetyError(message: string): boolean {
   const m = message.toLowerCase();
   return (
