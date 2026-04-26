@@ -729,9 +729,13 @@ serve(async (req) => {
     console.log(`[KIE] Generating shot ${shot_id} with ${model} @${selectedQuality}, refs=${cappedRefs.length} oref=${cappedOref.length} sref=${cappedSref.length}`);
     const startTime = Date.now();
 
-    // Submit & poll — with one automatic retry using a sanitized prompt if the
-    // first attempt is blocked by Google's safety filter.
-    const promptVariants = [enrichedPrompt, sanitizePromptForSafety(enrichedPrompt)];
+    // Submit & poll — with up to two automatic retries using progressively
+    // more neutral prompts if Google's safety filter blocks the request.
+    const promptVariants = [
+      enrichedPrompt,
+      sanitizePromptForSafety(enrichedPrompt),
+      ultraNeutralPrompt(enrichedPrompt),
+    ];
     let taskId = "";
     let kieImageUrl = "";
     let lastError: unknown = null;
@@ -812,11 +816,18 @@ serve(async (req) => {
     // Timeout in synchronous mode: return 202 + task_id signal so the client
     // can switch to polling instead of treating it as a hard failure.
     const isTimeout = message === "KIE_TIMEOUT_SYNC";
+    const safetyBlocked = isSafetyError(message);
+    const userMessage = isTimeout
+      ? "Kie generation is taking longer than expected. Please retry with async mode."
+      : safetyBlocked
+        ? "L'image a été bloquée par les filtres de sécurité de Google après plusieurs tentatives. Reformulez le prompt en évitant les termes liés au stress, au chaos, au danger ou à la violence, ou activez le toggle « Sans personnage » pour ce plan."
+        : message;
     return new Response(
       JSON.stringify({
-        error: isTimeout ? "Kie generation is taking longer than expected. Please retry with async mode." : message,
+        error: userMessage,
         provider: "kie",
-        retryable: isTimeout,
+        retryable: isTimeout || safetyBlocked,
+        safety_blocked: safetyBlocked,
       }),
       { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
