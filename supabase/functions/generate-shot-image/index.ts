@@ -459,7 +459,8 @@ serve(async (req) => {
         if (shot.prompt_export.toLowerCase().includes(descSnippet)) {
           rawPrompt = shot.prompt_export;
         } else {
-          rawPrompt = shot.prompt_export + "\n\nDETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description;
+          rawPrompt = "DETAILED VISUAL DESCRIPTION — highest-priority visual instruction:\n" + shot.description +
+            "\n\nNarrative context, secondary to the exact visual description:\n" + shot.prompt_export;
         }
       } else {
         rawPrompt = shot.prompt_export || shot.description;
@@ -620,11 +621,13 @@ serve(async (req) => {
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
 
     const buildPrompt = (text: string) => usingCustomPrompt ? text : [
+      text,
+      "--- STYLE MODIFIER ONLY ---",
+      ...(styleSuffix ? [`Apply this rendering style without changing the requested setting, action, composition, number of subjects, or props:\n${styleSuffix}`] : []),
+      "--- TECHNICAL CONSTRAINTS ---",
       `Generate one single cinematic ${selectedAspectRatio} image, no borders, no letterboxing, no square crop.`,
       "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
-      ...(styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
-      text,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     // Build multimodal content array with reference images as base64
     const buildMessageContent = (promptText: string): any => {
