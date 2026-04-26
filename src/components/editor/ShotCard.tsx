@@ -117,8 +117,38 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
 
+  const getEffectiveLinkedObjects = () => {
+    const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
+    const isTightFraming = tightFramingRegex.test(`${shot.description || ""} ${shot.prompt_export || ""}`);
+    return (linkedObjects || []).filter((obj) => {
+      if (!isTightFraming) return true;
+      const t = String((obj as any).type || (obj as any).object_type || "").toLowerCase();
+      return t !== "lieu" && t !== "location" && t !== "place";
+    });
+  };
+
+  const cleanIdentityLock = (raw: string): string => {
+    let txt = String(raw || "");
+    const blockHeaders = [
+      /^(?:CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^TIME\s+PERIOD(?:\s*\/\s*HISTORICAL\s+STATE)?\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^REFERENCE\s+IMAGES(?:\s+PROVIDED)?:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^NO\s+TEMPORAL\s+DRIFT:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+    ];
+    for (const re of blockHeaders) txt = txt.replace(re, "");
+    return txt
+      .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+      .replace(/^\s*Do not (?:combine|mix) (?:visual )?(?:traits|features)[^\n]*\n?/gim, "")
+      .replace(/^\s*Use these reference images[^\n]*\n?/gim, "")
+      .replace(/^\s*Preserve (?:their|its) (?:exact )?[^\n]*\n?/gim, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
   const buildSceneFirstPrompt = (basePrompt: string, options?: { maxChars?: number }) => {
     const maxChars = options?.maxChars;
+    const effectiveLinkedObjects = getEffectiveLinkedObjects();
     const resolvedStyle = visualStyleId && visualStyleId !== "none" ? getVisualStyleById(visualStyleId)?.promptSuffix : null;
     const promptText = `${shot.description || ""} ${basePrompt || ""}`;
     const soberTableScene = /\b(table|feuille|papier|stylo|assis|bureau|lampe)\b/i.test(promptText);
