@@ -222,22 +222,48 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       );
     }
 
-    const build = (scene: string, locks: string[]) => [
-      styleHeaderBlock,
-      `SCENE TO RENDER — PRIMARY INSTRUCTION\n${scene}`,
-      legacyStyleBlock,
-      locks.length > 0 ? `SUBJECT IDENTITY ANCHORS — appearance only, never composition/setting\n${locks.join("\n\n")}` : null,
-      styleFooterBlock,
-      `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
-      hasRefImages
-        ? `[Images de référence transmises au modèle]\n${effectiveLinkedObjects.flatMap(obj =>
-            (filteredReferences ? (obj.reference_images || []).slice(0, 1) : (obj.reference_images || [])).map((url, i) => {
-              const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
-              return `  📷 ${obj.nom} — ${fileName}`;
-            })
-          ).join("\n")}`
-        : null,
-    ].filter(Boolean).join("\n\n---\n\n");
+    // For Kie: announce attached refs RIGHT AFTER the style header so the
+    // model treats them as the canonical recurring subject identity before
+    // reading the scene description.
+    const refsAnnounceBlock = (isKie && hasRefImages)
+      ? `ATTACHED REFERENCE IMAGES — RECURRING SUBJECT IDENTITY (highest priority for face/clothing fidelity)\nOne or more reference images of the recurring subject(s) are attached to this request. Treat them as the CANONICAL appearance of those subjects — same face, same hair, same clothing, same distinctive traits, exactly as shown in the references. Do NOT invent an alternative look. Do NOT copy their original background, pose, props or action — only their identity.`
+      : null;
+
+    const refsListBlock = hasRefImages
+      ? `[Images de référence transmises au modèle]\n${effectiveLinkedObjects.flatMap(obj =>
+          (filteredReferences ? (obj.reference_images || []).slice(0, 1) : (obj.reference_images || [])).map((url, i) => {
+            const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
+            return `  📷 ${obj.nom} — ${fileName}`;
+          })
+        ).join("\n")}`
+      : null;
+
+    const build = (scene: string, locks: string[]) => {
+      const anchorsBlock = locks.length > 0
+        ? `SUBJECT IDENTITY ANCHORS — appearance only, never composition/setting\n${locks.join("\n\n")}`
+        : null;
+
+      if (isKie) {
+        // Kie order: STYLE → REF ANNOUNCE → REF LIST → ANCHORS → SCENE → STYLE LOCK → TECH
+        return [
+          styleHeaderBlock,
+          refsAnnounceBlock,
+          refsListBlock,
+          anchorsBlock,
+          `SCENE TO RENDER — PRIMARY INSTRUCTION\n${scene}`,
+          styleFooterBlock,
+          `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
+        ].filter(Boolean).join("\n\n---\n\n");
+      }
+      // Lovable AI: keep legacy order (scene first).
+      return [
+        `SCENE TO RENDER — PRIMARY INSTRUCTION\n${scene}`,
+        legacyStyleBlock,
+        anchorsBlock,
+        `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
+        refsListBlock,
+      ].filter(Boolean).join("\n\n---\n\n");
+    };
 
     let output = build(sceneBlock, identityLocks);
     if (maxChars && output.length > maxChars) {
