@@ -2890,7 +2890,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
                         <select
                           value={imageModel}
-                          onChange={(e) => setImageModel(e.target.value)}
+                          onChange={(e) => persistImageEngine(e.target.value)}
                           className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                           {IMAGE_MODELS.map((m) => (
@@ -2902,7 +2902,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         {isKieEngine(imageModel) && (
                           <select
                             value={imageQuality}
-                            onChange={(e) => setImageQuality(e.target.value as "1K" | "2K" | "4K")}
+                            onChange={(e) => persistImageQuality(e.target.value as "1K" | "2K" | "4K")}
                             className="rounded border border-violet-500/40 bg-violet-500/5 px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
                             title="Qualité de sortie Kie"
                           >
