@@ -642,6 +642,8 @@ serve(async (req) => {
           "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
           "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
           "No temporal drift: never mix eras or versions of the same character, object, or place.",
+          "SINGLE INSTANCE ONLY: each referenced person/object must appear EXACTLY ONCE in the final image. Never duplicate, mirror, clone, or show multiple variants of the same character side by side. Absolutely no split-screen, diptych, triptych, collage, before/after, comparison panel, or composite layout — render ONE unified scene with ONE single background.",
+          "COMPOSE A NEW SCENE: do not reproduce the backgrounds, poses, or layouts shown in the reference images. Use the references only to lock the subject's face/identity, then place that single subject inside the FRAMING & ACTION described in the prompt.",
         ]
       : [];
     const directives = [
