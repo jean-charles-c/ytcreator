@@ -619,10 +619,10 @@ serve(async (req) => {
     const { getStyleSuffix } = await import("../_shared/visual-styles.ts");
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
 
-    const buildPrompt = (text: string) => [
+    const buildPrompt = (text: string) => usingCustomPrompt ? text : [
       `Generate one single cinematic ${selectedAspectRatio} image, no borders, no letterboxing, no square crop.`,
       "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
-      ...(!usingCustomPrompt && styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
+      ...(styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
       text,
     ].join("\n");
 
