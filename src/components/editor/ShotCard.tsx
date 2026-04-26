@@ -117,6 +117,83 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
 
+  const buildSceneFirstPrompt = (basePrompt: string, options?: { maxChars?: number }) => {
+    const maxChars = options?.maxChars;
+    const resolvedStyle = visualStyleId && visualStyleId !== "none" ? getVisualStyleById(visualStyleId)?.promptSuffix : null;
+    const promptText = `${shot.description || ""} ${basePrompt || ""}`;
+    const soberTableScene = /\b(table|feuille|papier|stylo|assis|bureau|lampe)\b/i.test(promptText);
+
+    let visualDescription = shot.description?.trim() || "";
+    if (!visualDescription && basePrompt) visualDescription = basePrompt;
+
+    let sceneBlock = [
+      "YOU MUST RENDER THIS EXACT SCENE. The following visual description is the highest-priority instruction and overrides style ambience, reference-image content, and any generic kitchen context:",
+      visualDescription,
+    ].join("\n");
+
+    const sourcePrompt = basePrompt?.trim();
+    if (sourcePrompt && !sourcePrompt.toLowerCase().includes(visualDescription.slice(0, 60).toLowerCase())) {
+      sceneBlock += `\n\nNarrative context, secondary to the exact visual description:\n${sourcePrompt}`;
+    }
+
+    const styleBlock = resolvedStyle
+      ? `STYLE MODIFIER ONLY — apply this rendering style without changing the requested setting/action/composition:\n${resolvedStyle}`
+      : null;
+    const identityLocks = effectiveLinkedObjects
+      .map(obj => {
+        const cleaned = cleanIdentityLock(obj.identity_prompt || "");
+        if (!cleaned && obj.nom) return `Subject: ${obj.nom}`;
+        return cleaned;
+      })
+      .filter(Boolean);
+    const hasRefImages = effectiveLinkedObjects.some(obj => obj.reference_images && obj.reference_images.length > 0);
+    const techLines: string[] = [
+      `Output: one single cinematic ${aspectRatio} image, no borders, no letterboxing, no square crop.`,
+      "No visible written text in the image: no titles, labels, captions, signs, or readable document text. A blank sheet must stay blank.",
+    ];
+    if (soberTableScene) {
+      techLines.push(
+        "Hard scene lock: one chef only, seated at the table, serious/clinical expression, looking at a blank white sheet, holding a pen.",
+        "Forbidden: professional kitchen background, cooking activity, stove, flames, pots, pans, vegetables, plates of food, smiling pose, standing hero portrait, extra chefs or duplicate characters.",
+      );
+    }
+    if (hasRefImages) {
+      techLines.push(
+        "Reference images are identity anchors for face/clothing ONLY. Ignore their backgrounds, poses, props, smiles, cooking scenes, plates of food, and extra people.",
+        "Preserve the subject's exact identity without redesign, modernization, hybridization, or generic lookalike.",
+        "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
+      );
+    }
+
+    const build = (scene: string, locks: string[]) => [
+      `SCENE TO RENDER — PRIMARY INSTRUCTION\n${scene}`,
+      styleBlock,
+      locks.length > 0 ? `SUBJECT IDENTITY ANCHORS — appearance only, never composition/setting\n${locks.join("\n\n")}` : null,
+      `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
+      hasRefImages
+        ? `[Images de référence transmises au modèle]\n${effectiveLinkedObjects.flatMap(obj =>
+            (obj.reference_images || []).map((url, i) => {
+              const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
+              return `  📷 ${obj.nom} — ${fileName}`;
+            })
+          ).join("\n")}`
+        : null,
+    ].filter(Boolean).join("\n\n---\n\n");
+
+    let output = build(sceneBlock, identityLocks);
+    if (maxChars && output.length > maxChars) {
+      const compactLocks = identityLocks.map(lock => lock.split(/(?<=[.!?])\s+/)[0]?.slice(0, 180)).filter(Boolean) as string[];
+      output = build(sceneBlock, compactLocks);
+    }
+    if (maxChars && output.length > maxChars) {
+      const overflow = output.length - maxChars;
+      const minSceneLength = Math.min(sceneBlock.length, 700);
+      const trimmedScene = sceneBlock.slice(0, Math.max(minSceneLength, sceneBlock.length - overflow - 3)) + "...";
+      output = build(trimmedScene, []);
+    }
+    return output;
+  };
+
   const buildFullPromptPreview = (basePrompt: string) => {
     // If user has a custom edited version, use that
     if (customFullPrompt !== null) return customFullPrompt;
