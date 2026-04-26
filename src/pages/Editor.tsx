@@ -307,6 +307,27 @@ export default function Editor() {
         setShots(shotsRes.data);
       }
 
+      // Hydrate per-scene / per-shot AI engine overrides from DB so manual
+      // selections survive a reload. Empty/null = falls back to global engine.
+      if (scenesRes.data) {
+        const sceneOverrides: Record<string, string> = {};
+        for (const sc of scenesRes.data as any[]) {
+          if (typeof sc.image_engine === "string" && sc.image_engine.length > 0) {
+            sceneOverrides[sc.id] = sc.image_engine;
+          }
+        }
+        setSceneImageModelOverrides(sceneOverrides);
+      }
+      if (shotsRes.data) {
+        const shotOverrides: Record<string, string> = {};
+        for (const sh of shotsRes.data as any[]) {
+          if (typeof sh.image_engine === "string" && sh.image_engine.length > 0) {
+            shotOverrides[sh.id] = sh.image_engine;
+          }
+        }
+        setShotImageModelOverrides(shotOverrides);
+      }
+
       const scriptCreatorState = scriptCreatorRes?.data;
       if (scriptCreatorState) {
         setPdfAnalysis(scriptCreatorState.analysis ?? null);
@@ -1534,11 +1555,56 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
     setImageModel(engine);
     if (!projectId) return;
     void supabase.from("projects").update({ image_engine: engine }).eq("id", projectId);
+    // Hierarchy rule — "le plus grand écrase le plus petit" :
+    // Changing the global selection clears every per-scene and per-shot
+    // override, both in memory and in DB. Any scene/shot that had a manual
+    // pick will now follow the new global engine.
+    setSceneImageModelOverrides({});
+    setShotImageModelOverrides({});
+    void supabase
+      .from("scenes")
+      .update({ image_engine: null })
+      .eq("project_id", projectId)
+      .not("image_engine", "is", null);
+    void supabase
+      .from("shots")
+      .update({ image_engine: null })
+      .eq("project_id", projectId)
+      .not("image_engine", "is", null);
   };
   const persistImageQuality = (quality: "1K" | "2K" | "4K") => {
     setImageQuality(quality);
     if (!projectId) return;
     void supabase.from("projects").update({ image_quality: quality }).eq("id", projectId);
+  };
+
+  // Per-scene engine override — persists in scenes.image_engine and clears
+  // any per-shot override inside that scene (scene wins over shot).
+  const persistSceneImageEngine = (sceneId: string, engine: string) => {
+    setSceneImageModelOverrides((prev) => ({ ...prev, [sceneId]: engine }));
+    void supabase.from("scenes").update({ image_engine: engine }).eq("id", sceneId);
+    // Cascade: clear shot overrides belonging to this scene.
+    const shotIdsInScene = shots
+      .filter((s) => s.scene_id === sceneId)
+      .map((s) => s.id);
+    if (shotIdsInScene.length > 0) {
+      setShotImageModelOverrides((prev) => {
+        const next = { ...prev };
+        for (const id of shotIdsInScene) delete next[id];
+        return next;
+      });
+      void supabase
+        .from("shots")
+        .update({ image_engine: null })
+        .in("id", shotIdsInScene);
+    }
+  };
+
+  // Per-shot engine override — persists in shots.image_engine. Always
+  // honoured unless the user later changes the scene or global selection.
+  const persistShotImageEngine = (shotId: string, engine: string) => {
+    setShotImageModelOverrides((prev) => ({ ...prev, [shotId]: engine }));
+    void supabase.from("shots").update({ image_engine: engine }).eq("id", shotId);
   };
 
   const handleGenerateShotImage = async (shotId: string) => {
@@ -3451,7 +3517,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                     <div className="flex items-center gap-1.5">
                                       <select
                                         value={sceneImageModelOverrides[scene.id] || imageModel}
-                                        onChange={(e) => setSceneImageModelOverrides(prev => ({ ...prev, [scene.id]: e.target.value }))}
+                                        onChange={(e) => persistSceneImageEngine(scene.id, e.target.value)}
                                         className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px]"
                                       >
                                         {IMAGE_MODELS.map((m) => (
@@ -3564,7 +3630,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                                   />
                                                   <select
                                                     value={shotImageModelOverrides[shot.id] || imageModel}
-                                                    onChange={(e) => setShotImageModelOverrides(prev => ({ ...prev, [shot.id]: e.target.value }))}
+                                                    onChange={(e) => persistShotImageEngine(shot.id, e.target.value)}
                                                     className="rounded border border-border bg-background px-1.5 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[140px] h-6"
                                                   >
                                                     {IMAGE_MODELS.map((m) => (
