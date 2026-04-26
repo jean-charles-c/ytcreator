@@ -3517,7 +3517,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                     <div className="flex items-center gap-1.5">
                                       <select
                                         value={sceneImageModelOverrides[scene.id] || imageModel}
-                                        onChange={(e) => setSceneImageModelOverrides(prev => ({ ...prev, [scene.id]: e.target.value }))}
+                                        onChange={(e) => persistSceneImageEngine(scene.id, e.target.value)}
                                         className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px]"
                                       >
                                         {IMAGE_MODELS.map((m) => (
