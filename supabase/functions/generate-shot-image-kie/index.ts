@@ -686,30 +686,36 @@ serve(async (req) => {
         })
         .join("\n");
 
-      // Reconstruct: head directives (style + reference rule + aspect ratio) +
-      // compact locks + full action prompt.
-      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:IDENTITY LOCK|CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
-      const headDirectives = (headMatch?.[0] || "").trim();
+      // Extract the trailing technical-constraints block we added below the
+      // scene, so we can re-attach it after compression.
+      const constraintsMatch = enrichedPrompt.match(/--- TECHNICAL CONSTRAINTS ---[\s\S]*$/);
+      const constraintsBlock = (constraintsMatch?.[0] || "").trim();
+      // Extract the optional style-enforcement preamble (kept at the top).
+      const styleMatch = enrichedPrompt.match(/^MANDATORY VISUAL STYLE[\s\S]*?(?=\n\n)/);
+      const styleBlock = (styleMatch?.[0] || "").trim();
 
-      let rebuilt = "";
-      if (headDirectives) rebuilt += headDirectives + "\n\n";
-      rebuilt +=
-        "HIERARCHY: FRAMING & ACTION below defines the shot's composition (mandatory). IDENTITY LOCK defines the exact appearance of the subject inside that frame (mandatory). Apply both simultaneously.\n\n" +
-        `FRAMING & ACTION (mandatory composition):\n${actionText}`;
-      if (compactLocks) {
-        rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot to show the subject in full):\n${compactLocks}`;
-      }
+      // SCENE-FIRST reconstruction: scene/action at the top, then identity
+      // lock summary, then technical constraints (and style stays on top if
+      // present). This mirrors the non-compressed layout so the model always
+      // anchors on WHAT to draw before reading any meta-instruction.
+      const buildRebuilt = (action: string) => {
+        let out = "";
+        if (styleBlock) out += styleBlock + "\n\n";
+        out += `SCENE TO RENDER (primary subject of this image):\n${action}`;
+        if (compactLocks) {
+          out += `\n\nSUBJECT IDENTITY (preserve face/clothing only — do NOT copy reference backgrounds):\n${compactLocks}`;
+        }
+        if (constraintsBlock) {
+          out += `\n\n${constraintsBlock}`;
+        }
+        return out;
+      };
 
+      let rebuilt = buildRebuilt(actionText);
       if (rebuilt.length > KIE_PROMPT_MAX) {
         const overflow = rebuilt.length - KIE_PROMPT_MAX;
         const trimmedAction = actionText.slice(0, Math.max(200, actionText.length - overflow - 3)) + "...";
-        rebuilt =
-          `${headDirectives}\n\n` +
-          "HIERARCHY: FRAMING & ACTION (composition, mandatory) + IDENTITY LOCK (subject appearance, mandatory). Apply both simultaneously.\n\n" +
-          `FRAMING & ACTION (mandatory composition):\n${trimmedAction}`;
-        if (compactLocks) {
-          rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot):\n${compactLocks}`;
-        }
+        rebuilt = buildRebuilt(trimmedAction);
       }
       console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${effectiveLinkedObjects.length} identity locks)`);
       enrichedPrompt = rebuilt;
