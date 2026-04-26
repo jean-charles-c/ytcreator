@@ -602,16 +602,17 @@ serve(async (req) => {
     // multi-paragraph block — same constraints, ~70% fewer tokens).
     if (referenceImageInputs.length > 0) {
       const REFERENCE_IMAGE_RULE = [
-        "Use reference images only as fidelity anchors, not as compositions to copy.",
-        "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
-        "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
-        "No temporal drift: never mix eras or versions of the same character, object, or place.",
-        "SINGLE INSTANCE ONLY: each referenced person/object must appear EXACTLY ONCE in the final image. Never duplicate, mirror, clone, or show multiple variants of the same character side by side. Absolutely no split-screen, diptych, triptych, collage, before/after, comparison panel, or composite layout — render ONE unified scene with ONE single background.",
-        "COMPOSE A NEW SCENE: do not reproduce the backgrounds, poses, or layouts shown in the reference images. Use the references only to lock the subject's face/identity, then place that single subject inside the FRAMING & ACTION described below.",
-        "ABSOLUTELY NO TEXT: do not render any title, label, caption, scroll inscription, parchment text, sign, document title or readable writing in the image. Even if an identity lock or reference image mentions a name, that name MUST NOT appear as visible text in the frame. Only incidental, blurred, decorative or out-of-focus background writing is tolerated.",
-        "Do not center the composition on a held document, parchment or sign. Vary framing, angle, depth and subject placement. The named object/concept may be evoked indirectly (silhouette, fragment, shadow, prop on a table) — never as the dominant centered element with a readable label.",
+        "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
+        "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
+        "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
+        "No visible written text in the image (no titles, labels, captions, signs, document text). Only incidental blurred background writing is allowed.",
       ].join("\n");
-      enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
+      // SCENE-FIRST: put the scene/action at the TOP of the prompt and push
+      // the technical reference rules to the bottom. The image model anchors
+      // on the beginning of the prompt — leading with meta-instructions made
+      // it ignore the requested scene and fall back to a generic composition
+      // built from the reference images.
+      enrichedPrompt = enrichedPrompt + "\n\n--- REFERENCE IMAGE RULES ---\n" + REFERENCE_IMAGE_RULE;
     }
 
     // ── VISUAL STYLE ENFORCEMENT (single source of truth) ──

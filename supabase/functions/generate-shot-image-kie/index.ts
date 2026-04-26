@@ -638,21 +638,21 @@ serve(async (req) => {
     );
     const referenceLines = hasRefs
       ? [
-          "Use reference images only as fidelity anchors, not as compositions to copy.",
-          "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
-          "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
-          "No temporal drift: never mix eras or versions of the same character, object, or place.",
-          "SINGLE INSTANCE ONLY: each referenced person/object must appear EXACTLY ONCE in the final image. Never duplicate, mirror, clone, or show multiple variants of the same character side by side. Absolutely no split-screen, diptych, triptych, collage, before/after, comparison panel, or composite layout — render ONE unified scene with ONE single background.",
-          "COMPOSE A NEW SCENE: do not reproduce the backgrounds, poses, or layouts shown in the reference images. Use the references only to lock the subject's face/identity, then place that single subject inside the FRAMING & ACTION described in the prompt.",
+          "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
+          "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
+          "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
         ]
       : [];
     const directives = [
+      `Output: one single cinematic ${targetAR} image, no borders, no letterboxing.`,
+      "No visible written text in the image (no titles, labels, captions, signs, document text). Only incidental blurred background writing is allowed.",
       ...referenceLines,
-      `Generate one single cinematic ${targetAR} image, no borders, no letterboxing, no square crop.`,
-      "ABSOLUTELY NO TEXT: do not render any title, label, caption, scroll inscription, parchment text, sign, document title or readable writing in the image. Even if an identity lock or reference image mentions a name, that name MUST NOT appear as visible text in the frame. Only incidental, blurred, decorative or out-of-focus background writing is tolerated.",
-      "Do not center the composition on a held document, parchment or sign. Vary framing, angle, depth and subject placement. The named object/concept may be evoked indirectly (silhouette, fragment, shadow, prop on a table) — never as the dominant centered element with a readable label.",
     ].join("\n");
-    enrichedPrompt = `${directives}\n\n${enrichedPrompt}`;
+    // SCENE FIRST: put the actual scene/action at the TOP of the prompt so the
+    // image model anchors on WHAT to draw, not on meta-instructions. Technical
+    // directives go AFTER as constraints. This dramatically improves fidelity
+    // to the requested action on nano-banana / flux / imagen.
+    enrichedPrompt = `${enrichedPrompt}\n\n--- TECHNICAL CONSTRAINTS ---\n${directives}`;
 
     // Kie market models cap prompts at 2000 chars (some at 5000). Stay safe at 1900.
     // z-image has a much stricter limit (~800 chars based on API errors).
@@ -686,30 +686,36 @@ serve(async (req) => {
         })
         .join("\n");
 
-      // Reconstruct: head directives (style + reference rule + aspect ratio) +
-      // compact locks + full action prompt.
-      const headMatch = enrichedPrompt.match(/^[\s\S]*?(?=(?:IDENTITY LOCK|CHARACTER IDENTITY LOCK|LOCATION IDENTITY LOCK|OBJECT IDENTITY LOCK|VEHICLE IDENTITY LOCK|$))/);
-      const headDirectives = (headMatch?.[0] || "").trim();
+      // Extract the trailing technical-constraints block we added below the
+      // scene, so we can re-attach it after compression.
+      const constraintsMatch = enrichedPrompt.match(/--- TECHNICAL CONSTRAINTS ---[\s\S]*$/);
+      const constraintsBlock = (constraintsMatch?.[0] || "").trim();
+      // Extract the optional style-enforcement preamble (kept at the top).
+      const styleMatch = enrichedPrompt.match(/^MANDATORY VISUAL STYLE[\s\S]*?(?=\n\n)/);
+      const styleBlock = (styleMatch?.[0] || "").trim();
 
-      let rebuilt = "";
-      if (headDirectives) rebuilt += headDirectives + "\n\n";
-      rebuilt +=
-        "HIERARCHY: FRAMING & ACTION below defines the shot's composition (mandatory). IDENTITY LOCK defines the exact appearance of the subject inside that frame (mandatory). Apply both simultaneously.\n\n" +
-        `FRAMING & ACTION (mandatory composition):\n${actionText}`;
-      if (compactLocks) {
-        rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot to show the subject in full):\n${compactLocks}`;
-      }
+      // SCENE-FIRST reconstruction: scene/action at the top, then identity
+      // lock summary, then technical constraints (and style stays on top if
+      // present). This mirrors the non-compressed layout so the model always
+      // anchors on WHAT to draw before reading any meta-instruction.
+      const buildRebuilt = (action: string) => {
+        let out = "";
+        if (styleBlock) out += styleBlock + "\n\n";
+        out += `SCENE TO RENDER (primary subject of this image):\n${action}`;
+        if (compactLocks) {
+          out += `\n\nSUBJECT IDENTITY (preserve face/clothing only — do NOT copy reference backgrounds):\n${compactLocks}`;
+        }
+        if (constraintsBlock) {
+          out += `\n\n${constraintsBlock}`;
+        }
+        return out;
+      };
 
+      let rebuilt = buildRebuilt(actionText);
       if (rebuilt.length > KIE_PROMPT_MAX) {
         const overflow = rebuilt.length - KIE_PROMPT_MAX;
         const trimmedAction = actionText.slice(0, Math.max(200, actionText.length - overflow - 3)) + "...";
-        rebuilt =
-          `${headDirectives}\n\n` +
-          "HIERARCHY: FRAMING & ACTION (composition, mandatory) + IDENTITY LOCK (subject appearance, mandatory). Apply both simultaneously.\n\n" +
-          `FRAMING & ACTION (mandatory composition):\n${trimmedAction}`;
-        if (compactLocks) {
-          rebuilt += `\n\nIDENTITY LOCK (mandatory appearance — do not widen the shot):\n${compactLocks}`;
-        }
+        rebuilt = buildRebuilt(trimmedAction);
       }
       console.warn(`[KIE] Prompt smart-compressed from ${originalLen} to ${rebuilt.length} chars (preserved action + ${effectiveLinkedObjects.length} identity locks)`);
       enrichedPrompt = rebuilt;
