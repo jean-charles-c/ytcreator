@@ -282,6 +282,17 @@ export default function Editor() {
       setProjectId(projectRes.data.id);
       setShowSetup(false);
 
+      // Restore persisted image generation engine/quality (per-project preference).
+      // Falls back to "Nano Banana" + "1K" when no manual selection has been saved yet.
+      const persistedEngine = (projectRes.data as any).image_engine;
+      if (typeof persistedEngine === "string" && persistedEngine.length > 0) {
+        setImageModel(persistedEngine);
+      }
+      const persistedQuality = (projectRes.data as any).image_quality;
+      if (persistedQuality === "1K" || persistedQuality === "2K" || persistedQuality === "4K") {
+        setImageQuality(persistedQuality);
+      }
+
       if (scenesRes.data) setScenes(scenesRes.data);
       if (shotsRes.data && scenesRes.data) {
         const { reordered, updates } = reorderShotsByReadingPosition(shotsRes.data, scenesRes.data);
