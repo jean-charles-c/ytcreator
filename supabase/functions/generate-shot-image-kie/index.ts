@@ -558,7 +558,8 @@ serve(async (req) => {
 
     // Build prompt
     let enrichedPrompt: string;
-    if (typeof custom_prompt === "string" && custom_prompt.trim().length > 0) {
+    const usingCustomPrompt = typeof custom_prompt === "string" && custom_prompt.trim().length > 0;
+    if (usingCustomPrompt) {
       enrichedPrompt = custom_prompt.trim();
     } else {
       let rawPrompt: string;
@@ -613,7 +614,7 @@ serve(async (req) => {
     // Inject the style at the head of the prompt so the UI-selected style
     // always wins over whatever style was baked into prompt_export.
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
-    if (styleSuffix) {
+    if (!usingCustomPrompt && styleSuffix) {
       enrichedPrompt =
         `MANDATORY VISUAL STYLE — apply this style to the entire image without exception. ` +
         `This overrides any other style instruction that may appear later in the prompt:\n${styleSuffix}\n\n` +
@@ -646,7 +647,9 @@ serve(async (req) => {
     // image model anchors on WHAT to draw, not on meta-instructions. Technical
     // directives go AFTER as constraints. This dramatically improves fidelity
     // to the requested action on nano-banana / flux / imagen.
-    enrichedPrompt = `${enrichedPrompt}\n\n--- TECHNICAL CONSTRAINTS ---\n${directives}`;
+    if (!usingCustomPrompt) {
+      enrichedPrompt = `${enrichedPrompt}\n\n--- TECHNICAL CONSTRAINTS ---\n${directives}`;
+    }
 
     // Kie market models cap prompts at 2000 chars (some at 5000). Stay safe at 1900.
     // z-image has a much stricter limit (~800 chars based on API errors).
