@@ -165,9 +165,16 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
     const sourcePrompt = basePrompt?.trim();
     if (sourcePrompt && !sourcePrompt.toLowerCase().includes(visualDescription.slice(0, 60).toLowerCase())) {
-      const secondaryContext = isKie
-        ? sourcePrompt.replace(/\bStyle\s*:[\s\S]*$/i, "").trim().slice(0, 350)
-        : sourcePrompt;
+      // Always strip the leading baked-in "Style : ... ." prefix so the
+      // narrative context never contradicts the currently-selected visual
+      // style (which is injected separately via `styleBlock` above). The
+      // edge functions perform the same strip server-side — keeping the
+      // preview aligned with what the model actually receives.
+      const stripped = sourcePrompt
+        .replace(/^\s*Style\s*:\s*[^.\n]+\.\s*/i, "")
+        .replace(/^\s*In\s+[^,\n]+,\s*[^,\n]+,\s*/i, "")
+        .trim();
+      const secondaryContext = isKie ? stripped.slice(0, 350) : stripped;
       if (secondaryContext) {
         sceneBlock += `\n\nNarrative context, secondary to the exact visual description:\n${secondaryContext}`;
       }
