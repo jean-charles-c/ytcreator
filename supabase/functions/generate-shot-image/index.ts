@@ -591,7 +591,8 @@ serve(async (req) => {
         "Preserve identity, proportions, materials, distinctive traits, and period-specific details of any referenced person, place, or object.",
         "Do not redesign, modernize, age-change, hybridize, or create generic lookalikes.",
         "No temporal drift: never mix eras or versions of the same character, object, or place.",
-        "Never render prompt or narrative text inside the image.",
+        "ABSOLUTELY NO TEXT: do not render any title, label, caption, scroll inscription, parchment text, sign, document title or readable writing in the image. Even if an identity lock or reference image mentions a name, that name MUST NOT appear as visible text in the frame. Only incidental, blurred, decorative or out-of-focus background writing is tolerated.",
+        "Do not center the composition on a held document, parchment or sign. Vary framing, angle, depth and subject placement. The named object/concept may be evoked indirectly (silhouette, fragment, shadow, prop on a table) — never as the dominant centered element with a readable label.",
       ].join("\n");
       enrichedPrompt = REFERENCE_IMAGE_RULE + "\n\n" + enrichedPrompt;
     }
