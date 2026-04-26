@@ -535,8 +535,13 @@ serve(async (req) => {
     const forceNoCharacter = (shot as any).force_no_character === true;
     const isObjectOnlyInsert =
       forceNoCharacter ||
-      (isTightFraming && !hasCharacterMention) ||
-      (isTightFraming && isMetaphoricalPrompt);
+      // A shot is treated as an "object-only insert" (drop CHARACTER locks)
+      // ONLY when no character is actually visible in the frame. If the
+      // prompt explicitly mentions the character (face, hands, silhouette,
+      // chef, etc.), keep the character identity lock + reference images
+      // even when the framing is tight or the prompt uses a metaphorical
+      // wording — the character IS the subject of the frame.
+      (isTightFraming && !hasCharacterMention);
     const effectiveLinkedObjects = (isTightFraming || isObjectOnlyInsert)
       ? shotLinkedObjects.filter((obj: any) => {
           const t = String(obj.type || obj.object_type || "").toLowerCase();
