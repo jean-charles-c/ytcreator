@@ -627,6 +627,12 @@ serve(async (req) => {
     //     not invent a new face/outfit while reading the scene.
     //  3. SCENE TO RENDER third → composition/action authority.
     //  4. STYLE LOCK last → final reminder to prevent style drift.
+    const targetAR = ASPECT_RATIOS_KIE[aspect_ratio] ?? "16:9";
+    const hasRefs = effectiveLinkedObjects.some(
+      (o: any) => Array.isArray(o.reference_images) && o.reference_images.length > 0,
+    );
+    const useFilteredReferences = hasRefs && FILTERED_REFERENCE_MODELS.has(model);
+
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
     const styleLabel = (visual_style && visual_style !== "none") ? getStyleLabel(visual_style) : null;
 
@@ -675,11 +681,6 @@ serve(async (req) => {
     // aspect ratio, and "no prompt-as-text". Replaces three previously
     // duplicated blocks (REFERENCE IMAGE RULE / ASPECT RATIO / anti-text-leak)
     // to reduce token waste while keeping every constraint.
-    const targetAR = ASPECT_RATIOS_KIE[aspect_ratio] ?? "16:9";
-    const hasRefs = effectiveLinkedObjects.some(
-      (o: any) => Array.isArray(o.reference_images) && o.reference_images.length > 0,
-    );
-    const useFilteredReferences = hasRefs && FILTERED_REFERENCE_MODELS.has(model);
     const referenceLines = hasRefs
       ? [
           "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
