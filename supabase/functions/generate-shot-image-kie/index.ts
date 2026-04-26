@@ -580,6 +580,17 @@ serve(async (req) => {
       // mentions_shots, so the legacy prefix would either duplicate it or
       // bias the model toward an object that isn't in this shot.
       rawPrompt = stripLegacyIdentityLockPrefix(rawPrompt);
+      // Strip any baked-in "Style : ..." prefix from prompt_export so the
+      // CURRENT visual style (resolved global → scene → shot) wins. Without
+      // this, a stale style sentence at the head of prompt_export silently
+      // overrides the user's latest selection.
+      rawPrompt = stripBakedStylePrefix(rawPrompt);
+      // Re-inject the active style at the very top, in French, mirroring the
+      // original `Style : ...` shape so the prompt remains human-readable.
+      if (visual_style && visual_style !== "none") {
+        const styleLine = getStyleSuffixFr(visual_style).trim();
+        if (styleLine) rawPrompt = `Style : ${styleLine}\n\n${rawPrompt}`;
+      }
       enrichedPrompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
       // Inject identity locks AFTER the action so the model doesn't anchor on
