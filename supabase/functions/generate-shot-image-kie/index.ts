@@ -354,6 +354,38 @@ function sanitizePromptForSafety(text: string): string {
   return `Stylized cinematic documentary illustration, tasteful and non-graphic. ${sanitized}`;
 }
 
+/**
+ * Aggressive fallback sanitizer used as a last resort when the soft
+ * sanitization is still blocked by Google's safety filters. Strips emotional
+ * tension, conflict and chaos vocabulary that can be misinterpreted as
+ * harmful content, and forces a calm, neutral framing.
+ */
+function ultraNeutralPrompt(text: string): string {
+  const sanitized = sanitizePromptForSafety(text)
+    // Stress / tension / chaos vocabulary (FR)
+    .replace(/\bstress[ée]?(?:e|s|es)?\b/gi, "concentré")
+    .replace(/\bchaotique(?:s)?\b/gi, "animée")
+    .replace(/\bchaos\b/gi, "activité")
+    .replace(/\bpanique(?:r|s)?\b/gi, "attention")
+    .replace(/\battaqu(?:e|er|é|ée|és|ées)\b/gi, "approche")
+    .replace(/\bagress(?:if|ive|ion|er|é|ée)\b/gi, "vif")
+    .replace(/\bviolen(?:t|te|ce|ces)\b/gi, "intense")
+    .replace(/\bdanger(?:eux|euse)?\b/gi, "délicat")
+    .replace(/\btendu(?:e|s|es)?\b/gi, "calme")
+    .replace(/\btension(?:s)?\b/gi, "atmosphère")
+    .replace(/\bcris?\b/gi, "voix")
+    .replace(/\bd[ée]sordre\b/gi, "mouvement")
+    .replace(/\bperturbation(?:s)?\b/gi, "léger décalage")
+    .replace(/\bdysfonctionnement(?:s)?\b/gi, "détail mécanique")
+    .replace(/\bavarie(?:s)?\b/gi, "détail mécanique")
+    .replace(/\bparalys(?:ant|ante|er|é|ée)\b/gi, "immobile")
+    // English equivalents
+    .replace(/\b(stress(?:ed|ful)?|chaotic|chaos|panic|attack(?:ing|ed)?|aggressive|violent|violence|dangerous|tense|tension|scream|screaming|shout(?:ing)?)\b/gi, "calm")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return `Calm, neutral, family-friendly cinematic illustration. Peaceful documentary still frame. ${sanitized}`;
+}
+
 function isSafetyError(message: string): boolean {
   const m = message.toLowerCase();
   return (
@@ -697,9 +729,13 @@ serve(async (req) => {
     console.log(`[KIE] Generating shot ${shot_id} with ${model} @${selectedQuality}, refs=${cappedRefs.length} oref=${cappedOref.length} sref=${cappedSref.length}`);
     const startTime = Date.now();
 
-    // Submit & poll — with one automatic retry using a sanitized prompt if the
-    // first attempt is blocked by Google's safety filter.
-    const promptVariants = [enrichedPrompt, sanitizePromptForSafety(enrichedPrompt)];
+    // Submit & poll — with up to two automatic retries using progressively
+    // more neutral prompts if Google's safety filter blocks the request.
+    const promptVariants = [
+      enrichedPrompt,
+      sanitizePromptForSafety(enrichedPrompt),
+      ultraNeutralPrompt(enrichedPrompt),
+    ];
     let taskId = "";
     let kieImageUrl = "";
     let lastError: unknown = null;
@@ -780,11 +816,18 @@ serve(async (req) => {
     // Timeout in synchronous mode: return 202 + task_id signal so the client
     // can switch to polling instead of treating it as a hard failure.
     const isTimeout = message === "KIE_TIMEOUT_SYNC";
+    const safetyBlocked = isSafetyError(message);
+    const userMessage = isTimeout
+      ? "Kie generation is taking longer than expected. Please retry with async mode."
+      : safetyBlocked
+        ? "L'image a été bloquée par les filtres de sécurité de Google après plusieurs tentatives. Reformulez le prompt en évitant les termes liés au stress, au chaos, au danger ou à la violence, ou activez le toggle « Sans personnage » pour ce plan."
+        : message;
     return new Response(
       JSON.stringify({
-        error: isTimeout ? "Kie generation is taking longer than expected. Please retry with async mode." : message,
+        error: userMessage,
         provider: "kie",
-        retryable: isTimeout,
+        retryable: isTimeout || safetyBlocked,
+        safety_blocked: safetyBlocked,
       }),
       { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
