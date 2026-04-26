@@ -112,6 +112,8 @@ const MODEL_TO_KIE_MODEL: Record<string, string> = {
   "imagen-4-ultra":  "google/imagen4-ultra",
 };
 
+const TEXT_ONLY_REFERENCE_MODELS = new Set(["nano-banana", "nano-banana-2", "nano-banana-pro"]);
+
 // Object types that should use --oref (identity lock) vs --sref (style transfer) on Midjourney
 const OREF_OBJECT_TYPES = new Set(["personnage", "character", "vehicule", "vehicle", "véhicule"]);
 const SREF_OBJECT_TYPES = new Set(["lieu", "location", "place", "objet", "object", "ambiance", "mood"]);
@@ -631,9 +633,11 @@ serve(async (req) => {
     const hasRefs = effectiveLinkedObjects.some(
       (o: any) => Array.isArray(o.reference_images) && o.reference_images.length > 0,
     );
+    const useTextOnlyReferences = hasRefs && TEXT_ONLY_REFERENCE_MODELS.has(model);
     const referenceLines = hasRefs
       ? [
           "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
+          ...(useTextOnlyReferences ? ["No reference image files will be attached for this Kie Nano Banana render because their original kitchen/background content conflicts with the requested scene; use only the textual identity anchors for face and clothing."] : []),
           "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
           "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
         ]
@@ -741,7 +745,7 @@ serve(async (req) => {
     }
 
     // Cap refs (Kie has limits per model)
-    const cappedRefs = allRefImages.slice(0, 4);
+    const cappedRefs = useTextOnlyReferences ? [] : allRefImages.slice(0, 4);
     const cappedOref = orefImages.slice(0, 1); // MJ supports only 1 --oref
     const cappedSref = srefImages.slice(0, 3);
 
