@@ -635,6 +635,7 @@ export default function Editor() {
     if (sceneId) {
       // Single scene regeneration — keep local (not background)
       setRegeneratingSceneId(sceneId);
+      setRegeneratingMode(segmentOnly ? "segment" : promptOnly ? "prompt" : "full");
       try {
         const session = (await supabase.auth.getSession()).data.session;
         const response = await fetch(
@@ -671,6 +672,7 @@ export default function Editor() {
         toast.error(e?.message || "Erreur inattendue");
       }
       setRegeneratingSceneId(null);
+      setRegeneratingMode(null);
     } else {
       // Full storyboard — delegate to background
       if (shots.length > 0) {
