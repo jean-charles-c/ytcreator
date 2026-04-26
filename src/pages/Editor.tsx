@@ -929,7 +929,19 @@ export default function Editor() {
       persistShotObjectOverrides(next);
       return next;
     });
-  }, [persistShotObjectOverrides]);
+    // Mirror to the registry's mentions_shots so the backend
+    // (generate-shot-image / generate-shot-image-kie) sees the link.
+    const objects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+    const updated = objects.map(o => {
+      if (o.id !== objectId) return o;
+      const existing = Array.isArray(o.mentions_shots) ? o.mentions_shots : [];
+      if (existing.includes(shotId)) return o;
+      return { ...o, mentions_shots: [...existing, shotId] };
+    });
+    if (updated.some((o, i) => o !== objects[i])) {
+      void handleObjectRegistryChange(updated);
+    }
+  }, [persistShotObjectOverrides, globalContext, handleObjectRegistryChange]);
 
   const handleUnlinkObjectFromShot = useCallback((shotId: string, objectId: string) => {
     setShotObjectOverrides(prev => {
@@ -945,7 +957,19 @@ export default function Editor() {
       persistShotObjectOverrides(next);
       return next;
     });
-  }, [persistShotObjectOverrides]);
+    // Mirror to the registry's mentions_shots so the backend stops
+    // injecting this object's identity lock for this shot.
+    const objects = (globalContext?.objets_recurrents as RecurringObject[]) || [];
+    const updated = objects.map(o => {
+      if (o.id !== objectId) return o;
+      const existing = Array.isArray(o.mentions_shots) ? o.mentions_shots : [];
+      if (!existing.includes(shotId)) return o;
+      return { ...o, mentions_shots: existing.filter(id => id !== shotId) };
+    });
+    if (updated.some((o, i) => o !== objects[i])) {
+      void handleObjectRegistryChange(updated);
+    }
+  }, [persistShotObjectOverrides, globalContext, handleObjectRegistryChange]);
 
   // Sync mentions_shots from recurring objects → shotObjectOverrides for VisualPrompts
   useEffect(() => {
