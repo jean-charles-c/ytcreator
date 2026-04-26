@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
 import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
-import { getStyleSuffix } from "../_shared/visual-styles.ts";
+import { getStyleSuffix, getStyleSuffixFr, getStyleLabel, stripBakedStylePrefix } from "../_shared/visual-styles.ts";
 import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const corsHeaders = {
