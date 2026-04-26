@@ -3630,7 +3630,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                                   />
                                                   <select
                                                     value={shotImageModelOverrides[shot.id] || imageModel}
-                                                    onChange={(e) => setShotImageModelOverrides(prev => ({ ...prev, [shot.id]: e.target.value }))}
+                                                    onChange={(e) => persistShotImageEngine(shot.id, e.target.value)}
                                                     className="rounded border border-border bg-background px-1.5 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary max-w-[140px] h-6"
                                                   >
                                                     {IMAGE_MODELS.map((m) => (
