@@ -148,6 +148,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   const buildSceneFirstPrompt = (basePrompt: string, options?: { maxChars?: number }) => {
     const maxChars = options?.maxChars;
+    const isKie = typeof imageModel === "string" && imageModel.startsWith("kie:");
+    const isKieNanoReferenceModel = typeof imageModel === "string" && /^(kie:)?nano-banana(?:-2|-pro)?$/i.test(imageModel);
     const effectiveLinkedObjects = getEffectiveLinkedObjects();
     const resolvedStyle = visualStyleId && visualStyleId !== "none" ? getVisualStyleById(visualStyleId)?.promptSuffix : null;
     const promptText = `${shot.description || ""} ${basePrompt || ""}`;
@@ -163,7 +165,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
     const sourcePrompt = basePrompt?.trim();
     if (sourcePrompt && !sourcePrompt.toLowerCase().includes(visualDescription.slice(0, 60).toLowerCase())) {
-      sceneBlock += `\n\nNarrative context, secondary to the exact visual description:\n${sourcePrompt}`;
+      const secondaryContext = isKie
+        ? sourcePrompt.replace(/\bStyle\s*:[\s\S]*$/i, "").trim().slice(0, 350)
+        : sourcePrompt;
+      if (secondaryContext) {
+        sceneBlock += `\n\nNarrative context, secondary to the exact visual description:\n${secondaryContext}`;
+      }
     }
 
     const styleBlock = resolvedStyle
@@ -177,6 +184,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       })
       .filter(Boolean);
     const hasRefImages = effectiveLinkedObjects.some(obj => obj.reference_images && obj.reference_images.length > 0);
+    const textOnlyReferences = hasRefImages && isKieNanoReferenceModel;
     const techLines: string[] = [
       `Output: one single cinematic ${aspectRatio} image, no borders, no letterboxing, no square crop.`,
       "No visible written text in the image: no titles, labels, captions, signs, or readable document text. A blank sheet must stay blank.",
@@ -190,6 +198,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (hasRefImages) {
       techLines.push(
         "Reference images are identity anchors for face/clothing ONLY. Ignore their backgrounds, poses, props, smiles, cooking scenes, plates of food, and extra people.",
+        ...(textOnlyReferences ? ["For this Kie Nano Banana render, no reference image files are attached because their kitchen/background content conflicts with the requested scene; use only the textual identity anchors for face and clothing."] : []),
         "Preserve the subject's exact identity without redesign, modernization, hybridization, or generic lookalike.",
         "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
       );
@@ -200,13 +209,16 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       styleBlock,
       locks.length > 0 ? `SUBJECT IDENTITY ANCHORS — appearance only, never composition/setting\n${locks.join("\n\n")}` : null,
       `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
-      hasRefImages
+      hasRefImages && !textOnlyReferences
         ? `[Images de référence transmises au modèle]\n${effectiveLinkedObjects.flatMap(obj =>
             (obj.reference_images || []).map((url, i) => {
               const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
               return `  📷 ${obj.nom} — ${fileName}`;
             })
           ).join("\n")}`
+        : null,
+      hasRefImages && textOnlyReferences
+        ? `[Images de référence NON transmises au modèle]\nMode identité textuelle activé pour éviter que Kie Nano Banana copie le décor, la pose ou les accessoires des références.`
         : null,
     ].filter(Boolean).join("\n\n---\n\n");
 
