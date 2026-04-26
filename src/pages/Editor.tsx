@@ -1524,6 +1524,20 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
     { value: "3:2", label: "3:2 (Photo)" },
   ];
 
+  // Persist the manually selected image engine / quality onto the project so it
+  // survives a reload. When no selection has ever been made, the project keeps
+  // NULL and the UI falls back to "Nano Banana" + "1K".
+  const persistImageEngine = (engine: string) => {
+    setImageModel(engine);
+    if (!projectId) return;
+    void supabase.from("projects").update({ image_engine: engine }).eq("id", projectId);
+  };
+  const persistImageQuality = (quality: "1K" | "2K" | "4K") => {
+    setImageQuality(quality);
+    if (!projectId) return;
+    void supabase.from("projects").update({ image_quality: quality }).eq("id", projectId);
+  };
+
   const handleGenerateShotImage = async (shotId: string) => {
     if (!projectId || generatingAllImages) return;
     // Resolve effective sensitive level for this shot
