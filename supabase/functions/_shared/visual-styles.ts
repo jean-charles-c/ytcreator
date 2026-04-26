@@ -221,3 +221,40 @@ export function getStyleLabel(styleId: string | null | undefined): string {
 export function isRealisticStyle(styleId: string | null | undefined): boolean {
   return styleId === "realistic";
 }
+
+/**
+ * Strip a previously baked-in style prefix from a prompt_export string.
+ *
+ * `prompt_export` is generated once at storyboard creation time and starts
+ * with a French sentence like:
+ *   "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique. In Contemporaine, ..."
+ * If the user changes the visual style afterwards, the active style is added
+ * by `getStyleSuffix(...)` lower in the prompt while the OLD baked-in style
+ * is still at the top — the model receives contradictory instructions and
+ * usually obeys the one at the top.
+ *
+ * This helper removes the leading "Style : ... ." sentence (and the leading
+ * "In <era>, <place>, " trailer that immediately follows it) so the prompt
+ * starts directly at the visual action. The active style is re-injected by
+ * the caller via `getStyleSuffix` / `getStyleSuffixFr`.
+ *
+ * Safe to call multiple times — when no baked style is found, the original
+ * string is returned unchanged.
+ */
+export function stripBakedStylePrefix(prompt: string | null | undefined): string {
+  if (!prompt) return "";
+  let out = prompt;
+
+  // Match a leading "Style : <anything>." (FR) or "Style: <anything>." (EN),
+  // possibly preceded by whitespace/newlines. Non-greedy up to the first
+  // period that ends the style sentence.
+  out = out.replace(/^\s*Style\s*:\s*[^.\n]+\.\s*/i, "");
+
+  // The legacy storyboard generator immediately follows the style sentence
+  // with "In <era>, <place>, <shot type> illustrant : ...". Drop only the
+  // "In <era>, <place>, " preamble so the action ("<shot type> illustrant : ...")
+  // remains intact.
+  out = out.replace(/^\s*In\s+[^,\n]+,\s*[^,\n]+,\s*/i, "");
+
+  return out.trim();
+}
