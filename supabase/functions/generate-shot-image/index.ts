@@ -444,7 +444,8 @@ serve(async (req) => {
 
     // If a custom_prompt is provided (user edited the full prompt in UI), use it directly
     let enrichedPrompt: string;
-    if (typeof custom_prompt === "string" && custom_prompt.trim().length > 0) {
+    const usingCustomPrompt = typeof custom_prompt === "string" && custom_prompt.trim().length > 0;
+    if (usingCustomPrompt) {
       enrichedPrompt = custom_prompt.trim();
       console.log("Using custom_prompt from client (user-edited full prompt)");
     } else {
@@ -458,7 +459,8 @@ serve(async (req) => {
         if (shot.prompt_export.toLowerCase().includes(descSnippet)) {
           rawPrompt = shot.prompt_export;
         } else {
-          rawPrompt = shot.prompt_export + "\n\nDETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description;
+          rawPrompt = "DETAILED VISUAL DESCRIPTION — highest-priority visual instruction:\n" + shot.description +
+            "\n\nNarrative context, secondary to the exact visual description:\n" + shot.prompt_export;
         }
       } else {
         rawPrompt = shot.prompt_export || shot.description;
@@ -596,7 +598,7 @@ serve(async (req) => {
 
     // Condensed reference fidelity directives (replaces the previous verbose
     // multi-paragraph block — same constraints, ~70% fewer tokens).
-    if (referenceImageInputs.length > 0) {
+    if (!usingCustomPrompt && referenceImageInputs.length > 0) {
       const REFERENCE_IMAGE_RULE = [
         "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
         "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
@@ -618,12 +620,14 @@ serve(async (req) => {
     const { getStyleSuffix } = await import("../_shared/visual-styles.ts");
     const styleSuffix = (visual_style && visual_style !== "none") ? getStyleSuffix(visual_style) : null;
 
-    const buildPrompt = (text: string) => [
+    const buildPrompt = (text: string) => usingCustomPrompt ? text : [
+      text,
+      "--- STYLE MODIFIER ONLY ---",
+      ...(styleSuffix ? [`Apply this rendering style without changing the requested setting, action, composition, number of subjects, or props:\n${styleSuffix}`] : []),
+      "--- TECHNICAL CONSTRAINTS ---",
       `Generate one single cinematic ${selectedAspectRatio} image, no borders, no letterboxing, no square crop.`,
       "Never render the prompt, narrative sentence, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
-      ...(styleSuffix ? [`Style (mandatory, overrides any later style cue): ${styleSuffix}`] : []),
-      text,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     // Build multimodal content array with reference images as base64
     const buildMessageContent = (promptText: string): any => {

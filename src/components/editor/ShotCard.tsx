@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
+import { getVisualStyleById } from "@/components/editor/visualStyle/types";
 
 type Shot = Tables<"shots">;
 
@@ -57,6 +58,9 @@ interface ShotCardProps {
   imageExpanded?: boolean;
   onToggleImageExpanded?: () => void;
   scriptLanguage?: string;
+  aspectRatio?: string;
+  visualStyleId?: string | null;
+  imageModel?: string;
   linkedObjects?: RecurringObject[];
   allObjects?: RecurringObject[];
   onLinkObject?: (shotSceneOrder: number, objectId: string) => void;
@@ -76,7 +80,7 @@ const formatUsd = (value: number | string | null | undefined) => {
   return `${amount.toFixed(2)} $`;
 };
 
-export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, linkedObjects, allObjects, onLinkObject, onUnlinkObject, sceneOrder, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
+export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene, imageExpanded, onToggleImageExpanded, scriptLanguage, aspectRatio = "16:9", visualStyleId, imageModel, linkedObjects, allObjects, onLinkObject, onUnlinkObject, sceneOrder, onUpdate, onDelete, onRegenerate, onGenerateImage, onMergeWithNext, onSplit, onRetranslate }: ShotCardProps) {
   const [editing, setEditing] = useState(false);
   const [showObjectPicker, setShowObjectPicker] = useState(false);
   const [editType, setEditType] = useState(shot.shot_type);
@@ -113,112 +117,118 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const imageUrl = shot.image_url;
   const cost = typeof shot.generation_cost === "number" ? shot.generation_cost : Number(shot.generation_cost ?? 0);
 
-  const buildFullPromptPreview = (basePrompt: string) => {
-    // If user has a custom edited version, use that
-    if (customFullPrompt !== null) return customFullPrompt;
-
-    const parts: string[] = [];
-
-    // Detect tight framings (close-up / insert / macro). For these, the
-    // location is not visible in the frame, so we drop LOCATION identity
-    // locks and reference images — same logic as the edge functions, so the
-    // preview matches what is actually sent to the AI.
+  const getEffectiveLinkedObjects = () => {
     const tightFramingRegex = /\b(gros\s*plan|tr[èe]s\s+gros\s+plan|plan\s+de\s+d[ée]tail|insert|macro|close[\s-]?up|extreme\s+close[\s-]?up|ecu|cu\b|detail\s+shot)\b/i;
-    const isTightFraming = tightFramingRegex.test(
-      `${shot.description || ""} ${shot.prompt_export || ""}`,
-    );
-    const effectiveLinkedObjects = (linkedObjects || []).filter((obj) => {
+    const isTightFraming = tightFramingRegex.test(`${shot.description || ""} ${shot.prompt_export || ""}`);
+    return (linkedObjects || []).filter((obj) => {
       if (!isTightFraming) return true;
       const t = String((obj as any).type || (obj as any).object_type || "").toLowerCase();
       return t !== "lieu" && t !== "location" && t !== "place";
     });
+  };
 
-    const hasRefImages = effectiveLinkedObjects.some(obj => obj.reference_images && obj.reference_images.length > 0);
+  const cleanIdentityLock = (raw: string): string => {
+    let txt = String(raw || "");
+    const blockHeaders = [
+      /^(?:CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^TIME\s+PERIOD(?:\s*\/\s*HISTORICAL\s+STATE)?\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^REFERENCE\s+IMAGES(?:\s+PROVIDED)?:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+      /^NO\s+TEMPORAL\s+DRIFT:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
+    ];
+    for (const re of blockHeaders) txt = txt.replace(re, "");
+    return txt
+      .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
+      .replace(/^\s*Do not (?:combine|mix) (?:visual )?(?:traits|features)[^\n]*\n?/gim, "")
+      .replace(/^\s*Use these reference images[^\n]*\n?/gim, "")
+      .replace(/^\s*Preserve (?:their|its) (?:exact )?[^\n]*\n?/gim, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
 
-    // 1. Identity locks from linked objects (cleaned of redundant verbose blocks)
-    const cleanIdentityLock = (raw: string): string => {
-      let txt = String(raw || "");
-      // Remove full verbose blocks (header + following paragraph until blank line)
-      const blockHeaders = [
-        /^(?:CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
-        /^IDENTITY\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
-        /^TIME\s+PERIOD(?:\s*\/\s*HISTORICAL\s+STATE)?\s+LOCK:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
-        /^REFERENCE\s+IMAGES(?:\s+PROVIDED)?:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
-        /^NO\s+TEMPORAL\s+DRIFT:[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gim,
-      ];
-      for (const re of blockHeaders) txt = txt.replace(re, "");
-      // Remove leftover boilerplate sentences
-      txt = txt
-        .replace(/^\s*Do not redesign[^\n]*\n?/gim, "")
-        .replace(/^\s*Do not (?:combine|mix) (?:visual )?(?:traits|features)[^\n]*\n?/gim, "")
-        .replace(/^\s*Use these reference images[^\n]*\n?/gim, "")
-        .replace(/^\s*Preserve (?:their|its) (?:exact )?[^\n]*\n?/gim, "")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-      return txt;
-    };
+  const buildSceneFirstPrompt = (basePrompt: string, options?: { maxChars?: number }) => {
+    const maxChars = options?.maxChars;
+    const effectiveLinkedObjects = getEffectiveLinkedObjects();
+    const resolvedStyle = visualStyleId && visualStyleId !== "none" ? getVisualStyleById(visualStyleId)?.promptSuffix : null;
+    const promptText = `${shot.description || ""} ${basePrompt || ""}`;
+    const soberTableScene = /\b(table|feuille|papier|stylo|assis|bureau|lampe)\b/i.test(promptText);
+
+    let visualDescription = shot.description?.trim() || "";
+    if (!visualDescription && basePrompt) visualDescription = basePrompt;
+
+    let sceneBlock = [
+      "YOU MUST RENDER THIS EXACT SCENE. The following visual description is the highest-priority instruction and overrides style ambience, reference-image content, and any generic kitchen context:",
+      visualDescription,
+    ].join("\n");
+
+    const sourcePrompt = basePrompt?.trim();
+    if (sourcePrompt && !sourcePrompt.toLowerCase().includes(visualDescription.slice(0, 60).toLowerCase())) {
+      sceneBlock += `\n\nNarrative context, secondary to the exact visual description:\n${sourcePrompt}`;
+    }
+
+    const styleBlock = resolvedStyle
+      ? `STYLE MODIFIER ONLY — apply this rendering style without changing the requested setting/action/composition:\n${resolvedStyle}`
+      : null;
     const identityLocks = effectiveLinkedObjects
       .map(obj => {
         const cleaned = cleanIdentityLock(obj.identity_prompt || "");
-        // Keep only the essential subject line if everything was stripped
         if (!cleaned && obj.nom) return `Subject: ${obj.nom}`;
         return cleaned;
       })
       .filter(Boolean);
-
-    // 2. SCENE-FIRST hierarchy: the scene/action leads the prompt so the
-    //    image model anchors on WHAT to draw. Identity locks come right
-    //    after as appearance-only anchors. Technical constraints (aspect
-    //    ratio, no-text, reference rules) are placed at the END so they
-    //    don't pollute the model's primary subject.
-    let actionBlock = basePrompt;
-    if (shot.description && shot.description.length > 30) {
-      const descSnippet = shot.description.slice(0, 60).toLowerCase();
-      if (!basePrompt.toLowerCase().includes(descSnippet)) {
-        actionBlock += "\n\nDETAILED VISUAL DESCRIPTION (use as primary visual reference):\n" + shot.description;
-      }
-    }
-
-    if (identityLocks.length > 0) {
-      parts.push(
-        "SCENE TO RENDER (primary subject of the image — this defines the entire composition, setting, action and framing; it must NOT be replaced by a generic scene built from reference images):\n" +
-        actionBlock
-      );
-      parts.push(
-        "--- SUBJECT IDENTITY ANCHORS (apply only to the appearance of the people/objects inside the SCENE TO RENDER above — do NOT copy their original setting, do NOT change the requested scene) ---\n" +
-        identityLocks.join("\n\n")
-      );
-    } else {
-      parts.push(
-        "SCENE TO RENDER (primary subject of the image):\n" + actionBlock
-      );
-    }
-
-    // 3. Technical constraints block (mirrors what edge functions append)
+    const hasRefImages = effectiveLinkedObjects.some(obj => obj.reference_images && obj.reference_images.length > 0);
     const techLines: string[] = [
-      "Generate one single cinematic 16:9 image, no borders, no letterboxing, no square crop.",
-      "Never render the prompt, narrative, metadata, or instructions as visible text. Only natural in-scene writing is allowed.",
+      `Output: one single cinematic ${aspectRatio} image, no borders, no letterboxing, no square crop.`,
+      "No visible written text in the image: no titles, labels, captions, signs, or readable document text. A blank sheet must stay blank.",
     ];
+    if (soberTableScene) {
+      techLines.push(
+        "Hard scene lock: one chef only, seated at the table, serious/clinical expression, looking at a blank white sheet, holding a pen.",
+        "Forbidden: professional kitchen background, cooking activity, stove, flames, pots, pans, vegetables, plates of food, smiling pose, standing hero portrait, extra chefs or duplicate characters.",
+      );
+    }
     if (hasRefImages) {
       techLines.push(
-        "Reference images = identity anchor for the subject's face/clothing ONLY. Do NOT copy their backgrounds, poses, props, smiles, plates of food or cooking actions.",
-        "Preserve the subject's exact identity (face, proportions, distinctive traits, period details). No redesign, no modernization, no hybridization, no generic lookalike.",
+        "Reference images are identity anchors for face/clothing ONLY. Ignore their backgrounds, poses, props, smiles, cooking scenes, plates of food, and extra people.",
+        "Preserve the subject's exact identity without redesign, modernization, hybridization, or generic lookalike.",
         "Single instance only: the subject appears EXACTLY ONCE. No duplicates, no mirroring, no split-screen, no diptych, no collage.",
       );
     }
-    parts.push("--- TECHNICAL CONSTRAINTS ---\n" + techLines.join("\n"));
 
-    if (hasRefImages) {
-      const refImgList = effectiveLinkedObjects.flatMap(obj =>
-        (obj.reference_images || []).map((url, i) => {
-          const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
-          return `  📷 ${obj.nom} — ${fileName}`;
-        })
-      ).join("\n");
-      if (refImgList) parts.push(`[Images de référence transmises au modèle]\n${refImgList}`);
+    const build = (scene: string, locks: string[]) => [
+      `SCENE TO RENDER — PRIMARY INSTRUCTION\n${scene}`,
+      styleBlock,
+      locks.length > 0 ? `SUBJECT IDENTITY ANCHORS — appearance only, never composition/setting\n${locks.join("\n\n")}` : null,
+      `TECHNICAL CONSTRAINTS\n${techLines.join("\n")}`,
+      hasRefImages
+        ? `[Images de référence transmises au modèle]\n${effectiveLinkedObjects.flatMap(obj =>
+            (obj.reference_images || []).map((url, i) => {
+              const fileName = url.split("/").pop()?.split("?")[0] || `ref_${i + 1}`;
+              return `  📷 ${obj.nom} — ${fileName}`;
+            })
+          ).join("\n")}`
+        : null,
+    ].filter(Boolean).join("\n\n---\n\n");
+
+    let output = build(sceneBlock, identityLocks);
+    if (maxChars && output.length > maxChars) {
+      const compactLocks = identityLocks.map(lock => lock.split(/(?<=[.!?])\s+/)[0]?.slice(0, 180)).filter(Boolean) as string[];
+      output = build(sceneBlock, compactLocks);
     }
+    if (maxChars && output.length > maxChars) {
+      const overflow = output.length - maxChars;
+      const minSceneLength = Math.min(sceneBlock.length, 700);
+      const trimmedScene = sceneBlock.slice(0, Math.max(minSceneLength, sceneBlock.length - overflow - 3)) + "...";
+      output = build(trimmedScene, []);
+    }
+    return output;
+  };
 
-    return parts.join("\n\n");
+  const buildFullPromptPreview = (basePrompt: string) => {
+    // If user has a custom edited version, use that
+    if (customFullPrompt !== null) return customFullPrompt;
+    const isKie = typeof imageModel === "string" && imageModel.startsWith("kie:");
+    return buildSceneFirstPrompt(basePrompt, { maxChars: isKie ? 1900 : undefined });
   };
 
   const startEditFullPrompt = () => {
@@ -282,7 +292,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (!onGenerateImage) return;
     setGeneratingImage(true);
     try {
-      await onGenerateImage(shot.id, customFullPrompt ?? undefined);
+      await onGenerateImage(
+        shot.id,
+        customFullPrompt ?? buildSceneFirstPrompt(shot.prompt_export || shot.description, {
+          maxChars: typeof imageModel === "string" && imageModel.startsWith("kie:") ? 1900 : undefined,
+        }),
+      );
     } finally {
       setGeneratingImage(false);
     }

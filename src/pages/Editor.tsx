@@ -1636,7 +1636,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
     void supabase.from("shots").update({ image_engine: engine }).eq("id", shotId);
   };
 
-  const handleGenerateShotImage = async (shotId: string) => {
+  const handleGenerateShotImage = async (shotId: string, customPrompt?: string) => {
     if (!projectId || generatingAllImages) return;
     // Resolve effective sensitive level for this shot
     const parentScene = shots.find((s) => s.id === shotId);
@@ -1656,6 +1656,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       quality: imageQuality,
       ...(effectiveLevel != null ? { sensitiveLevels: { [shotId]: effectiveLevel } } : {}),
       ...(effectiveStyle != null ? { visualStyles: { [shotId]: effectiveStyle } } : {}),
+      ...(customPrompt ? { customPrompts: { [shotId]: customPrompt } } : {}),
     });
   };
 
@@ -3722,6 +3723,9 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                             isLastInScene={isLast}
                                             imageExpanded={imageOpenShots.has(shot.id)}
                                             scriptLanguage={scriptLanguage}
+                                            aspectRatio={imageAspectRatio}
+                                            visualStyleId={visualStyle.resolveShot(scene.id, shot.id).effectiveStyleId}
+                                            imageModel={shotImageModelOverrides[shot.id] || imageModel}
                                             linkedObjects={getLinkedObjectsForShot(scene.scene_order, shot.id)}
                                             allObjects={allRecurringObjects}
                                             onLinkObject={(_sceneOrder, objId) => handleLinkObjectToShot(shot.id, objId)}
