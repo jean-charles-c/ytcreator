@@ -1,38 +1,47 @@
-# Fix race condition style visuel "none"
+## Objectif
 
-## Problème
-Le hook `useVisualStyle` retourne `"none"` (DEFAULT_VISUAL_STYLE_ID) pendant le fetch async de la valeur DB. Si une génération de prompts démarre dans cette fenêtre, certains shots reçoivent `"none"` → "Aucun style imposé" ou fallback "photographie documentaire" au lieu de "Dark silhouette contour outline".
+Décomposer l'unique style « Animation moderne (Pixar, Ghibli…) » en **6 styles distincts** et bien différenciés afin de garantir une ligne éditoriale graphique cohérente lors de la génération des visuels.
 
-## Changements
+## Nouveaux styles à intégrer
 
-### 1. `src/components/editor/visualStyle/useVisualStyle.ts`
-- Ajouter état `isReady: boolean` (false quand `projectId` fourni, true sinon).
-- Passe à `true` après réponse DB (succès, erreur, ou ligne absente).
-- Exposer `isReady` dans le retour du hook.
+| ID | Label (UI) |
+|---|---|
+| `pixar` | Pixar feature films |
+| `ghibli` | Studio Ghibli backgrounds |
+| `dreamworks` | DreamWorks Animation |
+| `sonyanimation` | Sony Pictures Animation |
+| `modern2dcartoon` | Cartoon 2D moderne / Storybook |
+| `modern3dfeature` | Long-métrage 3D moderne (Pixar/DreamWorks inspired) |
 
-### 2. `src/pages/Editor.tsx`
-- Sur chaque déclencheur de génération (storyboard, régénération scène, régénération shot, régénération globale prompts/visuels) :
-  - Si `!visualStyle.isReady` → `toast.error("Style visuel en cours de chargement, réessayez dans un instant")` et `return`.
+Chaque style reçoit le `promptSuffix` (anglais, fourni par l'utilisateur) et un `promptSuffixFr` condensé pour `generate-storyboard`, suivant la convention existante.
 
-### 3. `src/components/editor/ChapterCollapse.tsx` & `ChapterItem.tsx`
-- Propager `visualStyleReady` en prop.
-- `disabled` sur les boutons "Régénérer" + tooltip "Style visuel en cours de chargement…" tant que `false`.
+## Modifications techniques
 
-### 4. Garde-fou backend
-**`supabase/functions/generate-storyboard/index.ts`** et **`supabase/functions/regenerate-shot/index.ts`** :
-- Si `visual_style === "none"` reçu, lire `project_scriptcreator_state.visual_style_global` ; si la DB a une autre valeur, l'utiliser.
+1. **`src/components/editor/visualStyle/types.ts`**
+   - Supprimer l'entrée `modernanimation` du tableau `VISUAL_STYLES`.
+   - Insérer à sa place les 6 nouveaux styles avec les prompts complets fournis.
 
-## Correction manuelle après déploiement
-1. Vérifier que "Dark silhouette contour outline" est actif dans le sélecteur global.
-2. **Tout régénérer (force) — Prompts**.
-3. **Tout régénérer (force) — Visuels**.
+2. **`supabase/functions/_shared/visual-styles.ts`**
+   - Même opération sur `STYLE_SUFFIXES` (clé `modernanimation` retirée, 6 nouvelles clés ajoutées avec `promptSuffix` + `promptSuffixFr`).
+   - Ce fichier est partagé par toutes les edge functions de génération → tous les pipelines bénéficient automatiquement des 6 nouveaux styles.
 
-## Fichiers
-- `src/components/editor/visualStyle/useVisualStyle.ts`
-- `src/pages/Editor.tsx`
-- `src/components/editor/ChapterCollapse.tsx`
-- `src/components/editor/ChapterItem.tsx`
-- `supabase/functions/generate-storyboard/index.ts`
-- `supabase/functions/regenerate-shot/index.ts`
+3. **Edge functions impactées** (re-déploiement automatique) :
+   - `supabase/functions/generate-shot-image/index.ts`
+   - `supabase/functions/generate-shot-image-kie/index.ts`
+   - `supabase/functions/generate-storyboard/index.ts`
+   - `supabase/functions/regenerate-shot/index.ts`
 
-Aucune migration DB. Push GitHub à la fin.
+4. **Migration douce des projets existants**
+   - Aucune migration DB requise : la valeur `modernanimation` éventuellement stockée dans `projects.visual_style_id`, `scenes.visual_style_id` ou `shots.visual_style_id` ne sera plus reconnue.
+   - Ajout d'un **fallback en lecture** dans `getVisualStyleById` (côté client) et dans la résolution côté edge functions : si l'ID rencontré est `modernanimation`, le système le mappe automatiquement sur `pixar` (preset le plus proche du style historique), sans toucher la base. L'utilisateur pourra ensuite choisir explicitement l'un des 6 nouveaux styles.
+
+## Vérifications post-déploiement
+
+- Le sélecteur de style (Global / Scène / Shot) affiche bien les 6 nouvelles entrées et plus l'ancienne.
+- L'aperçu « Prompt complet envoyé à l'IA » dans `ShotCard` montre le bon `promptSuffix` selon le style choisi.
+- Les projets existants utilisant `modernanimation` continuent de générer (fallback Pixar) sans erreur.
+
+## Hors-scope
+
+- Pas de changement d'UI au-delà des nouvelles entrées dans le menu déroulant.
+- Pas de modification du moteur de prompt (hiérarchie FRAMING/IDENTITY, sanitisation safety, filtrage location lock pour gros plans) — ces logiques restent intactes.
