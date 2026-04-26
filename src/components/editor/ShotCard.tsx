@@ -486,7 +486,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
           )}
         </div>
         {/* Linked recurring objects */}
-        {(linkedObjects && linkedObjects.length > 0 || (allObjects && allObjects.length > 0 && onLinkObject)) && (
+        {(linkedObjects && linkedObjects.length > 0 || (allObjects && allObjects.length > 0 && onLinkObject) || true) && (
           <div className="flex flex-wrap items-center gap-1 mb-2">
             {linkedObjects?.map((obj) => (
               <span
@@ -544,6 +544,19 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 </div>
               );
             })()}
+            <button
+              type="button"
+              onClick={handleToggleNoCharacter}
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                (shot as any).force_no_character
+                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                  : "border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary"
+              }`}
+              title="Force le retrait des images de référence personnage et de leur identity lock — utile pour les plans métaphoriques (gros plan sur un objet, un détail, un symbole)."
+            >
+              <UserX className="h-2.5 w-2.5" />
+              {(shot as any).force_no_character ? "Sans personnage : ON" : "Sans personnage"}
+            </button>
           </div>
         )}
         <details className="group/shot-details">
@@ -603,19 +616,6 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               </div>
             )}
             <p className="text-xs text-muted-foreground leading-relaxed break-words">{shot.description}</p>
-            <button
-              type="button"
-              onClick={handleToggleNoCharacter}
-              className={`inline-flex items-center gap-1.5 self-start rounded border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors min-h-[28px] ${
-                (shot as any).force_no_character
-                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-                  : "border-border bg-secondary/40 text-muted-foreground hover:bg-secondary"
-              }`}
-              title="Force le retrait des images de référence personnage et de leur identity lock — utile pour les plans métaphoriques (gros plan sur un objet, un détail, un symbole)."
-            >
-              <UserX className="h-3 w-3" />
-              {(shot as any).force_no_character ? "Sans personnage : ON" : "Sans personnage"}
-            </button>
         {shot.prompt_export && (
               <details className="group/details">
                 <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">
