@@ -5,6 +5,7 @@ import { getNarrativeSegments } from "../_shared/narrative-segmentation.ts";
 import { splitTextIntoSentences } from "../_shared/sentence-splitting.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
+import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,34 +16,6 @@ const corsHeaders = {
 const AI_RETRY_DELAYS_MS = [3000, 6000, 12000];
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Strip a legacy verbose Identity Lock block (OBJECT/CHARACTER/LOCATION/VEHICLE
- * IDENTITY LOCK + VERSION/TIME PERIOD LOCK + REFERENCE IMAGES + NO ... DRIFT)
- * that may have been prepended to a previously-generated prompt_export.
- * The full lock is re-injected at render time by generate-shot-image, so
- * leaving it stored at the top of the prompt biases every regeneration toward
- * making the recurring object the centered subject of the frame.
- */
-const stripLegacyIdentityLockPrefix = (prompt: string): string => {
-  if (!prompt) return prompt;
-  const lockHeaderRegex = /^\s*(?:CHARACTER|LOCATION|OBJECT|VEHICLE)\s+IDENTITY\s+LOCK\s*:/i;
-  if (!lockHeaderRegex.test(prompt)) return prompt;
-  // Find where the descriptive content really starts: first occurrence of
-  // "Style :" / "Style:" / "Visual style" or a French sentence pattern.
-  const cutMarkers = [
-    /\n\s*Style\s*:/i,
-    /\n\s*Visual\s+style\s*:/i,
-    /\n\s*FRAMING\s*&\s*ACTION\s*:/i,
-  ];
-  for (const re of cutMarkers) {
-    const m = prompt.match(re);
-    if (m && typeof m.index === "number" && m.index > 0) {
-      return prompt.slice(m.index).replace(/^\s+/, "");
-    }
-  }
-  return prompt;
-};
 
 const callLovableAi = async (
   apiKey: string,
