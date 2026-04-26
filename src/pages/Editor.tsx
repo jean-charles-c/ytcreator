@@ -3817,7 +3817,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         scenes={scenes}
         imageModels={IMAGE_MODELS}
         imageModel={imageModel}
-        onImageModelChange={setImageModel}
+        onImageModelChange={persistImageEngine}
         onRegenerateShot={handleShotRegenerate}
         onGenerateImage={handleGenerateShotImage}
         totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
