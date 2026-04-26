@@ -292,7 +292,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (!onGenerateImage) return;
     setGeneratingImage(true);
     try {
-      await onGenerateImage(shot.id, customFullPrompt ?? undefined);
+      await onGenerateImage(
+        shot.id,
+        customFullPrompt ?? buildSceneFirstPrompt(shot.prompt_export || shot.description, {
+          maxChars: typeof imageModel === "string" && imageModel.startsWith("kie:") ? 1900 : undefined,
+        }),
+      );
     } finally {
       setGeneratingImage(false);
     }
