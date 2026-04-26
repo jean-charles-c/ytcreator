@@ -148,6 +148,7 @@ export default function Editor() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<string | null>(null);
+  const [regeneratingMode, setRegeneratingMode] = useState<"segment" | "prompt" | "full" | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedMusicTracks, setSelectedMusicTracks] = useState<{ url: string; name: string }[]>([]);
   const [qaExportAllowed, setQaExportAllowed] = useState(true);
