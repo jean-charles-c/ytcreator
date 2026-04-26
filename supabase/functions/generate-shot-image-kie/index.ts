@@ -710,9 +710,13 @@ serve(async (req) => {
       // scene, so we can re-attach it after compression.
       const constraintsMatch = enrichedPrompt.match(/--- TECHNICAL CONSTRAINTS ---[\s\S]*$/);
       const constraintsBlock = (constraintsMatch?.[0] || "").trim();
-      // Extract the optional style-enforcement preamble (kept at the top).
-      const styleMatch = enrichedPrompt.match(/^MANDATORY VISUAL STYLE[\s\S]*?(?=\n\n)/);
-      const styleBlock = (styleMatch?.[0] || "").trim();
+      // Extract the optional style-enforcement HEADER (kept at the top) and
+      // FOOTER (kept at the very end). The header ends at the `---` separator
+      // line we appended; the footer is the FINAL STYLE LOCK block.
+      const styleHeaderMatch = enrichedPrompt.match(/^MANDATORY VISUAL STYLE[\s\S]*?\n---\s*\n/);
+      const styleHeaderBlock = (styleHeaderMatch?.[0] || "").trim();
+      const styleFooterMatch = enrichedPrompt.match(/--- FINAL STYLE LOCK[\s\S]*?(?=\n\n--- TECHNICAL CONSTRAINTS|$)/);
+      const styleFooterBlock = (styleFooterMatch?.[0] || "").trim();
 
       // SCENE-FIRST reconstruction: scene/action at the top, then identity
       // lock summary, then technical constraints (and style stays on top if
@@ -720,10 +724,13 @@ serve(async (req) => {
       // anchors on WHAT to draw before reading any meta-instruction.
       const buildRebuilt = (action: string) => {
         let out = "";
-        if (styleBlock) out += styleBlock + "\n\n";
+        if (styleHeaderBlock) out += styleHeaderBlock + "\n\n";
         out += `SCENE TO RENDER (primary subject of this image):\n${action}`;
         if (compactLocks) {
           out += `\n\nSUBJECT IDENTITY (preserve face/clothing only — do NOT copy reference backgrounds):\n${compactLocks}`;
+        }
+        if (styleFooterBlock) {
+          out += `\n\n${styleFooterBlock}`;
         }
         if (constraintsBlock) {
           out += `\n\n${constraintsBlock}`;
