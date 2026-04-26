@@ -3723,6 +3723,9 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                             isLastInScene={isLast}
                                             imageExpanded={imageOpenShots.has(shot.id)}
                                             scriptLanguage={scriptLanguage}
+                                            aspectRatio={imageAspectRatio}
+                                            visualStyleId={visualStyle.resolveShot(scene.id, shot.id).effectiveStyleId}
+                                            imageModel={shotImageModelOverrides[shot.id] || imageModel}
                                             linkedObjects={getLinkedObjectsForShot(scene.scene_order, shot.id)}
                                             allObjects={allRecurringObjects}
                                             onLinkObject={(_sceneOrder, objId) => handleLinkObjectToShot(shot.id, objId)}
