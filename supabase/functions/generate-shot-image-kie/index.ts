@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
+import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
 import { getStyleSuffix } from "../_shared/visual-styles.ts";
 import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
@@ -565,6 +566,11 @@ serve(async (req) => {
         rawPrompt = shot.prompt_export || shot.description;
       }
       if (!rawPrompt) throw new Error("No prompt available for this shot");
+      // Strip any legacy verbose Identity Lock block prepended in a previous
+      // generation. The full lock is re-injected below from the registry's
+      // mentions_shots, so the legacy prefix would either duplicate it or
+      // bias the model toward an object that isn't in this shot.
+      rawPrompt = stripLegacyIdentityLockPrefix(rawPrompt);
       enrichedPrompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);
 
       // Inject identity locks AFTER the action so the model doesn't anchor on
