@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Image } from "jsr:@matmen/imagescript";
 import { transformPromptForSensitiveMode, extractAnchorsFromScene } from "../_shared/sensitive-mode.ts";
+import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -458,6 +459,15 @@ serve(async (req) => {
         rawPrompt = shot.prompt_export || shot.description;
       }
       if (!rawPrompt) throw new Error("No prompt available for this shot");
+
+      // Strip any legacy verbose Identity Lock block that may have been
+      // persisted at the head of prompt_export by a previous generation.
+      // The full lock is re-injected below from effectiveLinkedObjects
+      // (which uses mentions_shots — the registry's source of truth) so
+      // keeping the legacy prefix would either duplicate it or, worse,
+      // inject the lock for an object that doesn't actually appear in
+      // this shot, biasing the model toward making it the centered subject.
+      rawPrompt = stripLegacyIdentityLockPrefix(rawPrompt);
 
       // Apply sensitive mode transformation with structured scene context
       const prompt = transformPromptForSensitiveMode(rawPrompt, sensitive_level, sceneContextAnchors);

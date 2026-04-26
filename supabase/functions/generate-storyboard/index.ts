@@ -5,6 +5,7 @@ import { getNarrativeSegments } from "../_shared/narrative-segmentation.ts";
 import { splitTextIntoSentences } from "../_shared/sentence-splitting.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
+import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1345,12 +1346,23 @@ serve(async (req) => {
 
       // ── POST-PROCESS: inject identity lock prefixes from registry ──
       const sceneOrder = scene.scene_order;
-      const relevantObjects = recurringObjects.filter((obj: any) => {
+      const sceneScopedObjects = recurringObjects.filter((obj: any) => {
         if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
           return obj.mentions_scenes.includes(sceneOrder);
         }
         return false;
       });
+
+      // French stop-words to skip when doing fallback name matching
+      const FR_STOPWORDS = new Set([
+        "la","le","les","l","l'","un","une","des","du","de","d","d'","au","aux","à","a"
+      ]);
+      const significantTokens = (name: string): string[] =>
+        String(name || "")
+          .toLowerCase()
+          .replace(/[''`]/g, "'")
+          .split(/[\s'\-]+/)
+          .filter((t) => t.length >= 3 && !FR_STOPWORDS.has(t));
 
       for (let j = 0; j < sceneShots.length; j++) {
         const shot = sceneShots[j];
@@ -1375,26 +1387,42 @@ serve(async (req) => {
 
         let promptExport = shot?.prompt_export || fallbackPrompt(fbSentence, scene, fbType);
 
-        // Prepend identity lock prompts for relevant recurring objects
-        if (relevantObjects.length > 0) {
-          const fragmentLower = (shot?.source_sentence || fbSentence).toLowerCase();
-          const matchingLocks = relevantObjects
-            .filter((obj: any) => {
-              const objName = (obj.nom || "").toLowerCase();
-              return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
-            })
-            .map((obj: any) => obj.identity_prompt || "")
-            .filter(Boolean);
+        // Append (NOT prepend) a short reference reminder for objects that
+        // are explicitly linked to THIS shot — the full Identity Lock block
+        // is re-injected at image-generation time by generate-shot-image,
+        // so storing the verbose lock in prompt_export only pollutes the
+        // narrative description and biases the model toward making the
+        // recurring object the centered subject of every shot.
+        if (sceneScopedObjects.length > 0) {
+          const fragmentForFallback = `${shot?.source_sentence || ""} ${shot?.source_sentence_fr || ""} ${shot?.description || fbSentence}`.toLowerCase();
+          const matchingObjs = sceneScopedObjects.filter((obj: any) => {
+            // Source of truth: explicit shot UUIDs from the registry.
+            // (At storyboard-generation time the new shot has no UUID yet,
+            // so we only use mentions_shots when it's already populated for
+            // an existing shot being re-generated.)
+            if (shot?.id && Array.isArray(obj.mentions_shots) && obj.mentions_shots.length > 0) {
+              return obj.mentions_shots.includes(shot.id);
+            }
+            // Fallback: significant token match against the shot fragment.
+            const tokens = significantTokens(obj.nom);
+            if (tokens.length === 0) return false;
+            return tokens.some((t) => fragmentForFallback.includes(t));
+          });
 
-          if (matchingLocks.length > 0) {
-            const lockPrefix = matchingLocks.join("\n\n") + "\n\n";
-            // Only prepend if not already present
-            const firstLockSnippet = matchingLocks[0].slice(0, 40).toLowerCase();
-            if (!promptExport.toLowerCase().includes(firstLockSnippet)) {
-              promptExport = lockPrefix + promptExport;
+          if (matchingObjs.length > 0) {
+            const reminder = "\n\nRecurring elements present in this shot (preserve identity, do NOT make them the centered subject unless the description says so): "
+              + matchingObjs.map((o: any) => o.nom).filter(Boolean).join(", ") + ".";
+            if (!promptExport.includes("Recurring elements present in this shot")) {
+              promptExport = promptExport.trimEnd() + reminder;
             }
           }
         }
+
+        // Sanity: strip any legacy verbose OBJECT/CHARACTER/LOCATION/VEHICLE
+        // IDENTITY LOCK block that may already sit at the top of the prompt
+        // (from a previous broken generation). The full lock is re-injected
+        // by generate-shot-image at render time using mentions_shots.
+        promptExport = stripLegacyIdentityLockPrefix(promptExport);
 
         // Inject anti-text-leak suffix
         const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
