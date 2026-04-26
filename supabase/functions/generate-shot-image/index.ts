@@ -521,19 +521,15 @@ serve(async (req) => {
           if (condensed.length > 0) {
             const firstSnippet = condensed[0].slice(0, 40).toLowerCase();
             if (!enrichedPrompt.toLowerCase().includes(firstSnippet)) {
-              // Two-tier structure with explicit hierarchy: FRAMING & ACTION
-              // defines the composition (mandatory), IDENTITY LOCK defines
-              // the exact appearance of the subject inside that frame
-              // (mandatory). Both apply simultaneously — the identity lock
-              // must NOT be downgraded, and the framing must NOT be widened.
+              // SCENE-FIRST architecture: the narrative scene must lead the
+              // prompt, otherwise the model anchors on the identity locks /
+              // reference images and reproduces THEIR background instead of
+              // the requested scene. Identity locks are pushed below as
+              // "appearance only" anchors.
               enrichedPrompt =
-                "HIERARCHY (read carefully):\n" +
-                "1) FRAMING & ACTION below defines the shot's composition, scale, subject and what is happening. It is mandatory and must not be replaced by a wider or different shot.\n" +
-                "2) IDENTITY LOCK below defines the exact appearance of the person/place/object that appears inside that framing. It is mandatory and must not be redesigned.\n" +
-                "Both blocks apply simultaneously: render the FRAMING & ACTION exactly as described, and within that frame keep the visual identity from IDENTITY LOCK exact.\n\n" +
-                "FRAMING & ACTION (mandatory composition):\n" +
+                "SCENE TO RENDER (primary subject of the image — this defines the entire composition, setting, action and framing; it must NOT be replaced by a generic scene built from reference images):\n" +
                 enrichedPrompt +
-                "\n\nIDENTITY LOCK (mandatory appearance of the subject inside that frame — do not widen the shot to show them in full):\n" +
+                "\n\n--- SUBJECT IDENTITY ANCHORS (apply only to the appearance of the people/objects inside the SCENE TO RENDER above — do NOT copy their original setting, do NOT change the requested scene) ---\n" +
                 condensed.join("\n\n");
             }
           }
