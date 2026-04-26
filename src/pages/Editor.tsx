@@ -282,6 +282,17 @@ export default function Editor() {
       setProjectId(projectRes.data.id);
       setShowSetup(false);
 
+      // Restore persisted image generation engine/quality (per-project preference).
+      // Falls back to "Nano Banana" + "1K" when no manual selection has been saved yet.
+      const persistedEngine = (projectRes.data as any).image_engine;
+      if (typeof persistedEngine === "string" && persistedEngine.length > 0) {
+        setImageModel(persistedEngine);
+      }
+      const persistedQuality = (projectRes.data as any).image_quality;
+      if (persistedQuality === "1K" || persistedQuality === "2K" || persistedQuality === "4K") {
+        setImageQuality(persistedQuality);
+      }
+
       if (scenesRes.data) setScenes(scenesRes.data);
       if (shotsRes.data && scenesRes.data) {
         const { reordered, updates } = reorderShotsByReadingPosition(shotsRes.data, scenesRes.data);
@@ -1512,6 +1523,20 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
     { value: "4:3", label: "4:3 (Standard)" },
     { value: "3:2", label: "3:2 (Photo)" },
   ];
+
+  // Persist the manually selected image engine / quality onto the project so it
+  // survives a reload. When no selection has ever been made, the project keeps
+  // NULL and the UI falls back to "Nano Banana" + "1K".
+  const persistImageEngine = (engine: string) => {
+    setImageModel(engine);
+    if (!projectId) return;
+    void supabase.from("projects").update({ image_engine: engine }).eq("id", projectId);
+  };
+  const persistImageQuality = (quality: "1K" | "2K" | "4K") => {
+    setImageQuality(quality);
+    if (!projectId) return;
+    void supabase.from("projects").update({ image_quality: quality }).eq("id", projectId);
+  };
 
   const handleGenerateShotImage = async (shotId: string) => {
     if (!projectId || generatingAllImages) return;
@@ -2865,7 +2890,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         <span className="text-xs text-muted-foreground whitespace-nowrap">IA :</span>
                         <select
                           value={imageModel}
-                          onChange={(e) => setImageModel(e.target.value)}
+                          onChange={(e) => persistImageEngine(e.target.value)}
                           className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                           {IMAGE_MODELS.map((m) => (
@@ -2877,7 +2902,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                         {isKieEngine(imageModel) && (
                           <select
                             value={imageQuality}
-                            onChange={(e) => setImageQuality(e.target.value as "1K" | "2K" | "4K")}
+                            onChange={(e) => persistImageQuality(e.target.value as "1K" | "2K" | "4K")}
                             className="rounded border border-violet-500/40 bg-violet-500/5 px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
                             title="Qualité de sortie Kie"
                           >
@@ -3792,7 +3817,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         scenes={scenes}
         imageModels={IMAGE_MODELS}
         imageModel={imageModel}
-        onImageModelChange={setImageModel}
+        onImageModelChange={persistImageEngine}
         onRegenerateShot={handleShotRegenerate}
         onGenerateImage={handleGenerateShotImage}
         totalCost={shots.reduce((sum, s) => sum + (s.generation_cost ?? 0), 0)}
