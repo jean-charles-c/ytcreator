@@ -254,19 +254,36 @@ Pour chaque élément, génère un identity_prompt structuré en anglais.${exclu
 
     const newObjects = Array.isArray(objectsResult.objets_recurrents) ? objectsResult.objets_recurrents : [];
 
-    // If search_more mode, merge new objects with existing ones instead of replacing
+    // ALWAYS load existing objects so we can preserve those that already
+    // have reference_images (user-curated identity anchors). Re-segmentation
+    // must NEVER wipe a character/location with attached reference images.
+    const { data: existingState } = await sb
+      .from("project_scriptcreator_state")
+      .select("global_context")
+      .eq("project_id", project_id)
+      .single();
+    const existingObjects: any[] = Array.isArray((existingState?.global_context as any)?.objets_recurrents)
+      ? (existingState!.global_context as any).objets_recurrents
+      : [];
+    const protectedObjects = existingObjects.filter(
+      (o) => Array.isArray(o?.reference_images) && o.reference_images.length > 0,
+    );
+    const protectedNames = new Set(protectedObjects.map((o) => String(o.nom || "").toLowerCase().trim()));
+
     let finalObjects: unknown[];
     if (search_more && excludeList.length > 0) {
-      // Load existing state to get current objects
-      const { data: existingState } = await sb
-        .from("project_scriptcreator_state")
-        .select("global_context")
-        .eq("project_id", project_id)
-        .single();
-      const existingObjects = (existingState?.global_context as any)?.objets_recurrents || [];
-      finalObjects = [...existingObjects, ...newObjects];
+      // Append-only mode: keep everything existing + add newly discovered
+      const incoming = (newObjects as any[]).filter(
+        (o) => !protectedNames.has(String(o?.nom || "").toLowerCase().trim()),
+      );
+      finalObjects = [...existingObjects, ...incoming];
     } else {
-      finalObjects = newObjects;
+      // Full re-analysis: protected objects survive, new AI results are appended
+      // (skipping any duplicate of a protected name).
+      const incoming = (newObjects as any[]).filter(
+        (o) => !protectedNames.has(String(o?.nom || "").toLowerCase().trim()),
+      );
+      finalObjects = [...protectedObjects, ...incoming];
     }
 
     const merged: Record<string, unknown> = {
