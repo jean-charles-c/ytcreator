@@ -2010,16 +2010,40 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
   // Refresh shots when image gen task completes or progresses
   useEffect(() => {
     if (!projectId) return;
-    return subscribe(projectId, "image-gen", (task) => {
-      // Reload shots from DB to get updated image_urls
-      supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order", { ascending: true }).then(({ data }) => {
-        if (data) {
+    let latestSeq = 0;
+    let pending = false;
+    let pendingAgain = false;
+    const refresh = async () => {
+      if (pending) {
+        pendingAgain = true;
+        return;
+      }
+      pending = true;
+      const mySeq = ++latestSeq;
+      try {
+        const { data } = await supabase
+          .from("shots")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("shot_order", { ascending: true });
+        // Only apply if this is still the latest reload (avoid race conditions
+        // where an older response arrives last and overwrites fresh image_urls).
+        if (data && mySeq === latestSeq) {
           const { reordered } = reorderShotsByReadingPosition(data as Shot[], scenes);
           setShots(reordered);
         }
-      });
+      } finally {
+        pending = false;
+        if (pendingAgain) {
+          pendingAgain = false;
+          refresh();
+        }
+      }
+    };
+    return subscribe(projectId, "image-gen", () => {
+      refresh();
     });
-  }, [projectId, subscribe]);
+  }, [projectId, subscribe, scenes]);
 
   // Auto-detect object↔shot links after visual prompt generation completes
   useEffect(() => {
