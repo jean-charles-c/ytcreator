@@ -142,6 +142,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [importLoading, setImportLoading] = useState(false);
   const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
   const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
+  const [backfilling, setBackfilling] = useState(false);
 
   // ── Auto-save library: every object that has at least one reference image
   // is upserted into the user-level recurring_object_library so it survives
@@ -568,6 +569,30 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     toast.success(`${toImport.length} objet(s) importé(s)`);
     setImportDialogOpen(false);
   }, [importableObjects, selectedImports, objects, onChange]);
+
+  // One-shot migration: scans all projects of the current user and pushes
+  // every recurring object that has reference_images into the library.
+  // Useful for projects that existed before the auto-save feature was added.
+  const runBackfill = useCallback(async () => {
+    setBackfilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-recurring-library");
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      toast.success(
+        `Migration terminée. ${data?.saved ?? 0} objet(s) sauvegardé(s) depuis ${data?.scanned ?? 0} projet(s).`,
+      );
+      // Refresh the dialog list immediately.
+      await loadImportableObjects();
+    } catch (e: any) {
+      toast.error("Erreur migration : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setBackfilling(false);
+    }
+  }, [loadImportableObjects]);
 
   if (objects.length === 0) {
     return (
