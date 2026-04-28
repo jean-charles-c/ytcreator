@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,6 +142,56 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [importLoading, setImportLoading] = useState(false);
   const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
   const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
+
+  // ── Auto-save library: every object that has at least one reference image
+  // is upserted into the user-level recurring_object_library so it survives
+  // re-segmentation and is reusable across projects. Debounced.
+  const lastLibrarySyncRef = useRef<string>("");
+  useEffect(() => {
+    const candidates = objects.filter(
+      (o) => o.nom?.trim() && Array.isArray(o.reference_images) && o.reference_images.length > 0,
+    );
+    if (candidates.length === 0) return;
+    const signature = JSON.stringify(
+      candidates.map((o) => ({
+        n: o.nom.trim().toLowerCase(),
+        t: o.type,
+        e: o.epoque,
+        d: o.description_visuelle,
+        p: o.identity_prompt,
+        r: o.reference_images,
+      })),
+    );
+    if (signature === lastLibrarySyncRef.current) return;
+    const handle = setTimeout(async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (!uid) return;
+        const rows = candidates.map((o) => ({
+          user_id: uid,
+          nom: o.nom.trim(),
+          type: o.type,
+          description_visuelle: o.description_visuelle || "",
+          epoque: o.epoque || "",
+          identity_prompt: o.identity_prompt || "",
+          reference_images: o.reference_images || [],
+          source_project_id: projectId || null,
+        }));
+        const { error } = await supabase
+          .from("recurring_object_library")
+          .upsert(rows, { onConflict: "user_id,nom,type" });
+        if (error) {
+          console.warn("Library auto-save failed:", error);
+          return;
+        }
+        lastLibrarySyncRef.current = signature;
+      } catch (e) {
+        console.warn("Library auto-save error:", e);
+      }
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [objects, projectId]);
 
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
@@ -427,48 +477,57 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     setImportableObjects([]);
     setSelectedImports(new Set());
     try {
-      // Fetch all project states that have global_context with objects
-      const { data: states, error } = await supabase
-        .from("project_scriptcreator_state")
-        .select("project_id, global_context")
-        .not("global_context", "is", null);
+      // Read from the user-level library (persistent across projects).
+      const { data: libRows, error } = await supabase
+        .from("recurring_object_library")
+        .select("id, nom, type, description_visuelle, epoque, identity_prompt, reference_images, source_project_id, updated_at")
+        .order("updated_at", { ascending: false });
       if (error) throw error;
 
-      // Also fetch project titles
-      const projectIds = (states || []).map(s => s.project_id).filter(pid => pid !== projectId);
-      if (projectIds.length === 0) {
-        setImportLoading(false);
-        return;
+      const sourceIds = Array.from(
+        new Set((libRows || []).map((r: any) => r.source_project_id).filter(Boolean)),
+      );
+      const titleMap = new Map<string, string>();
+      if (sourceIds.length > 0) {
+        const { data: projs } = await supabase
+          .from("projects")
+          .select("id, title")
+          .in("id", sourceIds as string[]);
+        for (const p of projs || []) titleMap.set(p.id, p.title);
       }
-      const { data: projects } = await supabase
-        .from("projects")
-        .select("id, title")
-        .in("id", projectIds);
-      const titleMap = new Map((projects || []).map(p => [p.id, p.title]));
 
-      const existingNames = new Set(objects.map(o => o.nom.toLowerCase()));
+      const existingNames = new Set(objects.map((o) => (o.nom || "").toLowerCase().trim()));
 
-      const result: { projectTitle: string; projectId: string; objects: RecurringObject[] }[] = [];
-      for (const state of (states || [])) {
-        if (state.project_id === projectId) continue;
-        const gc = state.global_context as any;
-        const objs = (gc?.objets_recurrents || gc?.recurring_objects) as RecurringObject[] | undefined;
-        if (!objs || !Array.isArray(objs)) continue;
-        // Only keep objects that have reference images
-        const withImages = objs.filter(o =>
-          o.reference_images && o.reference_images.length > 0 && o.nom
-        );
-        if (withImages.length === 0) continue;
-        result.push({
-          projectTitle: titleMap.get(state.project_id) || "Projet sans titre",
-          projectId: state.project_id,
-          objects: withImages.map(o => ({
-            ...o,
-            _alreadyExists: existingNames.has(o.nom.toLowerCase()),
-          })) as any,
-        });
+      // Group entries by source project for display.
+      const groups = new Map<string, { projectTitle: string; projectId: string; objects: RecurringObject[] }>();
+      for (const row of libRows || []) {
+        const refs = Array.isArray(row.reference_images) ? row.reference_images : [];
+        if (refs.length === 0 || !row.nom) continue;
+        const key = row.source_project_id || "__library__";
+        if (!groups.has(key)) {
+          groups.set(key, {
+            projectId: key,
+            projectTitle:
+              key === "__library__"
+                ? "Bibliothèque personnelle"
+                : titleMap.get(key) || "Projet sans titre",
+            objects: [],
+          });
+        }
+        groups.get(key)!.objects.push({
+          id: row.id,
+          nom: row.nom,
+          type: row.type as RecurringObject["type"],
+          description_visuelle: row.description_visuelle || "",
+          epoque: row.epoque || "",
+          identity_prompt: row.identity_prompt || "",
+          reference_images: refs as string[],
+          mentions_scenes: [],
+          mentions_shots: [],
+          ...({ _alreadyExists: existingNames.has(String(row.nom).toLowerCase().trim()) } as any),
+        } as any);
       }
-      setImportableObjects(result);
+      setImportableObjects(Array.from(groups.values()));
     } catch (e: any) {
       toast.error("Erreur chargement : " + (e.message || "Erreur inconnue"));
     } finally {
