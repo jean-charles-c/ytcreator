@@ -142,6 +142,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [importLoading, setImportLoading] = useState(false);
   const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
   const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
+  const [backfilling, setBackfilling] = useState(false);
 
   // ── Auto-save library: every object that has at least one reference image
   // is upserted into the user-level recurring_object_library so it survives
@@ -569,6 +570,30 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     setImportDialogOpen(false);
   }, [importableObjects, selectedImports, objects, onChange]);
 
+  // One-shot migration: scans all projects of the current user and pushes
+  // every recurring object that has reference_images into the library.
+  // Useful for projects that existed before the auto-save feature was added.
+  const runBackfill = useCallback(async () => {
+    setBackfilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-recurring-library");
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      toast.success(
+        `Migration terminée. ${data?.saved ?? 0} objet(s) sauvegardé(s) depuis ${data?.scanned ?? 0} projet(s).`,
+      );
+      // Refresh the dialog list immediately.
+      await loadImportableObjects();
+    } catch (e: any) {
+      toast.error("Erreur migration : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setBackfilling(false);
+    }
+  }, [loadImportableObjects]);
+
   if (objects.length === 0) {
     return (
       <details className="mb-6 rounded-lg border border-border bg-card p-3 sm:p-5 group">
@@ -912,6 +937,26 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               <FolderDown className="h-4 w-4" /> Importer des objets récurrents
             </DialogTitle>
           </DialogHeader>
+          <div className="flex items-center justify-between gap-2 -mt-2 mb-2">
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Si vos anciens projets n'apparaissent pas, lancez la migration pour
+              les enregistrer dans la bibliothèque.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runBackfill}
+              disabled={backfilling}
+              className="h-8 text-xs shrink-0"
+            >
+              {backfilling ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {backfilling ? "Migration…" : "Migrer mes anciens projets"}
+            </Button>
+          </div>
           {importLoading ? (
             <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" /> Chargement des projets…
