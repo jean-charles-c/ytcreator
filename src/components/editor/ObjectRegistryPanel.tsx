@@ -937,6 +937,26 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               <FolderDown className="h-4 w-4" /> Importer des objets récurrents
             </DialogTitle>
           </DialogHeader>
+          <div className="flex items-center justify-between gap-2 -mt-2 mb-2">
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Si vos anciens projets n'apparaissent pas, lancez la migration pour
+              les enregistrer dans la bibliothèque.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runBackfill}
+              disabled={backfilling}
+              className="h-8 text-xs shrink-0"
+            >
+              {backfilling ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {backfilling ? "Migration…" : "Migrer mes anciens projets"}
+            </Button>
+          </div>
           {importLoading ? (
             <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" /> Chargement des projets…
