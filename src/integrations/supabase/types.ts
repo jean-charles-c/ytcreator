@@ -953,6 +953,48 @@ export type Database = {
           },
         ]
       }
+      recurring_object_library: {
+        Row: {
+          created_at: string
+          description_visuelle: string
+          epoque: string
+          id: string
+          identity_prompt: string
+          nom: string
+          reference_images: Json
+          source_project_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description_visuelle?: string
+          epoque?: string
+          id?: string
+          identity_prompt?: string
+          nom: string
+          reference_images?: Json
+          source_project_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description_visuelle?: string
+          epoque?: string
+          id?: string
+          identity_prompt?: string
+          nom?: string
+          reference_images?: Json
+          source_project_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       research_dossiers: {
         Row: {
           angle: string | null
