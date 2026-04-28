@@ -1136,18 +1136,26 @@ serve(async (req) => {
           };
           // Always replace fallback descriptions — never keep "Description visuelle du segment narratif"
           if (aiShot?.description) {
-            payload.description = aiShot.description;
+            // Defensively strip any legacy IDENTITY LOCK block the model may
+            // have echoed inside the description field.
+            payload.description = stripLegacyIdentityLockPrefix(aiShot.description);
           } else {
             const currentDesc = existingShot.description || "";
             if (currentDesc.startsWith("Description visuelle du segment narratif")) {
-              // Extract a rich description from prompt_export by removing style/quality suffixes
-              const cleanPrompt = promptExport
-                .replace(/^.*?(?:Style\s*:|Cinematic film)/i, "")
-                .replace(/Qualité visuelle\s*:.*$/i, "")
+              // Extract a rich description from prompt_export. Strip identity
+              // locks first so the slice doesn't fall in the middle of one.
+              const cleanPrompt = stripLegacyIdentityLockPrefix(promptExport)
+                .replace(/^\s*Style\s*:[^.]*\.\s*/i, "")
+                .replace(/^.*?(?:Cinematic film)/i, "")
+                .replace(/Qualité visuelle\s*:.*$/is, "")
                 .replace(/Any visible writing.*$/is, "")
                 .trim();
               if (cleanPrompt.length > 50) {
                 payload.description = cleanPrompt.slice(0, 500);
+              } else if (existingShot.source_sentence) {
+                // Last-resort: fall back on the narrative source sentence so
+                // we never persist a polluted description.
+                payload.description = existingShot.source_sentence;
               }
             }
           }
