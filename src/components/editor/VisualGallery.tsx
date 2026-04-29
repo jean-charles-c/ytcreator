@@ -166,7 +166,7 @@ export default function VisualGallery({
                         <button
                           onClick={() => handleRegenShot(shot.id)}
                           disabled={regeneratingId === shot.id}
-                          className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                          className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1 rounded text-xs hover:bg-secondary transition-colors disabled:opacity-50 border-primary border text-foreground"
                           title="Regénérer le shot"
                         >
                           {regeneratingId === shot.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
