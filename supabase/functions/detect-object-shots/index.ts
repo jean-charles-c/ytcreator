@@ -73,10 +73,17 @@ serve(async (req) => {
     const objectList = objects.map((o: any) => `- ID: "${o.id}" | Nom: "${o.nom}" | Type: ${o.type} | Description: ${o.description_visuelle || "N/A"}`).join("\n");
 
     const shotList = shots.map((s: any) => {
-      const text = s.source_sentence || s.source_sentence_fr || s.description || "";
+      // Concatenate ALL textual signals: narrative script + visual description + visual prompt.
+      // Each field carries different information (narration vs camera intent vs final prompt),
+      // so we send them all instead of picking the first non-empty one.
+      const narrative = (s.source_sentence || s.source_sentence_fr || "").toString().trim();
+      const description = (s.description || "").toString().trim();
       const visualPrompt = (s.prompt_export || "").toString().trim();
-      const visualLine = visualPrompt ? `\n  Prompt visuel: "${visualPrompt.slice(0, 400)}"` : "";
-      return `- ShotID: "${s.id}" | Scène: ${s.scene_id} | Texte narratif: "${text.slice(0, 300)}"${visualLine}`;
+      const parts: string[] = [];
+      if (narrative) parts.push(`  Texte narratif: "${narrative.slice(0, 400)}"`);
+      if (description && description !== narrative) parts.push(`  Description visuelle: "${description.slice(0, 600)}"`);
+      if (visualPrompt) parts.push(`  Prompt visuel: "${visualPrompt.slice(0, 1500)}"`);
+      return `- ShotID: "${s.id}" | Scène: ${s.scene_id}\n${parts.join("\n")}`;
     }).join("\n");
 
     const systemPrompt = `Tu es un analyste textuel spécialisé dans l'identification d'entités (personnages, véhicules, lieux, objets) dans des shots de documentaire.
