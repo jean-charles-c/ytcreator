@@ -1493,6 +1493,41 @@ serve(async (req) => {
       .filter((shot: any) => !matchedIds.has(shot.id))
       .map((shot: any) => shot.id);
 
+    // ── ANTI-DUPLICATE GUARD ──
+    // Delete obsolete shots FIRST. Otherwise, UPDATEs that change shot_order
+    // can collide with the UNIQUE(scene_id, shot_order) constraint when an
+    // orphan still occupies the target slot.
+    if (toDeleteIds.length > 0) {
+      const { error: deleteErr } = await supabase.from("shots").delete().in("id", toDeleteIds);
+      if (deleteErr) {
+        console.error("Delete error:", deleteErr);
+        throw new Error("Failed to cleanup obsolete shots");
+      }
+    }
+
+    // ── TRANSIENT-SAFE RENUMBERING ──
+    // Push every surviving shot to a temporary negative slot so that the
+    // subsequent UPDATEs to their final shot_order cannot collide with each
+    // other within the same scene.
+    if (toUpdate.length > 0) {
+      const sceneIds = Array.from(new Set(toUpdate.map((u) => {
+        const shot = targetExistingShots.find((s: any) => s.id === u.id);
+        return shot?.scene_id;
+      }).filter(Boolean)));
+      for (const sceneId of sceneIds) {
+        // Move all shots of this scene to negative shot_order = -id-based offset
+        const { data: sShots } = await supabase
+          .from("shots")
+          .select("id, shot_order")
+          .eq("scene_id", sceneId);
+        for (const s of sShots ?? []) {
+          await supabase.from("shots")
+            .update({ shot_order: -(s.shot_order + 10000) })
+            .eq("id", s.id);
+        }
+      }
+    }
+
     for (const update of toUpdate) {
       const { error } = await supabase.from("shots").update(update.payload).eq("id", update.id);
       if (error) {
@@ -1506,14 +1541,6 @@ serve(async (req) => {
       if (insertErr) {
         console.error("Insert error:", insertErr);
         throw new Error("Failed to save shots");
-      }
-    }
-
-    if (toDeleteIds.length > 0) {
-      const { error: deleteErr } = await supabase.from("shots").delete().in("id", toDeleteIds);
-      if (deleteErr) {
-        console.error("Delete error:", deleteErr);
-        throw new Error("Failed to cleanup obsolete shots");
       }
     }
 
