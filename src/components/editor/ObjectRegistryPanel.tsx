@@ -786,15 +786,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                           }
                         }}
                       />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs gap-1 shrink-0"
-                        onClick={() => fileInputRefs.current[obj.id]?.click()}
-                      >
-                        <Upload className="h-3 w-3" />
-                        Fichier
-                      </Button>
+                       <button
+                         type="button"
+                         className="inline-flex items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-border bg-transparent hover:bg-secondary rounded px-3 h-7 gap-1 text-muted-foreground text-base"
+                         onClick={() => fileInputRefs.current[obj.id]?.click()}
+                       >
+                         <Upload className="h-4 w-4" />
+                         Fichier
+                       </button>
                       <input
                         ref={(el) => { fileInputRefs.current[obj.id] = el; }}
                         type="file"
