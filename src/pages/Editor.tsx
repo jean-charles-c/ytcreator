@@ -3478,13 +3478,13 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                       : [...prev, scene.id]
                                   )
                                 }
-                                className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-left hover:bg-secondary/50 transition-colors min-h-[48px]"
+                                 className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-left transition-colors min-h-[48px] bg-green-900"
                                 id={`scene-header-${scene.id}`}
                               >
                                 <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
-                                <span className="text-xs font-display font-medium text-primary whitespace-nowrap">S{scene.scene_order}</span>
+                                 <span className="font-display font-medium whitespace-nowrap text-card-foreground text-2xl">S{scene.scene_order}</span>
                                 <span className="hidden sm:inline text-xs text-muted-foreground">—</span>
-                                <span className="text-xs sm:text-sm font-display text-foreground truncate">{scene.title}</span>
+                                 <span className="text-xs text-foreground truncate sm:text-lg font-mono">{scene.title}</span>
                                 {hasErrors && (
                                   <span className="shrink-0 inline-flex items-center gap-1 rounded bg-destructive/10 border border-destructive/30 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-[10px] text-destructive font-medium">
                                     ⚠
