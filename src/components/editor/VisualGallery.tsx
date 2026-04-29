@@ -166,7 +166,7 @@ export default function VisualGallery({
                         <button
                           onClick={() => handleRegenShot(shot.id)}
                           disabled={regeneratingId === shot.id}
-                          className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1 rounded text-xs hover:bg-secondary transition-colors disabled:opacity-50 border-primary border text-foreground"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px] text-card-foreground border-2 bg-background rounded-none"
                           title="Regénérer le shot"
                         >
                           {regeneratingId === shot.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
@@ -180,10 +180,10 @@ export default function VisualGallery({
                               handleRegenImage(shot.id);
                             }
                           }}
-                          className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10px] transition-colors ${
+                          className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-[36px] text-card-foreground border-2 bg-background rounded-none ${
                             isShotGenerating(shot.id)
                               ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                              : ""
                           }`}
                           title={isShotGenerating(shot.id) ? "Arrêter la génération" : "Regénérer le visuel"}
                         >
