@@ -1334,9 +1334,22 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         setShots((prev) => prev.filter((s) => s.id !== shotId));
       }
 
-      toast.success("Shot supprimé — fragments redistribués");
-      // Auto-regenerate prompts for affected scene
-      regeneratePromptsForScene(deletedShot.scene_id);
+      // Mark redistributed shots as needing prompt regeneration (clear stale prompts)
+      if (redistribution) {
+        const affectedIds = redistribution.updates.map((u) => u.id);
+        if (affectedIds.length > 0) {
+          await supabase
+            .from("shots")
+            .update({ prompt_export: null })
+            .in("id", affectedIds);
+          setShots((prev) =>
+            prev.map((s) =>
+              affectedIds.includes(s.id) ? { ...s, prompt_export: null } : s
+            )
+          );
+        }
+      }
+      toast.success("Shot supprimé — cliquez sur « Générer tous les prompts » pour mettre à jour les prompts visuels.");
     } catch (e) {
       console.error("Delete exception:", e);
       toast.error("Erreur de suppression");

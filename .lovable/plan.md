@@ -1,61 +1,40 @@
-# Fix — Description corrompue + visuels identiques (même bug racine)
+## Diagnostic
 
-## Symptômes observés
+Le bouton « Générer tous les prompts » (`runStoryboard({ promptOnly: true })`) saute en réalité toutes les scènes dont **chaque shot a déjà un `prompt_export` non vide** (Editor.tsx, lignes 731‑756, fonction `isComplete`). C'est ce qui rend le bouton « inutile » sur certains shots : ils ont reçu un prompt avant même d'être ciblés.
 
-1. La `description` des shots 11/12/13/14/16/17/22 contient un copier-coller tronqué du `prompt_export` (préambule de style + IDENTITY LOCK en anglais), au lieu d'une vraie description visuelle française.
-2. Les images Kie générées pour ces 7 shots sont quasi identiques.
+D'où viennent ces prompts générés trop tôt ? De trois handlers structurels dans `src/pages/Editor.tsx` :
 
-## Cause racine commune
+- `handleShotSplit` → ligne 1499 : `regeneratePromptsForScene(shot.scene_id)`
+- `handleShotMergeWithNext` → ligne 1404 : idem
+- `handleShotDelete` → ligne 1339 : idem
 
-Ces shots ont été générés **avant** la refacto du système d'IDENTITY LOCK. Leur `prompt_export` en DB contient encore l'ancien format verbeux : 4 blocs IDENTITY LOCK collés en plein milieu du prompt (≈ 1600 caractères de boilerplate), répétés à chaque shot de la scène 2.
+`regeneratePromptsForScene` (ligne 1248) appelle `generate-storyboard` en mode `prompt_only`, ce qui fait passer les shots de la scène entière par l'IA, **réécrit leur `prompt_export`** (storyboard/index.ts lignes 1102‑1170), puis retourne les shots avec un prompt complet. Résultat : dès qu'on scinde, fusionne ou supprime un shot, la scène entière reçoit silencieusement de nouveaux prompts. Ces prompts ne respectent pas forcément le style global / format / niveau sensible que l'utilisateur a sélectionnés au moment de cliquer « Générer tous les prompts ».
 
-Deux conséquences :
+C'est exactement le comportement décrit : 43 shots du projet « Bugatti Chiron Super Sport 300+ » ont vu leur `prompt_export` rempli **avant** le clic sur le bouton (la base montre 71/71 shots avec `prompt_export` non nul, donc plusieurs scènes seront ensuite ignorées par `isComplete`).
 
-- **`description` corrompue** : dans `generate-storyboard/index.ts` (branche `prompt_only`, ~ligne 1140), quand l'IA ne renvoie pas de `description` propre, le code prend `prompt_export.slice(0, 500)` comme fallback. Les 500 premiers caractères tombent au milieu d'un IDENTITY LOCK.
-- **Strip à la volée inopérant** : `stripLegacyIdentityLockPrefix` (utilisé par `generate-shot-image-kie/index.ts` ligne 582) a un regex ancré au début (`/^\s*(?:CHARACTER|...)/`). Or les anciens prompts commencent par `"Style :"`, et les locks verbeux sont au milieu. Le strip ne fait rien → Kie reçoit les 4 vieux locks + les nouveaux SUBJECT IDENTITY ANCHORS condensés rajoutés par-dessus → fragment narratif noyé → tous les shots convergent vers la même Diablo GT générique.
+## Correctif proposé
 
-## Corrections à apporter
+### 1. Ne plus auto-générer les prompts lors d'une modification structurelle
+Dans `src/pages/Editor.tsx` :
+- Supprimer les trois appels `regeneratePromptsForScene(...)` dans `handleShotSplit`, `handleShotMergeWithNext`, `handleShotDelete`.
+- Pour les **nouveaux shots créés par split**, vider explicitement les champs dérivés afin qu'ils soient « non encore prompted » :
+  - À l'INSERT du new shot dans `handleShotSplit` (ligne ~1465) : forcer `prompt_export: null`, `guardrails: null`, `description: ""` (ou le fragment brut), `shot_type: ""`.
+- Pour le shot **modifié** par split/merge/delete (texte source change) : remettre `prompt_export = null` côté DB et état local, pour qu'il soit considéré « à régénérer ».
+- Afficher un toast informatif après chaque opération : « Le shot a changé. Cliquez sur "Générer tous les prompts" pour mettre à jour les prompts visuels. »
 
-### 1. Étendre le strip pour traiter les locks au milieu du prompt
-Fichier : `supabase/functions/_shared/identity-lock-utils.ts`
+### 2. Conserver `regeneratePromptsForScene` mais ne plus l'appeler automatiquement
+La fonction reste utile pour le bouton « Régénérer les prompts de cette scène » (Editor.tsx ligne 3688), donc on la garde, mais elle n'est plus déclenchée par split/merge/delete.
 
-Ajouter une fonction `stripLegacyIdentityLockBlocks(prompt)` qui :
-- détecte chaque en-tête `(CHARACTER|LOCATION|OBJECT|VEHICLE) IDENTITY LOCK:` n'importe où dans la chaîne ;
-- trouve sa fin via un look-ahead sur les marqueurs : prochain en-tête de lock, ou `Image documentaire historique`, `Qualité visuelle :`, `Any visible writing`, `Ratio d'aspect`, ou la phrase de clôture `...may vary.` ;
-- supprime le bloc complet incluant `VERSION / TIME PERIOD LOCK:`, `REFERENCE IMAGES PROVIDED:`, `NO ... DRIFT:` ;
-- compresse les espaces et lignes vides résultants.
+### 3. Le bouton « Générer tous les prompts » continuera de fonctionner correctement
+Comme les shots modifiés ont désormais `prompt_export = null`, leur scène ne sera plus marquée « complète » par `isComplete`, et le bouton les retraitera bien.
+Le bouton « Tout régénérer (force) » reste disponible pour reforger la totalité.
 
-Conserver `stripLegacyIdentityLockPrefix` comme alias rétrocompat appelant la nouvelle fonction.
+### 4. Mémoire projet
+Ajouter un mémo dans `mem/features/segmentation/` : **« split/merge/delete shots ne déclenchent jamais de génération de prompts ; les shots modifiés sont marqués prompt_export=null et attendent que l'utilisateur clique sur Générer tous les prompts. »**
 
-### 2. Brancher la nouvelle fonction sur les générateurs d'images
-Fichiers : 
-- `supabase/functions/generate-shot-image-kie/index.ts` (ligne 582)
-- `supabase/functions/generate-shot-image/index.ts` (même endroit)
+## Fichiers touchés
+- `src/pages/Editor.tsx` (handlers split/merge/delete + INSERT split)
+- `mem/features/segmentation/structural-edits-no-auto-prompts.md` (nouveau)
+- mise à jour de `mem/index.md`
 
-Remplacer `stripLegacyIdentityLockPrefix(rawPrompt)` par `stripLegacyIdentityLockBlocks(rawPrompt)`.
-
-### 3. Réparer la `description` corrompue (one-shot SQL)
-Migration ciblant les 7 shots du projet `e9cc3fe1-063a-4593-9f76-6d54772f70a0` dont la `description` commence par `photographie documentaire` ou contient `IDENTITY LOCK` :
-- mettre `description = NULL` (le système retombera proprement sur `source_sentence` lors du prochain rendu) ;
-- OU mieux : copier `source_sentence` dans `description` quand `description` est polluée, pour préserver une vraie phrase narrative.
-
-Étendre la migration à tous les projets de l'utilisateur ayant ce pattern (sécurité).
-
-### 4. Nettoyer les `prompt_export` historiques (one-shot SQL)
-Même migration : `UPDATE shots SET prompt_export = regexp_replace(prompt_export, ...)` pour retirer les blocs IDENTITY LOCK verbeux. Le rendu Kie s'appuiera ensuite sur les locks condensés du registry, conformément à l'architecture cible.
-
-### 5. Sécuriser le fallback de `description` côté `generate-storyboard`
-Fichier : `supabase/functions/generate-storyboard/index.ts` (~ligne 1140)
-
-Quand on doit construire une `description` à partir du `prompt_export`, appeler `stripLegacyIdentityLockBlocks` ET retirer le préambule `"Style : ..."` ET les suffixes qualité avant de prendre le slice de 500 caractères. Tomber sur `source_sentence` si le résultat est trop court ou vide.
-
-## Vérification post-correction
-
-1. La `description` du shot 11 redevient une phrase visuelle française propre (proche de `source_sentence`).
-2. Régénérer le shot 13 : la NACA-duct du toit doit être le sujet central, plus une Diablo GT générique au stand.
-3. Les 7 shots de la scène 2 doivent produire des images visuellement distinctes.
-
-## À confirmer
-
-- **Périmètre du nettoyage SQL** : uniquement le projet Lamborghini Diablo GT, ou tous les projets de l'utilisateur ayant ce pattern (recommandé) ?
-- **Stratégie de réparation `description`** : mettre à NULL (le système régénère propre) ou copier `source_sentence` (immédiat, mais sans enrichissement visuel) ?
+Aucune migration DB nécessaire.
