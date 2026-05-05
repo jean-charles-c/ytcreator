@@ -694,7 +694,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 )}
               </div>
             )}
-            <p className="text-xs text-muted-foreground leading-relaxed break-words">{shot.description}</p>
+            <p className="text-muted-foreground leading-relaxed break-words text-base">{shot.description}</p>
         {shot.prompt_export && (
               <details className="group/details">
                 <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">
