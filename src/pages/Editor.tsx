@@ -1440,10 +1440,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       const { originalUpdate, newShot, orderUpdates, action } = splitResult;
 
-      // Update original shot text
+      // Update original shot text — clear its prompt_export (text changed)
       const { error: updateError } = await supabase
         .from("shots")
-        .update({ source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr })
+        .update({
+          source_sentence: originalUpdate.source_sentence,
+          source_sentence_fr: originalUpdate.source_sentence_fr,
+          prompt_export: null,
+        })
         .eq("id", originalUpdate.id);
       if (updateError) { toast.error("Erreur lors de la scission"); return; }
 
@@ -1487,6 +1491,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
           description: newShot.description,
           source_sentence: newShot.source_sentence,
           source_sentence_fr: newShot.source_sentence_fr,
+          prompt_export: null,
+          guardrails: null,
         })
         .select()
         .single();
@@ -1496,7 +1502,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       setShots((prev) => {
         const updated = prev.map((s) => {
           if (s.id === originalUpdate.id) {
-            return { ...s, source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr };
+            return { ...s, source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr, prompt_export: null };
           }
           const ou = orderUpdates.find((o) => o.id === s.id);
           if (ou) return { ...s, shot_order: ou.shot_order };
@@ -1509,9 +1515,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       });
 
       setManifestHistory((prev) => [...prev, action]);
-      toast.success("Shot scindé en deux !");
-      // Auto-regenerate prompts for affected scene
-      regeneratePromptsForScene(shot.scene_id);
+      toast.success("Shot scindé — cliquez sur « Générer tous les prompts » pour mettre à jour les prompts visuels.");
     } catch (e) {
       console.error("Split exception:", e);
       toast.error("Erreur lors de la scission");
