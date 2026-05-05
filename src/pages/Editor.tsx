@@ -1432,9 +1432,33 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         .eq("id", originalUpdate.id);
       if (updateError) { toast.error("Erreur lors de la scission"); return; }
 
-      // Shift orders of subsequent shots
+      // Shift orders of subsequent shots.
+      // IMPORTANT: the DB has a UNIQUE(scene_id, shot_order) constraint.
+      // Each .update() is its own transaction (so DEFERRABLE doesn't help across calls).
+      // We must avoid transient collisions:
+      //   1) Park affected rows on negative slots
+      //   2) Then move them to their final positive slots
       for (const ou of orderUpdates) {
-        await supabase.from("shots").update({ shot_order: ou.shot_order }).eq("id", ou.id);
+        const { error: parkErr } = await supabase
+          .from("shots")
+          .update({ shot_order: -Math.abs(ou.shot_order) - 1000 })
+          .eq("id", ou.id);
+        if (parkErr) {
+          console.error("Split park error:", parkErr);
+          toast.error("Erreur lors de la scission (réorganisation)");
+          return;
+        }
+      }
+      for (const ou of orderUpdates) {
+        const { error: moveErr } = await supabase
+          .from("shots")
+          .update({ shot_order: ou.shot_order })
+          .eq("id", ou.id);
+        if (moveErr) {
+          console.error("Split reorder error:", moveErr);
+          toast.error("Erreur lors de la scission (réorganisation)");
+          return;
+        }
       }
 
       // Insert new shot
