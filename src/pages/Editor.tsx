@@ -1334,9 +1334,22 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         setShots((prev) => prev.filter((s) => s.id !== shotId));
       }
 
-      toast.success("Shot supprimé — fragments redistribués");
-      // Auto-regenerate prompts for affected scene
-      regeneratePromptsForScene(deletedShot.scene_id);
+      // Mark redistributed shots as needing prompt regeneration (clear stale prompts)
+      if (redistribution) {
+        const affectedIds = redistribution.updates.map((u) => u.id);
+        if (affectedIds.length > 0) {
+          await supabase
+            .from("shots")
+            .update({ prompt_export: null })
+            .in("id", affectedIds);
+          setShots((prev) =>
+            prev.map((s) =>
+              affectedIds.includes(s.id) ? { ...s, prompt_export: null } : s
+            )
+          );
+        }
+      }
+      toast.success("Shot supprimé — cliquez sur « Générer tous les prompts » pour mettre à jour les prompts visuels.");
     } catch (e) {
       console.error("Delete exception:", e);
       toast.error("Erreur de suppression");
@@ -1360,10 +1373,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       const { survivorUpdate, absorbedId, action } = mergeResult;
 
-      // Update the surviving shot
+      // Update the surviving shot — clear prompt_export so it gets regenerated on next "Générer tous les prompts"
       const { error: updateError } = await supabase
         .from("shots")
-        .update({ source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr })
+        .update({
+          source_sentence: survivorUpdate.source_sentence,
+          source_sentence_fr: survivorUpdate.source_sentence_fr,
+          prompt_export: null,
+        })
         .eq("id", survivorUpdate.id);
       if (updateError) { toast.error("Erreur lors de la fusion"); return; }
 
@@ -1387,7 +1404,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
           .filter((s) => s.id !== absorbedId)
           .map((s) =>
             s.id === survivorUpdate.id
-              ? { ...s, source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr }
+              ? { ...s, source_sentence: survivorUpdate.source_sentence, source_sentence_fr: survivorUpdate.source_sentence_fr, prompt_export: null }
               : s
           );
         // Fix shot_order locally
@@ -1399,9 +1416,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       });
 
       setManifestHistory((prev) => [...prev, action]);
-      toast.success("Shots fusionnés — fragments combinés");
-      // Auto-regenerate prompts for affected scene
-      regeneratePromptsForScene(shot.scene_id);
+      toast.success("Shots fusionnés — cliquez sur « Générer tous les prompts » pour mettre à jour les prompts visuels.");
     } catch (e) {
       console.error("Merge exception:", e);
       toast.error("Erreur lors de la fusion");
@@ -1425,10 +1440,14 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
 
       const { originalUpdate, newShot, orderUpdates, action } = splitResult;
 
-      // Update original shot text
+      // Update original shot text — clear its prompt_export (text changed)
       const { error: updateError } = await supabase
         .from("shots")
-        .update({ source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr })
+        .update({
+          source_sentence: originalUpdate.source_sentence,
+          source_sentence_fr: originalUpdate.source_sentence_fr,
+          prompt_export: null,
+        })
         .eq("id", originalUpdate.id);
       if (updateError) { toast.error("Erreur lors de la scission"); return; }
 
@@ -1472,6 +1491,8 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
           description: newShot.description,
           source_sentence: newShot.source_sentence,
           source_sentence_fr: newShot.source_sentence_fr,
+          prompt_export: null,
+          guardrails: null,
         })
         .select()
         .single();
@@ -1481,7 +1502,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       setShots((prev) => {
         const updated = prev.map((s) => {
           if (s.id === originalUpdate.id) {
-            return { ...s, source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr };
+            return { ...s, source_sentence: originalUpdate.source_sentence, source_sentence_fr: originalUpdate.source_sentence_fr, prompt_export: null };
           }
           const ou = orderUpdates.find((o) => o.id === s.id);
           if (ou) return { ...s, shot_order: ou.shot_order };
@@ -1494,9 +1515,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
       });
 
       setManifestHistory((prev) => [...prev, action]);
-      toast.success("Shot scindé en deux !");
-      // Auto-regenerate prompts for affected scene
-      regeneratePromptsForScene(shot.scene_id);
+      toast.success("Shot scindé — cliquez sur « Générer tous les prompts » pour mettre à jour les prompts visuels.");
     } catch (e) {
       console.error("Split exception:", e);
       toast.error("Erreur lors de la scission");
