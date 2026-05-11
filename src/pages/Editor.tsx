@@ -1044,11 +1044,43 @@ export default function Editor() {
   };
 
   const handleSceneDelete = async (sceneId: string) => {
-    await supabase.from("shots").delete().eq("scene_id", sceneId);
-    await supabase.from("scenes").delete().eq("id", sceneId);
-    setScenes((prev) => prev.filter((s) => s.id !== sceneId));
+    const { error: shotsErr } = await supabase.from("shots").delete().eq("scene_id", sceneId);
+    if (shotsErr) {
+      toast.error("Erreur suppression shots : " + shotsErr.message);
+      return;
+    }
+    const { error: sceneErr } = await supabase.from("scenes").delete().eq("id", sceneId);
+    if (sceneErr) {
+      toast.error("Erreur suppression scène : " + sceneErr.message);
+      return;
+    }
+
+    // Reorder remaining scenes to keep scene_order contiguous
+    const remaining = scenes
+      .filter((s) => s.id !== sceneId)
+      .sort((a, b) => a.scene_order - b.scene_order);
+    const reorderUpdates = remaining
+      .map((s, i) => ({ id: s.id, newOrder: i + 1 }))
+      .filter((u, i) => u.newOrder !== remaining[i].scene_order);
+    if (reorderUpdates.length > 0) {
+      await Promise.all(
+        reorderUpdates.map((u) =>
+          supabase.from("scenes").update({ scene_order: u.newOrder }).eq("id", u.id),
+        ),
+      );
+    }
+
+    setScenes(remaining.map((s, i) => ({ ...s, scene_order: i + 1 })));
     setShots((prev) => prev.filter((s) => s.scene_id !== sceneId));
-    toast.success("Scène supprimée");
+
+    if (projectId) {
+      await supabase
+        .from("projects")
+        .update({ scene_count: remaining.length })
+        .eq("id", projectId);
+    }
+
+    toast.success("Scène supprimée (texte + shots associés)");
   };
 
   const handleMergeWithNext = async (sceneId: string) => {
