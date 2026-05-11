@@ -877,6 +877,7 @@ export default function Editor() {
           { suffix: "vue de côté", angle: "SIDE VIEW — strict profile view of the vehicle, full silhouette visible from the side." },
           { suffix: "vue arrière", angle: "REAR VIEW — three-quarter rear or straight-on rear view of the vehicle, taillights and rear shape fully visible." },
           { suffix: "vue habitacle intérieur", angle: "INTERIOR VIEW — inside the cockpit / cabin of the vehicle, dashboard, steering wheel, seats and trim visible." },
+          { suffix: "vue de dessus", angle: "TOP-DOWN VIEW — strict overhead / bird's-eye view of the vehicle, full roof and overall footprint visible from directly above." },
         ];
         const expanded: any[] = [];
         for (const obj of ctx.objets_recurrents as any[]) {
