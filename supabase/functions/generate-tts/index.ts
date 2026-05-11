@@ -1311,6 +1311,18 @@ serve(async (req) => {
     }
 
     const body: TTSRequest = await req.json();
+    const bodyMutable = body as TTSRequest;
+    if (typeof bodyMutable.text === "string") {
+      // Replace decimal commas in numbers (e.g. "4,6" → "4 virgule 6")
+      // so TTS reads them as words instead of pausing on the comma.
+      bodyMutable.text = bodyMutable.text.replace(/(\d+),(\d+)/g, "$1 virgule $2");
+    }
+    if (Array.isArray(bodyMutable.shotSentences)) {
+      bodyMutable.shotSentences = bodyMutable.shotSentences.map((s) => ({
+        ...s,
+        text: typeof s.text === "string" ? s.text.replace(/(\d+),(\d+)/g, "$1 virgule $2") : s.text,
+      }));
+    }
     const {
       text,
       languageCode = "fr-FR",
