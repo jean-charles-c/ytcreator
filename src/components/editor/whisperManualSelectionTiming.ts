@@ -42,17 +42,35 @@ export function recalculateWhisperShotEndTimesWithManualRanges<
   words: readonly WhisperManualSelectionWordLike[],
   audioDuration: number
 ): T[] {
-  return recalculateWhisperShotEndTimes(shots, audioDuration).map((shot) => {
+  // Pass 1: derive endTimes from neighbours
+  const firstPass = recalculateWhisperShotEndTimes(shots, audioDuration);
+
+  // Pass 2: apply manual endTimes AND propagate them as the next shot's startTime
+  const manualEnds = new Map<number, number>();
+  const propagated: T[] = firstPass.map((shot, idx) => {
     const manualEndTime = getManualSelectionEndTime(shot, words);
     if (manualEndTime === undefined) return shot;
+    const bounded = audioDuration > 0 ? Math.min(audioDuration, manualEndTime) : manualEndTime;
+    manualEnds.set(idx, bounded);
+    return { ...shot, endTime: bounded } as T;
+  });
 
-    const boundedManualEndTime = audioDuration > 0
-      ? Math.min(audioDuration, manualEndTime)
-      : manualEndTime;
+  // Force next shot's startTime to the manual endTime of the previous shot
+  const withForcedStarts: T[] = propagated.map((shot, idx) => {
+    const prevManualEnd = manualEnds.get(idx - 1);
+    if (prevManualEnd === undefined) return shot;
+    if (shot.startTime === null) return shot;
+    if (Math.abs((shot.startTime ?? 0) - prevManualEnd) < 1e-6) return shot;
+    return { ...shot, startTime: prevManualEnd } as T;
+  });
 
-    return {
-      ...shot,
-      endTime: boundedManualEndTime,
-    } as T;
+  // Pass 3: re-derive endTimes so downstream shots stay coherent with the new startTimes
+  const reDerived = recalculateWhisperShotEndTimes(withForcedStarts, audioDuration);
+
+  // Re-apply manual endTimes (they remain authoritative)
+  return reDerived.map((shot, idx) => {
+    const manualEnd = manualEnds.get(idx);
+    if (manualEnd === undefined) return shot;
+    return { ...shot, endTime: manualEnd } as T;
   });
 }
