@@ -868,7 +868,43 @@ export default function Editor() {
       // Apply identity templates to new objects
       const ctx = data.global_context;
       if (ctx?.objets_recurrents) {
-        ctx.objets_recurrents = applyIdentityTemplates(ctx.objets_recurrents);
+        // Expand newly detected vehicles into 4 view variants
+        // (front, side, rear, interior) so the user gets a complete
+        // visual reference set per vehicle automatically.
+        const excludeSet = new Set((excludeNames || []).map(n => n.toLowerCase().trim()));
+        const VEHICLE_VIEWS: Array<{ suffix: string; angle: string }> = [
+          { suffix: "vue avant", angle: "FRONT VIEW — three-quarter front or straight-on front view of the vehicle, headlights and grille fully visible." },
+          { suffix: "vue de côté", angle: "SIDE VIEW — strict profile view of the vehicle, full silhouette visible from the side." },
+          { suffix: "vue arrière", angle: "REAR VIEW — three-quarter rear or straight-on rear view of the vehicle, taillights and rear shape fully visible." },
+          { suffix: "vue habitacle intérieur", angle: "INTERIOR VIEW — inside the cockpit / cabin of the vehicle, dashboard, steering wheel, seats and trim visible." },
+        ];
+        const expanded: any[] = [];
+        for (const obj of ctx.objets_recurrents as any[]) {
+          const isNew = obj?.nom && !excludeSet.has(String(obj.nom).toLowerCase().trim());
+          if (isNew && obj?.type === "vehicle") {
+            for (const v of VEHICLE_VIEWS) {
+              expanded.push({
+                ...obj,
+                id: `${obj.id || crypto.randomUUID()}-${v.suffix.replace(/\s+/g, "-")}`,
+                nom: `${obj.nom} (${v.suffix})`,
+                reference_images: [],
+                _view_angle_directive: v.angle,
+              });
+            }
+          } else {
+            expanded.push(obj);
+          }
+        }
+        const templated = applyIdentityTemplates(expanded as RecurringObject[]);
+        // Append view-angle directive to the identity prompt of each variant
+        ctx.objets_recurrents = templated.map((o: any) => {
+          if (o._view_angle_directive) {
+            const suffix = `\n\nVIEW ANGLE LOCK:\n${o._view_angle_directive}\nDo not switch to any other camera angle for this entry.`;
+            const { _view_angle_directive, ...rest } = o;
+            return { ...rest, identity_prompt: `${rest.identity_prompt}${suffix}` };
+          }
+          return o;
+        });
       }
       setGlobalContext(ctx);
       const newCount = data.new_objects_count || 0;
