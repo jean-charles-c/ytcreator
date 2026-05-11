@@ -162,6 +162,10 @@ Deno.serve(async (req) => {
       console.warn("[chirp3hd] Failed to load custom TTS transforms:", e);
     }
 
+    // Step 0.5: replace decimal commas in numbers (e.g. "4,6" → "4 virgule 6")
+    // so TTS reads them as words instead of pausing on the comma.
+    transformedText = transformedText.replace(/(\d+),(\d+)/g, "$1 virgule $2");
+
     // Step 1: normalize unicode quotes and punctuation spacing
     // Fuse French elisions (c', n', s', d', m', t', l', qu') so
     // the API never sees an apostrophe inside a word — which it rejects.
