@@ -307,6 +307,21 @@ export default function PdfDocumentaryTab({
     }
   }, [projectId]);
 
+  // ── Persist edited Script v2 (raw or revised) to DB ──
+  const saveScriptV2 = useCallback(async (which: "raw" | "revised", value: string) => {
+    if (!projectId) return;
+    const column = which === "raw" ? "script_v2_raw" : "script_v2_revised";
+    try {
+      await supabase
+        .from("project_scriptcreator_state")
+        .update({ [column]: value } as any)
+        .eq("project_id", projectId);
+    } catch (e) {
+      console.error(`Failed to persist ${column}:`, e);
+      toast.error("Échec de la sauvegarde du script v2");
+    }
+  }, [projectId]);
+
   // ── Consume pendingChapterTitles (envoi depuis Narrative Form Generator) ──
   // Construit un chapterState à partir des titres "Le premier ticket"
   // (déjà nettoyés du préfixe "SCÈNE N — ") et persiste immédiatement.
