@@ -15,6 +15,7 @@ import {
   Clapperboard,
   ArrowRight,
   BookOpen,
+  Trash2,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -64,6 +65,7 @@ export default function SceneBlock({
   index,
   isLast,
   onUpdate,
+  onDelete,
   onMergeWithNext,
   onSplit,
   onToggleValidated,
@@ -230,6 +232,23 @@ export default function SceneBlock({
                 title={scene.validated ? "Invalider" : "Valider"}
               >
                 <CheckCircle2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  if (scene.validated) {
+                    toast.error("Scène validée — déverrouillez-la pour supprimer.");
+                    return;
+                  }
+                  const ok = window.confirm(
+                    `Supprimer définitivement la scène ${scene.scene_order} ?\n\nLe texte de la scène ainsi que tous ses shots associés (VisualPrompts) seront supprimés.`,
+                  );
+                  if (!ok) return;
+                  onDelete(scene.id);
+                }}
+                className="p-2 sm:p-2.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:bg-destructive/10 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                title="Supprimer la scène"
+              >
+                <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </button>
             </>
           )}
