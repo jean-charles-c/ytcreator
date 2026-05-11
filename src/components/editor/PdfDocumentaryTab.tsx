@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, Sparkles, X, Loader2, CheckCircle2, AlertTriangle, Lightbulb, Swords, ScrollText, Download, ArrowRight, ChevronDown, Copy, Mic, Plus, Trash2, RotateCcw, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -303,6 +304,21 @@ export default function PdfDocumentaryTab({
         .eq("project_id", projectId);
     } catch (e) {
       console.error("Failed to persist chapterState:", e);
+    }
+  }, [projectId]);
+
+  // ── Persist edited Script v2 (raw or revised) to DB ──
+  const saveScriptV2 = useCallback(async (which: "raw" | "revised", value: string) => {
+    if (!projectId) return;
+    const column = which === "raw" ? "script_v2_raw" : "script_v2_revised";
+    try {
+      await supabase
+        .from("project_scriptcreator_state")
+        .update({ [column]: value } as any)
+        .eq("project_id", projectId);
+    } catch (e) {
+      console.error(`Failed to persist ${column}:`, e);
+      toast.error("Échec de la sauvegarde du script v2");
     }
   }, [projectId]);
 
@@ -1704,7 +1720,28 @@ export default function PdfDocumentaryTab({
                 <div className="rounded-b-lg border border-t-0 border-border bg-card p-4">
                   {scriptV2 && (
                     <>
-                      <pre className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-body mb-4">{showV2Revised && scriptV2Revised ? scriptV2Revised : scriptV2}</pre>
+                      <Textarea
+                        value={showV2Revised && scriptV2Revised ? scriptV2Revised : scriptV2}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (showV2Revised && scriptV2Revised !== null) {
+                            setScriptV2Revised(v);
+                          } else {
+                            setScriptV2(v);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const v = e.target.value;
+                          if (showV2Revised && scriptV2Revised !== null) {
+                            saveScriptV2("revised", v);
+                          } else {
+                            saveScriptV2("raw", v);
+                          }
+                        }}
+                        disabled={generatingScriptV2 || revising}
+                        className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-body mb-4 min-h-[400px] resize-y"
+                        placeholder="Script v2…"
+                      />
                       <div className="flex items-center gap-3 flex-wrap">
                         {!revising && !scriptV2Revised && (
                           <Button
