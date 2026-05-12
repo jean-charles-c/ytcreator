@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   FileText,
@@ -31,6 +31,68 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNarrativeOutline } from "@/hooks/useNarrativeOutline";
 import { useNarrativeScenes } from "@/hooks/useNarrativeScenes";
 import { useVoiceoverScript } from "@/hooks/useVoiceoverScript";
+import { Sparkles } from "lucide-react";
+
+/**
+ * Construit un bloc de consignes éditoriales concis à partir d'une analyse NFG
+ * pour pré-remplir le champ "Ajouter des consignes" du script voix off.
+ * Le but : transmettre le ton, le rythme, les patterns clés et les règles
+ * d'écriture afin que le script généré ressemble aux vidéos analysées.
+ */
+function buildVoInstructionsFromAnalysis(a: any): string {
+  if (!a) return "";
+  const lines: string[] = [];
+  if (a.title) lines.push(`Forme narrative de référence : ${a.title}.`);
+  if (a.summary) lines.push(a.summary.trim());
+
+  const tone = a.tone || {};
+  const toneBits: string[] = [];
+  if (tone.register) toneBits.push(`registre ${tone.register}`);
+  if (tone.narrator_posture) toneBits.push(`posture ${tone.narrator_posture}`);
+  if (Array.isArray(tone.emotional_palette) && tone.emotional_palette.length > 0) {
+    toneBits.push(`palette ${tone.emotional_palette.slice(0, 4).join(", ")}`);
+  }
+  if (toneBits.length) lines.push(`Ton : ${toneBits.join(" — ")}.`);
+
+  const rhythm = a.rhythm || {};
+  const rhBits: string[] = [];
+  if (rhythm.pacing) rhBits.push(`cadence ${rhythm.pacing}`);
+  if (rhythm.sentence_length) rhBits.push(`phrases ${rhythm.sentence_length}`);
+  if (rhythm.variations) rhBits.push(`variations ${rhythm.variations}`);
+  if (rhBits.length) lines.push(`Rythme : ${rhBits.join(" — ")}.`);
+
+  if (Array.isArray(a.patterns) && a.patterns.length > 0) {
+    lines.push("Patterns à appliquer :");
+    a.patterns.slice(0, 6).forEach((p: any) => {
+      if (!p) return;
+      const name = (p.name || "").toString().trim();
+      const desc = (p.description || "").toString().trim();
+      if (name || desc) lines.push(`- ${name}${name && desc ? " : " : ""}${desc}`);
+    });
+  }
+
+  if (Array.isArray(a.writing_rules) && a.writing_rules.length > 0) {
+    lines.push("Règles d'écriture :");
+    a.writing_rules.slice(0, 6).forEach((r: any) => {
+      if (!r) return;
+      const rule = (r.rule || "").toString().trim();
+      if (rule) lines.push(`- ${rule}`);
+    });
+  }
+
+  const reco = a.recommendations || {};
+  if (Array.isArray(reco.do) && reco.do.length > 0) {
+    lines.push("À faire : " + reco.do.slice(0, 4).join(" ; ") + ".");
+  }
+  if (Array.isArray(reco.avoid) && reco.avoid.length > 0) {
+    lines.push("À éviter : " + reco.avoid.slice(0, 4).join(" ; ") + ".");
+  }
+
+  lines.push(
+    "Reproduis cette mécanique sans copier les sources : applique ce ton, ce rythme et ces patterns au script voix off.",
+  );
+  return lines.join("\n").trim();
+}
 
 interface VoiceoverScriptPanelProps {
   projectId: string | null;
@@ -80,8 +142,57 @@ export default function VoiceoverScriptPanel({
   const [askOverwrite, setAskOverwrite] = useState(false);
   const [instructions, setInstructions] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
+  // Pré-remplissage automatique depuis l'analyse NFG rattachée au projet.
+  const [autofilled, setAutofilled] = useState(false);
+  const autofillSeededRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [askSendOverwrite, setAskSendOverwrite] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!projectId || autofillSeededRef.current) return;
+      // 1. Analyse directement rattachée au projet.
+      let { data: a } = await supabase
+        .from("narrative_analyses")
+        .select("id, title, summary, tone, rhythm, patterns, writing_rules, recommendations")
+        .eq("project_id", projectId)
+        .eq("status", "analysis_completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      // 2. Fallback : via generated_projects (projet créé depuis un pitch NFG).
+      if (!a) {
+        const { data: gp } = await supabase
+          .from("generated_projects")
+          .select("analysis_id")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (gp?.analysis_id) {
+          const { data: a2 } = await supabase
+            .from("narrative_analyses")
+            .select("id, title, summary, tone, rhythm, patterns, writing_rules, recommendations")
+            .eq("id", gp.analysis_id)
+            .maybeSingle();
+          a = a2 ?? null;
+        }
+      }
+      if (cancelled || !a) return;
+      const text = buildVoInstructionsFromAnalysis(a);
+      if (!text) return;
+      autofillSeededRef.current = true;
+      // N'écrase jamais une saisie utilisateur déjà présente.
+      setInstructions((prev) => (prev.trim() ? prev : text));
+      setAutofilled((prev) => prev || !instructions.trim());
+      setShowInstructions(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   const allScenes = useMemo(
     () => Object.values(scenesByChapter).flat(),
