@@ -414,6 +414,15 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             Découpage scène par scène généré à partir du sommaire et de la forme narrative.
             Les scènes validées sont protégées.
           </p>
+          {recommendation && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-[11px] text-primary">
+              <Sparkles className="h-3 w-3" />
+              <span>
+                Style recommandé&nbsp;: <strong>{variantLabel(recommendation.variant)}</strong>
+                <span className="text-primary/70"> — {recommendation.reason}</span>
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <VariantMenu
