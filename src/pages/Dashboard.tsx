@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2, Pencil, Check, X, FolderPlus, Folder, FolderOpen, GripVertical, BarChart3 } from "lucide-react";
+import { Plus, Film, Clock, CheckCircle, FileText, ArrowLeft, LogOut, Trash2, Pencil, Check, X, FolderPlus, Folder, FolderOpen, GripVertical, BarChart3, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -278,14 +278,24 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Create project button at the top */}
-            <button
-              onClick={() => navigate("/editor/new")}
-              className="rounded border border-dashed border-border bg-transparent px-5 py-3 text-center transition-colors hover:border-primary/50 hover:bg-accent/30 flex items-center gap-2 w-full sm:w-auto"
-            >
-              <Plus className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Créer un projet</span>
-            </button>
+            {/* Create project + Narrative Form Generator buttons */}
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+              <button
+                onClick={() => navigate("/editor/new")}
+                className="rounded border border-dashed border-border bg-transparent px-5 py-3 text-center transition-colors hover:border-primary/50 hover:bg-accent/30 flex items-center gap-2 w-full sm:w-auto min-h-[48px]"
+              >
+                <Plus className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Créer un projet</span>
+              </button>
+              <button
+                onClick={() => navigate("/narrative-form")}
+                className="rounded border border-dashed border-primary/40 bg-primary/5 px-5 py-3 text-center transition-colors hover:border-primary/60 hover:bg-primary/10 flex items-center gap-2 w-full sm:w-auto min-h-[48px]"
+                title="Analyser des vidéos sources et générer une histoire originale"
+              >
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-sm text-primary font-medium">Créer à partir d'autres vidéos</span>
+              </button>
+            </div>
 
             {/* Ungrouped projects */}
             <div
