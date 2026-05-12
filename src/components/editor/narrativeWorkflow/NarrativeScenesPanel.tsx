@@ -426,6 +426,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             }
             disabled={busyKey !== null}
             busy={busyKey === "all"}
+            recommendedVariant={recommendation?.variant ?? null}
             onSelect={(variant) =>
               callGenerate({
                 key: "all",
