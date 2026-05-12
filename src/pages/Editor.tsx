@@ -628,6 +628,72 @@ export default function Editor() {
     }
     setActiveTab("segmentation");
     setPreviewSceneVersionId(null);
+
+    // ── Réutilisation directe des scènes narratives (NFG) si disponibles ──
+    // Si le projet possède un sommaire narratif avec ses scènes, on saute
+    // la segmentation IA et on les reprend telles quelles dans le tab
+    // Segmentation via send-narrative-to-segmentation.
+    try {
+      const { data: outline } = await supabase
+        .from("narrative_outlines")
+        .select("id")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (outline?.id) {
+        const { count } = await supabase
+          .from("narrative_scenes")
+          .select("id", { count: "exact", head: true })
+          .eq("project_id", projectId)
+          .eq("outline_id", outline.id);
+        if ((count ?? 0) > 0) {
+          const { data, error } = await supabase.functions.invoke(
+            "send-narrative-to-segmentation",
+            {
+              body: {
+                project_id: projectId,
+                outline_id: outline.id,
+                overwrite: true,
+                trigger_context_analysis: true,
+              },
+            },
+          );
+          if (error) throw error;
+          if (data?.ok) {
+            toast.success(
+              `Scènes narratives reprises (${data.scenes_inserted} scène${
+                data.scenes_inserted > 1 ? "s" : ""
+              }).`,
+            );
+            const [scenesRes, shotsRes, scState] = await Promise.all([
+              supabase
+                .from("scenes")
+                .select("*")
+                .eq("project_id", projectId)
+                .order("scene_order", { ascending: true }),
+              supabase
+                .from("shots")
+                .select("*")
+                .eq("project_id", projectId)
+                .order("shot_order", { ascending: true }),
+              (supabase as any)
+                .from("project_scriptcreator_state")
+                .select("global_context")
+                .eq("project_id", projectId)
+                .maybeSingle(),
+            ]);
+            if (scenesRes.data) setScenes(scenesRes.data as Scene[]);
+            if (shotsRes.data) setShots(shotsRes.data as Shot[]);
+            if (scState?.data?.global_context) setGlobalContext(scState.data.global_context);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[Editor] narrative-scenes reuse failed, falling back to AI segmentation", e);
+    }
+
     bgStartSegmentation({
       projectId,
       onContextReady: (ctx: any) => setGlobalContext(ctx),

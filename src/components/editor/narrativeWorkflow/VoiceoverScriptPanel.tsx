@@ -280,30 +280,49 @@ export default function VoiceoverScriptPanel({
     if (!script?.content || !onSendToScriptCreator) return;
     setSending(true);
     try {
-      // 1. Extraction des titres de scènes + nettoyage du texte voix off.
-      //    Format source : "SCÈNE N — Titre\n<voix off>\n\nSCÈNE N+1 — ..."
+      // 1. Nettoyage du script : on retire les en-têtes "SCÈNE N — Titre"
+      //    pour ne garder que le texte voix off.
       const sceneHeaderRe = /^\s*SC[ÈE]NE\s+\d+\s*[—\-–:]\s*(.+?)\s*$/i;
       const blocks = script.content.split(/\n\s*\n+/);
-      const chapters: { title: string; sourceText: string }[] = [];
       const cleanedBlocks: string[] = [];
       for (const block of blocks) {
         const lines = block.split(/\r?\n/);
         const first = lines[0] ?? "";
-        const m = first.match(sceneHeaderRe);
-        if (m) {
-          const title = m[1].trim();
+        if (sceneHeaderRe.test(first)) {
           const body = lines.slice(1).join("\n").trim();
-          if (body) {
-            chapters.push({ title, sourceText: body });
-            cleanedBlocks.push(body);
-          }
+          if (body) cleanedBlocks.push(body);
         } else {
           const trimmed = block.trim();
           if (trimmed) cleanedBlocks.push(trimmed);
         }
       }
       const cleanedContent = cleanedBlocks.join("\n\n").trim();
-      onSendToScriptCreator(cleanedContent, chapters);
+
+      // 2. Construction des chapitres vidéo à partir du SOMMAIRE NARRATIF
+      //    (un chapitre vidéo = un chapitre du sommaire narratif, agrégeant
+      //    les voix off de toutes ses scènes narratives). Fallback : titres
+      //    extraits des en-têtes SCÈNE si le sommaire est absent.
+      const chapterPayload: { title: string; sourceText: string }[] = [];
+      if (chapters.length > 0) {
+        for (const ch of chapters) {
+          const sceneRows = scenesByChapter[ch.id] ?? [];
+          const body = sceneRows
+            .map((s) => (s.voice_over_text ?? s.content ?? "").trim())
+            .filter(Boolean)
+            .join("\n\n");
+          chapterPayload.push({ title: ch.title, sourceText: body });
+        }
+      } else {
+        for (const block of blocks) {
+          const lines = block.split(/\r?\n/);
+          const m = (lines[0] ?? "").match(sceneHeaderRe);
+          if (m) {
+            const body = lines.slice(1).join("\n").trim();
+            if (body) chapterPayload.push({ title: m[1].trim(), sourceText: body });
+          }
+        }
+      }
+      onSendToScriptCreator(cleanedContent, chapterPayload);
 
       // 2. Marquage du statut côté DB (non-bloquant pour l'envoi).
       try {
@@ -320,14 +339,14 @@ export default function VoiceoverScriptPanel({
       }
 
       toast.success(
-        chapters.length
-          ? `Script envoyé (${chapters.length} chapitres pré-remplis).`
+        chapterPayload.length
+          ? `Script envoyé (${chapterPayload.length} chapitres pré-remplis).`
           : "Script envoyé dans ScriptCreator.",
       );
     } finally {
       setSending(false);
     }
-  }, [script, onSendToScriptCreator, reload]);
+  }, [script, onSendToScriptCreator, reload, chapters, scenesByChapter]);
 
   const onSendClick = useCallback(() => {
     if (!script?.content || !onSendToScriptCreator) return;
