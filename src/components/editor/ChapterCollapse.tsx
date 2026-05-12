@@ -151,6 +151,11 @@ export default function ChapterCollapse({
   );
 
   const isLegacyChapterState = useCallback((state: ChapterListState | null) => {
+    // Chapitres provenant du sommaire narratif (NFG) — préfixe "narr-".
+    // Ils ne sont jamais "legacy" : on n'écrase pas avec les sections canoniques.
+    if (state && state.chapters.length > 0 && state.chapters.every((ch) => ch.id.startsWith("narr-"))) {
+      return false;
+    }
     if (proseScript) {
       // For prose mode, legacy = state built from v1 section IDs
       if (!state) return true;
@@ -164,6 +169,14 @@ export default function ChapterCollapse({
   // Auto-refresh sourceText & startSentence when active chapters change
   const prevSourceTextsRef = useRef<string>("");
   useEffect(() => {
+    // Skip pour chapitres narratifs : ne pas remplacer par les sections canoniques.
+    if (
+      chapterState &&
+      chapterState.chapters.length > 0 &&
+      chapterState.chapters.every((ch) => ch.id.startsWith("narr-"))
+    ) {
+      return;
+    }
     const freshKey = activeChapters.map((c) => c.sourceText).join("||");
     if (freshKey === prevSourceTextsRef.current) return;
     prevSourceTextsRef.current = freshKey;
