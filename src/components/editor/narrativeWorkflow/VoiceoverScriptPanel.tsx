@@ -429,13 +429,36 @@ export default function VoiceoverScriptPanel({
       </div>
 
       {showInstructions && (
-        <Textarea
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Consignes éditoriales optionnelles (rythme, ton particulier, contraintes spécifiques)…"
-          className="text-xs min-h-[80px]"
-          disabled={busy}
-        />
+        <div className="space-y-1.5">
+          {autofilled && (
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1 text-primary">
+                <Sparkles className="h-3 w-3" />
+                Pré-rempli depuis l'analyse NFG (modifiable).
+              </span>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground hover:underline"
+                onClick={() => {
+                  setInstructions("");
+                  setAutofilled(false);
+                }}
+              >
+                Vider
+              </button>
+            </div>
+          )}
+          <Textarea
+            value={instructions}
+            onChange={(e) => {
+              setInstructions(e.target.value);
+              if (autofilled) setAutofilled(false);
+            }}
+            placeholder="Consignes éditoriales optionnelles (rythme, ton particulier, contraintes spécifiques)…"
+            className="text-xs min-h-[120px]"
+            disabled={busy}
+          />
+        </div>
       )}
 
       {totalScenes === 0 && !loadingScenes && (
