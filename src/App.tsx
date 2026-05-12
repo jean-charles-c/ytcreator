@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import TitleInjector from "./pages/TitleInjector";
 import TitleFixer from "./pages/TitleFixer";
 import AiCostDashboard from "./pages/AiCostDashboard";
+import NarrativeFormStandalone from "./pages/NarrativeFormStandalone";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,8 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/editor/:id" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+              <Route path="/narrative-form" element={<ProtectedRoute><NarrativeFormStandalone /></ProtectedRoute>} />
+              <Route path="/narrative-form/:projectId" element={<ProtectedRoute><NarrativeFormStandalone /></ProtectedRoute>} />
               <Route path="/title-injector" element={<TitleInjector />} />
               <Route path="/title-fixer" element={<TitleFixer />} />
               <Route path="/ai-costs" element={<ProtectedRoute><AiCostDashboard /></ProtectedRoute>} />

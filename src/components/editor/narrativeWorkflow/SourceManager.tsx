@@ -149,11 +149,17 @@ interface SourceManagerProps {
   onSourcesChange?: (count: number) => void;
   /** Appelé quand l'utilisateur clique sur « Analyser la structure narrative ». */
   onAnalyze?: (analyzableSources: NarrativeSourceRow[]) => void;
+  /**
+   * Date ISO (created_at) servant de borne basse : seules les sources
+   * créées >= cutoffIso sont visibles. Permet de « remettre à zéro »
+   * la liste pour une nouvelle étude sans supprimer les anciennes en base.
+   */
+  cutoffIso?: string | null;
 }
 
-export default function SourceManager({ onSourcesChange, onAnalyze }: SourceManagerProps) {
+export default function SourceManager({ onSourcesChange, onAnalyze, cutoffIso }: SourceManagerProps) {
   const { user } = useAuth();
-  const [sources, setSources] = useState<NarrativeSourceRow[]>([]);
+  const [allSources, setAllSources] = useState<NarrativeSourceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialog, setDialog] = useState<DialogMode>({ kind: "closed" });
@@ -167,6 +173,11 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
   const tryAutoFetchRef = useRef<
     ((sourceId: string, url: string, language: string | null) => void) | null
   >(null);
+
+  const sources = useMemo(() => {
+    if (!cutoffIso) return allSources;
+    return allSources.filter((s) => s.created_at >= cutoffIso);
+  }, [allSources, cutoffIso]);
 
   const count = sources.length;
   const canAdd = count < MAX_SOURCES;
@@ -184,7 +195,7 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
       setLoading(false);
       return;
     }
-    setSources((data as NarrativeSourceRow[]) ?? []);
+    setAllSources((data as NarrativeSourceRow[]) ?? []);
     setLoading(false);
   }, [user]);
 
@@ -377,7 +388,7 @@ export default function SourceManager({ onSourcesChange, onAnalyze }: SourceMana
         .from("narrative_sources")
         .update({ fetch_status: "fetching" })
         .eq("id", sourceId);
-      setSources((prev) =>
+      setAllSources((prev) =>
         prev.map((s) => (s.id === sourceId ? { ...s, fetch_status: "fetching" } : s)),
       );
 

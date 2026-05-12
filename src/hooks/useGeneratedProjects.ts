@@ -166,5 +166,18 @@ export async function createProjectFromPitch(
     .single();
   if (linkErr) throw linkErr;
 
+  // 4) Rattache l'analyse au projet créé (utile en mode standalone NFG).
+  if (analysisId) {
+    try {
+      await supabase
+        .from("narrative_analyses")
+        .update({ project_id: projectRow!.id })
+        .eq("id", analysisId)
+        .is("project_id", null);
+    } catch (e) {
+      console.warn("[createProjectFromPitch] attach analysis project_id", e);
+    }
+  }
+
   return { project_id: projectRow!.id, generated_id: linkRow!.id, form_id: formId };
 }
