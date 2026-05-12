@@ -18,6 +18,8 @@ interface NarrativeWorkflowViewProps {
   onBack: () => void;
   /** "standalone" = ouvert depuis /narrative-form (sans projet). */
   mode?: "standalone" | "embedded";
+  /** Ouvre directement une analyse passée (depuis l'historique NFG). */
+  initialAnalysisId?: string | null;
 }
 
 /**
@@ -27,7 +29,7 @@ interface NarrativeWorkflowViewProps {
  * Le détail des sources, de l'analyse et des étapes suivantes sera ajouté
  * dans les prompts dédiés (étapes 5+).
  */
-export default function NarrativeWorkflowView({ projectId, onBack, mode = "embedded" }: NarrativeWorkflowViewProps) {
+export default function NarrativeWorkflowView({ projectId, onBack, mode = "embedded", initialAnalysisId = null }: NarrativeWorkflowViewProps) {
   const navigate = useNavigate();
   const [analysisStatus, setAnalysisStatus] = useState<
     "idle" | "running" | "success" | "error"
@@ -58,6 +60,35 @@ export default function NarrativeWorkflowView({ projectId, onBack, mode = "embed
         const { data: auth } = await supabase.auth.getUser();
         const uid = auth.user?.id;
         if (!uid) return;
+        // Cas 1 : un analysisId est fourni explicitement (lien historique NFG).
+        if (initialAnalysisId) {
+          const { data: a } = await supabase
+            .from("narrative_analyses")
+            .select(
+              "id, title, summary, structure, patterns, tone, rhythm, writing_rules, recommendations, source_ids, status",
+            )
+            .eq("id", initialAnalysisId)
+            .maybeSingle();
+          if (!cancelled && a) {
+            const payload: AnalysisPayload = {
+              title: a.title ?? undefined,
+              summary: a.summary ?? undefined,
+              structure: (a.structure as any) ?? undefined,
+              patterns: (a.patterns as any) ?? undefined,
+              tone: (a.tone as any) ?? undefined,
+              rhythm: (a.rhythm as any) ?? undefined,
+              writing_rules: (a.writing_rules as any) ?? undefined,
+              recommendations: (a.recommendations as any) ?? undefined,
+            };
+            setAnalysisResult(payload);
+            setAnalysisId(a.id);
+            setSourcesUsed(Array.isArray(a.source_ids) ? a.source_ids.length : undefined);
+            setAnalysisStatus("success");
+            setPitchesVisible(true);
+          }
+          if (!cancelled) setHydrating(false);
+          return;
+        }
         // Mode standalone : on démarre toujours sur une page vierge.
         if (mode === "standalone" || !projectId) {
           if (!cancelled) setHydrating(false);
@@ -116,7 +147,7 @@ export default function NarrativeWorkflowView({ projectId, onBack, mode = "embed
     return () => {
       cancelled = true;
     };
-  }, [projectId, mode]);
+  }, [projectId, mode, initialAnalysisId]);
 
   const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
     if (sources.length === 0) {
