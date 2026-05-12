@@ -46,6 +46,7 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
   const [generating, setGenerating] = useState(false);
   const [confirmRegenOpen, setConfirmRegenOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [goingToScenes, setGoingToScenes] = useState(false);
 
   const runGenerate = useCallback(
     async (overwrite: boolean) => {
@@ -87,14 +88,56 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
   const outline = data?.outline ?? null;
   const chapters = data?.chapters ?? [];
 
-  const goToScenes = () => {
-    const target = document.getElementById("narrative-scenes-panel");
-    if (target) {
-      setCollapsed(true);
-      // Wait for collapse to complete before scrolling
+  const goToScenes = async () => {
+    if (!projectId) return;
+    setCollapsed(true);
+    setGoingToScenes(true);
+    let createdTotal = 0;
+    try {
+      // Génère les scènes manquantes chapitre par chapitre (sans écraser
+      // les scènes existantes). La fonction edge traite UN chapitre par
+      // appel et retourne `remaining_chapter_ids` pour itérer.
+      let nextChapterId: string | null = null;
+      for (let i = 0; i < 50; i++) {
+        const { data: res, error } = await supabase.functions.invoke(
+          "generate-narrative-scenes",
+          {
+            body: {
+              project_id: projectId,
+              mode: "generate",
+              variant: "default",
+              chapter_id: nextChapterId,
+              overwrite: false,
+            },
+          },
+        );
+        if (error) break;
+        if (!res?.ok) break;
+        createdTotal += Number(res.created ?? 0);
+        const remaining: string[] = Array.isArray(res?.remaining_chapter_ids)
+          ? res.remaining_chapter_ids
+          : [];
+        if (remaining.length === 0) break;
+        nextChapterId = remaining[0];
+        toast.message(
+          `Scènes générées pour un chapitre — ${remaining.length} restant${remaining.length > 1 ? "s" : ""}…`,
+        );
+      }
+      if (createdTotal > 0) {
+        toast.success(`${createdTotal} scène(s) générée(s).`);
+      }
+      // Notifie le panneau "Scènes narratives" de se rafraîchir / s'ouvrir.
+      window.dispatchEvent(
+        new CustomEvent("narrative-scenes-updated", { detail: { projectId } }),
+      );
+    } catch (e) {
+      console.error("[NarrativeOutlinePanel] goToScenes", e);
+    } finally {
+      setGoingToScenes(false);
       setTimeout(() => {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
+        const target = document.getElementById("narrative-scenes-panel");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
     }
   };
 
@@ -154,13 +197,24 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
               size="sm"
               variant="default"
               onClick={goToScenes}
+              disabled={goingToScenes}
               className="min-h-[40px] sm:min-h-[36px] justify-center"
-              title="Passer à la génération des scènes"
+              title="Génère les scènes manquantes puis ouvre le panneau"
             >
-              <Film className="h-4 w-4" />
-              <span className="sm:hidden">Aux scènes</span>
-              <span className="hidden sm:inline">Aller aux scènes</span>
-              <ArrowRight className="h-4 w-4" />
+              {goingToScenes ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="sm:hidden">Création…</span>
+                  <span className="hidden sm:inline">Création des scènes…</span>
+                </>
+              ) : (
+                <>
+                  <Film className="h-4 w-4" />
+                  <span className="sm:hidden">Aux scènes</span>
+                  <span className="hidden sm:inline">Aller aux scènes</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           )}
           <Button
