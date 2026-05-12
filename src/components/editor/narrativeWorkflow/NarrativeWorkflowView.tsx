@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NarrativeWorkflowProgress from "./NarrativeWorkflowProgress";
@@ -10,10 +11,13 @@ import SaveNarrativeFormDialog from "./SaveNarrativeFormDialog";
 import { buildCustomFormPrompt, buildNarrativeSignature } from "./buildCustomFormPrompt";
 import { useCustomNarrativeForms } from "@/hooks/useCustomNarrativeForms";
 import StoryPitchesPanel from "./StoryPitchesPanel";
+import NarrativeStudiesHistory, { type NarrativeStudyRow } from "./NarrativeStudiesHistory";
 
 interface NarrativeWorkflowViewProps {
   projectId: string | null;
   onBack: () => void;
+  /** "standalone" = ouvert depuis /narrative-form (sans projet). */
+  mode?: "standalone" | "embedded";
 }
 
 /**
@@ -23,7 +27,8 @@ interface NarrativeWorkflowViewProps {
  * Le détail des sources, de l'analyse et des étapes suivantes sera ajouté
  * dans les prompts dédiés (étapes 5+).
  */
-export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWorkflowViewProps) {
+export default function NarrativeWorkflowView({ projectId, onBack, mode = "embedded" }: NarrativeWorkflowViewProps) {
+  const navigate = useNavigate();
   const [analysisStatus, setAnalysisStatus] = useState<
     "idle" | "running" | "success" | "error"
   >("idle");
@@ -37,6 +42,10 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
   const [pitchesAutoTrigger, setPitchesAutoTrigger] = useState(false);
   const [pitchesVisible, setPitchesVisible] = useState(false);
   const [hydrating, setHydrating] = useState(true);
+  /** Cutoff appliqué à SourceManager : seules les sources créées >= cutoff sont visibles. */
+  const [sourcesCutoff, setSourcesCutoff] = useState<string | null>(null);
+  /** Force le rechargement de l'historique des études. */
+  const [historyRefreshSignal, setHistoryRefreshSignal] = useState(0);
   const { createForm } = useCustomNarrativeForms();
 
   // Hydrate la dernière analyse complétée de l'utilisateur au montage,
@@ -49,6 +58,11 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
         const { data: auth } = await supabase.auth.getUser();
         const uid = auth.user?.id;
         if (!uid) return;
+        // Mode standalone : on démarre toujours sur une page vierge.
+        if (mode === "standalone" || !projectId) {
+          if (!cancelled) setHydrating(false);
+          return;
+        }
         // Restaure en priorité l'analyse rattachée au projet courant.
         // À défaut, retombe sur la dernière analyse complétée de l'utilisateur
         // (compatibilité historique : avant l'ajout de project_id).
@@ -102,7 +116,7 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, mode]);
 
   const runAnalysis = useCallback(async (sources: NarrativeSourceRow[]) => {
     if (sources.length === 0) {
@@ -137,6 +151,7 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
         }
       }
       setAnalysisStatus("success");
+      setHistoryRefreshSignal((n) => n + 1);
       toast.success("Analyse narrative terminée");
     } catch (e: any) {
       console.error("analyze error", e);
@@ -200,6 +215,30 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
     }, 100);
   }, [analysisId]);
 
+  /** Démarre une nouvelle étude : reset complet de l'état + cutoff sur les Sources. */
+  const handleNewStudy = useCallback(() => {
+    setAnalysisStatus("idle");
+    setAnalysisError(null);
+    setAnalysisResult(null);
+    setAnalysisId(null);
+    setSourcesUsed(undefined);
+    setLastSources([]);
+    setPitchesVisible(false);
+    setPitchesAutoTrigger(false);
+    setSourcesCutoff(new Date().toISOString());
+    toast.info("Nouvelle étude — Sources réinitialisées.");
+  }, []);
+
+  /** Rouvre une étude passée en lecture. */
+  const handleLoadStudy = useCallback((study: NarrativeStudyRow) => {
+    setAnalysisResult(study.payload);
+    setAnalysisId(study.id);
+    setSourcesUsed(Array.isArray(study.source_ids) ? study.source_ids.length : undefined);
+    setAnalysisStatus("success");
+    setPitchesVisible(true);
+    toast.success(`Étude « ${study.title || "Sans titre"} » chargée.`);
+  }, []);
+
   const completedSteps: ("sources" | "analysis")[] =
     analysisStatus === "success" ? ["sources"] : [];
   const currentStep: "sources" | "analysis" =
@@ -262,6 +301,19 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
         </div>
       </div>
 
+      {/* Historique des études (uniquement si rattaché à un projet) */}
+      {projectId && (
+        <div className="mb-4 sm:mb-6">
+          <NarrativeStudiesHistory
+            projectId={projectId}
+            activeAnalysisId={analysisId}
+            onLoadStudy={handleLoadStudy}
+            onNewStudy={handleNewStudy}
+            refreshSignal={historyRefreshSignal}
+          />
+        </div>
+      )}
+
       {/* Progression du workflow */}
       <div className="mb-6 sm:mb-8 rounded-lg border border-border bg-card p-3 sm:p-4 lg:p-5">
         <h3 className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 sm:mb-4">
@@ -275,7 +327,7 @@ export default function NarrativeWorkflowView({ projectId, onBack }: NarrativeWo
 
       {/* Étape 1 : gestion des sources (1 à 4) */}
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4 lg:p-5">
-        <SourceManager onAnalyze={runAnalysis} />
+        <SourceManager onAnalyze={runAnalysis} cutoffIso={sourcesCutoff} />
       </div>
 
       {/* Étape 2 : analyse narrative IA */}
