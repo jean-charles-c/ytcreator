@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Film,
@@ -101,6 +101,20 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
   } | null>(null);
   const [askIncomplete, setAskIncomplete] = useState<number | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(null);
+
+  // Étape — Réception d'un signal externe (depuis le panneau "Sommaire
+  // narratif" → bouton "Aller aux scènes") pour rafraîchir et déplier
+  // automatiquement le panneau dès que de nouvelles scènes sont créées.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { projectId?: string } | undefined;
+      if (detail?.projectId && detail.projectId !== projectId) return;
+      setPanelOpen(true);
+      void reload();
+    };
+    window.addEventListener("narrative-scenes-updated", handler as EventListener);
+    return () => window.removeEventListener("narrative-scenes-updated", handler as EventListener);
+  }, [projectId, reload]);
 
   const totalScenes = useMemo(
     () => Object.values(scenesByChapter).reduce((acc, arr) => acc + arr.length, 0),
