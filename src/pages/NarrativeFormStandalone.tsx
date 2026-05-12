@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import NarrativeWorkflowView from "@/components/editor/narrativeWorkflow/NarrativeWorkflowView";
 
@@ -10,6 +10,8 @@ import NarrativeWorkflowView from "@/components/editor/narrativeWorkflow/Narrati
 export default function NarrativeFormStandalone() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId?: string }>();
+  const [searchParams] = useSearchParams();
+  const analysisId = searchParams.get("analysis");
 
   useEffect(() => {
     document.title = "Narrative Form Generator — YouTube Creator Toolkit";
@@ -20,6 +22,7 @@ export default function NarrativeFormStandalone() {
       <NarrativeWorkflowView
         projectId={projectId ?? null}
         mode={projectId ? "embedded" : "standalone"}
+        initialAnalysisId={analysisId}
         onBack={() => navigate("/dashboard")}
       />
     </div>

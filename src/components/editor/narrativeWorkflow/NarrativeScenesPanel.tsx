@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNarrativeOutline, type NarrativeChapter } from "@/hooks/useNarrativeOutline";
 import { useNarrativeScenes, type NarrativeSceneRow } from "@/hooks/useNarrativeScenes";
+import { recommendSceneVariant, variantLabel, type SceneVariant } from "./recommendSceneVariant";
 
 interface NarrativeScenesPanelProps {
   projectId: string | null;
@@ -91,6 +92,63 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
   // Repli/dépli global du panneau "Scènes narratives"
   const [panelOpen, setPanelOpen] = useState(true);
+
+  // Étape — Analyse NFG rattachée au projet : sert à recommander un style
+  // (variant) de génération des scènes et à enrichir le prompt côté edge.
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [recommendation, setRecommendation] = useState<{
+    variant: SceneVariant;
+    reason: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!projectId) {
+        setAnalysisId(null);
+        setRecommendation(null);
+        return;
+      }
+      // Source 1 : analyse directement rattachée au projet.
+      let { data: a } = await supabase
+        .from("narrative_analyses")
+        .select("id, tone, rhythm, patterns, writing_rules")
+        .eq("project_id", projectId)
+        .eq("status", "analysis_completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      // Source 2 : via generated_projects (cas projet créé depuis un pitch).
+      if (!a) {
+        const { data: gp } = await supabase
+          .from("generated_projects")
+          .select("analysis_id")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (gp?.analysis_id) {
+          const { data: a2 } = await supabase
+            .from("narrative_analyses")
+            .select("id, tone, rhythm, patterns, writing_rules")
+            .eq("id", gp.analysis_id)
+            .maybeSingle();
+          a = a2 ?? null;
+        }
+      }
+      if (cancelled) return;
+      if (a) {
+        setAnalysisId(a.id);
+        setRecommendation(recommendSceneVariant(a));
+      } else {
+        setAnalysisId(null);
+        setRecommendation(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   // Étape 16 — état d'envoi vers Segmentation View.
   const [sending, setSending] = useState(false);
@@ -164,6 +222,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
                 scene_id: params.scene_id ?? null,
                 overwrite: params.overwrite === true,
                 requested_count: params.requested_count ?? null,
+                analysis_id: analysisId,
               },
             },
           );
@@ -212,7 +271,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
         setBusyKey(null);
       }
     },
-    [projectId, reload],
+    [projectId, reload, analysisId],
   );
 
   const toggleValidated = useCallback(
@@ -355,6 +414,15 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             Découpage scène par scène généré à partir du sommaire et de la forme narrative.
             Les scènes validées sont protégées.
           </p>
+          {recommendation && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-[11px] text-primary">
+              <Sparkles className="h-3 w-3" />
+              <span>
+                Style recommandé&nbsp;: <strong>{variantLabel(recommendation.variant)}</strong>
+                <span className="text-primary/70"> — {recommendation.reason}</span>
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <VariantMenu
@@ -367,6 +435,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             }
             disabled={busyKey !== null}
             busy={busyKey === "all"}
+            recommendedVariant={recommendation?.variant ?? null}
             onSelect={(variant) =>
               callGenerate({
                 key: "all",
@@ -881,6 +950,7 @@ function VariantMenu({
   size = "default",
   variant = "default",
   iconOnly = false,
+  recommendedVariant = null,
 }: {
   label: React.ReactNode;
   onSelect: (variant: Variant) => void;
@@ -889,6 +959,7 @@ function VariantMenu({
   size?: "default" | "sm";
   variant?: "default" | "outline" | "ghost";
   iconOnly?: boolean;
+  recommendedVariant?: Variant | null;
 }) {
   return (
     <DropdownMenu>
@@ -908,6 +979,16 @@ function VariantMenu({
           Style de génération
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {recommendedVariant && (
+          <DropdownMenuItem
+            onSelect={() => onSelect(recommendedVariant)}
+            className="gap-2 bg-primary/10 text-primary focus:bg-primary/15 focus:text-primary"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Recommandé : {VARIANT_LABELS[recommendedVariant].label}</span>
+          </DropdownMenuItem>
+        )}
+        {recommendedVariant && <DropdownMenuSeparator />}
         {(Object.keys(VARIANT_LABELS) as Variant[]).map((key) => {
           const Icon = VARIANT_LABELS[key].icon;
           return (
