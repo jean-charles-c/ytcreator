@@ -97,7 +97,6 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
       // Génère les scènes manquantes chapitre par chapitre (sans écraser
       // les scènes existantes). La fonction edge traite UN chapitre par
       // appel et retourne `remaining_chapter_ids` pour itérer.
-      let nextChapterId: string | null = null;
       for (let i = 0; i < 50; i++) {
         const { data: res, error } = await supabase.functions.invoke(
           "generate-narrative-scenes",
@@ -106,7 +105,10 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
               project_id: projectId,
               mode: "generate",
               variant: "default",
-              chapter_id: nextChapterId,
+              // Laisser l'edge choisir automatiquement le prochain chapitre en
+              // attente. Passer un chapter_id basculerait en mode ciblé et
+              // empêcherait la suite des itérations.
+              chapter_id: null,
               overwrite: false,
             },
           },
@@ -118,7 +120,6 @@ export default function NarrativeOutlinePanel({ projectId }: NarrativeOutlinePan
           ? res.remaining_chapter_ids
           : [];
         if (remaining.length === 0) break;
-        nextChapterId = remaining[0];
         toast.message(
           `Scènes générées pour un chapitre — ${remaining.length} restant${remaining.length > 1 ? "s" : ""}…`,
         );
