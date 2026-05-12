@@ -941,6 +941,7 @@ function VariantMenu({
   size = "default",
   variant = "default",
   iconOnly = false,
+  recommendedVariant = null,
 }: {
   label: React.ReactNode;
   onSelect: (variant: Variant) => void;
@@ -949,6 +950,7 @@ function VariantMenu({
   size?: "default" | "sm";
   variant?: "default" | "outline" | "ghost";
   iconOnly?: boolean;
+  recommendedVariant?: Variant | null;
 }) {
   return (
     <DropdownMenu>
@@ -968,6 +970,16 @@ function VariantMenu({
           Style de génération
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {recommendedVariant && (
+          <DropdownMenuItem
+            onSelect={() => onSelect(recommendedVariant)}
+            className="gap-2 bg-primary/10 text-primary focus:bg-primary/15 focus:text-primary"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Recommandé : {VARIANT_LABELS[recommendedVariant].label}</span>
+          </DropdownMenuItem>
+        )}
+        {recommendedVariant && <DropdownMenuSeparator />}
         {(Object.keys(VARIANT_LABELS) as Variant[]).map((key) => {
           const Icon = VARIANT_LABELS[key].icon;
           return (
