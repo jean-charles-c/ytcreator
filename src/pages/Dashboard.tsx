@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import NarrativeFormHistoryMenu from "@/components/dashboard/NarrativeFormHistoryMenu";
 
 type Project = Tables<"projects">;
 type ProjectWithShotCount = Project & { shot_count: number; group_id: string | null };
@@ -260,6 +261,7 @@ export default function Dashboard() {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Coûts IA</span>
             </Button>
+            <NarrativeFormHistoryMenu />
             <Button variant="ghost" size="sm" onClick={createGroup} className="min-h-[40px]" title="Créer un groupe">
               <FolderPlus className="h-4 w-4" />
               <span className="hidden sm:inline">Nouveau groupe</span>
