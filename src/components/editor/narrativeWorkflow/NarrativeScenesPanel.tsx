@@ -207,7 +207,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
         // aucun chapitre n'est ciblé. On itère côté client tant qu'il reste
         // des chapitres à générer.
         let totalCreated = 0;
-        let nextChapterId: string | null = params.chapter_id ?? null;
+        const initialChapterId: string | null = params.chapter_id ?? null;
         let firstCall = true;
         // Limite de sécurité pour éviter les boucles infinies
         for (let i = 0; i < 50; i++) {
@@ -218,7 +218,12 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
                 project_id: projectId,
                 mode: params.mode,
                 variant: params.variant ?? "default",
-                chapter_id: firstCall ? nextChapterId : nextChapterId,
+                // En mode batch, on ne passe le chapter_id qu'au premier appel
+                // (s'il a été fourni explicitement). Aux itérations suivantes,
+                // on laisse l'edge function choisir automatiquement le prochain
+                // chapitre en attente — sinon le edge bascule en mode ciblé et
+                // ne renvoie plus `remaining_chapter_ids`, ce qui stoppe la boucle.
+                chapter_id: firstCall ? initialChapterId : null,
                 scene_id: params.scene_id ?? null,
                 overwrite: params.overwrite === true,
                 requested_count: params.requested_count ?? null,
@@ -256,7 +261,6 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
           // Si un chapitre cible explicite a été passé, on ne boucle pas.
           if (params.chapter_id || params.scene_id) break;
           if (remaining.length === 0) break;
-          nextChapterId = remaining[0];
           // feedback progressif
           toast.message(
             `Scènes générées pour un chapitre — ${remaining.length} restant${remaining.length > 1 ? "s" : ""}…`,
