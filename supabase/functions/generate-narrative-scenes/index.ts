@@ -137,7 +137,39 @@ function recommendedSceneCount(chapter: any, variant: string, requested: number 
   };
 }
 
-function buildSystemPrompt(formPrompt: string | null): string {
+function buildSystemPrompt(formPrompt: string | null, analysis: any | null): string {
+  const analysisBlock: string[] = [];
+  if (analysis) {
+    analysisBlock.push("");
+    analysisBlock.push("Style narratif analysé (à reproduire fidèlement) :");
+    if (analysis.tone) {
+      analysisBlock.push(`- Ton : ${JSON.stringify(analysis.tone)}`);
+    }
+    if (analysis.rhythm) {
+      analysisBlock.push(`- Rythme : ${JSON.stringify(analysis.rhythm)}`);
+    }
+    if (Array.isArray(analysis.patterns) && analysis.patterns.length > 0) {
+      analysisBlock.push(
+        `- Patterns récurrents : ${analysis.patterns
+          .map((p: any) => p?.name || p?.description)
+          .filter(Boolean)
+          .slice(0, 8)
+          .join(" ; ")}`,
+      );
+    }
+    if (Array.isArray(analysis.writing_rules) && analysis.writing_rules.length > 0) {
+      analysisBlock.push(
+        `- Règles d'écriture : ${analysis.writing_rules
+          .map((r: any) => r?.rule)
+          .filter(Boolean)
+          .slice(0, 8)
+          .join(" ; ")}`,
+      );
+    }
+    analysisBlock.push(
+      "Adapte la longueur, le rythme et le ton des scènes pour reproduire ce style.",
+    );
+  }
   return [
     "Tu es un scénariste documentaire expert. Tu produis le découpage SCÈNE PAR SCÈNE d'un chapitre.",
     "",
@@ -154,6 +186,7 @@ function buildSystemPrompt(formPrompt: string | null): string {
     formPrompt && formPrompt.trim().length > 0
       ? formPrompt.trim()
       : "(Forme non fournie — applique une structure documentaire classique : amorce, développement, pivot, résolution.)",
+    ...analysisBlock,
   ].join("\n");
 }
 
@@ -262,6 +295,8 @@ serve(async (req) => {
     const targetSceneId: string | null = body?.scene_id ?? null;
     const requestedCount: number | null =
       typeof body?.requested_count === "number" ? body.requested_count : null;
+    const providedAnalysisId: string | null =
+      typeof body?.analysis_id === "string" && body.analysis_id ? body.analysis_id : null;
 
     if (!projectId) {
       return new Response(JSON.stringify({ ok: false, error: "project_id requis" }), {
@@ -308,6 +343,31 @@ serve(async (req) => {
         .eq("id", outline.form_id)
         .maybeSingle();
       formPrompt = f?.system_prompt ?? null;
+    }
+
+    // Analyse NFG liée (priorité au body, sinon recherche par projet)
+    let analysisData: any | null = null;
+    {
+      let aid = providedAnalysisId;
+      if (!aid) {
+        const { data: a } = await supaAdmin
+          .from("narrative_analyses")
+          .select("id")
+          .eq("project_id", projectId)
+          .eq("status", "analysis_completed")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        aid = a?.id ?? null;
+      }
+      if (aid) {
+        const { data: a } = await supaAdmin
+          .from("narrative_analyses")
+          .select("tone, rhythm, patterns, writing_rules")
+          .eq("id", aid)
+          .maybeSingle();
+        analysisData = a ?? null;
+      }
     }
 
     // Pitch lié
@@ -422,7 +482,7 @@ serve(async (req) => {
     }
 
     const model = "google/gemini-2.5-pro";
-    const systemPrompt = buildSystemPrompt(formPrompt);
+    const systemPrompt = buildSystemPrompt(formPrompt, analysisData);
 
     let totalCreated = 0;
     let totalDeleted = 0;
