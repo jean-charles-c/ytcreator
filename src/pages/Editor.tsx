@@ -2671,7 +2671,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               projectTitle={title}
               hasExistingScriptInput={Boolean((pdfExtractedText ?? "").trim())}
               onSendToScriptCreator={(text, chapterTitles) => {
-                setNarration(cleanNarrationText(text));
+                setNarration(text);
                 setPdfExtractedText(text);
                 setPdfAnalysis(null);
                 setGeneratedScript(null);
