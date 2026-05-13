@@ -51,7 +51,8 @@ type CandidateStatus =
   | "rejected_match"
   | "rejected_quality"
   | "rejected_both"
-  | "unscored";
+  | "unscored"
+  | "not_attempted";
 
 export interface ScoredCandidate {
   url: string;
@@ -423,6 +424,10 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
     setSearchingImages(prev => ({ ...prev, [id]: true }));
     try {
+      // If we already have cached candidates for this object in component state,
+      // the user is re-clicking — treat that as "force refresh" so a bad cached
+      // result (e.g. CoastRunners → muscle cars) can be purged by clicking twice.
+      const hasPreviousResult = (candidatesByObject[id]?.length || 0) > 0;
       const res = await supabase.functions.invoke("search-reference-images-v2", {
         body: {
           object: {
@@ -431,6 +436,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             description: obj.description_visuelle || undefined,
           },
           limit: 3,
+          force_refresh: hasPreviousResult,
         },
       });
       if (res.error) throw res.error;
@@ -480,7 +486,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     } finally {
       setSearchingImages(prev => ({ ...prev, [id]: false }));
     }
-  }, [objects, updateObject, uploadToStorage]);
+  }, [objects, updateObject, uploadToStorage, candidatesByObject]);
 
   const forceAddCandidate = useCallback(async (objectId: string, candidate: ScoredCandidate) => {
     const obj = objects.find((o) => o.id === objectId);
@@ -1209,7 +1215,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               return <p className="text-sm text-muted-foreground">Aucun candidat à afficher.</p>;
             }
             const sorted = [...list].sort((a, b) => {
-              const order = { validated: 0, rejected_quality: 1, rejected_match: 2, rejected_both: 3, unscored: 4 } as const;
+              const order = { validated: 0, rejected_quality: 1, rejected_match: 2, rejected_both: 3, unscored: 4, not_attempted: 5 } as const;
               const oa = order[a.status as keyof typeof order] ?? 9;
               const ob = order[b.status as keyof typeof order] ?? 9;
               if (oa !== ob) return oa - ob;
@@ -1221,6 +1227,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               rejected_quality: { label: "Rejeté (qualité faible)", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30", icon: <XCircle className="h-3 w-3" /> },
               rejected_both: { label: "Rejeté", cls: "bg-red-500/15 text-red-700 border-red-500/30", icon: <XCircle className="h-3 w-3" /> },
               unscored: { label: "Non scoré", cls: "bg-slate-500/15 text-slate-700 border-slate-500/30", icon: <XCircle className="h-3 w-3" /> },
+              not_attempted: { label: "Non analysé", cls: "bg-zinc-500/15 text-zinc-600 border-zinc-500/30", icon: <Eye className="h-3 w-3" /> },
             };
             return (
               <div className="space-y-2 mt-1">

@@ -79,7 +79,8 @@ type CandidateStatus =
   | "rejected_match"
   | "rejected_quality"
   | "rejected_both"
-  | "unscored"; // validation pipeline failed (fetch / gemini / parse)
+  | "unscored"       // validation pipeline failed (fetch / gemini / parse)
+  | "not_attempted"; // beyond per-call validation cap, surfaced for manual review
 
 type ValidateOutcome =
   | { ok: true; image: ValidatedImage }
@@ -696,14 +697,27 @@ Deno.serve(async (req) => {
   }
 
   // ── 5. Validate each candidate with Gemini multimodal (capped for CPU budget).
-  // Prioritize wikidata > wikimedia > brave to maximize hit rate within the cap.
-  const sourceRank: Record<SourceName, number> = { wikidata: 0, wikimedia: 1, brave: 2 };
-  const prioritized = [...candidates].sort(
-    (a, b) => sourceRank[a.source] - sourceRank[b.source],
-  );
-  const toValidate = prioritized.slice(0, MAX_CANDIDATES_TO_VALIDATE);
+  // Interleave sources round-robin so every source gets representation within
+  // the cap. (Strict priority Wikidata > Wikimedia > Brave previously caused
+  // niche entities like "CoastRunners" to fill all 10 slots with noisy
+  // Wikimedia keyword matches and skip Brave entirely.)
+  const buckets = new Map<SourceName, Candidate[]>();
+  for (const c of candidates) {
+    if (!buckets.has(c.source)) buckets.set(c.source, []);
+    buckets.get(c.source)!.push(c);
+  }
+  const interleaved: Candidate[] = [];
+  const arrays = Array.from(buckets.values());
+  const maxLen = Math.max(0, ...arrays.map((a) => a.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const arr of arrays) {
+      if (i < arr.length) interleaved.push(arr[i]);
+    }
+  }
+  const toValidate = interleaved.slice(0, MAX_CANDIDATES_TO_VALIDATE);
+  const skipped = interleaved.slice(MAX_CANDIDATES_TO_VALIDATE);
   console.log(
-    `validating ${toValidate.length}/${candidates.length} candidates (cap=${MAX_CANDIDATES_TO_VALIDATE})`,
+    `validating ${toValidate.length}/${candidates.length} candidates (cap=${MAX_CANDIDATES_TO_VALIDATE}, skipped=${skipped.length})`,
   );
   const outcomes = await mapWithConcurrency(
     toValidate,
@@ -725,32 +739,40 @@ Deno.serve(async (req) => {
     by_error: errorBreakdown,
   }));
 
-  // ── 6. Build the full scored list (validated + rejected + unscored)
-  const allScored: ScoredCandidate[] = outcomes
-    .map((o): ScoredCandidate => {
-      if (!o.ok) {
-        return {
-          ...o.candidate,
-          match_score: 0,
-          quality_score: 0,
-          reason: `Validation impossible (${o.error})`,
-          status: "unscored",
-          rank_score: -1,
-        };
-      }
-      const v = o.image;
-      const matchOk = v.match_score >= MATCH_THRESHOLD;
-      const qualityOk = v.quality_score >= QUALITY_THRESHOLD;
-      let status: CandidateStatus = "validated";
-      if (!matchOk && !qualityOk) status = "rejected_both";
-      else if (!matchOk) status = "rejected_match";
-      else if (!qualityOk) status = "rejected_quality";
+  // ── 6. Build the full scored list (validated + rejected + unscored + not_attempted)
+  const scoredFromOutcomes: ScoredCandidate[] = outcomes.map((o): ScoredCandidate => {
+    if (!o.ok) {
       return {
-        ...v,
-        status,
-        rank_score: v.match_score * MATCH_WEIGHT + v.quality_score * QUALITY_WEIGHT,
+        ...o.candidate,
+        match_score: 0,
+        quality_score: 0,
+        reason: `Validation impossible (${o.error})`,
+        status: "unscored",
+        rank_score: -1,
       };
-    })
+    }
+    const v = o.image;
+    const matchOk = v.match_score >= MATCH_THRESHOLD;
+    const qualityOk = v.quality_score >= QUALITY_THRESHOLD;
+    let status: CandidateStatus = "validated";
+    if (!matchOk && !qualityOk) status = "rejected_both";
+    else if (!matchOk) status = "rejected_match";
+    else if (!qualityOk) status = "rejected_quality";
+    return {
+      ...v,
+      status,
+      rank_score: v.match_score * MATCH_WEIGHT + v.quality_score * QUALITY_WEIGHT,
+    };
+  });
+  const notAttempted: ScoredCandidate[] = skipped.map((c): ScoredCandidate => ({
+    ...c,
+    match_score: 0,
+    quality_score: 0,
+    reason: `Non analysé (au-delà des ${MAX_CANDIDATES_TO_VALIDATE} candidats analysés par recherche)`,
+    status: "not_attempted",
+    rank_score: -2,
+  }));
+  const allScored: ScoredCandidate[] = [...scoredFromOutcomes, ...notAttempted]
     .sort((a, b) => b.rank_score - a.rank_score);
 
   const validatedRanked = allScored.filter((c) => c.status === "validated");
