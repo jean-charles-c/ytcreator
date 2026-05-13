@@ -219,6 +219,7 @@ Focus on physical recurring elements that must remain visually consistent across
 1. CHARACTERS / PERSONS: Any named person who appears in multiple parts of the script. Include their physical description for the relevant period.
 2. LOCATIONS: Specific named places (factories, circuits, cities, buildings) that appear across multiple scenes.
 3. OBJECTS / VEHICLES: Specific car models, named artifacts, weapons, machines, ships, planes, etc.
+4. BRANDS / SOFTWARE LOGOS: Any named brand, company, product, software, app, platform, model, service, or organization explicitly cited in the script (e.g. "Microsoft", "OpenAI", "ChatGPT", "Tay", "GPT-3", "Google", "Twitter", "Tesla", "Boeing"). Their official LOGO must remain visually consistent. Use type "brand" for these. Set "epoque" to the era of the official logo to use (e.g. "2016 era logo").
 Do NOT return abstract concepts or one-off background props.
 Return an element only if it appears, is discussed, or is implied across multiple parts of the script.
 
@@ -226,6 +227,7 @@ For each element, generate an identity_prompt in English following these templat
 - For characters: Start with "Subject: [name] during [period]" then CHARACTER IDENTITY LOCK + TIME PERIOD LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT
 - For locations: Start with "Subject: [name] during [period]" then LOCATION IDENTITY LOCK + TIME PERIOD / HISTORICAL STATE LOCK + MANDATORY PERIOD-SPECIFIC FEATURES + NO TEMPORAL DRIFT  
 - For objects/vehicles: Start with "Subject: [name] [version]" then OBJECT IDENTITY LOCK + VERSION / TIME PERIOD LOCK + MANDATORY VISUAL FEATURES + NO OBJECT DRIFT
+- For brands/logos: Start with "Subject: [name] official logo ([era])" then BRAND / LOGO IDENTITY LOCK + VERSION / TIME PERIOD LOCK + OFFICIAL WORDMARK & COLOR PALETTE + NO BRAND DRIFT
 ${excludeInstruction}
 
 Return exactly:
@@ -234,7 +236,7 @@ Return exactly:
     {
       "id": "unique-short-id",
       "nom": "string",
-      "type": "character|location|vehicle|building|artifact|weapon|object",
+      "type": "character|location|vehicle|building|artifact|weapon|object|brand",
       "description_visuelle": "string (in French)",
       "epoque": "string (in French)",
       "mentions_scenes": [1,2,3],
@@ -246,6 +248,7 @@ Return exactly:
 - Les personnages nommés qui reviennent dans plusieurs passages
 - Les lieux précis qui apparaissent dans plusieurs scènes
 - Les véhicules, objets, artefacts récurrents
+- Les marques, entreprises, logiciels, applications, plateformes, modèles d'IA et services nommés (leur logo officiel doit rester cohérent) — utilise type "brand"
 Pour chaque élément, génère un identity_prompt structuré en anglais.${excludeInstruction}\n\n${userPrompt}`,
       );
     } catch (objErr) {

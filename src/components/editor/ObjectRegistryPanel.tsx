@@ -23,6 +23,7 @@ import {
   Sparkles,
   FolderDown,
   Check,
+  Tag,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +34,7 @@ import { toast } from "sonner";
 export interface RecurringObject {
   id: string;
   nom: string;
-  type: "vehicle" | "building" | "artifact" | "weapon" | "object" | "character" | "location";
+  type: "vehicle" | "building" | "artifact" | "weapon" | "object" | "character" | "location" | "brand";
   description_visuelle: string;
   epoque: string;
   mentions_scenes: number[];
@@ -52,10 +53,14 @@ const TYPE_META: Record<RecurringObject["type"], { label: string; icon: React.Re
   artifact: { label: "Artefact", icon: <Landmark className="h-3.5 w-3.5" />, color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
   weapon: { label: "Arme", icon: <Box className="h-3.5 w-3.5" />, color: "bg-red-500/10 text-red-600 border-red-500/20" },
   object: { label: "Objet", icon: <Package className="h-3.5 w-3.5" />, color: "bg-green-500/10 text-green-600 border-green-500/20" },
+  brand: { label: "Marque / Logo", icon: <Tag className="h-3.5 w-3.5" />, color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
 };
 
 const objectIdentityBlock = (nom: string, version: string) =>
   `OBJECT IDENTITY LOCK:\n\nThe object must remain strictly and unmistakably identifiable as ${nom} ${version} in every image.\n\nPreserve its exact shape, proportions, structure, materials, surface treatment, distinctive details, and all defining visual cues.\n\nDo not redesign, modernize, stylize, simplify, or merge it with any other object.\n\n`;
+
+const brandIdentityBlock = (nom: string, version: string) =>
+  `BRAND / LOGO IDENTITY LOCK:\n\nThe brand or software logo must remain strictly and unmistakably identifiable as the official ${nom} ${version} logo in every image.\n\nPreserve its exact official wordmark, symbol, proportions, color palette, typography, and spacing as used officially during ${version}.\n\nDo not redesign, recolor, restyle, paraphrase, fictionalize, blur, or merge it with any other brand.\n\n`;
 
 const characterIdentityBlock = (nom: string, period: string) =>
   `CHARACTER IDENTITY LOCK:\n\nThe character must remain strictly and unmistakably identifiable as ${nom} ${period} in every image.\n\nPreserve their exact facial structure, age appearance, hairstyle, body proportions, posture, clothing logic, distinctive traits, and all defining visual cues specific to that period.\n\nDo not redesign, beautify, modernize, stylize, de-age, age up, or merge them with any other person or character.\n\n`;
@@ -108,6 +113,10 @@ export const IDENTITY_TEMPLATES: Record<RecurringObject["type"], (nom: string, e
   object: (nom, epoque, refImages) => {
     const version = epoque || "[year / version]";
     return `${objectIdentityBlock(nom, version)}Subject: ${nom} ${version}\n\nVERSION / TIME PERIOD LOCK:\nRepresent the object strictly as the ${version}.\nPreserve only the design features specific to that exact version.\nDo not mix traits from other periods, generations, or reinterpretations.\n\n${buildRefImageList(nom, refImages)}\n\nNO OBJECT DRIFT:\nDo not generate a generic lookalike, a related model, a modernized version, or a hybrid object.\nThe object must remain visually consistent across the whole series.\nOnly the environment, lighting, camera angle, scale, context, and scene activity may vary.`;
+  },
+  brand: (nom, epoque, refImages) => {
+    const version = epoque || "[year / era of the official logo]";
+    return `${brandIdentityBlock(nom, version)}Subject: ${nom} official logo (${version})\n\nVERSION / TIME PERIOD LOCK:\nRepresent the official ${nom} brand or software logo strictly as it appeared during ${version}.\nPreserve only the official wordmark, symbol, color palette, typography, and proportions of that exact era.\nDo not mix elements from earlier or later rebrandings.\n\n${buildRefImageList(nom, refImages)}\n\nNO BRAND DRIFT:\nDo not invent a fictional logo, paraphrase the wordmark, recolor the symbol, or merge it with another brand.\nThe logo must remain visually consistent and instantly recognizable across the whole series.\nOnly its placement (screen, sign, packaging, UI), scale, lighting and context may vary.`;
   },
 };
 
