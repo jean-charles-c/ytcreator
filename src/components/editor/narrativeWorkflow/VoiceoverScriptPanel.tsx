@@ -280,11 +280,26 @@ export default function VoiceoverScriptPanel({
     if (!script?.content || !onSendToScriptCreator) return;
     setSending(true);
     try {
-      // 1. Texte transmis à l'identique (en-têtes "SCÈNE N — Titre" conservés)
-      //    pour que le scriptInput de ScriptCreator corresponde exactement au
-      //    bloc affiché dans RsearchEngine.
+      // 1. On retire uniquement les en-têtes "SCÈNE N — Titre" tout en
+      //    préservant l'intégralité du texte voix off et l'ordre des scènes
+      //    tels qu'affichés dans RsearchEngine.
       const sceneHeaderRe = /^\s*SC[ÈE]NE\s+\d+\s*[—\-–:]\s*(.+?)\s*$/i;
       const blocks = script.content.split(/\n\s*\n+/);
+      const cleanedBlocks: string[] = [];
+      const extractedTitles: string[] = [];
+      for (const block of blocks) {
+        const lines = block.split(/\r?\n/);
+        const m = (lines[0] ?? "").match(sceneHeaderRe);
+        if (m) {
+          extractedTitles.push(m[1].trim());
+          const body = lines.slice(1).join("\n").trim();
+          if (body) cleanedBlocks.push(body);
+        } else {
+          const body = block.trim();
+          if (body) cleanedBlocks.push(body);
+        }
+      }
+      const cleanedContent = cleanedBlocks.join("\n\n").trim();
 
       // 2. Construction des chapitres vidéo à partir du SOMMAIRE NARRATIF
       //    (un chapitre vidéo = un chapitre du sommaire narratif, agrégeant
@@ -301,8 +316,8 @@ export default function VoiceoverScriptPanel({
           chapterPayload.push({ title: ch.title, sourceText: body });
         }
       } else {
-        for (const block of blocks) {
-          const lines = block.split(/\r?\n/);
+        for (let i = 0; i < blocks.length; i++) {
+          const lines = blocks[i].split(/\r?\n/);
           const m = (lines[0] ?? "").match(sceneHeaderRe);
           if (m) {
             const body = lines.slice(1).join("\n").trim();
@@ -310,7 +325,7 @@ export default function VoiceoverScriptPanel({
           }
         }
       }
-      onSendToScriptCreator(script.content, chapterPayload);
+      onSendToScriptCreator(cleanedContent, chapterPayload);
 
       // 2. Marquage du statut côté DB (non-bloquant pour l'envoi).
       try {
