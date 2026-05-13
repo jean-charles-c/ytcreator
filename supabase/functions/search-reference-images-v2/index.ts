@@ -3,6 +3,7 @@
 // Gemini-driven query enrichment + multimodal validation, cached in Supabase.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORS
@@ -28,8 +29,9 @@ const GEMINI_ENDPOINT =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const VALIDATION_CONCURRENCY = 3; // free tier ~10 RPM on Flash
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
-const FETCH_TIMEOUT_MS = 12_000;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB (CPU budget)
+const FETCH_TIMEOUT_MS = 10_000;
+const MAX_CANDIDATES_TO_VALIDATE = 10; // hard cap to stay under CPU limit
 
 const MATCH_THRESHOLD = 7;
 const QUALITY_THRESHOLD = 6;
@@ -261,12 +263,10 @@ async function validateImage(
     return null;
   }
 
-  // 2) Base64 encode for Gemini inlineData.
+  // 2) Base64 encode for Gemini inlineData (fast native encoder).
   let base64: string;
   try {
-    let bin = "";
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    base64 = btoa(bin);
+    base64 = encodeBase64(bytes);
   } catch (e) {
     console.warn(`validate: base64 error ${candidate.url}`, (e as Error).message);
     return null;
@@ -650,10 +650,19 @@ Deno.serve(async (req) => {
     );
   }
 
-  // ── 5. Validate each candidate with Gemini multimodal
+  // ── 5. Validate each candidate with Gemini multimodal (capped for CPU budget).
+  // Prioritize wikidata > wikimedia > brave to maximize hit rate within the cap.
+  const sourceRank: Record<SourceName, number> = { wikidata: 0, wikimedia: 1, brave: 2 };
+  const prioritized = [...candidates].sort(
+    (a, b) => sourceRank[a.source] - sourceRank[b.source],
+  );
+  const toValidate = prioritized.slice(0, MAX_CANDIDATES_TO_VALIDATE);
+  console.log(
+    `validating ${toValidate.length}/${candidates.length} candidates (cap=${MAX_CANDIDATES_TO_VALIDATE})`,
+  );
   const validated: ValidatedImage[] = [];
   const results = await mapWithConcurrency(
-    candidates,
+    toValidate,
     VALIDATION_CONCURRENCY,
     (c) => validateImage(c, enriched, obj, GEMINI_API_KEY),
   );
