@@ -280,23 +280,11 @@ export default function VoiceoverScriptPanel({
     if (!script?.content || !onSendToScriptCreator) return;
     setSending(true);
     try {
-      // 1. Nettoyage du script : on retire les en-têtes "SCÈNE N — Titre"
-      //    pour ne garder que le texte voix off.
+      // 1. Texte transmis à l'identique (en-têtes "SCÈNE N — Titre" conservés)
+      //    pour que le scriptInput de ScriptCreator corresponde exactement au
+      //    bloc affiché dans RsearchEngine.
       const sceneHeaderRe = /^\s*SC[ÈE]NE\s+\d+\s*[—\-–:]\s*(.+?)\s*$/i;
       const blocks = script.content.split(/\n\s*\n+/);
-      const cleanedBlocks: string[] = [];
-      for (const block of blocks) {
-        const lines = block.split(/\r?\n/);
-        const first = lines[0] ?? "";
-        if (sceneHeaderRe.test(first)) {
-          const body = lines.slice(1).join("\n").trim();
-          if (body) cleanedBlocks.push(body);
-        } else {
-          const trimmed = block.trim();
-          if (trimmed) cleanedBlocks.push(trimmed);
-        }
-      }
-      const cleanedContent = cleanedBlocks.join("\n\n").trim();
 
       // 2. Construction des chapitres vidéo à partir du SOMMAIRE NARRATIF
       //    (un chapitre vidéo = un chapitre du sommaire narratif, agrégeant
@@ -322,7 +310,7 @@ export default function VoiceoverScriptPanel({
           }
         }
       }
-      onSendToScriptCreator(cleanedContent, chapterPayload);
+      onSendToScriptCreator(script.content, chapterPayload);
 
       // 2. Marquage du statut côté DB (non-bloquant pour l'envoi).
       try {
