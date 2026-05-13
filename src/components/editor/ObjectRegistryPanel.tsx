@@ -395,21 +395,36 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
     setSearchingImages(prev => ({ ...prev, [id]: true }));
     try {
-      const searchQuery = `${obj.nom} ${obj.epoque || ""}`.trim();
-      const res = await supabase.functions.invoke("search-reference-images", {
-        body: { query: searchQuery, limit: 3 },
+      const res = await supabase.functions.invoke("search-reference-images-v2", {
+        body: {
+          object: {
+            nom: obj.nom,
+            epoque: obj.epoque || undefined,
+            description: obj.description || undefined,
+          },
+          limit: 3,
+        },
       });
       if (res.error) throw res.error;
-      const data = res.data as { images: { url: string; thumb: string }[] };
-      if (data.images.length === 0) {
-        toast.info("Aucune image trouvée pour cette recherche.");
+      const data = res.data as {
+        source: "cache" | "fresh";
+        candidates_count: number | null;
+        validated_count: number;
+        images: { url: string; source: string; match_score: number; quality_score: number }[];
+      };
+      if (!data.images || data.images.length === 0) {
+        const detail = data.candidates_count != null
+          ? ` (${data.candidates_count} candidats, 0 validés)`
+          : "";
+        toast.info(`Aucune image validée pour cette recherche${detail}.`);
         return;
       }
       const existing = obj.reference_images || [];
       const startIdx = existing.length + 1;
       const uploadedUrls: string[] = [];
       for (let i = 0; i < data.images.length; i++) {
-        const sourceUrl = data.images[i].url || data.images[i].thumb;
+        const sourceUrl = data.images[i].url;
+        if (!sourceUrl) continue;
         const storageUrl = await uploadToStorage(obj.nom, sourceUrl, startIdx + i);
         if (storageUrl) uploadedUrls.push(storageUrl);
       }
@@ -418,7 +433,8 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
         return;
       }
       updateObject(id, { reference_images: [...existing, ...uploadedUrls] });
-      toast.success(`${uploadedUrls.length} image(s) de référence uploadée(s)`);
+      const cacheBadge = data.source === "cache" ? " (cache)" : "";
+      toast.success(`${uploadedUrls.length} image(s) de référence uploadée(s)${cacheBadge}`);
     } catch (e: any) {
       toast.error("Erreur recherche images : " + (e.message || "Erreur inconnue"));
     } finally {
