@@ -173,6 +173,8 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [candidatesByObject, setCandidatesByObject] = useState<Record<string, ScoredCandidate[]>>({});
   const [candidatesDialogObjectId, setCandidatesDialogObjectId] = useState<string | null>(null);
   const [forcingAdd, setForcingAdd] = useState<Record<string, boolean>>({});
+  const [bulkSearching, setBulkSearching] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ current: string; done: number; total: number } | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
@@ -501,6 +503,31 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     }
   }, [objects, updateObject, uploadToStorage]);
 
+  const bulkSearchAll = useCallback(async () => {
+    const targets = objects.filter((o) => o.nom?.trim());
+    if (targets.length === 0) {
+      toast.info("Aucun objet nommé à analyser.");
+      return;
+    }
+    setBulkSearching(true);
+    try {
+      let done = 0;
+      for (const o of targets) {
+        setBulkProgress({ current: o.nom, done, total: targets.length });
+        await searchReferenceImages(o.id);
+        done++;
+        // Small delay between objects to be gentler with Gemini's free-tier 10 RPM.
+        if (done < targets.length) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+      toast.success(`Recherche bulk terminée (${targets.length} objet${targets.length > 1 ? "s" : ""})`);
+    } finally {
+      setBulkSearching(false);
+      setBulkProgress(null);
+    }
+  }, [objects, searchReferenceImages]);
+
   const removeReferenceImage = useCallback((id: string, imgIndex: number) => {
     const obj = objects.find((o) => o.id === id);
     if (!obj) return;
@@ -734,6 +761,22 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                   {meta.icon} {meta.label}
                 </span>
                 <span className="font-medium text-foreground truncate flex-1">{obj.nom || "(sans nom)"}</span>
+                {(obj.reference_images?.length || 0) > 0 && (
+                  <span
+                    className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-green-500/15 text-green-700 border-green-500/30 shrink-0"
+                    title={`${obj.reference_images!.length} image(s) de référence`}
+                  >
+                    <ImageIcon className="h-2.5 w-2.5" /> {obj.reference_images!.length}
+                  </span>
+                )}
+                {(candidatesByObject[obj.id]?.length || 0) > 0 && (
+                  <span
+                    className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-blue-500/15 text-blue-700 border-blue-500/30 shrink-0"
+                    title={`${candidatesByObject[obj.id].length} candidats trouvés à la dernière recherche`}
+                  >
+                    <Eye className="h-2.5 w-2.5" /> {candidatesByObject[obj.id].length}
+                  </span>
+                )}
                 <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                 <span
                   role="button"
@@ -971,7 +1014,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
           );
         })}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {onReanalyze && (
             <Button variant="secondary" size="sm" onClick={onReanalyze} disabled={isAnalyzing} className="flex-1 min-h-[40px] text-xs">
               <RefreshCw className={`h-3.5 w-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
@@ -988,6 +1031,21 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             >
               <Search className="h-3.5 w-3.5" />
               {isAnalyzing ? "Recherche…" : "Chercher d'autres récurrences"}
+            </Button>
+          )}
+          {objects.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={bulkSearchAll}
+              disabled={bulkSearching || isAnalyzing}
+              className="flex-1 min-h-[40px] text-xs"
+              title="Lance une recherche d'images de référence pour tous les objets nommés"
+            >
+              {bulkSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+              {bulkSearching && bulkProgress
+                ? `Recherche ${bulkProgress.done + 1}/${bulkProgress.total} — ${bulkProgress.current.slice(0, 20)}…`
+                : `Chercher images pour tous (${objects.filter(o => o.nom?.trim()).length})`}
             </Button>
           )}
           {hasShots && objects.length > 0 && (
