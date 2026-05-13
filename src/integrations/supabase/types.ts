@@ -239,6 +239,36 @@ export type Database = {
           },
         ]
       }
+      image_search_cache: {
+        Row: {
+          created_at: string
+          enriched_query: Json | null
+          expires_at: string
+          query_hash: string
+          query_text: string
+          source_breakdown: Json | null
+          validated_images: Json
+        }
+        Insert: {
+          created_at?: string
+          enriched_query?: Json | null
+          expires_at?: string
+          query_hash: string
+          query_text: string
+          source_breakdown?: Json | null
+          validated_images: Json
+        }
+        Update: {
+          created_at?: string
+          enriched_query?: Json | null
+          expires_at?: string
+          query_hash?: string
+          query_text?: string
+          source_breakdown?: Json | null
+          validated_images?: Json
+        }
+        Relationships: []
+      }
       kie_pricing: {
         Row: {
           created_at: string
