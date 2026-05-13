@@ -50,7 +50,8 @@ type CandidateStatus =
   | "validated"
   | "rejected_match"
   | "rejected_quality"
-  | "rejected_both";
+  | "rejected_both"
+  | "unscored";
 
 export interface ScoredCandidate {
   url: string;
@@ -1150,7 +1151,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               return <p className="text-sm text-muted-foreground">Aucun candidat à afficher.</p>;
             }
             const sorted = [...list].sort((a, b) => {
-              const order = { validated: 0, rejected_quality: 1, rejected_match: 2, rejected_both: 3 } as const;
+              const order = { validated: 0, rejected_quality: 1, rejected_match: 2, rejected_both: 3, unscored: 4 } as const;
               const oa = order[a.status as keyof typeof order] ?? 9;
               const ob = order[b.status as keyof typeof order] ?? 9;
               if (oa !== ob) return oa - ob;
@@ -1161,6 +1162,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               rejected_match: { label: "Rejeté (match faible)", cls: "bg-orange-500/15 text-orange-700 border-orange-500/30", icon: <XCircle className="h-3 w-3" /> },
               rejected_quality: { label: "Rejeté (qualité faible)", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30", icon: <XCircle className="h-3 w-3" /> },
               rejected_both: { label: "Rejeté", cls: "bg-red-500/15 text-red-700 border-red-500/30", icon: <XCircle className="h-3 w-3" /> },
+              unscored: { label: "Non scoré", cls: "bg-slate-500/15 text-slate-700 border-slate-500/30", icon: <XCircle className="h-3 w-3" /> },
             };
             return (
               <div className="space-y-2 mt-1">

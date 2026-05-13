@@ -78,7 +78,12 @@ type CandidateStatus =
   | "validated"
   | "rejected_match"
   | "rejected_quality"
-  | "rejected_both";
+  | "rejected_both"
+  | "unscored"; // validation pipeline failed (fetch / gemini / parse)
+
+type ValidateOutcome =
+  | { ok: true; image: ValidatedImage }
+  | { ok: false; candidate: Candidate; error: string };
 
 interface ValidatedImage extends Candidate {
   match_score: number;
@@ -245,7 +250,7 @@ async function validateImage(
   enriched: EnrichedQuery,
   input: ObjectInput,
   apiKey: string,
-): Promise<ValidatedImage | null> {
+): Promise<ValidateOutcome> {
   // 1) Fetch the image bytes (with size cap).
   let bytes: Uint8Array;
   let mime = candidate.mime || "image/jpeg";
@@ -254,24 +259,28 @@ async function validateImage(
       headers: { "User-Agent": USER_AGENT },
     });
     if (!res.ok) {
-      console.warn(`validate: fetch ${candidate.url} -> ${res.status}`);
-      return null;
+      const err = `fetch_http_${res.status}`;
+      console.warn(`validate[${err}] ${candidate.source} ${candidate.url}`);
+      return { ok: false, candidate, error: err };
     }
     const ctype = res.headers.get("content-type") || "";
     if (!ctype.startsWith("image/")) {
-      console.warn(`validate: not an image (${ctype}) ${candidate.url}`);
-      return null;
+      const err = `not_image_${ctype.split(";")[0] || "unknown"}`;
+      console.warn(`validate[${err}] ${candidate.source} ${candidate.url}`);
+      return { ok: false, candidate, error: err };
     }
     mime = ctype.split(";")[0].trim();
     const buf = new Uint8Array(await res.arrayBuffer());
     if (buf.byteLength > MAX_IMAGE_BYTES) {
-      console.warn(`validate: too big (${buf.byteLength}B) ${candidate.url}`);
-      return null;
+      const err = `too_big_${buf.byteLength}B`;
+      console.warn(`validate[${err}] ${candidate.source} ${candidate.url}`);
+      return { ok: false, candidate, error: err };
     }
     bytes = buf;
   } catch (e) {
-    console.warn(`validate: fetch error ${candidate.url}`, (e as Error).message);
-    return null;
+    const err = `fetch_exception:${(e as Error).message}`;
+    console.warn(`validate[fetch_exception] ${candidate.source} ${candidate.url} -> ${(e as Error).message}`);
+    return { ok: false, candidate, error: err };
   }
 
   // 2) Base64 encode for Gemini inlineData (fast native encoder).
@@ -279,8 +288,9 @@ async function validateImage(
   try {
     base64 = encodeBase64(bytes);
   } catch (e) {
-    console.warn(`validate: base64 error ${candidate.url}`, (e as Error).message);
-    return null;
+    const err = `base64_exception:${(e as Error).message}`;
+    console.warn(`validate[base64] ${candidate.url} -> ${(e as Error).message}`);
+    return { ok: false, candidate, error: err };
   }
 
   // 3) Ask Gemini to score the image.
@@ -322,25 +332,37 @@ Return ONLY a JSON object:
       body: JSON.stringify(body),
     }, 20_000);
     if (!res.ok) {
-      console.warn(`validate: Gemini HTTP ${res.status} for ${candidate.url}`);
-      return null;
+      const bodyText = await res.text().catch(() => "");
+      const err = `gemini_http_${res.status}`;
+      console.warn(`validate[${err}] ${candidate.url} body=${bodyText.slice(0, 200)}`);
+      return { ok: false, candidate, error: err };
     }
     const payload = await res.json();
     const text = extractGeminiText(payload) || "";
     const parsed = safeParseJson<{ match_score?: number; quality_score?: number; reason?: string }>(text);
-    if (!parsed) return null;
+    if (!parsed) {
+      console.warn(`validate[gemini_parse] ${candidate.url} raw=${text.slice(0, 200)}`);
+      return { ok: false, candidate, error: "gemini_parse" };
+    }
     const match = Number(parsed.match_score);
     const quality = Number(parsed.quality_score);
-    if (!Number.isFinite(match) || !Number.isFinite(quality)) return null;
+    if (!Number.isFinite(match) || !Number.isFinite(quality)) {
+      console.warn(`validate[gemini_nan] ${candidate.url} parsed=${JSON.stringify(parsed)}`);
+      return { ok: false, candidate, error: "gemini_nan" };
+    }
     return {
-      ...candidate,
-      match_score: Math.max(0, Math.min(10, match)),
-      quality_score: Math.max(0, Math.min(10, quality)),
-      reason: parsed.reason || "",
+      ok: true,
+      image: {
+        ...candidate,
+        match_score: Math.max(0, Math.min(10, match)),
+        quality_score: Math.max(0, Math.min(10, quality)),
+        reason: parsed.reason || "",
+      },
     };
   } catch (e) {
-    console.warn(`validate: Gemini error ${candidate.url}`, (e as Error).message);
-    return null;
+    const err = `gemini_exception:${(e as Error).message}`;
+    console.warn(`validate[gemini_exception] ${candidate.url} -> ${(e as Error).message}`);
+    return { ok: false, candidate, error: err };
   }
 }
 
@@ -683,17 +705,40 @@ Deno.serve(async (req) => {
   console.log(
     `validating ${toValidate.length}/${candidates.length} candidates (cap=${MAX_CANDIDATES_TO_VALIDATE})`,
   );
-  const validated: ValidatedImage[] = [];
-  const results = await mapWithConcurrency(
+  const outcomes = await mapWithConcurrency(
     toValidate,
     VALIDATION_CONCURRENCY,
     (c) => validateImage(c, enriched, obj, GEMINI_API_KEY),
   );
-  for (const v of results) if (v) validated.push(v);
 
-  // ── 6. Assign statuses and rank scores; sort all by rank_score
-  const allScored: ScoredCandidate[] = validated
-    .map((v) => {
+  // Tally outcome reasons for easier debugging in the logs.
+  const errorBreakdown: Record<string, number> = {};
+  for (const o of outcomes) {
+    if (!o.ok) {
+      const key = o.error.split(":")[0];
+      errorBreakdown[key] = (errorBreakdown[key] || 0) + 1;
+    }
+  }
+  console.log("validation breakdown:", JSON.stringify({
+    ok: outcomes.filter((o) => o.ok).length,
+    failed: outcomes.length - outcomes.filter((o) => o.ok).length,
+    by_error: errorBreakdown,
+  }));
+
+  // ── 6. Build the full scored list (validated + rejected + unscored)
+  const allScored: ScoredCandidate[] = outcomes
+    .map((o): ScoredCandidate => {
+      if (!o.ok) {
+        return {
+          ...o.candidate,
+          match_score: 0,
+          quality_score: 0,
+          reason: `Validation impossible (${o.error})`,
+          status: "unscored",
+          rank_score: -1,
+        };
+      }
+      const v = o.image;
       const matchOk = v.match_score >= MATCH_THRESHOLD;
       const qualityOk = v.quality_score >= QUALITY_THRESHOLD;
       let status: CandidateStatus = "validated";
