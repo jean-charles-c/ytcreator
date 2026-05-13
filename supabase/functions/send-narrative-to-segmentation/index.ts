@@ -128,6 +128,34 @@ serve(async (req) => {
       });
     }
 
+    // Load the latest voiceover_scripts content for this outline to align
+    // segmentation source_text with what the user sees in ScriptCreator.
+    // The polished VO script (voiceover_scripts.content) supersedes the draft
+    // narrative_scenes.voice_over_text generated earlier.
+    const { data: voScript } = await sb
+      .from("voiceover_scripts")
+      .select("content")
+      .eq("project_id", projectId)
+      .eq("outline_id", outlineId)
+      .order("generation_index", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const voBlocksByOrder = new Map<number, string>();
+    if (voScript?.content) {
+      const headerRe = /^\s*SC[ÈE]NE\s+(\d+)\s*[—\-–:]\s*.+$/i;
+      const blocks = String(voScript.content).split(/\n\s*\n+/);
+      for (const block of blocks) {
+        const lines = block.split(/\r?\n/);
+        const m = (lines[0] ?? "").match(headerRe);
+        if (m) {
+          const order = parseInt(m[1], 10);
+          const body = lines.slice(1).join("\n").trim();
+          if (Number.isFinite(order) && body) voBlocksByOrder.set(order, body);
+        }
+      }
+    }
+
     const incompleteScenes = sourceScenes.filter(
       (s) => !((s.voice_over_text ?? s.content ?? "").trim()),
     );
@@ -185,7 +213,8 @@ serve(async (req) => {
       const characters = asArray(s.characters);
       const locations = asArray(s.locations);
       const objects = asArray(s.objects);
-      const voTextFr = (s.voice_over_text ?? s.content ?? "").trim();
+      const fromScript = voBlocksByOrder.get(idx + 1) ?? voBlocksByOrder.get(s.scene_order);
+      const voTextFr = (fromScript ?? s.voice_over_text ?? s.content ?? "").trim();
       const summary = (s.summary ?? "").trim();
       const role = (s.narrative_role ?? "").trim();
       const emotion = (s.dominant_emotion ?? "").trim();
