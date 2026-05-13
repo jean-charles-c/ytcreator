@@ -438,6 +438,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
         images: { url: string; source: string; match_score: number; quality_score: number }[];
         all_candidates?: ScoredCandidate[];
       };
+      console.log("[search-reference-images-v2] response:", {
+        source: data.source,
+        candidates_count: data.candidates_count,
+        validated_count: data.validated_count,
+        images_len: data.images?.length,
+        all_candidates_len: data.all_candidates?.length,
+        all_candidates_present: Array.isArray(data.all_candidates),
+      });
       if (Array.isArray(data.all_candidates)) {
         setCandidatesByObject(prev => ({ ...prev, [id]: data.all_candidates! }));
       }
