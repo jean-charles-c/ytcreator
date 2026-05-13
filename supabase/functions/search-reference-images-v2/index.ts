@@ -611,7 +611,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (cacheErr) {
       console.warn("cache lookup error:", cacheErr.message);
-    } else if (cached?.validated_images) {
+    } else if (Array.isArray(cached?.validated_images) && cached.validated_images.length > 0) {
       const stored = cached.validated_images as Array<ScoredCandidate | ValidatedImage>;
       // Back-compat: older cache entries are plain ValidatedImage[] without status.
       const normalized: ScoredCandidate[] = stored.map((c: any) => ({
@@ -756,23 +756,28 @@ Deno.serve(async (req) => {
   const validatedRanked = allScored.filter((c) => c.status === "validated");
   const topN = validatedRanked.slice(0, limit);
 
-  // ── 7. Cache upsert (store the full scored list including rejects so the
-  //       review UI can show them on cache hits too).
-  try {
-    const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-    const { error: upsertErr } = await supabase
-      .from("image_search_cache")
-      .upsert({
-        query_hash: queryHash,
-        query_text: cacheKeyInput,
-        validated_images: allScored,
-        source_breakdown: sourceBreakdown,
-        enriched_query: enriched,
-        expires_at: expiresAt,
-      }, { onConflict: "query_hash" });
-    if (upsertErr) console.warn("cache upsert error:", upsertErr.message);
-  } catch (e) {
-    console.warn("cache upsert exception:", (e as Error).message);
+  // ── 7. Cache upsert — only if we actually have results worth caching.
+  //       Empty results would poison future searches by short-circuiting fresh
+  //       attempts; let them retry next time instead.
+  if (allScored.length > 0) {
+    try {
+      const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      const { error: upsertErr } = await supabase
+        .from("image_search_cache")
+        .upsert({
+          query_hash: queryHash,
+          query_text: cacheKeyInput,
+          validated_images: allScored,
+          source_breakdown: sourceBreakdown,
+          enriched_query: enriched,
+          expires_at: expiresAt,
+        }, { onConflict: "query_hash" });
+      if (upsertErr) console.warn("cache upsert error:", upsertErr.message);
+    } catch (e) {
+      console.warn("cache upsert exception:", (e as Error).message);
+    }
+  } else {
+    console.log("cache: skipping upsert (empty result, will retry next time)");
   }
 
   return new Response(
