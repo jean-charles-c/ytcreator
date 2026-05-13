@@ -24,6 +24,9 @@ import {
   FolderDown,
   Check,
   Tag,
+  Eye,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +44,25 @@ export interface RecurringObject {
   mentions_shots?: string[];
   identity_prompt: string;
   reference_images?: string[];
+}
+
+type CandidateStatus =
+  | "validated"
+  | "rejected_match"
+  | "rejected_quality"
+  | "rejected_both";
+
+export interface ScoredCandidate {
+  url: string;
+  source: "wikidata" | "wikimedia" | "brave" | string;
+  title?: string;
+  width?: number;
+  height?: number;
+  match_score: number;
+  quality_score: number;
+  reason: string;
+  status: CandidateStatus;
+  rank_score: number;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -147,6 +169,9 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchingImages, setSearchingImages] = useState<Record<string, boolean>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [candidatesByObject, setCandidatesByObject] = useState<Record<string, ScoredCandidate[]>>({});
+  const [candidatesDialogObjectId, setCandidatesDialogObjectId] = useState<string | null>(null);
+  const [forcingAdd, setForcingAdd] = useState<Record<string, boolean>>({});
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [importableObjects, setImportableObjects] = useState<{ projectTitle: string; projectId: string; objects: RecurringObject[] }[]>([]);
@@ -411,12 +436,16 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
         candidates_count: number | null;
         validated_count: number;
         images: { url: string; source: string; match_score: number; quality_score: number }[];
+        all_candidates?: ScoredCandidate[];
       };
+      if (Array.isArray(data.all_candidates)) {
+        setCandidatesByObject(prev => ({ ...prev, [id]: data.all_candidates! }));
+      }
       if (!data.images || data.images.length === 0) {
         const detail = data.candidates_count != null
           ? ` (${data.candidates_count} candidats, 0 validés)`
           : "";
-        toast.info(`Aucune image validée pour cette recherche${detail}.`);
+        toast.info(`Aucune image validée pour cette recherche${detail}. Cliquez sur "Voir candidats" pour inspecter.`);
         return;
       }
       const existing = obj.reference_images || [];
@@ -439,6 +468,27 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
       toast.error("Erreur recherche images : " + (e.message || "Erreur inconnue"));
     } finally {
       setSearchingImages(prev => ({ ...prev, [id]: false }));
+    }
+  }, [objects, updateObject, uploadToStorage]);
+
+  const forceAddCandidate = useCallback(async (objectId: string, candidate: ScoredCandidate) => {
+    const obj = objects.find((o) => o.id === objectId);
+    if (!obj) return;
+    const key = `${objectId}:${candidate.url}`;
+    setForcingAdd(prev => ({ ...prev, [key]: true }));
+    try {
+      const existing = obj.reference_images || [];
+      const storageUrl = await uploadToStorage(obj.nom || "unknown", candidate.url, existing.length + 1);
+      if (storageUrl) {
+        updateObject(objectId, { reference_images: [...existing, storageUrl] });
+        toast.success("Image ajoutée aux références");
+      } else {
+        toast.error("Impossible d'uploader cette image.");
+      }
+    } catch (e: any) {
+      toast.error("Erreur upload : " + (e.message || "Erreur inconnue"));
+    } finally {
+      setForcingAdd(prev => ({ ...prev, [key]: false }));
     }
   }, [objects, updateObject, uploadToStorage]);
 
@@ -755,6 +805,18 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                           {searchingImages[obj.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Search className="h-3 w-3 mr-1" />}
                           Chercher sur le web
                         </Button>
+                        {(candidatesByObject[obj.id]?.length || 0) > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCandidatesDialogObjectId(obj.id)}
+                            className="h-7 text-xs px-2"
+                            title="Voir tous les candidats trouvés par la dernière recherche"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Voir candidats ({candidatesByObject[obj.id].length})
+                          </Button>
+                        )}
                       </div>
                     </div>
                     {(obj.reference_images?.length || 0) > 0 && (
@@ -1055,6 +1117,109 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Candidates review dialog */}
+      <Dialog
+        open={candidatesDialogObjectId !== null}
+        onOpenChange={(o) => !o && setCandidatesDialogObjectId(null)}
+      >
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <Eye className="h-4 w-4" />
+              Candidats trouvés
+              {candidatesDialogObjectId && (() => {
+                const o = objects.find(x => x.id === candidatesDialogObjectId);
+                return o?.nom ? <span className="text-muted-foreground">— {o.nom}</span> : null;
+              })()}
+            </DialogTitle>
+          </DialogHeader>
+          {candidatesDialogObjectId && (() => {
+            const list = candidatesByObject[candidatesDialogObjectId] || [];
+            if (list.length === 0) {
+              return <p className="text-sm text-muted-foreground">Aucun candidat à afficher.</p>;
+            }
+            const sorted = [...list].sort((a, b) => {
+              const order = { validated: 0, rejected_quality: 1, rejected_match: 2, rejected_both: 3 } as const;
+              const oa = order[a.status as keyof typeof order] ?? 9;
+              const ob = order[b.status as keyof typeof order] ?? 9;
+              if (oa !== ob) return oa - ob;
+              return b.rank_score - a.rank_score;
+            });
+            const statusMeta: Record<CandidateStatus, { label: string; cls: string; icon: React.ReactNode }> = {
+              validated: { label: "Validé", cls: "bg-green-500/15 text-green-700 border-green-500/30", icon: <CheckCircle2 className="h-3 w-3" /> },
+              rejected_match: { label: "Rejeté (match faible)", cls: "bg-orange-500/15 text-orange-700 border-orange-500/30", icon: <XCircle className="h-3 w-3" /> },
+              rejected_quality: { label: "Rejeté (qualité faible)", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30", icon: <XCircle className="h-3 w-3" /> },
+              rejected_both: { label: "Rejeté", cls: "bg-red-500/15 text-red-700 border-red-500/30", icon: <XCircle className="h-3 w-3" /> },
+            };
+            return (
+              <div className="space-y-2 mt-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Seuils actuels : match ≥ 7 et qualité ≥ 6. Vous pouvez forcer l'ajout d'un candidat rejeté si vous estimez qu'il a tort.
+                </p>
+                {sorted.map((c, idx) => {
+                  const meta = statusMeta[c.status as CandidateStatus] || statusMeta.rejected_both;
+                  const forceKey = `${candidatesDialogObjectId}:${c.url}`;
+                  const isForcing = !!forcingAdd[forceKey];
+                  return (
+                    <div key={`${c.url}-${idx}`} className="flex gap-3 p-2 border border-border rounded bg-card">
+                      <div
+                        className="w-28 h-28 rounded border border-border overflow-hidden bg-secondary cursor-pointer flex-shrink-0"
+                        onClick={() => setLightboxUrl(c.url)}
+                        title="Cliquer pour agrandir"
+                      >
+                        <img src={c.url} alt={c.title || "candidat"} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${meta.cls}`}>
+                            {meta.icon} {meta.label}
+                          </span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {c.source}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            match <b className="text-foreground">{c.match_score.toFixed(1)}</b> · qualité <b className="text-foreground">{c.quality_score.toFixed(1)}</b>
+                          </span>
+                          {(c.width && c.height) && (
+                            <span className="text-[10px] text-muted-foreground">{c.width}×{c.height}</span>
+                          )}
+                        </div>
+                        {c.title && (
+                          <div className="text-[11px] text-muted-foreground truncate" title={c.title}>{c.title}</div>
+                        )}
+                        {c.reason && (
+                          <div className="text-[11px] text-foreground/80 leading-snug">{c.reason}</div>
+                        )}
+                        <div className="flex gap-1.5 mt-auto pt-1">
+                          <Button
+                            size="sm"
+                            variant={c.status === "validated" ? "default" : "outline"}
+                            className="h-7 text-xs px-2"
+                            onClick={() => forceAddCandidate(candidatesDialogObjectId!, c)}
+                            disabled={isForcing}
+                          >
+                            {isForcing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                            {c.status === "validated" ? "Ajouter aux références" : "Forcer l'ajout"}
+                          </Button>
+                          <a
+                            href={c.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                          >
+                            Source ↗
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </details>

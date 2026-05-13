@@ -74,10 +74,21 @@ interface Candidate {
   mime?: string;
 }
 
+type CandidateStatus =
+  | "validated"
+  | "rejected_match"
+  | "rejected_quality"
+  | "rejected_both";
+
 interface ValidatedImage extends Candidate {
   match_score: number;
   quality_score: number;
   reason: string;
+}
+
+interface ScoredCandidate extends ValidatedImage {
+  status: CandidateStatus;
+  rank_score: number;
 }
 
 interface SearchFn {
@@ -579,14 +590,26 @@ Deno.serve(async (req) => {
     if (cacheErr) {
       console.warn("cache lookup error:", cacheErr.message);
     } else if (cached?.validated_images) {
-      const imgs = (cached.validated_images as ValidatedImage[]).slice(0, limit);
+      const stored = cached.validated_images as Array<ScoredCandidate | ValidatedImage>;
+      // Back-compat: older cache entries are plain ValidatedImage[] without status.
+      const normalized: ScoredCandidate[] = stored.map((c: any) => ({
+        ...c,
+        status: (c.status as CandidateStatus) ?? "validated",
+        rank_score: typeof c.rank_score === "number"
+          ? c.rank_score
+          : (c.match_score * MATCH_WEIGHT + c.quality_score * QUALITY_WEIGHT),
+      }));
+      const validatedOnly = normalized.filter((c) => c.status === "validated");
+      const topN = validatedOnly.slice(0, limit);
       return new Response(
         JSON.stringify({
           source: "cache",
           enriched: cached.enriched_query,
-          candidates_count: null,
-          validated_count: imgs.length,
-          images: imgs,
+          candidates_count: normalized.length,
+          validated_count: validatedOnly.length,
+          images: topN,
+          all_candidates: normalized,
+          source_breakdown: cached.source_breakdown ?? null,
         }),
         { headers: jsonHeaders },
       );
@@ -668,18 +691,28 @@ Deno.serve(async (req) => {
   );
   for (const v of results) if (v) validated.push(v);
 
-  // ── 6. Filter + rank
-  const ranked = validated
-    .filter((v) => v.match_score >= MATCH_THRESHOLD && v.quality_score >= QUALITY_THRESHOLD)
-    .sort((a, b) =>
-      (b.match_score * MATCH_WEIGHT + b.quality_score * QUALITY_WEIGHT) -
-      (a.match_score * MATCH_WEIGHT + a.quality_score * QUALITY_WEIGHT)
-    );
+  // ── 6. Assign statuses and rank scores; sort all by rank_score
+  const allScored: ScoredCandidate[] = validated
+    .map((v) => {
+      const matchOk = v.match_score >= MATCH_THRESHOLD;
+      const qualityOk = v.quality_score >= QUALITY_THRESHOLD;
+      let status: CandidateStatus = "validated";
+      if (!matchOk && !qualityOk) status = "rejected_both";
+      else if (!matchOk) status = "rejected_match";
+      else if (!qualityOk) status = "rejected_quality";
+      return {
+        ...v,
+        status,
+        rank_score: v.match_score * MATCH_WEIGHT + v.quality_score * QUALITY_WEIGHT,
+      };
+    })
+    .sort((a, b) => b.rank_score - a.rank_score);
 
-  const topN = ranked.slice(0, limit);
+  const validatedRanked = allScored.filter((c) => c.status === "validated");
+  const topN = validatedRanked.slice(0, limit);
 
-  // ── 7. Cache upsert (store the full ranked list, not just topN, so future
-  //       calls with a higher `limit` still benefit).
+  // ── 7. Cache upsert (store the full scored list including rejects so the
+  //       review UI can show them on cache hits too).
   try {
     const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
     const { error: upsertErr } = await supabase
@@ -687,7 +720,7 @@ Deno.serve(async (req) => {
       .upsert({
         query_hash: queryHash,
         query_text: cacheKeyInput,
-        validated_images: ranked,
+        validated_images: allScored,
         source_breakdown: sourceBreakdown,
         enriched_query: enriched,
         expires_at: expiresAt,
@@ -702,8 +735,10 @@ Deno.serve(async (req) => {
       source: "fresh",
       enriched,
       candidates_count: candidates.length,
-      validated_count: ranked.length,
+      validated_count: validatedRanked.length,
       images: topN,
+      all_candidates: allScored,
+      source_breakdown: sourceBreakdown,
     }),
     { headers: jsonHeaders },
   );
