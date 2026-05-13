@@ -182,6 +182,52 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
   const [backfilling, setBackfilling] = useState(false);
 
+  // ── Repopulate `candidatesByObject` from the Supabase cache so the
+  // "Voir candidats" button and its dialog survive page reloads.
+  // Fires whenever the set of identified objects changes (nom/epoque/description).
+  const lastCandidatesFetchRef = useRef<string>("");
+  useEffect(() => {
+    const named = objects.filter((o) => o.nom?.trim());
+    if (named.length === 0) return;
+    const signature = named
+      .map((o) => `${o.id}::${o.nom}|${o.epoque || ""}|${o.description_visuelle || ""}`)
+      .join("§§");
+    if (signature === lastCandidatesFetchRef.current) return;
+    lastCandidatesFetchRef.current = signature;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await supabase.functions.invoke("get-cached-candidates", {
+          body: {
+            objects: named.map((o) => ({
+              nom: o.nom,
+              epoque: o.epoque || undefined,
+              description: o.description_visuelle || undefined,
+            })),
+          },
+        });
+        if (cancelled || res.error) return;
+        const data = res.data as { results?: { candidates: ScoredCandidate[] }[] };
+        if (!Array.isArray(data?.results)) return;
+        setCandidatesByObject((prev) => {
+          const next = { ...prev };
+          named.forEach((o, i) => {
+            const cached = data.results![i]?.candidates;
+            // Don't overwrite an in-memory list with a stale empty cache
+            if (Array.isArray(cached) && cached.length > 0) {
+              next[o.id] = cached;
+            }
+          });
+          return next;
+        });
+      } catch (e) {
+        console.warn("get-cached-candidates failed:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [objects]);
+
   // ── Auto-save library: every object that has at least one reference image
   // is upserted into the user-level recurring_object_library so it survives
   // re-segmentation and is reusable across projects. Debounced.
