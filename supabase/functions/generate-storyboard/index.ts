@@ -433,7 +433,9 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   const baselineDesc = isDefaultOrRealistic
     ? "Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles."
     : "Image documentaire historique, architecture et vêtements fidèles à la période. Composition riche avec éléments de profondeur.";
-  return `${effectiveStyle} ${anchor}, ${cameraFraming.toLowerCase()} illustrant : "${fragment}".${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} ${baselineDesc} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
+  // NEVER quote the narration fragment literally — prompts must describe the
+  // visual scene, not ask the model to "illustrate" the sentence.
+  return `${effectiveStyle} ${anchor}. ${cameraFraming} of the scene.${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} ${baselineDesc} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
 };
 
 // Keep legacy name for compatibility
