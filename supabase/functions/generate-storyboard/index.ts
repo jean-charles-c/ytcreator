@@ -1159,22 +1159,10 @@ serve(async (req) => {
             payload.description = stripLegacyIdentityLockPrefix(aiShot.description);
           } else {
             const currentDesc = existingShot.description || "";
-            if (currentDesc.startsWith("Description visuelle du segment narratif")) {
+            if (currentDesc.startsWith("Description visuelle du segment narratif") || hasLegacyIllustrationWording(currentDesc)) {
               // Extract a rich description from prompt_export. Strip identity
               // locks first so the slice doesn't fall in the middle of one.
-              const cleanPrompt = stripLegacyIdentityLockPrefix(promptExport)
-                .replace(/^\s*Style\s*:[^.]*\.\s*/i, "")
-                .replace(/^.*?(?:Cinematic film)/i, "")
-                .replace(/Qualité visuelle\s*:.*$/is, "")
-                .replace(/Any visible writing.*$/is, "")
-                .trim();
-              if (cleanPrompt.length > 50) {
-                payload.description = cleanPrompt.slice(0, 500);
-              } else if (existingShot.source_sentence) {
-                // Last-resort: fall back on the narrative source sentence so
-                // we never persist a polluted description.
-                payload.description = existingShot.source_sentence;
-              }
+              payload.description = deriveCleanDescriptionFromPrompt(promptExport, existingShot.source_sentence);
             }
           }
           if (aiShot?.shot_type) payload.shot_type = aiShot.shot_type;
