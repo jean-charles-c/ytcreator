@@ -237,6 +237,12 @@ Each prompt_export must be in FRENCH and contain ALL of these woven into one con
 
 The prompt_export MUST be at least 100 words. Be extremely descriptive and specific — the image generation AI performs best with rich, concrete visual details rather than abstract concepts.
 
+## FORBIDDEN WEAK PROMPT PATTERNS — CRITICAL
+Never write generic scene-level placeholders such as "Visual intention", "of the scene", "problèmes techniques", "défis de développement", "la scène", or a plain restatement of the scene title as the visual subject.
+Every prompt_export must name concrete visible subjects, objects, materials, gestures, defects, lighting and spatial composition specific to the exact fragment.
+For technical automotive fragments, show physical evidence: carbon weave, exposed chassis, reinforcement plates, stress marks, measuring gauges, engine bay components, workshop tools, prototype panels, mechanics' hands, test benches, dust, oil, metal, rubber and glass.
+If a fragment is abstract, convert it into plausible documentary evidence in the real setting. Do not render literal metaphors, and do not quote the narration.
+
 The entire prompt must be one continuous paragraph. No bullet points, no numbered lists.`;
 };
 
