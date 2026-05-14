@@ -447,8 +447,23 @@ const fallbackDescription = (sentence: string): string =>
 const hasLegacyIllustrationWording = (value: string | null | undefined): boolean =>
   /\billustrant\s*:/i.test(String(value || ""));
 
+const sanitizePromptExport = (value: string, sourceSentence?: string | null): string => {
+  let cleaned = String(value || "");
+  if (sourceSentence) {
+    const escaped = sourceSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    cleaned = cleaned.replace(new RegExp(`\\s*,?\\s*[^.!?]{0,80}\\billustrant\\s*:\\s*["“”]?${escaped}["“”]?\\.?`, "gi"), ". Plan cinématographique documentaire de la scène.");
+  }
+  cleaned = cleaned
+    .replace(/\s*,?\s*([^.!?]{0,80})\billustrant\s*:\s*["“”][^"“”]{1,500}["“”]\.?/gi, ". $1de la scène.")
+    .replace(/\s*,?\s*([^.!?]{0,80})\billustrant\s*:\s*[^.!?]{1,500}[.!?]/gi, ". $1de la scène.")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+\n/g, "\n")
+    .trim();
+  return cleaned;
+};
+
 const deriveCleanDescriptionFromPrompt = (promptExport: string, sourceSentence?: string | null): string => {
-  const cleanPrompt = stripLegacyIdentityLockPrefix(promptExport)
+  const cleanPrompt = stripLegacyIdentityLockPrefix(sanitizePromptExport(promptExport, sourceSentence))
     .replace(/^\s*Style\s*:[^.]*\.\s*/i, "")
     .replace(/^.*?(?:Cinematic film)/i, "")
     .replace(/Qualité visuelle\s*:.*$/is, "")
