@@ -313,20 +313,36 @@ export default function VideoPromptGallery({
     [generationsByAsset],
   );
 
+  /** Which stock providers have a completed generation for this asset */
+  const getStockProviders = useCallback(
+    (assetId: string): ("pexels" | "pixabay")[] => {
+      const gens = generationsByAsset.get(assetId) ?? [];
+      const result = new Set<"pexels" | "pixabay">();
+      for (const g of gens) {
+        if (g.provider === "stock_pexels") result.add("pexels");
+        else if (g.provider === "stock_pixabay") result.add("pixabay");
+      }
+      return Array.from(result);
+    },
+    [generationsByAsset],
+  );
+
   // Enrich assets with video counts
   const enrichedGallery = useMemo(() => {
     return galleryAssets.map((a) => ({
       ...a,
       videoCount: getVideoCount(a.id),
       hasExportSelection: hasExportSelection(a.id),
+      stockProviders: getStockProviders(a.id),
     }));
-  }, [galleryAssets, getVideoCount, hasExportSelection]);
+  }, [galleryAssets, getVideoCount, hasExportSelection, getStockProviders]);
 
   const enrichedExternals = useMemo(() => {
     return externalUploads.map((a) => ({
       ...a,
       videoCount: getVideoCount(a.id),
       hasExportSelection: hasExportSelection(a.id),
+      stockProviders: getStockProviders(a.id),
     }));
   }, [externalUploads, getVideoCount]);
 
@@ -521,6 +537,7 @@ export default function VideoPromptGallery({
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
                     hasExportSelection={asset.hasExportSelection}
+                    stockProviders={asset.stockProviders}
                     onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}
@@ -562,6 +579,7 @@ export default function VideoPromptGallery({
                     bestStatus={getAssetStatus(asset.id)}
                     videoCount={asset.videoCount}
                     hasExportSelection={asset.hasExportSelection}
+                    stockProviders={asset.stockProviders}
                     onClick={() => onAssetClick(asset, defaultPrompt)}
                   />
                 ))}

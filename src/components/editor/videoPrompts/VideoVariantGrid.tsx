@@ -154,7 +154,16 @@ export default function VideoVariantGrid({ generations, onDeleted, assetLabel, o
           <div className="p-2.5 space-y-2">
             {/* Provider + Duration */}
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+              <Badge
+                variant="outline"
+                className={`text-[9px] px-1.5 py-0 ${
+                  gen.provider === "stock_pexels"
+                    ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                    : gen.provider === "stock_pixabay"
+                      ? "bg-green-500/15 text-green-300 border-green-500/30"
+                      : ""
+                }`}
+              >
                 {providerName(gen.provider)}
               </Badge>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">

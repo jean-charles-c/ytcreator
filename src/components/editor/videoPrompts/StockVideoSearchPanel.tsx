@@ -159,7 +159,7 @@ export default function StockVideoSearchPanel({
 }: StockVideoSearchPanelProps) {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<"pexels" | "pixabay" | "both">("both");
-  const [orientation, setOrientation] = useState<Orientation>("any");
+  const [orientation, setOrientation] = useState<Orientation>("landscape");
   const [category, setCategory] = useState<string>("all");
   const [videoType, setVideoType] = useState<"all" | "film" | "animation">("all");
   const [editorsChoice, setEditorsChoice] = useState(false);
@@ -263,7 +263,7 @@ export default function StockVideoSearchPanel({
 
   const resetFilters = useCallback(() => {
     setSource("both");
-    setOrientation("any");
+    setOrientation("landscape");
     setCategory("all");
     setVideoType("all");
     setEditorsChoice(false);

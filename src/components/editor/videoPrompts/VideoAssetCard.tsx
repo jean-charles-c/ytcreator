@@ -15,6 +15,8 @@ interface VideoAssetCardProps {
   videoCount: number;
   /** Whether a video is selected for export */
   hasExportSelection?: boolean;
+  /** Which stock providers (Pexels/Pixabay) have a generation for this asset */
+  stockProviders?: ("pexels" | "pixabay")[];
   onClick: () => void;
 }
 
@@ -46,7 +48,7 @@ const STATUS_CONFIG: Record<VideoGenerationStatus, { label: string; className: s
   },
 };
 
-export default function VideoAssetCard({ asset, bestStatus, videoCount, hasExportSelection, onClick }: VideoAssetCardProps) {
+export default function VideoAssetCard({ asset, bestStatus, videoCount, hasExportSelection, stockProviders, onClick }: VideoAssetCardProps) {
   const statusCfg = STATUS_CONFIG[bestStatus];
   const hasImage = !!asset.imageUrl;
   const isExternal = asset.source === "external_upload";
@@ -103,6 +105,25 @@ export default function VideoAssetCard({ asset, bestStatus, videoCount, hasExpor
             <Badge variant="outline" className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-violet-500/15 text-violet-400 border-violet-500/30 backdrop-blur-sm">
               Ext.
             </Badge>
+          </div>
+        )}
+
+        {/* Stock provider badges (Pexels / Pixabay) */}
+        {stockProviders && stockProviders.length > 0 && (
+          <div className={`absolute ${isExternal ? "top-1.5 left-10 sm:top-2 sm:left-12" : "top-1.5 left-1.5 sm:top-2 sm:left-2"} flex items-center gap-1`}>
+            {stockProviders.map((p) => (
+              <Badge
+                key={p}
+                variant="outline"
+                className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 backdrop-blur-sm ${
+                  p === "pexels"
+                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                    : "bg-green-500/20 text-green-300 border-green-500/40"
+                }`}
+              >
+                {p === "pexels" ? "Pexels" : "Pixabay"}
+              </Badge>
+            ))}
           </div>
         )}
       </div>
