@@ -148,6 +148,7 @@ export default function VideoPromptGallery({
   const [sceneFilter, setSceneFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [defaultPrompt, setDefaultPrompt] = useState<string>("");
+  const [localRefreshTick, setLocalRefreshTick] = useState(0);
 
   // Load external uploads, generations, and VO timepoints
   useEffect(() => {
@@ -232,7 +233,7 @@ export default function VideoPromptGallery({
 
   // Separate effect for refreshKey — only update generations without resetting scroll
   useEffect(() => {
-    if (!userId || refreshKey === 0) return;
+    if (!userId || (refreshKey === 0 && localRefreshTick === 0)) return;
 
     async function refreshGenerations() {
       const { data } = await supabase
@@ -268,7 +269,7 @@ export default function VideoPromptGallery({
     }
 
     refreshGenerations();
-  }, [userId, projectId, refreshKey]);
+  }, [userId, projectId, refreshKey, localRefreshTick]);
 
   // Build gallery assets from shots (now with VO durations)
   const galleryAssets = useMemo(() => buildGalleryAssets(scenes, shots, voDurations), [scenes, shots, voDurations]);
@@ -481,7 +482,12 @@ export default function VideoPromptGallery({
             </span>
           </AccordionTrigger>
           <AccordionContent>
-            <StockVideoSearchPanel />
+            <StockVideoSearchPanel
+              projectId={projectId}
+              scenes={scenes}
+              shots={shots}
+              onStockVideoAttached={() => setLocalRefreshTick((t) => t + 1)}
+            />
           </AccordionContent>
         </AccordionItem>
 

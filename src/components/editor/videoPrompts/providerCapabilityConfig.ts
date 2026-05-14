@@ -77,6 +77,34 @@ export const PROVIDER_CAPABILITIES: Record<VideoProvider, ProviderCapability> = 
     enabled: true,
     icon: "luma",
   },
+  stock_pexels: {
+    id: "stock_pexels",
+    name: "Pexels",
+    description: "Royalty-free stock video sourced from Pexels (free)",
+    supportsImageToVideo: false,
+    supportsTextToVideo: false,
+    durations: [],
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    supportsNegativePrompt: false,
+    maxPromptLength: 0,
+    estimatedCostPerGeneration: 0,
+    enabled: false, // not selectable in the generation panel — only via Stock search
+    icon: "pexels",
+  },
+  stock_pixabay: {
+    id: "stock_pixabay",
+    name: "Pixabay",
+    description: "Royalty-free stock video sourced from Pixabay (free)",
+    supportsImageToVideo: false,
+    supportsTextToVideo: false,
+    durations: [],
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    supportsNegativePrompt: false,
+    maxPromptLength: 0,
+    estimatedCostPerGeneration: 0,
+    enabled: false,
+    icon: "pixabay",
+  },
 };
 
 // ── Kling-specific options ───────────────────────────────────────

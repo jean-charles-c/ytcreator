@@ -13,8 +13,14 @@
 /** Where the source image comes from */
 export type VisualAssetSource = "gallery" | "external_upload";
 
-/** Supported video generation providers */
-export type VideoProvider = "kling" | "runway_gen3" | "runway_gen4" | "luma";
+/** Supported video generation providers (incl. stock library sources) */
+export type VideoProvider =
+  | "kling"
+  | "runway_gen3"
+  | "runway_gen4"
+  | "luma"
+  | "stock_pexels"
+  | "stock_pixabay";
 
 /** Lifecycle status of a video generation */
 export type VideoGenerationStatus =

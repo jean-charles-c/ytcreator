@@ -5,7 +5,7 @@
  * Calls the `search-stock-videos` edge function which unifies both providers.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Search,
   Loader2,
@@ -17,6 +17,8 @@ import {
   RotateCcw,
   Clapperboard,
   AlertCircle,
+  Link as LinkIcon,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,8 +42,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Scene = Tables<"scenes">;
+type Shot = Tables<"shots">;
 
 // ── Types (mirror the edge function output) ────────────────────────
 
@@ -130,11 +144,19 @@ function bestQualityLabel(v: StockVideo): string {
 // ── Component ──────────────────────────────────────────────────────
 
 interface StockVideoSearchPanelProps {
-  /** Optional: triggered when user clicks "Import to project" (v2 — disabled for now) */
-  onImport?: (video: StockVideo, quality: VideoQuality) => Promise<void> | void;
+  projectId: string;
+  scenes: Scene[];
+  shots: Shot[];
+  /** Called after a stock video is successfully attached to a shot — parent should refresh gallery */
+  onStockVideoAttached?: () => void;
 }
 
-export default function StockVideoSearchPanel({ onImport }: StockVideoSearchPanelProps) {
+export default function StockVideoSearchPanel({
+  projectId,
+  scenes,
+  shots,
+  onStockVideoAttached,
+}: StockVideoSearchPanelProps) {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<"pexels" | "pixabay" | "both">("both");
   const [orientation, setOrientation] = useState<Orientation>("any");
@@ -151,8 +173,50 @@ export default function StockVideoSearchPanel({ onImport }: StockVideoSearchPane
   const [pexelsTotal, setPexelsTotal] = useState<number | undefined>();
   const [pixabayTotal, setPixabayTotal] = useState<number | undefined>();
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerVideo, setPickerVideo] = useState<StockVideo | null>(null);
+  const [pickerQuality, setPickerQuality] = useState<VideoQuality | null>(null);
+  const [pickerSelectedShot, setPickerSelectedShot] = useState<string | null>(null);
 
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+
+  // Build a sorted, indexed view of the project's shots for the picker
+  const shotPickerItems = useMemo(() => {
+    const sceneMap = new Map(scenes.map((s) => [s.id, s]));
+    const sortedScenes = [...scenes].sort((a, b) => a.scene_order - b.scene_order);
+    const items: {
+      shotId: string;
+      sceneId: string;
+      sceneTitle: string;
+      sceneOrder: number;
+      shotOrder: number;
+      globalIndex: number;
+      imageUrl: string | null;
+      sentence: string;
+    }[] = [];
+    let gIdx = 1;
+    for (const scene of sortedScenes) {
+      const sceneShots = shots
+        .filter((sh) => sh.scene_id === scene.id)
+        .sort((a, b) => a.shot_order - b.shot_order);
+      for (const sh of sceneShots) {
+        items.push({
+          shotId: sh.id,
+          sceneId: sh.scene_id,
+          sceneTitle: scene.title,
+          sceneOrder: scene.scene_order,
+          shotOrder: sh.shot_order,
+          globalIndex: gIdx,
+          imageUrl: sh.image_url,
+          sentence: sh.source_sentence_fr ?? sh.source_sentence ?? "",
+        });
+        gIdx++;
+      }
+    }
+    // void unused var warning if sceneMap not consumed
+    void sceneMap;
+    return items;
+  }, [scenes, shots]);
 
   const runSearch = useCallback(async () => {
     const trimmed = query.trim();
@@ -229,11 +293,94 @@ export default function StockVideoSearchPanel({ onImport }: StockVideoSearchPane
     window.open(quality.url, "_blank", "noopener,noreferrer");
   };
 
-  const handleImport = async (video: StockVideo, quality: VideoQuality) => {
-    if (!onImport) return;
-    setImportingId(video.id);
+  const openShotPicker = (video: StockVideo, quality: VideoQuality) => {
+    if (shotPickerItems.length === 0) {
+      toast({
+        title: "Aucun shot disponible",
+        description: "Génère d'abord la liste des shots pour pouvoir y associer une vidéo.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setPickerVideo(video);
+    setPickerQuality(quality);
+    setPickerSelectedShot(null);
+    setPickerOpen(true);
+  };
+
+  const confirmAttachToShot = async () => {
+    if (!pickerVideo || !pickerQuality || !pickerSelectedShot) return;
+    setImportingId(pickerVideo.id);
     try {
-      await onImport(video, quality);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const shotItem = shotPickerItems.find((it) => it.shotId === pickerSelectedShot);
+      if (!shotItem) throw new Error("Shot introuvable");
+
+      const providerKey = pickerVideo.source === "pexels" ? "stock_pexels" : "stock_pixabay";
+      const aspectRatio = pickerVideo.width && pickerVideo.height
+        ? pickerVideo.width >= pickerVideo.height
+          ? "16:9"
+          : "9:16"
+        : "16:9";
+
+      const insertPayload = {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        project_id: projectId,
+        source_type: "gallery" as const,
+        source_shot_id: pickerSelectedShot,
+        source_upload_id: null,
+        source_image_url: shotItem.imageUrl ?? pickerVideo.thumbnail,
+        provider: providerKey,
+        prompt_used: `Stock import — ${pickerVideo.source} #${pickerVideo.providerId}`,
+        negative_prompt: "",
+        duration_sec: Math.max(1, Math.round(pickerVideo.duration || 0)),
+        aspect_ratio: aspectRatio,
+        status: "completed" as const,
+        result_video_url: pickerQuality.url,
+        result_thumbnail_url: pickerVideo.thumbnail,
+        estimated_cost_usd: 0,
+        selected_for_export: true,
+        provider_metadata: {
+          stock: {
+            source: pickerVideo.source,
+            providerVideoId: pickerVideo.providerId,
+            sourceUrl: pickerVideo.sourceUrl,
+            author: pickerVideo.author,
+            authorUrl: pickerVideo.authorUrl,
+            quality: pickerQuality.label,
+            width: pickerQuality.width,
+            height: pickerQuality.height,
+            tags: pickerVideo.tags,
+          },
+        },
+      };
+
+      const { error } = await supabase
+        .from("video_generations")
+        .insert(insertPayload as never);
+
+      if (error) throw error;
+
+      toast({
+        title: "Vidéo associée",
+        description: `Shot ${String(shotItem.globalIndex).padStart(3, "0")} — ${pickerVideo.source === "pexels" ? "Pexels" : "Pixabay"} (${pickerQuality.label})`,
+      });
+
+      setPickerOpen(false);
+      setPickerVideo(null);
+      setPickerQuality(null);
+      setPickerSelectedShot(null);
+      onStockVideoAttached?.();
+    } catch (err) {
+      console.error("Stock import error:", err);
+      toast({
+        title: "Erreur d'import",
+        description: err instanceof Error ? err.message : "Impossible d'associer la vidéo au shot",
+        variant: "destructive",
+      });
     } finally {
       setImportingId(null);
     }
@@ -470,13 +617,131 @@ export default function StockVideoSearchPanel({ onImport }: StockVideoSearchPane
                 onMouseEnter={() => handleMouseEnter(v.id)}
                 onMouseLeave={() => handleMouseLeave(v.id)}
                 onDownload={handleDownload}
-                onImport={onImport ? handleImport : undefined}
+                onImport={openShotPicker}
                 importing={importingId === v.id}
               />
             ))}
           </div>
         </TooltipProvider>
       )}
+
+      {/* Shot picker dialog */}
+      <Dialog
+        open={pickerOpen}
+        onOpenChange={(open) => {
+          if (!open && !importingId) {
+            setPickerOpen(false);
+            setPickerVideo(null);
+            setPickerQuality(null);
+            setPickerSelectedShot(null);
+          } else {
+            setPickerOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4 text-primary" />
+              Associer la vidéo à un shot
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {pickerVideo && (
+                <>
+                  {pickerVideo.source === "pexels" ? "Pexels" : "Pixabay"} ·{" "}
+                  © {pickerVideo.author} · {fmtDuration(pickerVideo.duration)} ·{" "}
+                  {pickerQuality?.label} {pickerQuality?.width}×{pickerQuality?.height}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Video preview */}
+          {pickerVideo && (
+            <div className="relative rounded-md overflow-hidden border border-border bg-black/40 aspect-video">
+              <video
+                src={pickerVideo.previewUrl}
+                poster={pickerVideo.thumbnail}
+                autoPlay
+                muted
+                playsInline
+                loop
+                className="w-full h-full object-contain"
+              />
+            </div>
+          )}
+
+          {/* Shot list */}
+          <div className="space-y-1 max-h-[40vh] overflow-y-auto pr-1 -mr-1">
+            {shotPickerItems.map((it) => {
+              const isSelected = pickerSelectedShot === it.shotId;
+              return (
+                <button
+                  key={it.shotId}
+                  type="button"
+                  onClick={() => setPickerSelectedShot(it.shotId)}
+                  className={`w-full text-left rounded-md border p-2 flex gap-2 items-center transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                      : "border-border bg-card hover:bg-secondary/40"
+                  }`}
+                >
+                  <div className="w-14 h-10 shrink-0 rounded overflow-hidden bg-secondary">
+                    {it.imageUrl ? (
+                      <img
+                        src={it.imageUrl}
+                        alt={`Shot ${it.globalIndex}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">
+                        —
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono px-1 rounded bg-secondary text-foreground">
+                        Sc.{it.sceneOrder}
+                      </span>
+                      <span className="text-xs font-medium text-foreground">
+                        Shot {String(it.globalIndex).padStart(3, "0")}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {it.sentence || "(sans phrase)"}
+                    </p>
+                  </div>
+                  {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setPickerOpen(false)}
+              disabled={!!importingId}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={confirmAttachToShot}
+              disabled={!pickerSelectedShot || !!importingId}
+              className="gap-1.5"
+            >
+              {importingId ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LinkIcon className="h-3.5 w-3.5" />
+              )}
+              Associer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
