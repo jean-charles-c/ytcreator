@@ -834,7 +834,7 @@ serve(async (req) => {
         .map((seg, idx) => `    Fragment ${idx + 1}: "${seg}"`)
         .join("\n");
 
-      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
+      return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Scene theme for context only, never copy as prompt wording: ${s.visual_intention || "N/A"}\n  PRE-COMPUTED FRAGMENTS (each fragment = one shot, use as source_sentence):\n${fragmentList}`;
     }).join("\n\n");
 
     const translationRule = needsTranslation
@@ -1009,7 +1009,7 @@ serve(async (req) => {
           .map((shot: any, idx: number) => `    Fragment ${idx + 1}: "${shot.source_sentence || ""}"`)
           .join("\n");
 
-        return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Visual intention: ${s.visual_intention || "N/A"}\n  EXISTING SHOT FRAGMENTS (PRESERVE THESE EXACT BOUNDARIES — generate prompts for each):\n${fragmentList}`;
+        return `Scene ${s.scene_order} (id: ${s.id}, MANDATORY_shot_count: ${shotCount}): "${s.title}"${meta ? ` [${meta}]` : ""}\n${contextBlock}${sceneObjectBlock}\n  Narration: ${s.source_text}\n  Scene theme for context only, never copy as prompt wording: ${s.visual_intention || "N/A"}\n  EXISTING SHOT FRAGMENTS (PRESERVE THESE EXACT BOUNDARIES — generate prompts for each):\n${fragmentList}`;
       }).join("\n\n");
 
       // Call AI for prompt generation
