@@ -1449,7 +1449,9 @@ serve(async (req) => {
           project_id,
           shot_order: j + 1,
           shot_type: shot?.shot_type || fbType,
-          description: shot?.description || fallbackDescription(fbSentence),
+          description: hasLegacyIllustrationWording(shot?.description)
+            ? deriveCleanDescriptionFromPrompt(promptExport, shot?.source_sentence || fbSentence)
+            : shot?.description || fallbackDescription(fbSentence),
           source_sentence: shot?.source_sentence || fbSentence,
           source_sentence_fr: shot?.source_sentence_fr || null,
           prompt_export: promptExport,
