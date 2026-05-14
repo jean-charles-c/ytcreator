@@ -444,6 +444,34 @@ const fallbackPrompt = buildContextualPrompt;
 const fallbackDescription = (sentence: string): string =>
   `Description visuelle du segment narratif : "${sentence}"`;
 
+const hasLegacyIllustrationWording = (value: string | null | undefined): boolean =>
+  /\billustrant\s*:/i.test(String(value || ""));
+
+const sanitizePromptExport = (value: string, sourceSentence?: string | null): string => {
+  let cleaned = String(value || "");
+  if (sourceSentence) {
+    const escaped = sourceSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    cleaned = cleaned.replace(new RegExp(`\\s*,?\\s*[^.!?]{0,80}\\billustrant\\s*:\\s*["“”]?${escaped}["“”]?\\.?`, "gi"), ". Plan cinématographique documentaire de la scène.");
+  }
+  cleaned = cleaned
+    .replace(/\s*,?\s*([^.!?]{0,80})\billustrant\s*:\s*["“”][^"“”]{1,500}["“”]\.?/gi, ". $1de la scène.")
+    .replace(/\s*,?\s*([^.!?]{0,80})\billustrant\s*:\s*[^.!?]{1,500}[.!?]/gi, ". $1de la scène.")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+\n/g, "\n")
+    .trim();
+  return cleaned;
+};
+
+const deriveCleanDescriptionFromPrompt = (promptExport: string, sourceSentence?: string | null): string => {
+  const cleanPrompt = stripLegacyIdentityLockPrefix(sanitizePromptExport(promptExport, sourceSentence))
+    .replace(/^\s*Style\s*:[^.]*\.\s*/i, "")
+    .replace(/^.*?(?:Cinematic film)/i, "")
+    .replace(/Qualité visuelle\s*:.*$/is, "")
+    .replace(/Any visible writing.*$/is, "")
+    .trim();
+  return cleanPrompt.length > 50 ? cleanPrompt.slice(0, 500) : (sourceSentence || "");
+};
+
 const buildSegmentShot = (
   segment: string,
   scene: any,
@@ -1130,6 +1158,8 @@ serve(async (req) => {
             }
           }
 
+          promptExport = sanitizePromptExport(promptExport, existingShot.source_sentence);
+
           // Anti-text-leak suffix
           const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
           if (!promptExport.toLowerCase().includes("any visible writing in the image")) {
@@ -1146,22 +1176,10 @@ serve(async (req) => {
             payload.description = stripLegacyIdentityLockPrefix(aiShot.description);
           } else {
             const currentDesc = existingShot.description || "";
-            if (currentDesc.startsWith("Description visuelle du segment narratif")) {
+            if (currentDesc.startsWith("Description visuelle du segment narratif") || hasLegacyIllustrationWording(currentDesc)) {
               // Extract a rich description from prompt_export. Strip identity
               // locks first so the slice doesn't fall in the middle of one.
-              const cleanPrompt = stripLegacyIdentityLockPrefix(promptExport)
-                .replace(/^\s*Style\s*:[^.]*\.\s*/i, "")
-                .replace(/^.*?(?:Cinematic film)/i, "")
-                .replace(/Qualité visuelle\s*:.*$/is, "")
-                .replace(/Any visible writing.*$/is, "")
-                .trim();
-              if (cleanPrompt.length > 50) {
-                payload.description = cleanPrompt.slice(0, 500);
-              } else if (existingShot.source_sentence) {
-                // Last-resort: fall back on the narrative source sentence so
-                // we never persist a polluted description.
-                payload.description = existingShot.source_sentence;
-              }
+              payload.description = deriveCleanDescriptionFromPrompt(promptExport, existingShot.source_sentence);
             }
           }
           if (aiShot?.shot_type) payload.shot_type = aiShot.shot_type;
@@ -1435,7 +1453,7 @@ serve(async (req) => {
         // IDENTITY LOCK block that may already sit at the top of the prompt
         // (from a previous broken generation). The full lock is re-injected
         // by generate-shot-image at render time using mentions_shots.
-        promptExport = stripLegacyIdentityLockPrefix(promptExport);
+        promptExport = sanitizePromptExport(stripLegacyIdentityLockPrefix(promptExport), shot?.source_sentence || fbSentence);
 
         // Inject anti-text-leak suffix
         const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
@@ -1448,7 +1466,9 @@ serve(async (req) => {
           project_id,
           shot_order: j + 1,
           shot_type: shot?.shot_type || fbType,
-          description: shot?.description || fallbackDescription(fbSentence),
+          description: hasLegacyIllustrationWording(shot?.description)
+            ? deriveCleanDescriptionFromPrompt(promptExport, shot?.source_sentence || fbSentence)
+            : shot?.description || fallbackDescription(fbSentence),
           source_sentence: shot?.source_sentence || fbSentence,
           source_sentence_fr: shot?.source_sentence_fr || null,
           prompt_export: promptExport,
