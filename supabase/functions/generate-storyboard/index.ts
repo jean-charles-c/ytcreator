@@ -420,6 +420,16 @@ const fallbackDescription = (sentence: string): string =>
 const hasLegacyIllustrationWording = (value: string | null | undefined): boolean =>
   /\billustrant\s*:/i.test(String(value || ""));
 
+const isWeakPromptExport = (value: string | null | undefined): boolean => {
+  const text = String(value || "").toLowerCase();
+  const withoutSuffix = text.replace(/qualité visuelle\s*:.*$/is, "").trim();
+  return !text
+    || /\bvisual intention\s*:/i.test(text)
+    || /\bof the scene\b/i.test(text)
+    || /problèmes techniques\s+et\s+les\s+défis\s+de\s+développement/i.test(text)
+    || withoutSuffix.length < 520;
+};
+
 const sanitizePromptExport = (value: string, sourceSentence?: string | null): string => {
   let cleaned = String(value || "");
   if (sourceSentence) {
