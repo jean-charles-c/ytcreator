@@ -1453,7 +1453,7 @@ serve(async (req) => {
         // IDENTITY LOCK block that may already sit at the top of the prompt
         // (from a previous broken generation). The full lock is re-injected
         // by generate-shot-image at render time using mentions_shots.
-        promptExport = stripLegacyIdentityLockPrefix(promptExport);
+        promptExport = sanitizePromptExport(stripLegacyIdentityLockPrefix(promptExport), shot?.source_sentence || fbSentence);
 
         // Inject anti-text-leak suffix
         const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
