@@ -444,6 +444,19 @@ const fallbackPrompt = buildContextualPrompt;
 const fallbackDescription = (sentence: string): string =>
   `Description visuelle du segment narratif : "${sentence}"`;
 
+const hasLegacyIllustrationWording = (value: string | null | undefined): boolean =>
+  /\billustrant\s*:/i.test(String(value || ""));
+
+const deriveCleanDescriptionFromPrompt = (promptExport: string, sourceSentence?: string | null): string => {
+  const cleanPrompt = stripLegacyIdentityLockPrefix(promptExport)
+    .replace(/^\s*Style\s*:[^.]*\.\s*/i, "")
+    .replace(/^.*?(?:Cinematic film)/i, "")
+    .replace(/Qualité visuelle\s*:.*$/is, "")
+    .replace(/Any visible writing.*$/is, "")
+    .trim();
+  return cleanPrompt.length > 50 ? cleanPrompt.slice(0, 500) : (sourceSentence || "");
+};
+
 const buildSegmentShot = (
   segment: string,
   scene: any,
