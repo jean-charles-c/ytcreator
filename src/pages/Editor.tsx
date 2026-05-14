@@ -872,6 +872,51 @@ export default function Editor() {
     });
   }, []);
 
+  // Vehicle multi-view expansion: each detected vehicle gets exploded into
+  // 5 entries (front / side / rear / interior / top-down) so the user can
+  // attach distinct reference images per angle.
+  const VEHICLE_VIEWS: Array<{ suffix: string; angle: string }> = useMemo(() => ([
+    { suffix: "vue avant", angle: "FRONT VIEW — three-quarter front or straight-on front view of the vehicle, headlights and grille fully visible." },
+    { suffix: "vue de côté", angle: "SIDE VIEW — strict profile view of the vehicle, full silhouette visible from the side." },
+    { suffix: "vue arrière", angle: "REAR VIEW — three-quarter rear or straight-on rear view of the vehicle, taillights and rear shape fully visible." },
+    { suffix: "vue habitacle intérieur", angle: "INTERIOR VIEW — inside the cockpit / cabin of the vehicle, dashboard, steering wheel, seats and trim visible." },
+    { suffix: "vue de dessus", angle: "TOP-DOWN VIEW — strict overhead / bird's-eye view of the vehicle, full roof and overall footprint visible from directly above." },
+  ]), []);
+
+  const expandVehiclesIntoViews = useCallback((objects: any[], excludeNames?: Set<string>): RecurringObject[] => {
+    const alreadySplit = /\(vue [^)]+\)\s*$/i;
+    const expanded: any[] = [];
+    for (const obj of objects || []) {
+      const nom = String(obj?.nom || "");
+      const isVehicle = obj?.type === "vehicle";
+      const isAlreadyVariant = alreadySplit.test(nom);
+      const hasRefs = Array.isArray(obj?.reference_images) && obj.reference_images.length > 0;
+      const isExcluded = excludeNames ? excludeNames.has(nom.toLowerCase().trim()) : false;
+      if (isVehicle && !isAlreadyVariant && !hasRefs && !isExcluded) {
+        for (const v of VEHICLE_VIEWS) {
+          expanded.push({
+            ...obj,
+            id: `${obj.id || crypto.randomUUID()}-${v.suffix.replace(/\s+/g, "-")}`,
+            nom: `${obj.nom} (${v.suffix})`,
+            reference_images: [],
+            _view_angle_directive: v.angle,
+          });
+        }
+      } else {
+        expanded.push(obj);
+      }
+    }
+    const templated = applyIdentityTemplates(expanded as RecurringObject[]);
+    return templated.map((o: any) => {
+      if (o._view_angle_directive) {
+        const suffix = `\n\nVIEW ANGLE LOCK:\n${o._view_angle_directive}\nDo not switch to any other camera angle for this entry.`;
+        const { _view_angle_directive, ...rest } = o;
+        return { ...rest, identity_prompt: `${rest.identity_prompt}${suffix}` };
+      }
+      return o;
+    });
+  }, [VEHICLE_VIEWS, applyIdentityTemplates]);
+
   const handleReanalyzeContext = useCallback(async () => {
     if (!projectId) return;
     setIsContextAnalyzing(true);
@@ -894,10 +939,10 @@ export default function Editor() {
         toast.error("Analyse contextuelle échouée : " + (data?.error || "Erreur inconnue"));
         return;
       }
-      // Apply identity templates to all objects
+      // Apply identity templates + expand vehicles into 5 view variants
       const ctx = data.global_context;
       if (ctx?.objets_recurrents) {
-        ctx.objets_recurrents = applyIdentityTemplates(ctx.objets_recurrents);
+        ctx.objets_recurrents = expandVehiclesIntoViews(ctx.objets_recurrents);
       }
       setGlobalContext(ctx);
       const objCount = ctx?.objets_recurrents?.length || 0;
@@ -907,7 +952,7 @@ export default function Editor() {
     } finally {
       setIsContextAnalyzing(false);
     }
-  }, [projectId, applyIdentityTemplates]);
+  }, [projectId, expandVehiclesIntoViews]);
 
   const handleSearchMoreRecurrences = useCallback(async (excludeNames: string[]) => {
     if (!projectId) return;
@@ -934,44 +979,10 @@ export default function Editor() {
       // Apply identity templates to new objects
       const ctx = data.global_context;
       if (ctx?.objets_recurrents) {
-        // Expand newly detected vehicles into 4 view variants
-        // (front, side, rear, interior) so the user gets a complete
-        // visual reference set per vehicle automatically.
+        // Expand only newly detected vehicles (those NOT in excludeNames),
+        // existing entries are preserved as-is.
         const excludeSet = new Set((excludeNames || []).map(n => n.toLowerCase().trim()));
-        const VEHICLE_VIEWS: Array<{ suffix: string; angle: string }> = [
-          { suffix: "vue avant", angle: "FRONT VIEW — three-quarter front or straight-on front view of the vehicle, headlights and grille fully visible." },
-          { suffix: "vue de côté", angle: "SIDE VIEW — strict profile view of the vehicle, full silhouette visible from the side." },
-          { suffix: "vue arrière", angle: "REAR VIEW — three-quarter rear or straight-on rear view of the vehicle, taillights and rear shape fully visible." },
-          { suffix: "vue habitacle intérieur", angle: "INTERIOR VIEW — inside the cockpit / cabin of the vehicle, dashboard, steering wheel, seats and trim visible." },
-          { suffix: "vue de dessus", angle: "TOP-DOWN VIEW — strict overhead / bird's-eye view of the vehicle, full roof and overall footprint visible from directly above." },
-        ];
-        const expanded: any[] = [];
-        for (const obj of ctx.objets_recurrents as any[]) {
-          const isNew = obj?.nom && !excludeSet.has(String(obj.nom).toLowerCase().trim());
-          if (isNew && obj?.type === "vehicle") {
-            for (const v of VEHICLE_VIEWS) {
-              expanded.push({
-                ...obj,
-                id: `${obj.id || crypto.randomUUID()}-${v.suffix.replace(/\s+/g, "-")}`,
-                nom: `${obj.nom} (${v.suffix})`,
-                reference_images: [],
-                _view_angle_directive: v.angle,
-              });
-            }
-          } else {
-            expanded.push(obj);
-          }
-        }
-        const templated = applyIdentityTemplates(expanded as RecurringObject[]);
-        // Append view-angle directive to the identity prompt of each variant
-        ctx.objets_recurrents = templated.map((o: any) => {
-          if (o._view_angle_directive) {
-            const suffix = `\n\nVIEW ANGLE LOCK:\n${o._view_angle_directive}\nDo not switch to any other camera angle for this entry.`;
-            const { _view_angle_directive, ...rest } = o;
-            return { ...rest, identity_prompt: `${rest.identity_prompt}${suffix}` };
-          }
-          return o;
-        });
+        ctx.objets_recurrents = expandVehiclesIntoViews(ctx.objets_recurrents as any[], excludeSet);
       }
       setGlobalContext(ctx);
       const newCount = data.new_objects_count || 0;
@@ -985,7 +996,7 @@ export default function Editor() {
     } finally {
       setIsContextAnalyzing(false);
     }
-  }, [projectId]);
+  }, [projectId, expandVehiclesIntoViews]);
 
   // --- Object linking to shots ---
   const allRecurringObjects = useMemo(() => 

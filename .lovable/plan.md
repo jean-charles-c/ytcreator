@@ -1,35 +1,37 @@
-## Problème
+## Diagnostic
 
-Quand on clique sur « Envoyer vers ScriptCreator » depuis le bloc « Script voix off final » (tab RsearchEngine), le texte qui atterrit dans `scriptInput` n'est plus identique à celui affiché dans RsearchEngine :
+Dans `src/pages/Editor.tsx`, la logique qui éclate chaque véhicule détecté en 5 variantes (`vue avant`, `vue de côté`, `vue arrière`, `vue habitacle intérieur`, `vue de dessus`) n'existe **que** dans `handleSearchMoreRecurrences` (le bouton « Chercher plus de récurrences », lignes 937–974).
 
-1. `VoiceoverScriptPanel.doSendToScriptCreator` retire les en-têtes `SCÈNE N — Titre` et reconcatène les blocs avant d'appeler `onSendToScriptCreator(cleanedContent, ...)`.
-2. Côté `Editor.tsx`, le callback applique encore `cleanNarrationText(text)` à `narration` (peut altérer des sauts de ligne / tags), tandis que `pdfExtractedText` reçoit le texte déjà nettoyé.
+L'analyse contextuelle initiale (`handleReanalyzeContext`, lignes 875–910) — qui est celle déclenchée par défaut dans le tab Segmentation View pour le projet « BUGATTI EB 110 » — applique seulement `applyIdentityTemplates()` sans jamais expanser les véhicules. Résultat : on obtient une seule entrée « Bugatti EB 110 » au lieu des 5 vues attendues.
 
-Résultat : les en-têtes de scène disparaissent et la mise en forme diffère de la source.
+C'est pourquoi le système multi-vues paraît ne pas fonctionner : il n'est jamais appelé sur le premier passage.
 
-## Correctif (frontend uniquement)
+## Plan
 
-### 1. `src/components/editor/narrativeWorkflow/VoiceoverScriptPanel.tsx`
+1. **Extraire** `VEHICLE_VIEWS` et la boucle d'expansion en helper local dans `Editor.tsx` :
+   ```ts
+   const expandVehiclesIntoViews = (objects: any[], onlyNewExcluding?: Set<string>) => { … }
+   ```
+   - Si `onlyNewExcluding` est fourni : on n'expanse que les véhicules dont le `nom` n'est pas déjà dans le set (comportement actuel de "search more").
+   - Sinon : on expanse **tous** les véhicules (comportement à appliquer pour l'analyse initiale).
+   - Le helper renvoie aussi les objets non-véhicules inchangés et appose `_view_angle_directive` puis le concatène à `identity_prompt` après `applyIdentityTemplates`.
 
-Dans `doSendToScriptCreator` :
-- Ne plus stripper les en-têtes `SCÈNE N — Titre`. Envoyer **`script.content` tel quel** comme premier argument de `onSendToScriptCreator`.
-- Garder la construction du `chapterPayload` (à partir de `chapters` + `scenesByChapter`, fallback en parsant les en-têtes `SCÈNE`) — c'est indépendant du texte envoyé.
-- Supprimer la variable `cleanedContent` / la boucle `cleanedBlocks` devenue inutile.
+2. **Appeler ce helper dans `handleReanalyzeContext`** juste après réception de `data.global_context` :
+   - Filtrer pour ne pas réexpanser un véhicule qui possède déjà des `reference_images` non vides (objets protégés par `analyze-context`) ou dont le `nom` contient déjà un suffixe `(vue …)` — pour éviter de multiplier les variantes au fil des relances.
+   - Appliquer `applyIdentityTemplates` puis le suffixe `VIEW ANGLE LOCK`.
 
-### 2. `src/pages/Editor.tsx` (callback `onSendToScriptCreator`, ligne 2673-2682)
+3. **Refactorer `handleSearchMoreRecurrences`** pour réutiliser le même helper (passer le set des `excludeNames` afin de ne traiter que les nouveaux), supprimer la duplication actuelle.
 
-- Conserver le texte intact : `setPdfExtractedText(text)` reste, mais ne plus appliquer `cleanNarrationText` au passage. Soit on passe la même valeur à `setNarration(text)`, soit on retire `setNarration` (le ScriptCreator lit `pdfExtractedText`/`scriptInput` ; vérifier avant suppression).
-- Ne rien changer d'autre (chapitres, segmentation, switch de tab).
+4. **Garde-fou anti-doublon** : avant l'expansion, sauter tout véhicule dont `nom` matche `/\(vue [^)]+\)$/i` (déjà éclaté).
 
-## Vérification
+## Détails techniques
 
-1. Dans le projet « Protocoles d'Extinction… », régénérer ou réutiliser le script existant.
-2. Cliquer « Envoyer vers ScriptCreator ».
-3. Comparer visuellement le contenu du `scriptInput` (tab ScriptCreator) avec le bloc « Script voix off final » du tab RsearchEngine : les en-têtes `SCÈNE N — Titre` et la ponctuation doivent être identiques.
-4. Vérifier que les chapitres vidéo sont toujours pré-remplis depuis le sommaire narratif (comportement précédent inchangé).
+- Fichier touché : `src/pages/Editor.tsx` uniquement (logique frontend, pas de migration ni d'edge function).
+- Pas de changement de schéma DB : les 5 variantes restent stockées comme entrées indépendantes dans `global_context.objets_recurrents` (modèle existant).
+- Compatibilité : les projets ayant déjà reçu une seule entrée véhicule pourront déclencher manuellement l'expansion via « Chercher plus de récurrences » (comportement préservé) **ou** en relançant l'analyse contextuelle (nouveau).
 
 ## Hors scope
 
-- Pas de changement edge function.
-- Pas de changement DB.
-- Pas de modification du flux de chapitres ni de la segmentation narrative.
+- Pas de changement à `analyze-context` edge function.
+- Pas de modification de `ObjectRegistryPanel.tsx`.
+- Pas de migration des données existantes du projet « BUGATTI EB 110 » : l'utilisateur relance l'analyse pour bénéficier du fix.
