@@ -1013,7 +1013,10 @@ serve(async (req) => {
 
       // Call AI for prompt generation
       const aiResponse = await callLovableAi(LOVABLE_API_KEY, {
-        model: "google/gemini-2.5-flash",
+        // Use the lite model in prompt_only mode: shot boundaries are already
+        // fixed, so the AI only needs to fill in prompts. The full flash model
+        // regularly exceeds the 150s edge timeout on long scenes.
+        model: "google/gemini-2.5-flash-lite",
         max_tokens: 8192,
         messages: [
           { role: "system", content: buildSystemPrompt(visual_style, resolvedStyleLabel).replace("[VISUAL_STYLE_LINE]", resolvedStyleSuffix).replace("[ASPECT_RATIO]", resolvedAspectRatio) + sensitiveModeBlock },
