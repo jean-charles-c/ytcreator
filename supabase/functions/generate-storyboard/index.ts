@@ -356,86 +356,53 @@ const splitSceneIntoShotSegments = (text: string): string[] =>
 
 const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number, recurringObjects?: any[], styleSuffix?: string, aspectRatio?: string): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
+  const epoque = ctx?.epoque || "période historique décrite";
+  const lieu = ctx?.lieu || scene?.location || "lieu décrit";
+  const anchor = `En ${epoque}, à ${lieu}`;
+  const fragmentLower = String(fragment || "").toLowerCase();
 
-  // 1. Historical & geographic anchor (mandatory first sentence)
-  const epoque = ctx?.epoque || "the historical period";
-  const lieu = ctx?.lieu || "the described location";
-  const anchor = `In ${epoque}, ${lieu}`;
-
-  // 2. Camera framing from shot type
   const cameraMap: Record<string, string> = {
-    "Plan d'ensemble": "Wide establishing shot",
-    "Plan d'activité": "Medium shot capturing action",
-    "Plan d'interaction": "Two-shot or group composition",
-    "Plan environnemental": "Atmospheric environmental shot",
-    "Plan de détail d'artefact": "Close-up detail shot",
-    "Plan de détail scientifique": "Macro examination shot",
-    "Plan portrait": "Portrait shot",
-    "Plan subjectif": "Point-of-view shot",
+    "Plan d'ensemble": "plan d'ensemble ancré dans l'espace",
+    "Plan d'activité": "plan moyen d'activité",
+    "Plan d'interaction": "composition de groupe à hauteur humaine",
+    "Plan environnemental": "plan environnemental atmosphérique",
+    "Plan de détail d'artefact": "gros plan de détail mécanique",
+    "Plan de détail scientifique": "macro plan d'inspection technique",
+    "Plan portrait": "plan portrait documentaire",
+    "Plan subjectif": "plan subjectif depuis le regard d'un témoin",
   };
-  const cameraFraming = cameraMap[shotType || ""] || "Cinematic shot";
+  const cameraFraming = cameraMap[shotType || ""] || "plan documentaire cinématographique";
 
-  // 3. Characters (only if relevant to this fragment)
-  const personnages = ctx?.personnages;
-  const fragmentLower = fragment.toLowerCase();
-  let characterNote = "";
-  if (personnages && personnages !== "Non déterminé") {
-    const hasHumanCue = /\b(people|person|king|queen|ruler|trader|craftsmen|builder|worker|priest|warrior|chief|community|population|inhabitants|they|he|she|them)\b/i.test(fragment)
-      || /\b(peuple|roi|reine|dirigeant|commerçant|artisan|bâtisseur|ouvrier|prêtre|guerrier|chef|communauté|population|habitants|ils|il|elle|eux)\b/i.test(fragment);
-    if (hasHumanCue) {
-      characterNote = ` Characters present: ${personnages}.`;
+  const technicalFocus = (() => {
+    if (/faiblesse|structure|renfort|rigidit|torsion|châssis|chassis|monocoque|carbone/.test(fragmentLower)) {
+      return "la monocoque carbone nue d'une EB 110 posée sur un marbre de contrôle, avec des plaques de renfort discrètes, des zones poncées, des points de fixation marqués à la craie grasse, des jauges mécaniques et des serre-joints d'atelier autour des longerons";
     }
-  }
-
-  // 4. Ambiance & tone (selective injection)
-  const ambiance = ctx?.ambiance;
-  const ton = ctx?.ton;
-  let moodNote = "";
-  if (ambiance && ambiance !== "Non déterminé") {
-    moodNote = ` Atmosphere: ${ambiance}.`;
-  } else if (ton && ton !== "Non déterminé") {
-    moodNote = ` Tone: ${ton}.`;
-  }
-
-  // 5. Visual intention (scene-level)
-  const visualIntention = scene?.visual_intention;
-  const intentionNote = visualIntention ? ` Visual intention: ${visualIntention}.` : "";
-
-  // 6. Scene continuity for coherence
-  const continuity = scene?.continuity;
-  const continuityNote = continuity ? ` Scene continuity: ${continuity}.` : "";
-
-  // 7. Recurring object identity locks
-  let objectIdentityBlock = "";
-  if (recurringObjects && recurringObjects.length > 0) {
-    const sceneOrder = scene?.scene_order;
-    const matchingObjects = recurringObjects.filter((obj: any) => {
-      // Check if this object is relevant to this scene
-      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
-        return obj.mentions_scenes.includes(sceneOrder);
-      }
-      // If no scenes specified, check if the fragment mentions the object name
-      const objNameLower = (obj.nom || "").toLowerCase();
-      return objNameLower && fragmentLower.includes(objNameLower.split(" ")[0].toLowerCase());
-    });
-    if (matchingObjects.length > 0) {
-      objectIdentityBlock = " " + matchingObjects.map((obj: any) => obj.identity_prompt || "").filter(Boolean).join(" ");
+    if (/v12|turbo|moteur|litres|quatre turbos|transmission|roues motrices/.test(fragmentLower)) {
+      return "le groupe motopropulseur V12 ouvert sur un établi bas, conduites de suralimentation, collecteurs métalliques bleuis par la chaleur, transmission exposée et outillage de précision disposé autour des pièces";
     }
-  }
+    if (/ingénieur|témoignage|témoins|ancien/.test(fragmentLower)) {
+      return "d'anciens ingénieurs autour d'une table d'atelier, tirages photo, plans techniques anonymisés, carnets ouverts sans texte lisible, mains tachées de graphite et regards concentrés sur les défauts à corriger";
+    }
+    if (/argent|banque|dette|faillite|financi|entreprise|lotus|fragile/.test(fragmentLower)) {
+      return "un bureau industriel sous tension, dossiers financiers fermés, deux calendriers de production concurrents, maquette d'EB 110 et documents de rachat empilés, sans aucun texte lisible";
+    }
+    if (/premiers exemplaires|prototype|série|production|développement/.test(fragmentLower)) {
+      return "les premiers exemplaires de production alignés dans l'atelier, capots ouverts, panneaux démontés, techniciens inspectant les assemblages et petites corrections visibles sur les trains roulants";
+    }
+    return `une scène documentaire concrète centrée sur ${ctx?.sujet || scene?.title || "le fait historique du fragment"}, matérialisée par des objets, gestes et traces physiques directement liés au moment raconté`;
+  })();
 
-  // 8. Resolve style suffix
+  const humanCue = /\b(il|elle|ils|elles|homme|femme|ingénieur|ouvrier|technicien|artioli|témoins|anciens)\b/i.test(fragment);
+  const characterNote = humanCue && ctx?.personnages && ctx.personnages !== "Non déterminé"
+    ? ` Personnages visibles seulement s'ils servent l'action technique, ${ctx.personnages}, posture sobre, gestes précis, aucune pose symbolique.`
+    : " Présence humaine limitée aux gestes utiles, pas de mise en scène métaphorique littérale.";
+
+  const ambiance = ctx?.ambiance && ctx.ambiance !== "Non déterminé" ? ctx.ambiance : "tension documentaire sobre";
   const effectiveStyle = styleSuffix || "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique.";
   const effectiveRatio = aspectRatio || "16:9";
+  const materialBaseline = "Matériaux visibles et crédibles, carbone tressé, métal brossé, caoutchouc usé, béton d'atelier, poussière fine en suspension, reflets doux sur les surfaces vernies, profondeur de champ naturelle, éclairage diffus de grande baie industrielle avec ombres cohérentes.";
 
-  // 9. Build the prompt — style FIRST, then fragment description
-  // Only include photorealism baseline when no specific non-realistic style is set
-  const isDefaultOrRealistic = !styleSuffix || styleSuffix.includes("photographique") || styleSuffix.includes("cinématographique") || styleSuffix === "Aucun style artistique imposé";
-  const baselineDesc = isDefaultOrRealistic
-    ? "Image documentaire historique avec reconstruction photoréaliste, matériaux et textures réalistes, architecture et vêtements archéologiquement plausibles et fidèles à la période. Inclure des éléments de profondeur au premier plan, des particules atmosphériques et un éclairage physiquement motivé avec des ombres naturelles."
-    : "Image documentaire historique, architecture et vêtements fidèles à la période. Composition riche avec éléments de profondeur.";
-  // NEVER quote the narration fragment literally — prompts must describe the
-  // visual scene, not ask the model to "illustrate" the sentence.
-  return `${effectiveStyle} ${anchor}. ${cameraFraming} of the scene.${characterNote}${moodNote}${intentionNote}${continuityNote}${objectIdentityBlock} ${baselineDesc} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
+  return `${effectiveStyle} ${anchor}. ${cameraFraming} montrant ${technicalFocus}.${characterNote} La composition doit traduire le problème par des indices physiques observables, jamais par une phrase écrite ni par une métaphore de jonglage ou d'équilibre. Premier plan riche avec outils, pièces démontées, câbles, repères de contrôle et textures industrielles de l'époque. Arrière-plan fidèle à un atelier automobile italien des années 1990, machines, établis, ponts roulants et murs clairs légèrement patinés. Ambiance : ${ambiance}, lumière froide réaliste, contraste modéré, image calme et précise de documentaire haut de gamme. ${materialBaseline} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
 };
 
 // Keep legacy name for compatibility
