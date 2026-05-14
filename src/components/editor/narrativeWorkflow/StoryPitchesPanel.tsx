@@ -21,6 +21,8 @@ import {
   FileBadge2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Collapsible,
@@ -64,6 +66,7 @@ export default function StoryPitchesPanel({
 }: StoryPitchesPanelProps) {
   const { batches, loading, reload } = useStoryPitchBatches({ analysisId, formId });
   const [generating, setGenerating] = useState(false);
+  const [theme, setTheme] = useState("");
   const navigate = useNavigate();
   const { items: generatedProjects, reload: reloadProjects } =
     useGeneratedProjectsByAnalysis(analysisId ?? null);
@@ -107,8 +110,14 @@ export default function StoryPitchesPanel({
     }
     setGenerating(true);
     try {
+      const trimmedTheme = theme.trim();
       const { data, error } = await supabase.functions.invoke("generate-story-pitches", {
-        body: { analysis_id: analysisId ?? null, form_id: formId ?? null },
+        body: {
+          analysis_id: analysisId ?? null,
+          form_id: formId ?? null,
+          instructions: trimmedTheme || null,
+          theme: trimmedTheme || null,
+        },
       });
       if (error) {
         const msg =
@@ -126,7 +135,7 @@ export default function StoryPitchesPanel({
     } finally {
       setGenerating(false);
     }
-  }, [analysisId, formId, reload]);
+  }, [analysisId, formId, reload, theme]);
 
   // Auto-trigger from analysis panel CTA (effect to avoid render side-effects)
   useEffect(() => {
@@ -158,6 +167,30 @@ export default function StoryPitchesPanel({
             Les anciens lots sont conservés.
           </p>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label
+          htmlFor="story-pitches-theme"
+          className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground"
+        >
+          Thématique (optionnelle)
+        </Label>
+        <Textarea
+          id="story-pitches-theme"
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+          placeholder="Ex : la conquête spatiale soviétique, les arnaques financières des années 80, l'histoire d'un objet du quotidien…"
+          rows={2}
+          disabled={disabled || generating}
+          className="text-xs resize-y min-h-[56px]"
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Précise un sujet, un univers ou un angle pour orienter les 5 propositions. Laisse vide pour des sujets totalement libres.
+        </p>
+      </div>
+
+      <div className="flex justify-end">
         <Button
           type="button"
           variant={batches.length > 0 ? "outline" : "default"}

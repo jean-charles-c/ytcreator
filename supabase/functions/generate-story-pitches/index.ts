@@ -133,33 +133,53 @@ const PITCH_TOOL = {
   },
 };
 
-function buildSystemPrompt(): string {
-  return [
+function buildSystemPrompt(opts: { hasTheme: boolean }): string {
+  const lines = [
     "Tu es un développeur de concepts vidéo documentaire / récit.",
     "",
     "Mission : produire EXACTEMENT 5 propositions d'histoires ORIGINALES qui respectent",
     "la mécanique narrative fournie (structure, patterns, ton, rythme, règles d'écriture).",
     "",
     "Règles strictes :",
-    "- Les 5 pitchs doivent être nettement DISTINCTS les uns des autres : sujets différents,",
-    "  univers différents, époques ou angles différents. Pas de variations cosmétiques.",
+    "- Les 5 pitchs doivent être nettement DISTINCTS les uns des autres : angles différents,",
+    "  époques différentes, personnages différents ou points de vue différents. Pas de variations cosmétiques.",
     "- Chaque pitch est DÉTAILLÉ : pas de phrases vides, pas de généralités creuses.",
-    "- Tu transposes la mécanique narrative à des SUJETS NEUFS — jamais une copie des sources.",
+    "- Tu transposes la mécanique narrative à des sujets neufs — jamais une copie des sources.",
     "- La justification du respect de la forme doit pointer des éléments concrets de l'analyse.",
     "- Tu n'inventes pas de faits historiques précis (dates, chiffres) : tu décris l'angle.",
     "- Tu écris en français, registre soigné, sans clichés vendeurs.",
-    "",
-    "Soumets ta réponse via l'outil `submit_story_pitches`.",
-  ].join("\n");
+  ];
+  if (opts.hasTheme) {
+    lines.push(
+      "- IMPORTANT : une THÉMATIQUE est imposée par l'auteur. Les 5 pitchs DOIVENT tous",
+      "  s'inscrire dans cette thématique (sujet, univers, époque ou angle imposé).",
+      "  Varie les angles, les personnages ou les points d'entrée À L'INTÉRIEUR de cette thématique,",
+      "  mais ne t'en éloigne jamais.",
+    );
+  }
+  lines.push("", "Soumets ta réponse via l'outil `submit_story_pitches`.");
+  return lines.join("\n");
 }
 
 function buildUserMessage(opts: {
   signature: any;
   form?: { name?: string | null; description?: string | null; system_prompt?: string | null } | null;
   instructions?: string | null;
+  theme?: string | null;
 }): string {
-  const { signature, form, instructions } = opts;
+  const { signature, form, instructions, theme } = opts;
   const parts: string[] = [];
+
+  if (theme && theme.trim()) {
+    parts.push("# THÉMATIQUE IMPOSÉE PAR L'AUTEUR");
+    parts.push(theme.trim());
+    parts.push("");
+    parts.push(
+      "Les 5 pitchs doivent TOUS s'inscrire dans cette thématique. Varie les angles, les personnages,",
+      "les époques ou les points d'entrée à l'intérieur de cette thématique, mais ne t'en éloigne jamais.",
+      "",
+    );
+  }
 
   if (form?.name) {
     parts.push(`# Forme narrative : ${form.name}`);
@@ -231,15 +251,21 @@ function buildUserMessage(opts: {
     }
   }
 
-  if (instructions && instructions.trim()) {
+  if (instructions && instructions.trim() && instructions.trim() !== (theme ?? "").trim()) {
     parts.push("## Instructions complémentaires de l'auteur");
     parts.push(instructions.trim());
     parts.push("");
   }
 
-  parts.push(
-    "Génère maintenant 5 pitchs détaillés, distincts, qui transposent cette mécanique à des sujets entièrement nouveaux.",
-  );
+  if (theme && theme.trim()) {
+    parts.push(
+      "Génère maintenant 5 pitchs détaillés et distincts qui transposent cette mécanique narrative à la THÉMATIQUE imposée ci-dessus.",
+    );
+  } else {
+    parts.push(
+      "Génère maintenant 5 pitchs détaillés, distincts, qui transposent cette mécanique à des sujets entièrement nouveaux.",
+    );
+  }
   return parts.join("\n");
 }
 
@@ -271,16 +297,17 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub as string;
 
-    let body: { analysis_id?: string; form_id?: string; instructions?: string } = {};
+    let body: { analysis_id?: string; form_id?: string; instructions?: string; theme?: string } = {};
     try {
       body = await req.json();
     } catch {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
-    const { analysis_id, form_id, instructions } = body;
+    const { analysis_id, form_id, instructions, theme } = body;
     if (!analysis_id && !form_id) {
       return jsonResponse({ error: "analysis_id or form_id required" }, 400);
     }
+    const themeClean = (theme ?? "").trim() || null;
 
     // Charger l'analyse et/ou la forme
     let signature: any = null;
@@ -342,14 +369,17 @@ Deno.serve(async (req) => {
     const { data: lastBatch } = await filtered;
     const nextIndex = (lastBatch?.[0]?.batch_index ?? 0) + 1;
 
-    const systemPrompt = buildSystemPrompt();
+    const systemPrompt = buildSystemPrompt({ hasTheme: !!themeClean });
     const userMessage = buildUserMessage({
       signature,
       form: formRow,
       instructions: instructions ?? null,
+      theme: themeClean,
     });
 
-    console.log(`[generate-story-pitches] user=${userId} analysis=${resolvedAnalysisId ?? "-"} form=${form_id ?? "-"} batch#${nextIndex}`);
+    console.log(
+      `[generate-story-pitches] user=${userId} analysis=${resolvedAnalysisId ?? "-"} form=${form_id ?? "-"} batch#${nextIndex} theme=${themeClean ? "yes" : "no"}`,
+    );
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -420,7 +450,9 @@ Deno.serve(async (req) => {
         analysis_id: resolvedAnalysisId,
         form_id: form_id ?? null,
         batch_index: nextIndex,
-        instructions: instructions ?? null,
+        instructions: themeClean
+          ? `[THÉMATIQUE] ${themeClean}${instructions && instructions.trim() && instructions.trim() !== themeClean ? `\n\n${instructions.trim()}` : ""}`
+          : (instructions ?? null),
         ai_model: AI_MODEL,
         status: "pitch_batch_generated",
       })
