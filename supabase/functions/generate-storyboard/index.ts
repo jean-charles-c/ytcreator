@@ -1120,7 +1120,7 @@ serve(async (req) => {
           const aiShot = aiPromptMap.get(`${scene.id}::${idx}`);
 
           let promptExport = aiShot?.prompt_export
-            || buildContextualPrompt(existingShot.source_sentence || scene.source_text, scene, existingShot.shot_type, idx, recurringObjects);
+            || buildContextualPrompt(existingShot.source_sentence || scene.source_text, scene, existingShot.shot_type, idx, recurringObjects, resolvedStyleSuffix, resolvedAspectRatio);
 
           // Inject identity locks
           if (relevantObjs.length > 0) {
@@ -1142,6 +1142,17 @@ serve(async (req) => {
           }
 
           promptExport = sanitizePromptExport(promptExport, existingShot.source_sentence);
+          if (isWeakPromptExport(promptExport)) {
+            promptExport = buildContextualPrompt(
+              existingShot.source_sentence || scene.source_text,
+              scene,
+              aiShot?.shot_type || existingShot.shot_type,
+              idx,
+              recurringObjects,
+              resolvedStyleSuffix,
+              resolvedAspectRatio,
+            );
+          }
 
           // Anti-text-leak suffix
           const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
