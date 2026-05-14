@@ -3729,6 +3729,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                         {sceneShots.map((sh, i) => {
                                           const shotNum = String(startIndex + i).padStart(4, "0");
                                           const hasImage = !!sh.image_url;
+                                          const hasPrompt = !!(sh.prompt_export && sh.prompt_export.trim().length > 0);
                                           const issueLevel = showWarnings ? shotIssueMap.get(sh.id) : undefined;
                                           const issueColor = issueLevel === "error"
                                             ? "text-destructive font-bold"
@@ -3738,6 +3739,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                             ? "text-green-500 font-semibold"
                                             : "text-muted-foreground";
                                           const isClickable = showWarnings && !!issueLevel;
+                                          const missingPromptClass = !hasPrompt && !issueLevel ? "underline decoration-red-500 decoration-2 underline-offset-2" : "";
                                           return (
                                             <span key={sh.id}>
                                               {i > 0 && <span className="text-muted-foreground"> / </span>}
@@ -3761,7 +3763,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                                   {shotNum}
                                                 </button>
                                               ) : (
-                                                <span className={issueColor}>{shotNum}</span>
+                                                <span className={`${issueColor} ${missingPromptClass}`} title={!hasPrompt ? "Prompt non généré" : undefined}>{shotNum}</span>
                                               )}
                                             </span>
                                           );
