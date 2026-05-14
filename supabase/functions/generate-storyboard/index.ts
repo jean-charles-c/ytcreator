@@ -1141,6 +1141,7 @@ serve(async (req) => {
             }
           }
 
+          let usedDeterministicPrompt = false;
           promptExport = sanitizePromptExport(promptExport, existingShot.source_sentence);
           if (isWeakPromptExport(promptExport)) {
             promptExport = buildContextualPrompt(
@@ -1152,6 +1153,7 @@ serve(async (req) => {
               resolvedStyleSuffix,
               resolvedAspectRatio,
             );
+            usedDeterministicPrompt = true;
           }
 
           // Anti-text-leak suffix
@@ -1164,7 +1166,9 @@ serve(async (req) => {
             prompt_export: promptExport,
           };
           // Always replace fallback descriptions — never keep "Description visuelle du segment narratif"
-          if (aiShot?.description) {
+          if (usedDeterministicPrompt) {
+            payload.description = deriveCleanDescriptionFromPrompt(promptExport, existingShot.source_sentence);
+          } else if (aiShot?.description) {
             // Defensively strip any legacy IDENTITY LOCK block the model may
             // have echoed inside the description field.
             payload.description = stripLegacyIdentityLockPrefix(aiShot.description);
