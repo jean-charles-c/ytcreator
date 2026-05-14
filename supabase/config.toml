@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.sync-kie-pricing]
 verify_jwt = false
+
+[functions.search-stock-videos]
+verify_jwt = false

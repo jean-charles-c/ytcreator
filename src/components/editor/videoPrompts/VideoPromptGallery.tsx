@@ -12,6 +12,7 @@ import {
   Loader2,
   ImageIcon,
   Sparkles,
+  Clapperboard,
 } from "lucide-react";
 import {
   Select,
@@ -38,6 +39,7 @@ import type {
 } from "./videoGeneration.types";
 import VideoAssetCard from "./VideoAssetCard";
 import ExternalUploadPanel from "./ExternalUploadPanel";
+import StockVideoSearchPanel from "./StockVideoSearchPanel";
 
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
@@ -468,8 +470,21 @@ export default function VideoPromptGallery({
         </div>
       </div>
 
-      {/* External uploads — collapsible accordion above gallery, closed by default */}
+      {/* Stock videos search + External uploads — collapsible accordions */}
       <Accordion type="single" collapsible className="mb-4">
+        <AccordionItem value="stock-videos" className="border-border">
+          <AccordionTrigger className="py-2.5 hover:no-underline">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Clapperboard className="h-3.5 w-3.5 text-cyan-400" />
+              Banque de vidéos libres
+              <span className="text-[10px] text-muted-foreground/60 normal-case">— Pexels &amp; Pixabay</span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <StockVideoSearchPanel />
+          </AccordionContent>
+        </AccordionItem>
+
         <AccordionItem value="externals" className="border-border">
           <AccordionTrigger className="py-2.5 hover:no-underline">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
