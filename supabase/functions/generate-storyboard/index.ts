@@ -362,10 +362,27 @@ const splitSceneIntoShotSegments = (text: string): string[] =>
 
 const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string, shotIndex?: number, recurringObjects?: any[], styleSuffix?: string, aspectRatio?: string): string => {
   const ctx = scene?.scene_context as Record<string, string> | null;
-  const epoque = ctx?.epoque || "période historique décrite";
-  const lieu = ctx?.lieu || scene?.location || "lieu décrit";
-  const anchor = `En ${epoque}, à ${lieu}`;
-  const fragmentLower = String(fragment || "").toLowerCase();
+  // Sanitize scene-level context: drop placeholders and parenthetical annotations
+  // like "(conceptuel)" that should never leak into a render-ready prompt.
+  const cleanField = (v: unknown): string => {
+    const s = String(v || "").trim();
+    if (!s) return "";
+    if (/non d[ée]termin[ée]/i.test(s)) return "";
+    return s
+      .replace(/\s*\([^)]*conceptuel[^)]*\)/gi, "")
+      .replace(/\s*\([^)]*hypoth[ée]tique[^)]*\)/gi, "")
+      .replace(/\s*\([^)]*g[ée]n[ée]rique[^)]*\)/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  };
+  const epoque = cleanField(ctx?.epoque);
+  const lieu = cleanField(ctx?.lieu) || cleanField(scene?.location);
+
+  // Anchor only when we have real, non-placeholder context.
+  const anchorParts: string[] = [];
+  if (epoque) anchorParts.push(`Époque : ${epoque}`);
+  if (lieu) anchorParts.push(`Lieu : ${lieu}`);
+  const anchor = anchorParts.length ? `${anchorParts.join(", ")}.` : "";
 
   const cameraMap: Record<string, string> = {
     "Plan d'ensemble": "plan d'ensemble ancré dans l'espace",
@@ -379,36 +396,26 @@ const buildContextualPrompt = (fragment: string, scene?: any, shotType?: string,
   };
   const cameraFraming = cameraMap[shotType || ""] || "plan documentaire cinématographique";
 
-  const technicalFocus = (() => {
-    if (/faiblesse|structure|renfort|rigidit|torsion|châssis|chassis|monocoque|carbone/.test(fragmentLower)) {
-      return "la monocoque carbone nue d'une EB 110 posée sur un marbre de contrôle, avec des plaques de renfort discrètes, des zones poncées, des points de fixation marqués à la craie grasse, des jauges mécaniques et des serre-joints d'atelier autour des longerons";
-    }
-    if (/v12|turbo|moteur|litres|quatre turbos|transmission|roues motrices/.test(fragmentLower)) {
-      return "le groupe motopropulseur V12 ouvert sur un établi bas, conduites de suralimentation, collecteurs métalliques bleuis par la chaleur, transmission exposée et outillage de précision disposé autour des pièces";
-    }
-    if (/ingénieur|témoignage|témoins|ancien/.test(fragmentLower)) {
-      return "d'anciens ingénieurs autour d'une table d'atelier, tirages photo, plans techniques anonymisés, carnets ouverts sans texte lisible, mains tachées de graphite et regards concentrés sur les défauts à corriger";
-    }
-    if (/argent|banque|dette|faillite|financi|entreprise|lotus|fragile/.test(fragmentLower)) {
-      return "un bureau industriel sous tension, dossiers financiers fermés, deux calendriers de production concurrents, maquette d'EB 110 et documents de rachat empilés, sans aucun texte lisible";
-    }
-    if (/premiers exemplaires|prototype|série|production|développement/.test(fragmentLower)) {
-      return "les premiers exemplaires de production alignés dans l'atelier, capots ouverts, panneaux démontés, techniciens inspectant les assemblages et petites corrections visibles sur les trains roulants";
-    }
-    return `une scène documentaire concrète centrée sur ${ctx?.sujet || scene?.title || "le fait historique du fragment"}, matérialisée par des objets, gestes et traces physiques directement liés au moment raconté`;
-  })();
+  // The shot fragment IS the visual subject. We never reuse the abstract
+  // chapter/scene "sujet" field which describes the whole video, not a shot.
+  const subjectText = String(fragment || "").trim();
+  const subjectClause = subjectText
+    ? `Scène documentaire concrète qui matérialise visuellement, par des objets, gestes, lieux et personnes physiquement présents dans l'instant narré, le fait suivant : ${subjectText}`
+    : "Scène documentaire concrète centrée sur des indices physiques observables liés au moment narré";
 
-  const humanCue = /\b(il|elle|ils|elles|homme|femme|ingénieur|ouvrier|technicien|artioli|témoins|anciens)\b/i.test(fragment);
-  const characterNote = humanCue && ctx?.personnages && ctx.personnages !== "Non déterminé"
-    ? ` Personnages visibles seulement s'ils servent l'action technique, ${ctx.personnages}, posture sobre, gestes précis, aucune pose symbolique.`
+  const personnages = cleanField(ctx?.personnages);
+  const humanCue = /\b(il|elle|ils|elles|homme|femme|ingénieur|ouvrier|technicien|pilote|témoins|anciens)\b/i.test(subjectText);
+  const characterNote = humanCue && personnages
+    ? ` Personnages visibles uniquement s'ils servent l'action décrite (${personnages}), posture sobre, gestes précis, aucune pose symbolique.`
     : " Présence humaine limitée aux gestes utiles, pas de mise en scène métaphorique littérale.";
 
-  const ambiance = ctx?.ambiance && ctx.ambiance !== "Non déterminé" ? ctx.ambiance : "tension documentaire sobre";
+  const ambiance = cleanField(ctx?.ambiance) || "tension documentaire sobre";
   const effectiveStyle = styleSuffix || "Style : photographie documentaire ultra réaliste, éclairage cinématographique, réalisme de reconstruction historique.";
   const effectiveRatio = aspectRatio || "16:9";
-  const materialBaseline = "Matériaux visibles et crédibles, carbone tressé, métal brossé, caoutchouc usé, béton d'atelier, poussière fine en suspension, reflets doux sur les surfaces vernies, profondeur de champ naturelle, éclairage diffus de grande baie industrielle avec ombres cohérentes.";
 
-  return `${effectiveStyle} ${anchor}. ${cameraFraming} montrant ${technicalFocus}.${characterNote} La composition doit traduire le problème par des indices physiques observables, jamais par une phrase écrite ni par une métaphore de jonglage ou d'équilibre. Premier plan riche avec outils, pièces démontées, câbles, repères de contrôle et textures industrielles de l'époque. Arrière-plan fidèle à un atelier automobile italien des années 1990, machines, établis, ponts roulants et murs clairs légèrement patinés. Ambiance : ${ambiance}, lumière froide réaliste, contraste modéré, image calme et précise de documentaire haut de gamme. ${materialBaseline} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
+  const materialBaseline = "Matériaux visibles et crédibles fidèles à l'époque et au lieu, profondeur de champ naturelle, ombres cohérentes, reflets doux, textures naturelles.";
+
+  return `${effectiveStyle} ${anchor} ${cameraFraming} : ${subjectClause}.${characterNote} La composition doit traduire l'action par des indices physiques observables, jamais par une phrase écrite, un sous-titre ou une métaphore visuelle (pas de balance, pas de jonglage, pas de symbole abstrait). Premier plan riche en détails matériels pertinents pour la scène. Arrière-plan cohérent avec l'époque et le lieu indiqués. Ambiance : ${ambiance}, lumière naturelle réaliste, contraste modéré, image calme et précise de documentaire haut de gamme. ${materialBaseline} Qualité visuelle : image fixe cinématographique, détail 8k, textures naturelles, physique réaliste. Ratio d'aspect : ${effectiveRatio}`;
 };
 
 // Keep legacy name for compatibility
