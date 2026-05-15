@@ -434,6 +434,13 @@ const isWeakPromptExport = (value: string | null | undefined): boolean => {
     || /\bvisual intention\s*:/i.test(text)
     || /\bof the scene\b/i.test(text)
     || /problèmes techniques\s+et\s+les\s+défis\s+de\s+développement/i.test(text)
+    || /période historique décrite/i.test(text)
+    || /lieu décrit/i.test(text)
+    || /\(conceptuel\)/i.test(text)
+    || /\(hypoth[ée]tique\)/i.test(text)
+    || /l['’]histoire explore/i.test(text)
+    || /la fine ligne entre le génie/i.test(text)
+    || /scène documentaire concrète centrée sur [^.]{0,40}\bhistoire\b/i.test(text)
     || withoutSuffix.length < 520;
 };
 
