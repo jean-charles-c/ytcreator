@@ -124,6 +124,30 @@ export default function ChapterCollapse({
     const raw = narration?.trim() || "";
     if (!raw) return [];
 
+    const sceneMatches = [...raw.matchAll(/(?:^|\n)\s*SC[ÈE]NE\s+(\d+)\s*[—–-]\s*(.+?)\s*\n/gi)];
+    if (sceneMatches.length > 0) {
+      return sceneMatches.map((match, idx) => {
+        const contentStart = (match.index ?? 0) + match[0].length;
+        const contentEnd = idx + 1 < sceneMatches.length ? sceneMatches[idx + 1].index ?? raw.length : raw.length;
+        const sceneNumber = match[1] || String(idx + 1);
+        const sceneTitle = match[2]?.trim() || `Scène ${sceneNumber}`;
+        const text = raw.slice(contentStart, contentEnd).trim() || sceneTitle;
+        const firstSentence = text.split(/[.!?]\s/)[0]?.trim() || "";
+        return {
+          id: `scene_chapter_${sceneNumber}`,
+          index: idx,
+          sectionType: null,
+          startSentence: firstSentence.slice(0, 120),
+          summary: "",
+          title: sceneTitle,
+          variants: [],
+          titleFR: null,
+          validated: false,
+          sourceText: text,
+        };
+      });
+    }
+
     const parsed = parseTaggedScript(raw);
     if (parsed.tagged) {
       return CORE_SECTION_TYPES.map((type, idx) => {
