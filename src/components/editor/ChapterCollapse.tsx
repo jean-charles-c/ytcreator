@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import ChapterList from "./ChapterList";
 import { type ChapterListState, type ChapterTitleVariant, type Chapter } from "./chapterTypes";
 import { CORE_SECTION_TYPES, SECTION_TYPES, SECTION_META, type SectionType } from "./canonicalScriptTypes";
+import { parseTaggedScript } from "./tagParser";
 import { supabase } from "@/integrations/supabase/client";
 import type { NarrativeSection } from "./SectionCard";
 
@@ -118,8 +119,103 @@ export default function ChapterCollapse({
     });
   }, [proseScript]);
 
-  /** Active chapter list — prose-based when proseScript provided, section-based otherwise */
-  const activeChapters = proseScript ? chaptersFromProse : chaptersFromSections;
+  /** Fallback robuste : si l'état des sections est vide, reconstruire depuis ScriptInput/narration */
+  const chaptersFromNarration = useMemo((): Chapter[] => {
+    const raw = narration?.trim() || "";
+    if (!raw) return [];
+
+    const sceneMatches = [...raw.matchAll(/(?:^|\n)\s*SC[ÈE]NE\s+(\d+)\s*[—–-]\s*(.+?)\s*\n/gi)];
+    if (sceneMatches.length > 0) {
+      return sceneMatches.map((match, idx) => {
+        const contentStart = (match.index ?? 0) + match[0].length;
+        const contentEnd = idx + 1 < sceneMatches.length ? sceneMatches[idx + 1].index ?? raw.length : raw.length;
+        const sceneNumber = match[1] || String(idx + 1);
+        const sceneTitle = match[2]?.trim() || `Scène ${sceneNumber}`;
+        const text = raw.slice(contentStart, contentEnd).trim() || sceneTitle;
+        const firstSentence = text.split(/[.!?]\s/)[0]?.trim() || "";
+        return {
+          id: `scene_chapter_${sceneNumber}`,
+          index: idx,
+          sectionType: null,
+          startSentence: firstSentence.slice(0, 120),
+          summary: "",
+          title: sceneTitle,
+          variants: [],
+          titleFR: null,
+          validated: false,
+          sourceText: text,
+        };
+      });
+    }
+
+    const parsed = parseTaggedScript(raw);
+    if (parsed.tagged) {
+      return CORE_SECTION_TYPES.map((type, idx) => {
+        const meta = SECTION_META[type];
+        const text = parsed.sections.find((section) => section.key === type)?.content?.trim() || "";
+        const firstSentence = text.split(/[.!?]\s/)[0]?.trim() || "";
+        return {
+          id: type,
+          index: idx,
+          sectionType: type,
+          startSentence: firstSentence.slice(0, 120),
+          summary: "",
+          title: `${meta.icon} ${meta.label}`,
+          variants: [],
+          titleFR: null,
+          validated: false,
+          sourceText: text,
+        };
+      });
+    }
+
+    const paragraphs = raw
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 80);
+    if (paragraphs.length === 0) return [];
+    const targetCount = Math.min(Math.max(Math.floor(paragraphs.length / 3), 4), 7);
+    const totalChars = paragraphs.reduce((sum, p) => sum + p.length, 0);
+    const targetGroupSize = totalChars / targetCount;
+    const groups: string[][] = [];
+    let current: string[] = [];
+    let currentSize = 0;
+    for (const p of paragraphs) {
+      current.push(p);
+      currentSize += p.length;
+      if (currentSize >= targetGroupSize && groups.length < targetCount - 1) {
+        groups.push(current);
+        current = [];
+        currentSize = 0;
+      }
+    }
+    if (current.length > 0) groups.push(current);
+
+    return groups.map((group, idx) => {
+      const text = group.join("\n\n");
+      const firstSentence = text.split(/[.!?]\s/)[0]?.trim() || "";
+      return {
+        id: `narration_part_${idx + 1}`,
+        index: idx,
+        sectionType: null,
+        startSentence: firstSentence.slice(0, 120),
+        summary: "",
+        title: `Partie ${idx + 1}`,
+        variants: [],
+        titleFR: null,
+        validated: false,
+        sourceText: text,
+      };
+    });
+  }, [narration]);
+
+  /** Active chapter list — use only sources that actually contain text */
+  const activeChapters = useMemo(() => {
+    if (proseScript?.trim() && chaptersFromProse.some((chapter) => chapter.sourceText.trim())) return chaptersFromProse;
+    if (chaptersFromSections.some((chapter) => chapter.sourceText.trim())) return chaptersFromSections;
+    if (chaptersFromNarration.some((chapter) => chapter.sourceText.trim())) return chaptersFromNarration;
+    return chaptersFromSections;
+  }, [chaptersFromNarration, chaptersFromProse, chaptersFromSections, proseScript]);
 
   const normalizeChapterState = useCallback(
     (existingState: ChapterListState | null): ChapterListState => {
@@ -163,8 +259,14 @@ export default function ChapterCollapse({
     }
     if (!state) return true;
     if (state.chapters.length !== CORE_SECTION_TYPES.length) return true;
+    if (
+      state.chapters.every((chapter) => !chapter.sourceText?.trim()) &&
+      activeChapters.some((chapter) => chapter.sourceText.trim())
+    ) {
+      return true;
+    }
     return CORE_SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
-  }, [proseScript]);
+  }, [activeChapters, proseScript]);
 
   // Auto-refresh sourceText & startSentence when active chapters change
   const prevSourceTextsRef = useRef<string>("");
@@ -251,8 +353,9 @@ export default function ChapterCollapse({
 
   const handleGenerateTitles = useCallback(
     async (id: string, tone: string) => {
-      if (!chapterState) return;
-      const chapter = chapterState.chapters.find((ch) => ch.id === id);
+      const currentState = isLegacyChapterState(chapterState) ? normalizeChapterState(chapterState) : chapterState;
+      if (!currentState) return;
+      const chapter = currentState.chapters.find((ch) => ch.id === id);
       if (!chapter) return;
 
       setGeneratingId(id);
@@ -283,8 +386,8 @@ export default function ChapterCollapse({
         const allVariants = [...newVariants, ...existingVariants].slice(0, 20);
 
         onChapterStateChange({
-          ...chapterState,
-          chapters: chapterState.chapters.map((ch) =>
+          ...currentState,
+          chapters: currentState.chapters.map((ch) =>
             ch.id === id ? { ...ch, variants: allVariants } : ch
           ),
           lastUpdatedAt: new Date().toISOString(),
@@ -298,7 +401,7 @@ export default function ChapterCollapse({
         setGeneratingId(null);
       }
     },
-    [chapterState, onChapterStateChange, scriptLanguage]
+    [chapterState, isLegacyChapterState, normalizeChapterState, onChapterStateChange, scriptLanguage]
   );
 
   const handleSelectVariant = useCallback(
@@ -336,6 +439,9 @@ export default function ChapterCollapse({
     for (let i = 0; i < chaptersToProcess.length; i++) {
       const ch = chaptersToProcess[i];
       setGeneratingId(ch.id);
+      const selectedTone = batchTone === "mixed"
+        ? TONES.filter((tone) => tone.value !== "mixed")[i % (TONES.length - 1)].value
+        : batchTone;
 
       if (!ch.sourceText?.trim()) {
         console.warn(`Skipping chapter ${ch.id}: no sourceText`);
@@ -349,7 +455,7 @@ export default function ChapterCollapse({
           body: {
             chapterText: ch.sourceText,
             chapterLabel: ch.title,
-            tone: "mixed",
+            tone: selectedTone,
             language: scriptLanguage || "en",
           },
         });
@@ -371,7 +477,7 @@ export default function ChapterCollapse({
         );
 
         variantsMap.set(ch.id, newVariants);
-        selectedToneMap.set(ch.id, batchTone === "mixed" ? "" : batchTone);
+        selectedToneMap.set(ch.id, selectedTone);
       } catch (e) {
         console.error(e);
         errorCount++;
