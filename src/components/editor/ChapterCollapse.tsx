@@ -415,6 +415,9 @@ export default function ChapterCollapse({
     for (let i = 0; i < chaptersToProcess.length; i++) {
       const ch = chaptersToProcess[i];
       setGeneratingId(ch.id);
+      const selectedTone = batchTone === "mixed"
+        ? TONES.filter((tone) => tone.value !== "mixed")[i % (TONES.length - 1)].value
+        : batchTone;
 
       if (!ch.sourceText?.trim()) {
         console.warn(`Skipping chapter ${ch.id}: no sourceText`);
@@ -428,7 +431,7 @@ export default function ChapterCollapse({
           body: {
             chapterText: ch.sourceText,
             chapterLabel: ch.title,
-            tone: "mixed",
+            tone: selectedTone,
             language: scriptLanguage || "en",
           },
         });
@@ -450,7 +453,7 @@ export default function ChapterCollapse({
         );
 
         variantsMap.set(ch.id, newVariants);
-        selectedToneMap.set(ch.id, batchTone === "mixed" ? "" : batchTone);
+        selectedToneMap.set(ch.id, selectedTone);
       } catch (e) {
         console.error(e);
         errorCount++;
