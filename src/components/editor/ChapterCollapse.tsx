@@ -235,8 +235,14 @@ export default function ChapterCollapse({
     }
     if (!state) return true;
     if (state.chapters.length !== CORE_SECTION_TYPES.length) return true;
+    if (
+      state.chapters.every((chapter) => !chapter.sourceText?.trim()) &&
+      activeChapters.some((chapter) => chapter.sourceText.trim())
+    ) {
+      return true;
+    }
     return CORE_SECTION_TYPES.some((sectionType, index) => state.chapters[index]?.id !== sectionType);
-  }, [proseScript]);
+  }, [activeChapters, proseScript]);
 
   // Auto-refresh sourceText & startSentence when active chapters change
   const prevSourceTextsRef = useRef<string>("");
@@ -323,8 +329,9 @@ export default function ChapterCollapse({
 
   const handleGenerateTitles = useCallback(
     async (id: string, tone: string) => {
-      if (!chapterState) return;
-      const chapter = chapterState.chapters.find((ch) => ch.id === id);
+      const currentState = isLegacyChapterState(chapterState) ? normalizeChapterState(chapterState) : chapterState;
+      if (!currentState) return;
+      const chapter = currentState.chapters.find((ch) => ch.id === id);
       if (!chapter) return;
 
       setGeneratingId(id);
@@ -355,8 +362,8 @@ export default function ChapterCollapse({
         const allVariants = [...newVariants, ...existingVariants].slice(0, 20);
 
         onChapterStateChange({
-          ...chapterState,
-          chapters: chapterState.chapters.map((ch) =>
+          ...currentState,
+          chapters: currentState.chapters.map((ch) =>
             ch.id === id ? { ...ch, variants: allVariants } : ch
           ),
           lastUpdatedAt: new Date().toISOString(),
@@ -370,7 +377,7 @@ export default function ChapterCollapse({
         setGeneratingId(null);
       }
     },
-    [chapterState, onChapterStateChange, scriptLanguage]
+    [chapterState, isLegacyChapterState, normalizeChapterState, onChapterStateChange, scriptLanguage]
   );
 
   const handleSelectVariant = useCallback(
