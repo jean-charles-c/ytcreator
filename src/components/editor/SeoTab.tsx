@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Youtube, Loader2, Trophy, Copy, Tag } from "lucide-react";
 import { toast } from "sonner";
@@ -50,10 +50,71 @@ const hookBadgeColor = (type: string) => {
 
 export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
+  const [chaptersBlock, setChaptersBlock] = useState<string>("");
 
   const youtubeTitles = seoResults?.titles ?? null;
   const youtubeDescription = seoResults?.description ?? null;
   const youtubeTags = seoResults?.tags ?? null;
+
+  // Charge les chapitres du sommaire narratif + durées audio pour générer les timecodes YouTube
+  useEffect(() => {
+    if (!projectId) { setChaptersBlock(""); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        // 1) Outline le plus récent du projet
+        const { data: outlines } = await supabase
+          .from("narrative_outlines")
+          .select("id, updated_at")
+          .eq("project_id", projectId)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        const outlineId = outlines?.[0]?.id;
+        if (!outlineId) { if (!cancelled) setChaptersBlock(""); return; }
+
+        // 2) Chapitres ordonnés
+        const { data: chapters } = await supabase
+          .from("narrative_chapters")
+          .select("title, chapter_order, estimated_duration_seconds")
+          .eq("outline_id", outlineId)
+          .order("chapter_order", { ascending: true });
+        if (!chapters || chapters.length === 0) { if (!cancelled) setChaptersBlock(""); return; }
+
+        // 3) Durées audio par scene_order (fallback sur estimated_duration_seconds)
+        const { data: audios } = await supabase
+          .from("scene_vo_audio")
+          .select("scene_order, duration_seconds")
+          .eq("project_id", projectId)
+          .order("scene_order", { ascending: true });
+        const durByOrder = new Map<number, number>();
+        (audios ?? []).forEach((a: any) => {
+          if (!durByOrder.has(a.scene_order)) {
+            durByOrder.set(a.scene_order, Number(a.duration_seconds) || 0);
+          }
+        });
+
+        // 4) Construction des timecodes cumulés
+        const fmt = (totalSec: number) => {
+          const s = Math.max(0, Math.floor(totalSec));
+          const m = Math.floor(s / 60);
+          const r = s % 60;
+          return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+        };
+        let cursor = 0;
+        const lines: string[] = [];
+        chapters.forEach((c: any) => {
+          lines.push(`${fmt(cursor)} ${c.title}`);
+          const d = durByOrder.get(c.chapter_order) ?? Number(c.estimated_duration_seconds) ?? 0;
+          cursor += d;
+        });
+        if (!cancelled) setChaptersBlock(lines.join("\n"));
+      } catch (e) {
+        console.error("[SeoTab] chapters timecodes error", e);
+        if (!cancelled) setChaptersBlock("");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId, youtubeDescription]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -146,22 +207,33 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
               </div>
 
               {/* Description */}
-              {youtubeDescription && (
+              {youtubeDescription && (() => {
+                const fullDescription = chaptersBlock
+                  ? `${chaptersBlock}\n\n${youtubeDescription}`
+                  : youtubeDescription;
+                return (
                 <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Youtube className="h-4 w-4 text-primary" />
                       <h3 className="font-display text-sm font-semibold text-foreground">Description YouTube</h3>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(youtubeDescription, "Description")} className="h-8 text-xs">
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(fullDescription, "Description")} className="h-8 text-xs">
                       <Copy className="h-3 w-3" /> Copier
                     </Button>
                   </div>
+                  {chaptersBlock && (
+                    <div className="rounded border border-primary/20 bg-primary/5 p-3 sm:p-4 mb-3">
+                      <div className="text-[11px] uppercase tracking-wide text-primary mb-2 font-semibold">Chapitres YouTube</div>
+                      <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">{chaptersBlock}</pre>
+                    </div>
+                  )}
                   <div className="rounded border border-border bg-background p-3 sm:p-4">
                     <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{youtubeDescription}</pre>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Tags */}
               {youtubeTags && (
