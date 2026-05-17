@@ -62,25 +62,15 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
     let cancelled = false;
     (async () => {
       try {
-        // 1) Outline le plus récent du projet
-        const { data: outlines } = await supabase
-          .from("narrative_outlines")
-          .select("id, updated_at")
+        // 1) Scènes ordonnées avec leur scene_context (contient chapter_id_source + objet principal)
+        const { data: scenes } = await supabase
+          .from("scenes")
+          .select("scene_order, source_text, scene_context")
           .eq("project_id", projectId)
-          .order("updated_at", { ascending: false })
-          .limit(1);
-        const outlineId = outlines?.[0]?.id;
-        if (!outlineId) { if (!cancelled) setChaptersBlock(""); return; }
+          .order("scene_order", { ascending: true });
+        if (!scenes || scenes.length === 0) { if (!cancelled) setChaptersBlock(""); return; }
 
-        // 2) Chapitres ordonnés
-        const { data: chapters } = await supabase
-          .from("narrative_chapters")
-          .select("title, chapter_order, estimated_duration_seconds")
-          .eq("outline_id", outlineId)
-          .order("chapter_order", { ascending: true });
-        if (!chapters || chapters.length === 0) { if (!cancelled) setChaptersBlock(""); return; }
-
-        // 3) Durées audio par scene_order (fallback sur estimated_duration_seconds)
+        // 2) Durées audio cumulées par scene_order
         const { data: audios } = await supabase
           .from("scene_vo_audio")
           .select("scene_order, duration_seconds")
@@ -93,21 +83,51 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
           }
         });
 
-        // 4) Construction des timecodes cumulés
+        // 3) Format mm:ss
         const fmt = (totalSec: number) => {
           const s = Math.max(0, Math.floor(totalSec));
           const m = Math.floor(s / 60);
           const r = s % 60;
           return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
         };
-        let cursor = 0;
+
+        // 4) Détection du début de chaque chapitre via scene_context.chapter_id_source
+        //    Le titre = nom de l'objet/personnage principal du chapitre, repris depuis
+        //    la 1re ligne du source_text de la scène d'intro (ex. "La Toyota Celica GT-Four")
+        //    avec repli sur objets_associes[0] / personnages.
+        const seen = new Set<string>();
         const lines: string[] = [];
-        chapters.forEach((c: any) => {
-          lines.push(`${fmt(cursor)} ${c.title}`);
-          const d = durByOrder.get(c.chapter_order) ?? Number(c.estimated_duration_seconds) ?? 0;
-          cursor += d;
-        });
-        if (!cancelled) setChaptersBlock(lines.join("\n"));
+        let cursor = 0;
+        for (const scene of scenes as any[]) {
+          const ctx = scene.scene_context || {};
+          const chKey = String(ctx.chapter_id_source ?? ctx.chapter_order ?? "");
+          if (chKey && !seen.has(chKey)) {
+            seen.add(chKey);
+            const firstLine = String(scene.source_text || "")
+              .split(/\r?\n/)
+              .map((s) => s.trim())
+              .find(Boolean) || "";
+            const objet = Array.isArray(ctx.objets_associes) && ctx.objets_associes[0]
+              ? String(ctx.objets_associes[0])
+              : "";
+            const perso = typeof ctx.personnages === "string" && ctx.personnages.trim()
+              ? ctx.personnages.trim().split(/[,;]/)[0].trim()
+              : "";
+            // Privilégie la 1re ligne du script si elle est courte (titre de chapitre),
+            // sinon fallback sur l'objet ou le personnage.
+            const looksLikeChapterTitle = firstLine.length > 0 && firstLine.length <= 60 && !/[.!?]$/.test(firstLine.replace(/[.]$/, ""));
+            let title = looksLikeChapterTitle
+              ? firstLine.replace(/[.,;:!?]+$/, "")
+              : (objet || perso || firstLine.slice(0, 60));
+            // Cas particulier : firstLine se termine par un point unique → on l'enlève
+            if (looksLikeChapterTitle === false && firstLine.length <= 60) {
+              title = firstLine.replace(/[.,;:!?]+$/, "");
+            }
+            lines.push(`${fmt(cursor)} ${title}`);
+          }
+          cursor += durByOrder.get(scene.scene_order) ?? 0;
+        }
+        if (!cancelled) setChaptersBlock(lines.length > 0 ? lines.join("\n") : "");
       } catch (e) {
         console.error("[SeoTab] chapters timecodes error", e);
         if (!cancelled) setChaptersBlock("");
