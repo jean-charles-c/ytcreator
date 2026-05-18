@@ -48,6 +48,31 @@ const hookBadgeColor = (type: string) => {
   return map[type.toLowerCase()] || "bg-secondary text-muted-foreground border-border";
 };
 
+const VO_AUDIO_TIMEPOINTS_UPDATED_EVENT = "vo-audio-timepoints-updated";
+
+const formatYoutubeTimecode = (totalSec: number) => {
+  const s = Math.max(0, Math.floor(totalSec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+};
+
+const getStandaloneChapterTitle = (sourceText: string | null) => {
+  const firstLine = String(sourceText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  if (!firstLine || firstLine.length > 60) return null;
+  return firstLine.replace(/[.,;:!?]+$/, "").replace(/\s+/g, " ").trim() || null;
+};
+
+const getShotTimepointSeconds = (timepoint: any) => {
+  const value = timepoint?.timeSeconds ?? timepoint?.time_seconds;
+  const seconds = Number(value);
+  return Number.isFinite(seconds) ? seconds : null;
+};
+
 export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [chaptersBlock, setChaptersBlock] = useState<string>("");
@@ -56,85 +81,103 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
   const youtubeDescription = seoResults?.description ?? null;
   const youtubeTags = seoResults?.tags ?? null;
 
-  // Charge les chapitres du sommaire narratif + durées audio pour générer les timecodes YouTube
+  // Charge les titres de chapitres réels et leurs timecodes précis depuis les timepoints Whisper validés.
   useEffect(() => {
     if (!projectId) { setChaptersBlock(""); return; }
     let cancelled = false;
-    (async () => {
+    const loadChaptersBlock = async () => {
       try {
-        // 1) Scènes ordonnées avec leur scene_context (contient chapter_id_source + objet principal)
         const { data: scenes } = await supabase
           .from("scenes")
-          .select("scene_order, source_text, scene_context")
+          .select("id, scene_order, source_text")
           .eq("project_id", projectId)
           .order("scene_order", { ascending: true });
         if (!scenes || scenes.length === 0) { if (!cancelled) setChaptersBlock(""); return; }
 
-        // 2) Durées audio cumulées par scene_order
-        const { data: audios } = await supabase
-          .from("scene_vo_audio")
-          .select("scene_order, duration_seconds")
+        const chapterScenes = (scenes as any[])
+          .map((scene) => ({ ...scene, chapterTitle: getStandaloneChapterTitle(scene.source_text) }))
+          .filter((scene) => scene.chapterTitle);
+        if (chapterScenes.length === 0) { if (!cancelled) setChaptersBlock(""); return; }
+
+        const { data: shots } = await supabase
+          .from("shots")
+          .select("id, scene_id, shot_order")
           .eq("project_id", projectId)
-          .order("scene_order", { ascending: true });
-        const durByOrder = new Map<number, number>();
-        (audios ?? []).forEach((a: any) => {
-          if (!durByOrder.has(a.scene_order)) {
-            durByOrder.set(a.scene_order, Number(a.duration_seconds) || 0);
+          .order("shot_order", { ascending: true });
+
+        const firstShotByScene = new Map<string, string>();
+        (shots ?? []).forEach((shot: any) => {
+          if (!firstShotByScene.has(shot.scene_id)) {
+            firstShotByScene.set(shot.scene_id, shot.id);
           }
         });
 
-        // 3) Format mm:ss
-        const fmt = (totalSec: number) => {
-          const s = Math.max(0, Math.floor(totalSec));
-          const m = Math.floor(s / 60);
-          const r = s % 60;
-          return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-        };
+        const { data: state } = await supabase
+          .from("project_scriptcreator_state")
+          .select("timeline_state")
+          .eq("project_id", projectId)
+          .maybeSingle();
+        const selectedAudioId = (state?.timeline_state as any)?.audioTrack?.audioId ?? null;
 
-        // 4) Détection du début de chaque chapitre via scene_context.chapter_id_source
-        //    Le titre = nom de l'objet/personnage principal du chapitre, repris depuis
-        //    la 1re ligne du source_text de la scène d'intro (ex. "La Toyota Celica GT-Four")
-        //    avec repli sur objets_associes[0] / personnages.
-        const seen = new Set<string>();
-        const lines: string[] = [];
-        let cursor = 0;
-        for (const scene of scenes as any[]) {
-          const ctx = scene.scene_context || {};
-          const chKey = String(ctx.chapter_id_source ?? ctx.chapter_order ?? "");
-          if (chKey && !seen.has(chKey)) {
-            seen.add(chKey);
-            const firstLine = String(scene.source_text || "")
-              .split(/\r?\n/)
-              .map((s) => s.trim())
-              .find(Boolean) || "";
-            const objet = Array.isArray(ctx.objets_associes) && ctx.objets_associes[0]
-              ? String(ctx.objets_associes[0])
-              : "";
-            const perso = typeof ctx.personnages === "string" && ctx.personnages.trim()
-              ? ctx.personnages.trim().split(/[,;]/)[0].trim()
-              : "";
-            // Privilégie la 1re ligne du script si elle est courte (titre de chapitre),
-            // sinon fallback sur l'objet ou le personnage.
-            const looksLikeChapterTitle = firstLine.length > 0 && firstLine.length <= 60 && !/[.!?]$/.test(firstLine.replace(/[.]$/, ""));
-            let title = looksLikeChapterTitle
-              ? firstLine.replace(/[.,;:!?]+$/, "")
-              : (objet || perso || firstLine.slice(0, 60));
-            // Cas particulier : firstLine se termine par un point unique → on l'enlève
-            if (looksLikeChapterTitle === false && firstLine.length <= 60) {
-              title = firstLine.replace(/[.,;:!?]+$/, "");
-            }
-            lines.push(`${fmt(cursor)} ${title}`);
+        let audioWithTimepoints: any = null;
+        if (selectedAudioId) {
+          const { data: selectedAudio } = await supabase
+            .from("vo_audio_history")
+            .select("id, shot_timepoints, created_at")
+            .eq("id", selectedAudioId)
+            .maybeSingle();
+          if (Array.isArray((selectedAudio as any)?.shot_timepoints) && (selectedAudio as any).shot_timepoints.length > 0) {
+            audioWithTimepoints = selectedAudio;
           }
-          cursor += durByOrder.get(scene.scene_order) ?? 0;
         }
+
+        if (!audioWithTimepoints) {
+          const { data: audios } = await supabase
+            .from("vo_audio_history")
+            .select("id, shot_timepoints, created_at")
+            .eq("project_id", projectId)
+            .order("created_at", { ascending: false })
+            .limit(10);
+          audioWithTimepoints = (audios ?? []).find((audio: any) => Array.isArray(audio.shot_timepoints) && audio.shot_timepoints.length > 0) ?? null;
+        }
+
+        const timepoints = Array.isArray(audioWithTimepoints?.shot_timepoints) ? audioWithTimepoints.shot_timepoints : [];
+        const timeByShotId = new Map<string, number>();
+        timepoints.forEach((tp: any) => {
+          const shotId = tp?.shotId ?? tp?.shot_id;
+          const seconds = getShotTimepointSeconds(tp);
+          if (shotId && seconds !== null) timeByShotId.set(String(shotId), seconds);
+        });
+
+        const lines = chapterScenes.flatMap((scene: any) => {
+          const firstShotId = firstShotByScene.get(scene.id);
+          if (!firstShotId) return [];
+          const timeSeconds = timeByShotId.get(firstShotId);
+          if (timeSeconds === undefined) return [];
+          return [`${formatYoutubeTimecode(timeSeconds)} ${scene.chapterTitle}`];
+        });
+
         if (!cancelled) setChaptersBlock(lines.length > 0 ? lines.join("\n") : "");
       } catch (e) {
         console.error("[SeoTab] chapters timecodes error", e);
         if (!cancelled) setChaptersBlock("");
       }
-    })();
-    return () => { cancelled = true; };
-  }, [projectId, youtubeDescription]);
+    };
+
+    void loadChaptersBlock();
+    const handleTimepointsUpdated = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : null;
+      if (detail?.projectId && detail.projectId !== projectId) return;
+      void loadChaptersBlock();
+    };
+
+    window.addEventListener(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, handleTimepointsUpdated);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(VO_AUDIO_TIMEPOINTS_UPDATED_EVENT, handleTimepointsUpdated);
+    };
+  }, [projectId]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
