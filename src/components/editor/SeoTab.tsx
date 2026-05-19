@@ -73,6 +73,23 @@ const getShotTimepointSeconds = (timepoint: any) => {
   return Number.isFinite(seconds) ? seconds : null;
 };
 
+const stripGeneratedTimestampLines = (description: string | null) => {
+  if (!description) return null;
+
+  const cleaned = description
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      return !/^\d{1,2}[:/]\d{2}(?::\d{2})?\s+\S/.test(trimmed);
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return cleaned || null;
+};
+
 export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [chaptersBlock, setChaptersBlock] = useState<string>("");
@@ -197,7 +214,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
       if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
       if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
       const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
-      onSeoResultsChange({ titles: sorted, description: data.description || null, tags: data.tags || null });
+      onSeoResultsChange({ titles: sorted, description: stripGeneratedTimestampLines(data.description || null), tags: data.tags || null });
       toast.success("SEO YouTube généré");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingTitles(false);
