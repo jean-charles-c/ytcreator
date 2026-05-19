@@ -95,7 +95,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
   const [chaptersBlock, setChaptersBlock] = useState<string>("");
 
   const youtubeTitles = seoResults?.titles ?? null;
-  const youtubeDescription = seoResults?.description ?? null;
+  const youtubeDescription = stripGeneratedTimestampLines(seoResults?.description ?? null);
   const youtubeTags = seoResults?.tags ?? null;
 
   // Charge les titres de chapitres réels et leurs timecodes précis depuis les timepoints Whisper validés.
