@@ -50,7 +50,7 @@ TITLE RULES:
 DESCRIPTION RULES:
 - Start with a compelling 2-sentence hook
 - Include relevant keywords naturally
-- Add timestamps placeholders (00:00 Introduction, etc.)
+- Do NOT add timestamps, chapters, or placeholder timecodes. The application injects exact Whisper-validated chapters separately.
 - End with a call to action (subscribe, like, comment)
 - Include 2-3 relevant hashtags
 
