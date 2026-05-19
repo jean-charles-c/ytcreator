@@ -302,14 +302,8 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
                       <Copy className="h-3 w-3" /> Copier
                     </Button>
                   </div>
-                  {chaptersBlock && (
-                    <div className="rounded border border-primary/20 bg-primary/5 p-3 sm:p-4 mb-3">
-                      <div className="text-[11px] uppercase tracking-wide text-primary mb-2 font-semibold">Chapitres YouTube</div>
-                      <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">{chaptersBlock}</pre>
-                    </div>
-                  )}
                   <div className="rounded border border-border bg-background p-3 sm:p-4">
-                    <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{youtubeDescription}</pre>
+                    <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{fullDescription}</pre>
                   </div>
                 </div>
                 );
