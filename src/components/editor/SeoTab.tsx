@@ -73,12 +73,29 @@ const getShotTimepointSeconds = (timepoint: any) => {
   return Number.isFinite(seconds) ? seconds : null;
 };
 
+const stripGeneratedTimestampLines = (description: string | null) => {
+  if (!description) return null;
+
+  const cleaned = description
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      return !/^\d{1,2}[:/]\d{2}(?::\d{2})?\s+\S/.test(trimmed);
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return cleaned || null;
+};
+
 export default function SeoTab({ projectId, analysis, extractedText, narration, scriptLanguage, seoResults, onSeoResultsChange }: SeoTabProps) {
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [chaptersBlock, setChaptersBlock] = useState<string>("");
 
   const youtubeTitles = seoResults?.titles ?? null;
-  const youtubeDescription = seoResults?.description ?? null;
+  const youtubeDescription = stripGeneratedTimestampLines(seoResults?.description ?? null);
   const youtubeTags = seoResults?.tags ?? null;
 
   // Charge les titres de chapitres réels et leurs timecodes précis depuis les timepoints Whisper validés.
@@ -197,7 +214,7 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
       if (error) { toast.error("Erreur de génération"); console.error(error); setGeneratingTitles(false); return; }
       if (data?.error) { toast.error(data.error); setGeneratingTitles(false); return; }
       const sorted = (data.titles as YoutubeTitle[]).sort((a, b) => a.rank - b.rank);
-      onSeoResultsChange({ titles: sorted, description: data.description || null, tags: data.tags || null });
+      onSeoResultsChange({ titles: sorted, description: stripGeneratedTimestampLines(data.description || null), tags: data.tags || null });
       toast.success("SEO YouTube généré");
     } catch (e) { console.error(e); toast.error("Erreur inattendue"); }
     setGeneratingTitles(false);
@@ -285,14 +302,8 @@ export default function SeoTab({ projectId, analysis, extractedText, narration, 
                       <Copy className="h-3 w-3" /> Copier
                     </Button>
                   </div>
-                  {chaptersBlock && (
-                    <div className="rounded border border-primary/20 bg-primary/5 p-3 sm:p-4 mb-3">
-                      <div className="text-[11px] uppercase tracking-wide text-primary mb-2 font-semibold">Chapitres YouTube</div>
-                      <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">{chaptersBlock}</pre>
-                    </div>
-                  )}
                   <div className="rounded border border-border bg-background p-3 sm:p-4">
-                    <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{youtubeDescription}</pre>
+                    <pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-body">{fullDescription}</pre>
                   </div>
                 </div>
                 );
