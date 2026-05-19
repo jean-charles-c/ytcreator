@@ -324,7 +324,7 @@ export default function Dashboard() {
                   onDragOver={(e) => handleDragOver(e, group.id)}
                   onDragLeave={() => setDragOverGroupId(null)}
                 >
-                  <div className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none" onClick={() => !isEditing && toggleGroupCollapse(group.id)}>
+                  <div className="group flex items-center gap-2 px-4 py-3 cursor-pointer select-none" onClick={() => !isEditing && toggleGroupCollapse(group.id)}>
                     {isCollapsed
                       ? <Folder className="h-4 w-4 text-primary shrink-0" />
                       : <FolderOpen className="h-4 w-4 text-primary shrink-0" />
@@ -348,11 +348,11 @@ export default function Dashboard() {
                       <>
                         <span className="font-display text-sm font-semibold text-foreground flex-1">{group.name}</span>
                         <span className="text-xs text-muted-foreground mr-2">{group.projects.length} projet{group.projects.length > 1 ? "s" : ""}</span>
-                        <button onClick={(e) => { e.stopPropagation(); setEditingGroupId(group.id); setEditGroupName(group.name); setTimeout(() => groupInputRef.current?.focus(), 50); }} className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100 hover:opacity-100" title="Renommer">
-                          <Pencil className="h-3.5 w-3.5" />
+                        <button onClick={(e) => { e.stopPropagation(); setEditingGroupId(group.id); setEditGroupName(group.name); setTimeout(() => groupInputRef.current?.focus(), 50); }} className="p-1.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Renommer le groupe">
+                          <Pencil className="h-4 w-4" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); deleteGroup(group.id); }} className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 hover:opacity-100" title="Supprimer le groupe">
-                          <Trash2 className="h-3.5 w-3.5" />
+                        <button onClick={(e) => { e.stopPropagation(); deleteGroup(group.id); }} className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Supprimer le groupe">
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </>
                     )}
