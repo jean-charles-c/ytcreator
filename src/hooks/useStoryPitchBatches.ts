@@ -29,6 +29,8 @@ export interface PitchBatch {
   analysis_id: string | null;
   form_id: string | null;
   instructions: string | null;
+  theme: string | null;
+  item_count: number | null;
   ai_model: string | null;
   status: string;
   created_at: string;

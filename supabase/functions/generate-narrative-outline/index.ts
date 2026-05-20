@@ -7,29 +7,32 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const OUTLINE_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "submit_narrative_outline",
-    description:
-      "Retourne le sommaire complet en chapitres détaillés respectant la forme narrative.",
-    parameters: {
-      type: "object",
-      properties: {
-        title: { type: "string", description: "Titre éditorial du sommaire (court)." },
-        intention: {
-          type: "string",
-          description:
-            "Intention narrative globale du sommaire — la promesse faite au spectateur.",
-        },
-        target_duration_seconds: {
-          type: "integer",
-          description: "Durée cible totale en secondes pour la vidéo finale.",
-        },
-        chapters: {
-          type: "array",
-          minItems: 5,
-          maxItems: 12,
+function buildOutlineTool(opts: { minChapters: number; maxChapters: number; itemCount: number | null }) {
+  const desc = opts.itemCount
+    ? `Retourne le sommaire complet. Le pitch est une LISTE de ${opts.itemCount} éléments : produis EXACTEMENT ${opts.minChapters} chapitres (1 intro + ${opts.itemCount} éléments + 1 conclusion).`
+    : "Retourne le sommaire complet en chapitres détaillés respectant la forme narrative.";
+  return {
+    type: "function" as const,
+    function: {
+      name: "submit_narrative_outline",
+      description: desc,
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Titre éditorial du sommaire (court)." },
+          intention: {
+            type: "string",
+            description:
+              "Intention narrative globale du sommaire — la promesse faite au spectateur.",
+          },
+          target_duration_seconds: {
+            type: "integer",
+            description: "Durée cible totale en secondes pour la vidéo finale.",
+          },
+          chapters: {
+            type: "array",
+            minItems: opts.minChapters,
+            maxItems: opts.maxChapters,
           items: {
             type: "object",
             properties: {
@@ -94,15 +97,16 @@ const OUTLINE_TOOL = {
             ],
             additionalProperties: false,
           },
+          },
         },
+        required: ["title", "intention", "chapters"],
+        additionalProperties: false,
       },
-      required: ["title", "intention", "chapters"],
-      additionalProperties: false,
     },
-  },
-};
+  };
+}
 
-function buildSystemPrompt(formPrompt: string | null): string {
+function buildSystemPrompt(formPrompt: string | null, itemCount: number | null): string {
   return [
     "Tu es un scénariste documentaire expert. Ta mission est de produire un SOMMAIRE NARRATIF détaillé.",
     "",
@@ -113,7 +117,9 @@ function buildSystemPrompt(formPrompt: string | null): string {
     "4. Chaque chapitre doit indiquer son événement principal, sa tension dominante, sa révélation éventuelle, sa progression émotionnelle et la transition vers le suivant.",
     "5. Ne jamais reproduire de phrases ou d'exemples des sources d'origine.",
     "6. Ne génère pas encore de scènes, ni de scripts complets : reste au niveau du sommaire.",
-    "7. Produis entre 5 et 12 chapitres selon la densité du sujet et la forme narrative.",
+    itemCount
+      ? `7. FORMAT LISTE IMPOSÉ : le pitch est une liste de ${itemCount} éléments. Produis EXACTEMENT ${itemCount + 2} chapitres : 1 chapitre d'introduction, puis ${itemCount} chapitres (un par élément, dans l'ordre dramatique pertinent), puis 1 chapitre de conclusion. Aucune fusion, aucune omission.`
+      : "7. Produis entre 5 et 12 chapitres selon la densité du sujet et la forme narrative.",
     "",
     "Forme narrative à respecter :",
     formPrompt && formPrompt.trim().length > 0
@@ -129,9 +135,20 @@ function buildUserPrompt(payload: {
   projectTitle: string | null;
   projectSubject: string | null;
   projectNarration: string | null;
+  itemCount?: number | null;
+  theme?: string | null;
 }): string {
-  const { pitch, projectTitle, projectSubject, projectNarration } = payload;
+  const { pitch, projectTitle, projectSubject, projectNarration, itemCount, theme } = payload;
   const lines: string[] = [];
+  if (theme) {
+    lines.push(`Thématique imposée : ${theme}`);
+  }
+  if (itemCount && itemCount > 0) {
+    lines.push(
+      `Format imposé : LISTE de ${itemCount} éléments → produis EXACTEMENT ${itemCount + 2} chapitres (1 intro + ${itemCount} éléments + 1 conclusion).`,
+    );
+    lines.push("");
+  }
   if (projectTitle) lines.push(`Projet : ${projectTitle}`);
   if (projectSubject) lines.push(`Sujet : ${projectSubject}`);
   if (projectNarration) {
@@ -255,6 +272,23 @@ serve(async (req) => {
       formPrompt = f?.system_prompt ?? null;
     }
 
+    // Récupération du lot de pitch parent pour relire la thématique et le nombre d'éléments
+    let itemCount: number | null = null;
+    let pitchTheme: string | null = null;
+    if (pitch?.pitch_batch_id) {
+      const { data: batchRow } = await supaAdmin
+        .from("pitch_batches")
+        .select("theme, item_count")
+        .eq("id", pitch.pitch_batch_id)
+        .maybeSingle();
+      if (batchRow) {
+        pitchTheme = batchRow.theme ?? null;
+        if (typeof batchRow.item_count === "number" && batchRow.item_count >= 2) {
+          itemCount = batchRow.item_count;
+        }
+      }
+    }
+
     // Vérification d'un sommaire existant
     const { data: existing } = await supaAdmin
       .from("narrative_outlines")
@@ -271,13 +305,18 @@ serve(async (req) => {
     }
 
     const model = "google/gemini-2.5-pro";
-    const systemPrompt = buildSystemPrompt(formPrompt);
+    const systemPrompt = buildSystemPrompt(formPrompt, itemCount);
     const userPrompt = buildUserPrompt({
       pitch,
       projectTitle: project.title ?? null,
       projectSubject: project.subject ?? null,
       projectNarration: project.narration ?? null,
+      itemCount,
+      theme: pitchTheme,
     });
+    const minChapters = itemCount ? itemCount + 2 : 5;
+    const maxChapters = itemCount ? itemCount + 2 : 12;
+    const OUTLINE_TOOL = buildOutlineTool({ minChapters, maxChapters, itemCount });
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

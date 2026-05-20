@@ -133,7 +133,7 @@ const PITCH_TOOL = {
   },
 };
 
-function buildSystemPrompt(opts: { hasTheme: boolean }): string {
+function buildSystemPrompt(opts: { hasTheme: boolean; itemCount?: number | null }): string {
   const lines = [
     "Tu es un développeur de concepts vidéo documentaire / récit.",
     "",
@@ -157,6 +157,14 @@ function buildSystemPrompt(opts: { hasTheme: boolean }): string {
       "  mais ne t'en éloigne jamais.",
     );
   }
+  if (opts.itemCount && opts.itemCount > 0) {
+    lines.push(
+      `- FORMAT LISTE IMPOSÉ : chaque pitch doit être structuré comme une liste d'EXACTEMENT ${opts.itemCount} éléments distincts.`,
+      `  Le champ \`progression\` doit l'indiquer explicitement (ex. « Structure en ${opts.itemCount} chapitres, un par élément »).`,
+      `  Le champ \`concept\` doit nommer les ${opts.itemCount} éléments si possible, ou préciser leur nature.`,
+      `  Le titre peut contenir le nombre ${opts.itemCount}.`,
+    );
+  }
   lines.push("", "Soumets ta réponse via l'outil `submit_story_pitches`.");
   return lines.join("\n");
 }
@@ -166,13 +174,18 @@ function buildUserMessage(opts: {
   form?: { name?: string | null; description?: string | null; system_prompt?: string | null } | null;
   instructions?: string | null;
   theme?: string | null;
+  itemCount?: number | null;
 }): string {
-  const { signature, form, instructions, theme } = opts;
+  const { signature, form, instructions, theme, itemCount } = opts;
   const parts: string[] = [];
 
   if (theme && theme.trim()) {
     parts.push("# THÉMATIQUE IMPOSÉE PAR L'AUTEUR");
     parts.push(theme.trim());
+    if (itemCount && itemCount > 0) {
+      parts.push("");
+      parts.push(`Format imposé : LISTE de ${itemCount} éléments (un chapitre / une scène par élément).`);
+    }
     parts.push("");
     parts.push(
       "Les 5 pitchs doivent TOUS s'inscrire dans cette thématique. Varie les angles, les personnages,",
@@ -297,17 +310,28 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub as string;
 
-    let body: { analysis_id?: string; form_id?: string; instructions?: string; theme?: string } = {};
+    let body: {
+      analysis_id?: string;
+      form_id?: string;
+      instructions?: string;
+      theme?: string;
+      item_count?: number | string | null;
+    } = {};
     try {
       body = await req.json();
     } catch {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
-    const { analysis_id, form_id, instructions, theme } = body;
+    const { analysis_id, form_id, instructions, theme, item_count } = body;
     if (!analysis_id && !form_id) {
       return jsonResponse({ error: "analysis_id or form_id required" }, 400);
     }
     const themeClean = (theme ?? "").trim() || null;
+    const itemCountClean = (() => {
+      const n = typeof item_count === "string" ? parseInt(item_count, 10) : item_count;
+      if (typeof n === "number" && Number.isFinite(n) && n >= 2 && n <= 50) return Math.round(n);
+      return null;
+    })();
 
     // Charger l'analyse et/ou la forme
     let signature: any = null;
@@ -369,12 +393,13 @@ Deno.serve(async (req) => {
     const { data: lastBatch } = await filtered;
     const nextIndex = (lastBatch?.[0]?.batch_index ?? 0) + 1;
 
-    const systemPrompt = buildSystemPrompt({ hasTheme: !!themeClean });
+    const systemPrompt = buildSystemPrompt({ hasTheme: !!themeClean, itemCount: itemCountClean });
     const userMessage = buildUserMessage({
       signature,
       form: formRow,
       instructions: instructions ?? null,
       theme: themeClean,
+      itemCount: itemCountClean,
     });
 
     console.log(
@@ -453,6 +478,8 @@ Deno.serve(async (req) => {
         instructions: themeClean
           ? `[THÉMATIQUE] ${themeClean}${instructions && instructions.trim() && instructions.trim() !== themeClean ? `\n\n${instructions.trim()}` : ""}`
           : (instructions ?? null),
+        theme: themeClean,
+        item_count: itemCountClean,
         ai_model: AI_MODEL,
         status: "pitch_batch_generated",
       })
