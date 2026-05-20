@@ -775,7 +775,9 @@ export type Database = {
           form_id: string | null
           id: string
           instructions: string | null
+          item_count: number | null
           status: string
+          theme: string | null
           updated_at: string
           user_id: string
         }
@@ -787,7 +789,9 @@ export type Database = {
           form_id?: string | null
           id?: string
           instructions?: string | null
+          item_count?: number | null
           status?: string
+          theme?: string | null
           updated_at?: string
           user_id: string
         }
@@ -799,7 +803,9 @@ export type Database = {
           form_id?: string | null
           id?: string
           instructions?: string | null
+          item_count?: number | null
           status?: string
+          theme?: string | null
           updated_at?: string
           user_id?: string
         }
