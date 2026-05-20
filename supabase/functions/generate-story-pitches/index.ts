@@ -133,7 +133,7 @@ const PITCH_TOOL = {
   },
 };
 
-function buildSystemPrompt(opts: { hasTheme: boolean }): string {
+function buildSystemPrompt(opts: { hasTheme: boolean; itemCount?: number | null }): string {
   const lines = [
     "Tu es un développeur de concepts vidéo documentaire / récit.",
     "",
@@ -157,6 +157,14 @@ function buildSystemPrompt(opts: { hasTheme: boolean }): string {
       "  mais ne t'en éloigne jamais.",
     );
   }
+  if (opts.itemCount && opts.itemCount > 0) {
+    lines.push(
+      `- FORMAT LISTE IMPOSÉ : chaque pitch doit être structuré comme une liste d'EXACTEMENT ${opts.itemCount} éléments distincts.`,
+      `  Le champ \`progression\` doit l'indiquer explicitement (ex. « Structure en ${opts.itemCount} chapitres, un par élément »).`,
+      `  Le champ \`concept\` doit nommer les ${opts.itemCount} éléments si possible, ou préciser leur nature.`,
+      `  Le titre peut contenir le nombre ${opts.itemCount}.`,
+    );
+  }
   lines.push("", "Soumets ta réponse via l'outil `submit_story_pitches`.");
   return lines.join("\n");
 }
@@ -166,13 +174,18 @@ function buildUserMessage(opts: {
   form?: { name?: string | null; description?: string | null; system_prompt?: string | null } | null;
   instructions?: string | null;
   theme?: string | null;
+  itemCount?: number | null;
 }): string {
-  const { signature, form, instructions, theme } = opts;
+  const { signature, form, instructions, theme, itemCount } = opts;
   const parts: string[] = [];
 
   if (theme && theme.trim()) {
     parts.push("# THÉMATIQUE IMPOSÉE PAR L'AUTEUR");
     parts.push(theme.trim());
+    if (itemCount && itemCount > 0) {
+      parts.push("");
+      parts.push(`Format imposé : LISTE de ${itemCount} éléments (un chapitre / une scène par élément).`);
+    }
     parts.push("");
     parts.push(
       "Les 5 pitchs doivent TOUS s'inscrire dans cette thématique. Varie les angles, les personnages,",
