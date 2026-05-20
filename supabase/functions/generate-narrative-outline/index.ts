@@ -135,9 +135,20 @@ function buildUserPrompt(payload: {
   projectTitle: string | null;
   projectSubject: string | null;
   projectNarration: string | null;
+  itemCount?: number | null;
+  theme?: string | null;
 }): string {
-  const { pitch, projectTitle, projectSubject, projectNarration } = payload;
+  const { pitch, projectTitle, projectSubject, projectNarration, itemCount, theme } = payload;
   const lines: string[] = [];
+  if (theme) {
+    lines.push(`Thématique imposée : ${theme}`);
+  }
+  if (itemCount && itemCount > 0) {
+    lines.push(
+      `Format imposé : LISTE de ${itemCount} éléments → produis EXACTEMENT ${itemCount + 2} chapitres (1 intro + ${itemCount} éléments + 1 conclusion).`,
+    );
+    lines.push("");
+  }
   if (projectTitle) lines.push(`Projet : ${projectTitle}`);
   if (projectSubject) lines.push(`Sujet : ${projectSubject}`);
   if (projectNarration) {
