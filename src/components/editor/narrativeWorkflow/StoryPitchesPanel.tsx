@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Collapsible,
@@ -67,6 +68,7 @@ export default function StoryPitchesPanel({
   const { batches, loading, reload } = useStoryPitchBatches({ analysisId, formId });
   const [generating, setGenerating] = useState(false);
   const [theme, setTheme] = useState("");
+  const [itemCount, setItemCount] = useState<string>("");
   const navigate = useNavigate();
   const { items: generatedProjects, reload: reloadProjects } =
     useGeneratedProjectsByAnalysis(analysisId ?? null);
@@ -111,12 +113,18 @@ export default function StoryPitchesPanel({
     setGenerating(true);
     try {
       const trimmedTheme = theme.trim();
+      const parsedCount = parseInt(itemCount, 10);
+      const cleanCount =
+        Number.isFinite(parsedCount) && parsedCount >= 2 && parsedCount <= 50
+          ? parsedCount
+          : null;
       const { data, error } = await supabase.functions.invoke("generate-story-pitches", {
         body: {
           analysis_id: analysisId ?? null,
           form_id: formId ?? null,
           instructions: trimmedTheme || null,
           theme: trimmedTheme || null,
+          item_count: cleanCount,
         },
       });
       if (error) {
@@ -135,7 +143,7 @@ export default function StoryPitchesPanel({
     } finally {
       setGenerating(false);
     }
-  }, [analysisId, formId, reload, theme]);
+  }, [analysisId, formId, reload, theme, itemCount]);
 
   // Auto-trigger from analysis panel CTA (effect to avoid render side-effects)
   useEffect(() => {
@@ -187,6 +195,29 @@ export default function StoryPitchesPanel({
         />
         <p className="text-[10px] text-muted-foreground">
           Précise un sujet, un univers ou un angle pour orienter les 5 propositions. Laisse vide pour des sujets totalement libres.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label
+          htmlFor="story-pitches-item-count"
+          className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground"
+        >
+          Nombre d'éléments (format liste, optionnel)
+        </Label>
+        <Input
+          id="story-pitches-item-count"
+          type="number"
+          min={2}
+          max={50}
+          value={itemCount}
+          onChange={(e) => setItemCount(e.target.value)}
+          placeholder="Ex : 10 pour « les 10 hypercars interdites »"
+          disabled={disabled || generating}
+          className="text-xs h-9"
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Si renseigné, chaque pitch sera structuré comme une liste de N éléments et le sommaire généré aura exactement N + 2 chapitres (intro + N + conclusion).
         </p>
       </div>
 
