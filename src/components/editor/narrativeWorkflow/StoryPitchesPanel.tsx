@@ -312,7 +312,7 @@ function BatchBlock({
             type="button"
             className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 min-h-[44px] text-left hover:bg-secondary/30 rounded-t-lg"
           >
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 flex-1">
               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0">
                 #{batch.batch_index}
               </span>
@@ -323,6 +323,19 @@ function BatchBlock({
                 · {batch.pitches.length} pitch{batch.pitches.length > 1 ? "s" : ""}
               </span>
               <span className="text-[10px] text-muted-foreground">· {formattedDate}</span>
+              {batch.theme && (
+                <span
+                  className="text-[11px] text-primary font-medium truncate max-w-full sm:max-w-[420px]"
+                  title={batch.theme}
+                >
+                  · Thème&nbsp;: {batch.theme}
+                </span>
+              )}
+              {batch.item_count && batch.item_count > 0 && (
+                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
+                  Liste de {batch.item_count}
+                </span>
+              )}
             </div>
             <ChevronDown
               className={cn(
