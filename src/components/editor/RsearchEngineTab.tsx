@@ -333,7 +333,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           />
         </div>
         )}
-      )}
+      </>
 
       {(hasContent || generating) && (
         <div className="flex gap-3 sm:gap-4 lg:gap-6">
