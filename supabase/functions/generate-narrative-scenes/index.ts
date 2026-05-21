@@ -297,6 +297,9 @@ serve(async (req) => {
       typeof body?.requested_count === "number" ? body.requested_count : null;
     const providedAnalysisId: string | null =
       typeof body?.analysis_id === "string" && body.analysis_id ? body.analysis_id : null;
+    const skipChapterIds: string[] = Array.isArray(body?.skip_chapter_ids)
+      ? body.skip_chapter_ids.filter((x: any) => typeof x === "string")
+      : [];
 
     if (!projectId) {
       return new Response(JSON.stringify({ ok: false, error: "project_id requis" }), {
@@ -470,14 +473,15 @@ serve(async (req) => {
         return false;
       };
       const pending = chapters.filter((c) => isChapterPending(c.id));
-      if (pending.length === 0) {
+      const pendingFiltered = pending.filter((c) => !skipChapterIds.includes(c.id));
+      if (pendingFiltered.length === 0) {
         return new Response(
           JSON.stringify({ ok: true, created: 0, deleted: 0, errors: [], remaining_chapter_ids: [] }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      const next = pending[0];
-      remainingChapterIds = pending.slice(1).map((c) => c.id);
+      const next = pendingFiltered[0];
+      remainingChapterIds = pendingFiltered.slice(1).map((c) => c.id);
       chapters = [next];
     }
 
