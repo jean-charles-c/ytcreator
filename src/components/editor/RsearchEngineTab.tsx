@@ -16,6 +16,7 @@ import NarrativeWorkflowView from "./narrativeWorkflow/NarrativeWorkflowView";
 import NarrativeOutlinePanel from "./narrativeWorkflow/NarrativeOutlinePanel";
 import NarrativeScenesPanel from "./narrativeWorkflow/NarrativeScenesPanel";
 import VoiceoverScriptPanel from "./narrativeWorkflow/VoiceoverScriptPanel";
+import { useNarrativeOutline } from "@/hooks/useNarrativeOutline";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
