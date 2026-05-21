@@ -52,6 +52,9 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const exportRef = useRef<HTMLDivElement | null>(null);
 
+  const { data: outlineData } = useNarrativeOutline(projectId);
+  const hasNarrativeOutline = !!outlineData;
+
   const activeSections = useMemo(() => {
     return parseSections(content)
       .filter((s) => s.name !== "__preamble__")
