@@ -288,6 +288,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           )}
 
           {/* Entrée Narrative Form Generator (Étape 4) */}
+          {!hasNarrativeOutline && (
           <button
             type="button"
             onClick={() => setView("narrative-workflow")}
@@ -318,7 +319,9 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
               />
             </div>
           </button>
+          )}
 
+        {!hasNarrativeOutline && (
         <div className="grid items-start gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
@@ -329,7 +332,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
             className="lg:sticky lg:top-6"
           />
         </div>
-        </>
+        )}
       )}
 
       {(hasContent || generating) && (
