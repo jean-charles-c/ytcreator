@@ -209,8 +209,15 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
         let totalCreated = 0;
         const initialChapterId: string | null = params.chapter_id ?? null;
         let firstCall = true;
+        // Suivi des chapitres qui échouent côté IA pour les retirer du pool
+        // après plusieurs tentatives (évite de bloquer le batch sur un seul
+        // chapitre récalcitrant).
+        const attemptsByChapter = new Map<string, number>();
+        const skippedChapterIds = new Set<string>();
+        const failedChapterIds = new Set<string>();
+        const MAX_ATTEMPTS_PER_CHAPTER = 3;
         // Limite de sécurité pour éviter les boucles infinies
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 200; i++) {
           const { data: res, error } = await supabase.functions.invoke(
             "generate-narrative-scenes",
             {
@@ -228,6 +235,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
                 overwrite: params.overwrite === true,
                 requested_count: params.requested_count ?? null,
                 analysis_id: analysisId,
+                skip_chapter_ids: Array.from(skippedChapterIds),
               },
             },
           );
@@ -253,7 +261,20 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             }
             throw new Error(res?.error || "Génération échouée");
           }
-          totalCreated += Number(res.created ?? 0);
+          const createdThis = Number(res.created ?? 0);
+          totalCreated += createdThis;
+          // Extraire les chapitres qui ont échoué côté IA (errors = "<chapter_id>:<reason>")
+          const errs: string[] = Array.isArray(res?.errors) ? res.errors : [];
+          for (const e of errs) {
+            const cid = String(e).split(":")[0];
+            if (!cid) continue;
+            const n = (attemptsByChapter.get(cid) ?? 0) + 1;
+            attemptsByChapter.set(cid, n);
+            if (n >= MAX_ATTEMPTS_PER_CHAPTER) {
+              skippedChapterIds.add(cid);
+              failedChapterIds.add(cid);
+            }
+          }
           firstCall = false;
           const remaining: string[] = Array.isArray(res?.remaining_chapter_ids)
             ? res.remaining_chapter_ids
@@ -266,7 +287,21 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
             `Scènes générées pour un chapitre — ${remaining.length} restant${remaining.length > 1 ? "s" : ""}…`,
           );
         }
-        toast.success(`${totalCreated} scène(s) générée(s).`);
+        if (totalCreated > 0) {
+          toast.success(`${totalCreated} scène(s) générée(s).`);
+        }
+        if (failedChapterIds.size > 0) {
+          const titles = Array.from(failedChapterIds)
+            .map((id) => {
+              const ch = chapters.find((c) => c.id === id);
+              return ch ? `#${ch.chapter_order} ${ch.title}` : id.slice(0, 8);
+            })
+            .join(", ");
+          toast.error(
+            `Échec IA sur ${failedChapterIds.size} chapitre(s) : ${titles}. Relance la génération pour réessayer.`,
+            { duration: 8000 },
+          );
+        }
         await reload();
       } catch (e: any) {
         console.error("generate scenes", e);
@@ -275,7 +310,7 @@ export default function NarrativeScenesPanel({ projectId, onSentToSegmentation }
         setBusyKey(null);
       }
     },
-    [projectId, reload, analysisId],
+    [projectId, reload, analysisId, chapters],
   );
 
   const toggleValidated = useCallback(
