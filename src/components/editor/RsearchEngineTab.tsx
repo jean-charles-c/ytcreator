@@ -16,6 +16,7 @@ import NarrativeWorkflowView from "./narrativeWorkflow/NarrativeWorkflowView";
 import NarrativeOutlinePanel from "./narrativeWorkflow/NarrativeOutlinePanel";
 import NarrativeScenesPanel from "./narrativeWorkflow/NarrativeScenesPanel";
 import VoiceoverScriptPanel from "./narrativeWorkflow/VoiceoverScriptPanel";
+import { useNarrativeOutline } from "@/hooks/useNarrativeOutline";
 
 interface RsearchEngineTabProps {
   projectId: string | null;
@@ -50,6 +51,9 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
   const abortRef = useRef<AbortController | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const exportRef = useRef<HTMLDivElement | null>(null);
+
+  const { data: outlineData } = useNarrativeOutline(projectId);
+  const hasNarrativeOutline = !!outlineData;
 
   const activeSections = useMemo(() => {
     return parseSections(content)
@@ -284,6 +288,7 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
           )}
 
           {/* Entrée Narrative Form Generator (Étape 4) */}
+          {!hasNarrativeOutline && (
           <button
             type="button"
             onClick={() => setView("narrative-workflow")}
@@ -314,7 +319,9 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
               />
             </div>
           </button>
+          )}
 
+        {!hasNarrativeOutline && (
         <div className="grid items-start gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <ResearchQueryForm onSubmit={handleGenerate} generating={generating} />
@@ -325,8 +332,8 @@ export default function RsearchEngineTab({ projectId, projectTitle, onSendToScri
             className="lg:sticky lg:top-6"
           />
         </div>
-        </>
-      )}
+        )}
+      </>)}
 
       {(hasContent || generating) && (
         <div className="flex gap-3 sm:gap-4 lg:gap-6">
