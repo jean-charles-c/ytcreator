@@ -1,37 +1,39 @@
-## Diagnostic
+## Constat
 
-Dans `src/pages/Editor.tsx`, la logique qui éclate chaque véhicule détecté en 5 variantes (`vue avant`, `vue de côté`, `vue arrière`, `vue habitacle intérieur`, `vue de dessus`) n'existe **que** dans `handleSearchMoreRecurrences` (le bouton « Chercher plus de récurrences », lignes 937–974).
+Le désordre se trouve uniquement dans l'association **titre ↔ texte** des scènes legacy. Les `shots` (et leurs `image_url`) ont été générés à partir du `source_text` de chaque scène — ils sont donc visuellement cohérents avec le contenu, c'est le **titre affiché** (et le `scene_context`) qui pointe vers la mauvaise voiture.
 
-L'analyse contextuelle initiale (`handleReanalyzeContext`, lignes 875–910) — qui est celle déclenchée par défaut dans le tab Segmentation View pour le projet « BUGATTI EB 110 » — applique seulement `applyIdentityTemplates()` sans jamais expanser les véhicules. Résultat : on obtient une seule entrée « Bugatti EB 110 » au lieu des 5 vues attendues.
+Exemple : scène 9 → `source_text` parle bien de Pagani Huayra, et les visuels Kie associés sont des Pagani. Mais `title` = « L'Horloge à 150 000 Euros » (Bentley) et `scene_context.contexte_scene` contient « Chapitre 4 — Bentley… ». Quand on régénère un prompt, l'IA reçoit ce contexte Bentley et part en hors-piste.
 
-C'est pourquoi le système multi-vues paraît ne pas fonctionner : il n'est jamais appelé sur le premier passage.
+## Cause racine (rappel)
 
-## Plan
+`supabase/functions/send-narrative-to-segmentation/index.ts` ligne 112 trie les `narrative_scenes` par `scene_order` seul, ce qui entrelace les chapitres et désaligne ensuite les `rows.title` vs `rows.source_text` recomposés dans `projects.narration`.
 
-1. **Extraire** `VEHICLE_VIEWS` et la boucle d'expansion en helper local dans `Editor.tsx` :
-   ```ts
-   const expandVehiclesIntoViews = (objects: any[], onlyNewExcluding?: Set<string>) => { … }
-   ```
-   - Si `onlyNewExcluding` est fourni : on n'expanse que les véhicules dont le `nom` n'est pas déjà dans le set (comportement actuel de "search more").
-   - Sinon : on expanse **tous** les véhicules (comportement à appliquer pour l'analyse initiale).
-   - Le helper renvoie aussi les objets non-véhicules inchangés et appose `_view_angle_directive` puis le concatène à `identity_prompt` après `applyIdentityTemplates`.
+## Correctif en deux temps, sans perte de visuels
 
-2. **Appeler ce helper dans `handleReanalyzeContext`** juste après réception de `data.global_context` :
-   - Filtrer pour ne pas réexpanser un véhicule qui possède déjà des `reference_images` non vides (objets protégés par `analyze-context`) ou dont le `nom` contient déjà un suffixe `(vue …)` — pour éviter de multiplier les variantes au fil des relances.
-   - Appliquer `applyIdentityTemplates` puis le suffixe `VIEW ANGLE LOCK`.
+### 1. Fix permanent de l'edge function (pour les futurs projets NFG)
 
-3. **Refactorer `handleSearchMoreRecurrences`** pour réutiliser le même helper (passer le set des `excludeNames` afin de ne traiter que les nouveaux), supprimer la duplication actuelle.
+`supabase/functions/send-narrative-to-segmentation/index.ts` :
 
-4. **Garde-fou anti-doublon** : avant l'expansion, sauter tout véhicule dont `nom` matche `/\(vue [^)]+\)$/i` (déjà éclaté).
+- Après le chargement de `chapters` et `scenesRaw`, **trier en mémoire** `sourceScenes` par `chapterById.get(s.chapter_id).chapter_order` puis `s.scene_order` avant le filtre `validated_only` et le `map`.
+- Aucun autre changement (idx, recomposition narration, insert) : tout suit automatiquement.
 
-## Détails techniques
+### 2. Réparation **in-place** du projet "La Facture Secrète"
 
-- Fichier touché : `src/pages/Editor.tsx` uniquement (logique frontend, pas de migration ni d'edge function).
-- Pas de changement de schéma DB : les 5 variantes restent stockées comme entrées indépendantes dans `global_context.objets_recurrents` (modèle existant).
-- Compatibilité : les projets ayant déjà reçu une seule entrée véhicule pourront déclencher manuellement l'expansion via « Chercher plus de récurrences » (comportement préservé) **ou** en relançant l'analyse contextuelle (nouveau).
+Création d'une **migration SQL** qui, pour ce `project_id`, ré-aligne chaque `scenes` row sur le bon `narrative_scenes` :
 
-## Hors scope
+1. Pour chaque `scenes` row du projet, retrouver le `narrative_scenes` correspondant par **match exact ou fuzzy** sur les ~120 premiers caractères normalisés de `source_text` (les contenus ont été insérés tels quels, donc le match est fiable).
+2. Mettre à jour **uniquement** `scenes.title`, `scenes.scene_context`, `scenes.visual_intention`, `scenes.narrative_action`, `scenes.characters`, `scenes.location` avec les valeurs issues du `narrative_scenes` correctement apparié + son `narrative_chapters` parent.
+3. **Ne pas toucher** à `source_text`, `source_text_fr`, `scene_order`, ni aux `shots`. Les `image_url`, `prompt_export`, `image_engine` sont préservés.
+4. En complément, réécrire `projects.narration` en concaténant les `scenes` dans leur ordre actuel mais avec les titres corrigés (utile pour `analyze-context` et la parité ScriptCreator).
 
-- Pas de changement à `analyze-context` edge function.
-- Pas de modification de `ObjectRegistryPanel.tsx`.
-- Pas de migration des données existantes du projet « BUGATTI EB 110 » : l'utilisateur relance l'analyse pour bénéficier du fix.
+### 3. Effets secondaires à valider après la migration
+
+- Les `prompt_export` restent valides (générés à partir du `source_text`, inchangé).
+- Le `scene_context` corrigé (« Chapitre 3 — Pagani… ») améliorera la regénération individuelle d'un prompt (`regenerate-shot`) : plus de fuite Bentley dans la scène Pagani.
+- Aucune resynchronisation Whisper/VO requise (les durées et l'audio dépendent du `source_text`, inchangé).
+
+## Hors-scope
+
+- Pas de suppression de `shots`, pas de réimport depuis l'historique NFG.
+- Pas de toucher au pipeline VisualPrompts ni à `regenerate-shot` côté code.
+- Si le matching fuzzy échoue pour une ou deux scènes marginales (texte trop court ou édité manuellement), la migration les listera dans un `RAISE NOTICE` et laissera ces lignes inchangées — vous pourrez corriger leur titre à la main dans l'éditeur.
