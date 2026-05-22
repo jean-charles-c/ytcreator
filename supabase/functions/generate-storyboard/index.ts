@@ -1415,7 +1415,7 @@ serve(async (req) => {
             project_id,
             shot_order: j + 1,
             shot_type: shot?.shot_type || fbType,
-            description: shot?.description || null,
+            description: shot?.description || "",
             source_sentence: shot?.source_sentence || fbSentence,
             source_sentence_fr: shot?.source_sentence_fr || null,
             prompt_export: null,
@@ -1466,11 +1466,11 @@ serve(async (req) => {
           }
         }
 
-        const rawDescription = shot?.description || null;
+        const rawDescription = shot?.description || "";
         const description = rawDescription && !hasLegacyIllustrationWording(rawDescription)
           && !rawDescription.startsWith("Description visuelle du segment narratif")
           ? rawDescription
-          : null;
+          : "";
 
         shotRows.push({
           scene_id: scene.id,
