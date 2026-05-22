@@ -1186,8 +1186,8 @@ serve(async (req) => {
           } else {
             const currentDesc = existingShot.description || "";
             if (currentDesc.startsWith("Description visuelle du segment narratif") || hasLegacyIllustrationWording(currentDesc)) {
-              // Description template héritée : on la nettoie en la mettant à NULL.
-              payload.description = null;
+              // Description template héritée : on la vide.
+              payload.description = "";
             }
           }
           if (aiShot?.shot_type) payload.shot_type = aiShot.shot_type;
