@@ -917,7 +917,10 @@ serve(async (req) => {
         retryable: isTimeout || safetyBlocked,
         safety_blocked: safetyBlocked,
       }),
-      { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: isTimeout ? 504 : safetyBlocked ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });
