@@ -114,7 +114,26 @@ serve(async (req) => {
         if (!obj.mentions_scenes.includes(sceneOrder)) return false;
       }
       const objName = (obj.nom || "").toLowerCase();
-      return objName && shotText.includes(objName.split(" ")[0].toLowerCase());
+      if (!objName) return false;
+      // Pick the most DISTINCTIVE word of the object name to avoid false
+      // positives like "Bois Caleidolegno" matching every fragment that
+      // happens to contain the common word "bois". We prefer the longest
+      // word ≥5 chars, then require it to appear in the fragment text.
+      const STOPWORDS = new Set([
+        "le","la","les","un","une","des","de","du","au","aux","et","ou",
+        "bois","plan","voiture","auto","moto","objet","piece","pièce",
+        "the","of","a","an","car","wood","item","panel","detail"
+      ]);
+      const tokens = objName
+        .split(/[\s\-_'']+/)
+        .filter((t: string) => t.length >= 5 && !STOPWORDS.has(t));
+      if (tokens.length === 0) {
+        // No distinctive token → require the full name (≥5 chars) to appear.
+        return objName.length >= 5 && shotText.includes(objName);
+      }
+      // Use the longest distinctive token as the discriminator.
+      const key = tokens.sort((a: string, b: string) => b.length - a.length)[0];
+      return shotText.includes(key);
     });
 
     const identityLockBlock = linkedObjects.length > 0
