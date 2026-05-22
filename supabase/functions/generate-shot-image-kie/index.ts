@@ -905,20 +905,24 @@ serve(async (req) => {
     // can switch to polling instead of treating it as a hard failure.
     const isTimeout = message === "KIE_TIMEOUT_SYNC";
     const safetyBlocked = isSafetyError(message);
+    const isRateLimit = /concurrent requests? limit|rate.?limit|429/i.test(message);
     const userMessage = isTimeout
       ? "Kie generation is taking longer than expected. Please retry with async mode."
       : safetyBlocked
         ? "L'image a été bloquée par les filtres de sécurité de Google après plusieurs tentatives. Reformulez le prompt en évitant les termes liés au stress, au chaos, au danger ou à la violence, ou activez le toggle « Sans personnage » pour ce plan."
-        : message;
+        : isRateLimit
+          ? "Limite de requêtes simultanées Kie atteinte. Réessayez dans quelques instants."
+          : message;
     return new Response(
       JSON.stringify({
         error: userMessage,
         provider: "kie",
-        retryable: isTimeout || safetyBlocked,
+        retryable: isTimeout || safetyBlocked || isRateLimit,
         safety_blocked: safetyBlocked,
+        rate_limited: isRateLimit,
       }),
       {
-        status: isTimeout ? 504 : safetyBlocked ? 200 : 500,
+        status: isTimeout ? 504 : safetyBlocked || isRateLimit ? 200 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );

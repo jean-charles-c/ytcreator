@@ -1291,6 +1291,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                 } else if (data?.safety_blocked) {
                   console.warn(`Shot ${remainingShotIds[i]}: bloqué par filtre de sécurité`);
                   succeeded = true;
+                } else if (data?.rate_limited) {
+                  console.warn(`Shot ${remainingShotIds[i]}: Kie rate limit, attente ${attempt * 15}s (${attempt}/${MAX_RETRIES})`);
+                  await new Promise((r) => setTimeout(r, attempt * 15_000));
                 } else if (response.ok && data.image_url) {
                   globalSuccess++;
                   succeeded = true;
