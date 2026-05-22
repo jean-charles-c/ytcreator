@@ -798,11 +798,18 @@ serve(async (req) => {
       }
     }
 
-    // Cap refs (Kie has limits per model)
+    // Cap refs (Kie has limits per model).
+    // For nano-banana family we previously kept only the FIRST image per object
+    // (slice(0,1)) which silently dropped all alternate references the user
+    // had uploaded for a single character/object. Nano-banana accepts multiple
+    // images in image_urls — we now keep up to 3 per object and cap at 4 total
+    // to preserve identity consistency from several angles.
     const cappedRefs = useFilteredReferences
       ? effectiveLinkedObjects
-          .flatMap((obj: any) => Array.isArray(obj.reference_images) ? obj.reference_images.filter((url: unknown) => typeof url === "string" && String(url).startsWith("http")).slice(0, 1) : [])
-          .slice(0, 2)
+          .flatMap((obj: any) => Array.isArray(obj.reference_images)
+            ? obj.reference_images.filter((url: unknown) => typeof url === "string" && String(url).startsWith("http")).slice(0, 3)
+            : [])
+          .slice(0, 4)
       : allRefImages.slice(0, 4);
     const cappedOref = orefImages.slice(0, 1); // MJ supports only 1 --oref
     const cappedSref = srefImages.slice(0, 3);
