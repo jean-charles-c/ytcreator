@@ -1,39 +1,37 @@
-## Constat
+## Décision
 
-Le désordre se trouve uniquement dans l'association **titre ↔ texte** des scènes legacy. Les `shots` (et leurs `image_url`) ont été générés à partir du `source_text` de chaque scène — ils sont donc visuellement cohérents avec le contenu, c'est le **titre affiché** (et le `scene_context`) qui pointe vers la mauvaise voiture.
+Suppression complète du `fallbackPrompt` dans le pipeline. Si l'IA ne renvoie pas un prompt exploitable pour un shot, on laisse `prompt_export = NULL`. L'utilisateur régénérera manuellement via le bouton « Régénérer le prompt » du shot ou « Générer tous les prompts ».
 
-Exemple : scène 9 → `source_text` parle bien de Pagani Huayra, et les visuels Kie associés sont des Pagani. Mais `title` = « L'Horloge à 150 000 Euros » (Bentley) et `scene_context.contexte_scene` contient « Chapitre 4 — Bentley… ». Quand on régénère un prompt, l'IA reçoit ce contexte Bentley et part en hors-piste.
+## Changements code
 
-## Cause racine (rappel)
+### 1. `supabase/functions/generate-storyboard/index.ts`
 
-`supabase/functions/send-narrative-to-segmentation/index.ts` ligne 112 trie les `narrative_scenes` par `scene_order` seul, ce qui entrelace les chapitres et désaligne ensuite les `rows.title` vs `rows.source_text` recomposés dans `projects.narration`.
+- Supprimer la fonction `fallbackPrompt(...)`.
+- Dans `buildSegmentShot(...)` (~ligne 500) :
+  - Remplacer `baseShot?.prompt_export || fallbackPrompt(segment, scene, shotType)` par `baseShot?.prompt_export ?? null`.
+  - Quand `reuseGeneratedContent` est `false` (nouveau shot issu de split / repair / post-split / redistribution), `prompt_export` reste `null`.
+- Dans la branche AI principale et la branche `prompt-only` : si l'IA ne renvoie pas de `prompt_export` (ou retourne une string vide / trop courte), inscrire `prompt_export = null` au lieu de fallback.
+- Idem pour `description` : si pas de description AI, mettre `null` (au lieu d'un texte template).
+- Conséquence souhaitée : la scène/shot apparaîtra comme « incomplet » dans VisualPrompts → `isComplete` la traitera au prochain clic global, conformément à la règle déjà mémorisée *Structural Edits No Auto Prompts*.
 
-## Correctif en deux temps, sans perte de visuels
+### 2. `supabase/functions/regenerate-shot/index.ts`
 
-### 1. Fix permanent de l'edge function (pour les futurs projets NFG)
+- Vérifier la même chose : si l'IA échoue, retourner une erreur explicite et **ne pas écrire** un prompt template. Le shot conserve son ancienne valeur (ou `null`).
 
-`supabase/functions/send-narrative-to-segmentation/index.ts` :
+### 3. Anti-redondance (`supabase/functions/_shared/visual-redundancy-detector.ts` + `generate-storyboard/index.ts` lignes 1324-1335)
 
-- Après le chargement de `chapters` et `scenesRaw`, **trier en mémoire** `sourceScenes` par `chapterById.get(s.chapter_id).chapter_order` puis `s.scene_order` avant le filtre `validated_only` et le `map`.
-- Aucun autre changement (idx, recomposition narration, insert) : tout suit automatiquement.
+- Supprimer toute logique qui s'appuyait sur la présence d'un fallback uniforme (la rotation caméra reste, mais devient le seul mécanisme actif côté backend).
+- Conserver `analyzeRedundancy` à titre de **logging** uniquement (pas d'action automatique sur les prompts).
 
-### 2. Réparation **in-place** du projet "La Facture Secrète"
+## Réparation du projet « La Facture Secrète »
 
-Création d'une **migration SQL** qui, pour ce `project_id`, ré-aligne chaque `scenes` row sur le bon `narrative_scenes` :
+Migration SQL ciblée :
+- Pour tous les shots des scènes 8 à 11 du projet `13993aa0-a35f-4827-bcb6-4b0224a773ba` dont `prompt_export` contient `Rolls-Royce Boat Tail` ou une mention `Lieu :` ne correspondant pas à la `scenes.location` actuelle : `UPDATE shots SET prompt_export = NULL, description = NULL` (les `image_url` et `source_sentence` sont conservés).
+- L'utilisateur clique ensuite « Générer tous les prompts » dans VisualPrompts → seuls les shots vides seront repeuplés, avec le bon contexte Bentley / Pagani.
 
-1. Pour chaque `scenes` row du projet, retrouver le `narrative_scenes` correspondant par **match exact ou fuzzy** sur les ~120 premiers caractères normalisés de `source_text` (les contenus ont été insérés tels quels, donc le match est fiable).
-2. Mettre à jour **uniquement** `scenes.title`, `scenes.scene_context`, `scenes.visual_intention`, `scenes.narrative_action`, `scenes.characters`, `scenes.location` avec les valeurs issues du `narrative_scenes` correctement apparié + son `narrative_chapters` parent.
-3. **Ne pas toucher** à `source_text`, `source_text_fr`, `scene_order`, ni aux `shots`. Les `image_url`, `prompt_export`, `image_engine` sont préservés.
-4. En complément, réécrire `projects.narration` en concaténant les `scenes` dans leur ordre actuel mais avec les titres corrigés (utile pour `analyze-context` et la parité ScriptCreator).
+## Hors périmètre
 
-### 3. Effets secondaires à valider après la migration
+- Pas de modification de la segmentation, du voice-over, du timeline assembly, ni des images déjà générées.
+- Pas de migration touchant `source_text`, `scene_order` ou les `shots` autres que le nettoyage de `prompt_export` / `description`.
 
-- Les `prompt_export` restent valides (générés à partir du `source_text`, inchangé).
-- Le `scene_context` corrigé (« Chapitre 3 — Pagani… ») améliorera la regénération individuelle d'un prompt (`regenerate-shot`) : plus de fuite Bentley dans la scène Pagani.
-- Aucune resynchronisation Whisper/VO requise (les durées et l'audio dépendent du `source_text`, inchangé).
-
-## Hors-scope
-
-- Pas de suppression de `shots`, pas de réimport depuis l'historique NFG.
-- Pas de toucher au pipeline VisualPrompts ni à `regenerate-shot` côté code.
-- Si le matching fuzzy échoue pour une ou deux scènes marginales (texte trop court ou édité manuellement), la migration les listera dans un `RAISE NOTICE` et laissera ces lignes inchangées — vous pourrez corriger leur titre à la main dans l'éditeur.
+Validation puis j'enchaîne : suppression du fallback (1, 2, 3) + migration de nettoyage.
