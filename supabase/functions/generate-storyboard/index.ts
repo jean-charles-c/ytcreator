@@ -490,16 +490,19 @@ const buildSegmentShot = (
   const hasRealDescription = baseShot?.description
     && !baseShot.description.startsWith("Description visuelle du segment narratif");
 
+  // Politique : pas de prompt template. Si on n'a pas de contenu AI réel
+  // hérité de baseShot, on laisse description et prompt_export à null pour
+  // que l'utilisateur les régénère manuellement via "Générer tous les prompts".
   return {
     shot_type: shotType,
     description: (reuseGeneratedContent && hasRealDescription)
       ? baseShot.description
-      : fallbackDescription(segment),
+      : null,
     source_sentence: segment,
     source_sentence_fr: sourceSentenceFr,
     prompt_export: reuseGeneratedContent
-      ? baseShot?.prompt_export || fallbackPrompt(segment, scene, shotType)
-      : fallbackPrompt(segment, scene, shotType),
+      ? (baseShot?.prompt_export ?? null)
+      : null,
     guardrails: baseShot?.guardrails || "historically accurate clothing, architecture, and materials",
   };
 };
