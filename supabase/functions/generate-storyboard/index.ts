@@ -1137,65 +1137,56 @@ serve(async (req) => {
           const existingShot = sceneShots[idx];
           const aiShot = aiPromptMap.get(`${scene.id}::${idx}`);
 
-          let promptExport = aiShot?.prompt_export
-            || buildContextualPrompt(existingShot.source_sentence || scene.source_text, scene, existingShot.shot_type, idx, recurringObjects, resolvedStyleSuffix, resolvedAspectRatio);
+          // Politique : pas de prompt template. Si l'IA ne renvoie rien
+          // d'exploitable, on laisse prompt_export à NULL.
+          let promptExport: string | null = aiShot?.prompt_export ? String(aiShot.prompt_export) : null;
 
-          // Inject identity locks
-          if (relevantObjs.length > 0) {
-            const fragmentLower = (existingShot.source_sentence || "").toLowerCase();
-            const matchingLocks = relevantObjs
-              .filter((obj: any) => {
-                const objName = (obj.nom || "").toLowerCase();
-                return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
-              })
-              .map((obj: any) => obj.identity_prompt || "")
-              .filter(Boolean);
-            if (matchingLocks.length > 0) {
-              const lockPrefix = matchingLocks.join("\n\n") + "\n\n";
-              const firstLockSnippet = matchingLocks[0].slice(0, 40).toLowerCase();
-              if (!promptExport.toLowerCase().includes(firstLockSnippet)) {
-                promptExport = lockPrefix + promptExport;
+          if (promptExport) {
+            // Inject identity locks
+            if (relevantObjs.length > 0) {
+              const fragmentLower = (existingShot.source_sentence || "").toLowerCase();
+              const matchingLocks = relevantObjs
+                .filter((obj: any) => {
+                  const objName = (obj.nom || "").toLowerCase();
+                  return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
+                })
+                .map((obj: any) => obj.identity_prompt || "")
+                .filter(Boolean);
+              if (matchingLocks.length > 0) {
+                const lockPrefix = matchingLocks.join("\n\n") + "\n\n";
+                const firstLockSnippet = matchingLocks[0].slice(0, 40).toLowerCase();
+                if (!promptExport.toLowerCase().includes(firstLockSnippet)) {
+                  promptExport = lockPrefix + promptExport;
+                }
               }
             }
-          }
 
-          let usedDeterministicPrompt = false;
-          promptExport = sanitizePromptExport(promptExport, existingShot.source_sentence);
-          if (isWeakPromptExport(promptExport)) {
-            promptExport = buildContextualPrompt(
-              existingShot.source_sentence || scene.source_text,
-              scene,
-              aiShot?.shot_type || existingShot.shot_type,
-              idx,
-              recurringObjects,
-              resolvedStyleSuffix,
-              resolvedAspectRatio,
-            );
-            usedDeterministicPrompt = true;
-          }
+            promptExport = sanitizePromptExport(promptExport, existingShot.source_sentence);
 
-          // Anti-text-leak suffix
-          const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
-          if (!promptExport.toLowerCase().includes("any visible writing in the image")) {
-            promptExport = promptExport.trimEnd() + "\n\n" + antiTextLeak;
+            // Si l'IA a renvoyé un prompt trop faible, on l'écarte plutôt
+            // que de retomber sur un template — l'utilisateur régénérera.
+            if (isWeakPromptExport(promptExport)) {
+              console.warn(`prompt_only: weak AI prompt for shot ${existingShot.id} — leaving prompt_export NULL`);
+              promptExport = null;
+            } else {
+              // Anti-text-leak suffix
+              const antiTextLeak = "Any visible writing in the image must exist only as natural in-scene text (such as signage, posters, letters, newspapers, labels, or documents) that belongs to the world of the scene. Never render, quote, copy, or spell out the narrative wording of the prompt itself. Do not turn the descriptive sentence of the prompt into visible text in the image. The prompt is only an instruction for image creation, not a source of text to display. If written elements appear, they must be context-appropriate and independent from the prompt wording.";
+              if (!promptExport.toLowerCase().includes("any visible writing in the image")) {
+                promptExport = promptExport.trimEnd() + "\n\n" + antiTextLeak;
+              }
+            }
           }
 
           const payload: any = {
             prompt_export: promptExport,
           };
-          // Always replace fallback descriptions — never keep "Description visuelle du segment narratif"
-          if (usedDeterministicPrompt) {
-            payload.description = deriveCleanDescriptionFromPrompt(promptExport, existingShot.source_sentence);
-          } else if (aiShot?.description) {
-            // Defensively strip any legacy IDENTITY LOCK block the model may
-            // have echoed inside the description field.
+          if (aiShot?.description) {
             payload.description = stripLegacyIdentityLockPrefix(aiShot.description);
           } else {
             const currentDesc = existingShot.description || "";
             if (currentDesc.startsWith("Description visuelle du segment narratif") || hasLegacyIllustrationWording(currentDesc)) {
-              // Extract a rich description from prompt_export. Strip identity
-              // locks first so the slice doesn't fall in the middle of one.
-              payload.description = deriveCleanDescriptionFromPrompt(promptExport, existingShot.source_sentence);
+              // Description template héritée : on la nettoie en la mettant à NULL.
+              payload.description = null;
             }
           }
           if (aiShot?.shot_type) payload.shot_type = aiShot.shot_type;
