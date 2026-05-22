@@ -120,7 +120,21 @@ serve(async (req) => {
       });
     }
 
-    const sourceScenes = validatedOnly ? allScenes.filter((s) => s.validated) : allScenes;
+    // Build chapter lookup early so we can sort scenes by (chapter_order, scene_order).
+    // narrative_scenes.scene_order is *intra-chapter* (1..N per chapter). Sorting only
+    // by scene_order interleaves chapters and desynchronises titles vs voice-over text
+    // in the legacy `scenes` table and recomposed `projects.narration`.
+    const chapterById = new Map<string, any>();
+    for (const c of chapters ?? []) chapterById.set((c as any).id, c);
+
+    const orderedAll = [...allScenes].sort((a, b) => {
+      const ca = chapterById.get(a.chapter_id)?.chapter_order ?? 9_999;
+      const cb = chapterById.get(b.chapter_id)?.chapter_order ?? 9_999;
+      if (ca !== cb) return ca - cb;
+      return (a.scene_order ?? 0) - (b.scene_order ?? 0);
+    });
+
+    const sourceScenes = validatedOnly ? orderedAll.filter((s) => s.validated) : orderedAll;
     if (sourceScenes.length === 0) {
       return new Response(JSON.stringify({ error: "Aucune scène validée à transférer" }), {
         status: 400,
@@ -202,10 +216,6 @@ serve(async (req) => {
         });
       }
     }
-
-    // Build chapter lookup.
-    const chapterById = new Map<string, any>();
-    for (const c of chapters ?? []) chapterById.set((c as any).id, c);
 
     // Map narrative_scenes → scenes rows.
     const rows = sourceScenes.map((s, idx) => {
