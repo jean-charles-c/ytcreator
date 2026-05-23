@@ -103,6 +103,12 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editingFullPrompt, setEditingFullPrompt] = useState(false);
   const [fullPromptDraft, setFullPromptDraft] = useState("");
   const [customFullPrompt, setCustomFullPrompt] = useState<string | null>(null);
+  const [editingScene, setEditingScene] = useState(false);
+  const [sceneDraft, setSceneDraft] = useState("");
+  const [savingScene, setSavingScene] = useState(false);
+  const [editingNarrative, setEditingNarrative] = useState(false);
+  const [narrativeDraft, setNarrativeDraft] = useState("");
+  const [savingNarrative, setSavingNarrative] = useState(false);
   const prevPromptExportRef = useRef(shot.prompt_export);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -302,6 +308,46 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     setCustomFullPrompt(null);
     setEditingFullPrompt(false);
     toast.info("Prompt réinitialisé au format automatique");
+  };
+
+  const saveSceneField = async () => {
+    const value = sceneDraft.trim();
+    if (!value) {
+      toast.error("La scène ne peut pas être vide.");
+      return;
+    }
+    setSavingScene(true);
+    const { error } = await supabase
+      .from("shots")
+      .update({ description: value })
+      .eq("id", shot.id);
+    setSavingScene(false);
+    if (error) {
+      toast.error("Erreur lors de la mise à jour.");
+      return;
+    }
+    onUpdate({ ...shot, description: value });
+    setEditingScene(false);
+    setCustomFullPrompt(null);
+    toast.success("SCENE TO RENDER mis à jour");
+  };
+
+  const saveNarrativeField = async () => {
+    const value = narrativeDraft.trim();
+    setSavingNarrative(true);
+    const { error } = await supabase
+      .from("shots")
+      .update({ prompt_export: value || null })
+      .eq("id", shot.id);
+    setSavingNarrative(false);
+    if (error) {
+      toast.error("Erreur lors de la mise à jour.");
+      return;
+    }
+    onUpdate({ ...shot, prompt_export: value || null });
+    setEditingNarrative(false);
+    setCustomFullPrompt(null);
+    toast.success("Narrative context mis à jour");
   };
 
   const startEdit = () => {
@@ -695,6 +741,81 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               </div>
             )}
             <p className="text-muted-foreground leading-relaxed break-words text-base">{shot.description}</p>
+            {/* Editable SCENE TO RENDER (= shot.description) */}
+            <div className="rounded border border-border bg-background/50 px-2 sm:px-3 py-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[10px] font-medium text-primary uppercase tracking-wide">
+                  SCENE TO RENDER — PRIMARY INSTRUCTION
+                </span>
+                {!editingScene ? (
+                  <button
+                    onClick={() => { setSceneDraft(shot.description || ""); setEditingScene(true); }}
+                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title="Modifier"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <div className="flex gap-1">
+                    <button onClick={saveSceneField} disabled={savingScene} className="p-1 rounded text-emerald-600 hover:bg-secondary disabled:opacity-50" title="Sauvegarder">
+                      {savingScene ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    </button>
+                    <button onClick={() => setEditingScene(false)} disabled={savingScene} className="p-1 rounded text-muted-foreground hover:bg-secondary" title="Annuler">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {editingScene ? (
+                <textarea
+                  value={sceneDraft}
+                  onChange={(e) => setSceneDraft(e.target.value)}
+                  className="w-full rounded border border-primary/30 bg-background p-2 text-xs text-foreground leading-relaxed resize-y min-h-[80px] focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              ) : (
+                <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                  {shot.description || <span className="italic text-muted-foreground">(vide)</span>}
+                </p>
+              )}
+            </div>
+            {/* Editable Narrative context (= shot.prompt_export) */}
+            <div className="rounded border border-border bg-background/50 px-2 sm:px-3 py-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Narrative context — secondary to the exact visual description
+                </span>
+                {!editingNarrative ? (
+                  <button
+                    onClick={() => { setNarrativeDraft(shot.prompt_export || ""); setEditingNarrative(true); }}
+                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title="Modifier"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <div className="flex gap-1">
+                    <button onClick={saveNarrativeField} disabled={savingNarrative} className="p-1 rounded text-emerald-600 hover:bg-secondary disabled:opacity-50" title="Sauvegarder">
+                      {savingNarrative ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    </button>
+                    <button onClick={() => setEditingNarrative(false)} disabled={savingNarrative} className="p-1 rounded text-muted-foreground hover:bg-secondary" title="Annuler">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {editingNarrative ? (
+                <textarea
+                  value={narrativeDraft}
+                  onChange={(e) => setNarrativeDraft(e.target.value)}
+                  className="w-full rounded border border-primary/30 bg-background p-2 text-xs text-muted-foreground leading-relaxed resize-y min-h-[80px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="Contexte narratif optionnel envoyé en complément à l'IA"
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+                  {shot.prompt_export || <span className="italic">(vide — aucun contexte narratif additionnel)</span>}
+                </p>
+              )}
+            </div>
         {shot.prompt_export && (
               <details className="group/details">
                 <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">
