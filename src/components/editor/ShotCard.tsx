@@ -357,7 +357,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
       ? { description: value }
       : { prompt_export: value || null };
     setSavingInline(isScene ? "scene" : "narrative");
-    const { error } = await supabase.from("shots").update(payload).eq("id", shot.id);
+    const { error } = await supabase.from("shots").update(payload as any).eq("id", shot.id);
     setSavingInline(null);
     if (error) {
       toast.error("Erreur lors de la mise à jour.");
