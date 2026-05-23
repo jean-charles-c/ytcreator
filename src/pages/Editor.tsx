@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Languages,
   Undo2,
+  Eye,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
