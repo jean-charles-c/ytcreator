@@ -349,6 +349,26 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     toast.success("Shot mis à jour !");
   };
 
+  const saveInlineField = async (field: "description" | "prompt_export") => {
+    const isScene = field === "description";
+    const draft = isScene ? sceneDraft : narrativeDraft;
+    const value = draft.trim();
+    const payload: Record<string, any> = isScene
+      ? { description: value }
+      : { prompt_export: value || null };
+    setSavingInline(isScene ? "scene" : "narrative");
+    const { error } = await supabase.from("shots").update(payload).eq("id", shot.id);
+    setSavingInline(null);
+    if (error) {
+      toast.error("Erreur lors de la mise à jour.");
+      return;
+    }
+    onUpdate({ ...shot, ...payload } as Shot);
+    if (isScene) setEditingScene(false);
+    else setEditingNarrative(false);
+    toast.success(isScene ? "Scène à rendre mise à jour" : "Contexte narratif mis à jour");
+  };
+
 
   const handleGenerateImage = async () => {
     if (!onGenerateImage) return;
