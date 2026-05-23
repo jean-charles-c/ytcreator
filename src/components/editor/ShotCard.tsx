@@ -89,6 +89,13 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editSourceSentence, setEditSourceSentence] = useState(shot.source_sentence ?? "");
   const [editSourceSentenceFr, setEditSourceSentenceFr] = useState(shot.source_sentence_fr ?? "");
   const [saving, setSaving] = useState(false);
+
+  // Inline editors (always-visible) for SCENE TO RENDER (description) and Narrative context (prompt_export)
+  const [editingScene, setEditingScene] = useState(false);
+  const [sceneDraft, setSceneDraft] = useState(shot.description ?? "");
+  const [editingNarrative, setEditingNarrative] = useState(false);
+  const [narrativeDraft, setNarrativeDraft] = useState(shot.prompt_export ?? "");
+  const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
   
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -340,6 +347,26 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     });
     setEditing(false);
     toast.success("Shot mis à jour !");
+  };
+
+  const saveInlineField = async (field: "description" | "prompt_export") => {
+    const isScene = field === "description";
+    const draft = isScene ? sceneDraft : narrativeDraft;
+    const value = draft.trim();
+    const payload: Record<string, any> = isScene
+      ? { description: value }
+      : { prompt_export: value || null };
+    setSavingInline(isScene ? "scene" : "narrative");
+    const { error } = await supabase.from("shots").update(payload as any).eq("id", shot.id);
+    setSavingInline(null);
+    if (error) {
+      toast.error("Erreur lors de la mise à jour.");
+      return;
+    }
+    onUpdate({ ...shot, ...payload } as Shot);
+    if (isScene) setEditingScene(false);
+    else setEditingNarrative(false);
+    toast.success(isScene ? "Scène à rendre mise à jour" : "Contexte narratif mis à jour");
   };
 
 
@@ -694,7 +721,81 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 )}
               </div>
             )}
-            <p className="text-muted-foreground leading-relaxed break-words text-base">{shot.description}</p>
+            {/* SCENE TO RENDER — inline editable */}
+            <div className="rounded border border-primary/20 bg-primary/5 px-2 sm:px-3 py-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[10px] font-medium text-primary uppercase tracking-wide">Scène à rendre (instruction principale)</span>
+                {!editingScene ? (
+                  <button
+                    onClick={() => { setSceneDraft(shot.description ?? ""); setEditingScene(true); }}
+                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title="Modifier"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button size="sm" onClick={() => saveInlineField("description")} disabled={savingInline === "scene"} className="h-6 text-[10px] px-2">
+                      {savingInline === "scene" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setEditingScene(false); setSceneDraft(shot.description ?? ""); }} className="h-6 text-[10px] px-2">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editingScene ? (
+                <textarea
+                  value={sceneDraft}
+                  onChange={(e) => setSceneDraft(e.target.value)}
+                  className="w-full rounded border border-primary/30 bg-background p-2 text-sm text-foreground leading-relaxed resize-y min-h-[80px] focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              ) : (
+                <p className="text-sm text-foreground leading-relaxed break-words">{shot.description}</p>
+              )}
+            </div>
+
+            {/* Narrative context (secondary) — inline editable */}
+            <div className="rounded border border-border bg-secondary/30 px-2 sm:px-3 py-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Contexte narratif (secondaire)</span>
+                {!editingNarrative ? (
+                  <button
+                    onClick={() => { setNarrativeDraft(shot.prompt_export ?? ""); setEditingNarrative(true); }}
+                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title="Modifier"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button size="sm" onClick={() => saveInlineField("prompt_export")} disabled={savingInline === "narrative"} className="h-6 text-[10px] px-2">
+                      {savingInline === "narrative" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setEditingNarrative(false); setNarrativeDraft(shot.prompt_export ?? ""); }} className="h-6 text-[10px] px-2">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editingNarrative ? (
+                <textarea
+                  value={narrativeDraft}
+                  onChange={(e) => setNarrativeDraft(e.target.value)}
+                  className="w-full rounded border border-border bg-background p-2 text-xs text-foreground leading-relaxed resize-y min-h-[80px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="Contexte narratif optionnel — laisser vide pour ne pas en injecter."
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground leading-relaxed break-words whitespace-pre-wrap">
+                  {shot.prompt_export?.trim() || <span className="italic opacity-60">(aucun contexte narratif — cliquer ✏️ pour en ajouter)</span>}
+                </p>
+              )}
+              {customFullPrompt !== null && (editingScene || editingNarrative) && (
+                <p className="mt-1 text-[10px] text-amber-600">
+                  ⚠️ Un prompt complet personnalisé est actif. Réinitialisez-le pour que vos modifications soient prises en compte.
+                </p>
+              )}
+            </div>
         {shot.prompt_export && (
               <details className="group/details">
                 <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors min-h-[44px] sm:min-h-0 flex items-center gap-1">
