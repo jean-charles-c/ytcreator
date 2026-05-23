@@ -89,6 +89,13 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editSourceSentence, setEditSourceSentence] = useState(shot.source_sentence ?? "");
   const [editSourceSentenceFr, setEditSourceSentenceFr] = useState(shot.source_sentence_fr ?? "");
   const [saving, setSaving] = useState(false);
+
+  // Inline editors (always-visible) for SCENE TO RENDER (description) and Narrative context (prompt_export)
+  const [editingScene, setEditingScene] = useState(false);
+  const [sceneDraft, setSceneDraft] = useState(shot.description ?? "");
+  const [editingNarrative, setEditingNarrative] = useState(false);
+  const [narrativeDraft, setNarrativeDraft] = useState(shot.prompt_export ?? "");
+  const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
   
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
