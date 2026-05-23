@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Languages,
   Undo2,
+  Eye,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -3857,6 +3858,22 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                     >
                                       {isRegenerating && regeneratingMode === "prompt" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clapperboard className="h-3 w-3" />}
                                       Générer les prompts
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs px-2 gap-1"
+                                      onClick={() => {
+                                        setImageOpenShots((prev) => {
+                                          const next = new Set(prev);
+                                          for (const sh of sceneShots) next.add(sh.id);
+                                          return next;
+                                        });
+                                      }}
+                                      title="Afficher tous les visuels de cette scène"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                      Afficher tous les visuels
                                     </Button>
                                   </div>
 
