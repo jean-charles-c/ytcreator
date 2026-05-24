@@ -11,13 +11,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX, AlertTriangle, Sparkles } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 import { getVisualStyleById } from "@/components/editor/visualStyle/types";
 import { stripLegacyIdentityLockBlocks } from "@/lib/stripLegacyIdentityLock";
 import { detectForeignEntities } from "@/lib/detectForeignEntities";
-import { AlertTriangle } from "lucide-react";
 
 type Shot = Tables<"shots">;
 
