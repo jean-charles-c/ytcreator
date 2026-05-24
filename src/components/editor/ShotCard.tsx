@@ -94,7 +94,24 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editingScene, setEditingScene] = useState(false);
   const [sceneDraft, setSceneDraft] = useState(shot.description ?? "");
   const [editingNarrative, setEditingNarrative] = useState(false);
-  const [narrativeDraft, setNarrativeDraft] = useState(shot.prompt_export ?? "");
+  // Narrative context : on n'affiche/édite que la partie "narrative" utile, en masquant le boilerplate
+  // (qualité, ratio, identity locks, anti-text-leak). On reconstruit le tout lors de la sauvegarde.
+  const splitNarrative = (raw: string | null | undefined): { prefix: string; narrative: string; suffix: string } => {
+    const text = raw ?? "";
+    if (!text) return { prefix: "", narrative: "", suffix: "" };
+    const suffixMatch = text.match(/\s*Any visible writing in the image[\s\S]*$/i);
+    const suffix = suffixMatch ? suffixMatch[0] : "";
+    const beforeSuffix = suffix ? text.slice(0, text.length - suffix.length) : text;
+    const vdMatch = beforeSuffix.match(/Visual details\s*:\s*/i);
+    if (vdMatch && vdMatch.index !== undefined) {
+      const prefix = beforeSuffix.slice(0, vdMatch.index + vdMatch[0].length);
+      const narrative = beforeSuffix.slice(vdMatch.index + vdMatch[0].length).trim();
+      return { prefix, narrative, suffix };
+    }
+    return { prefix: "", narrative: beforeSuffix.trim(), suffix };
+  };
+  const narrativeParts = splitNarrative(shot.prompt_export);
+  const [narrativeDraft, setNarrativeDraft] = useState(narrativeParts.narrative);
   const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
   
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -351,11 +368,18 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   const saveInlineField = async (field: "description" | "prompt_export") => {
     const isScene = field === "description";
-    const draft = isScene ? sceneDraft : narrativeDraft;
-    const value = draft.trim();
-    const payload: Record<string, any> = isScene
-      ? { description: value }
-      : { prompt_export: value || null };
+    let payload: Record<string, any>;
+    if (isScene) {
+      payload = { description: sceneDraft.trim() };
+    } else {
+      const parts = splitNarrative(shot.prompt_export);
+      const newNarrative = narrativeDraft.trim();
+      // Reconstruct preserving boilerplate (prefix + suffix) around the edited narrative.
+      const rebuilt = newNarrative
+        ? `${parts.prefix}${newNarrative}${parts.suffix}`
+        : ""; // si vidé, on retire aussi le boilerplate associé
+      payload = { prompt_export: rebuilt.trim() || null };
+    }
     setSavingInline(isScene ? "scene" : "narrative");
     const { error } = await supabase.from("shots").update(payload as any).eq("id", shot.id);
     setSavingInline(null);
