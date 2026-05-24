@@ -94,24 +94,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editingScene, setEditingScene] = useState(false);
   const [sceneDraft, setSceneDraft] = useState(shot.description ?? "");
   const [editingNarrative, setEditingNarrative] = useState(false);
-  // Narrative context : on n'affiche/édite que la partie "narrative" utile, en masquant le boilerplate
-  // (qualité, ratio, identity locks, anti-text-leak). On reconstruit le tout lors de la sauvegarde.
-  const splitNarrative = (raw: string | null | undefined): { prefix: string; narrative: string; suffix: string } => {
-    const text = raw ?? "";
-    if (!text) return { prefix: "", narrative: "", suffix: "" };
-    const suffixMatch = text.match(/\s*Any visible writing in the image[\s\S]*$/i);
-    const suffix = suffixMatch ? suffixMatch[0] : "";
-    const beforeSuffix = suffix ? text.slice(0, text.length - suffix.length) : text;
-    const vdMatch = beforeSuffix.match(/Visual details\s*:\s*/i);
-    if (vdMatch && vdMatch.index !== undefined) {
-      const prefix = beforeSuffix.slice(0, vdMatch.index + vdMatch[0].length);
-      const narrative = beforeSuffix.slice(vdMatch.index + vdMatch[0].length).trim();
-      return { prefix, narrative, suffix };
-    }
-    return { prefix: "", narrative: beforeSuffix.trim(), suffix };
-  };
-  const narrativeParts = splitNarrative(shot.prompt_export);
-  const [narrativeDraft, setNarrativeDraft] = useState(narrativeParts.narrative);
+  const [narrativeDraft, setNarrativeDraft] = useState(shot.prompt_export ?? "");
   const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
   
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -368,18 +351,11 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
   const saveInlineField = async (field: "description" | "prompt_export") => {
     const isScene = field === "description";
-    let payload: Record<string, any>;
-    if (isScene) {
-      payload = { description: sceneDraft.trim() };
-    } else {
-      const parts = splitNarrative(shot.prompt_export);
-      const newNarrative = narrativeDraft.trim();
-      // Reconstruct preserving boilerplate (prefix + suffix) around the edited narrative.
-      const rebuilt = newNarrative
-        ? `${parts.prefix}${newNarrative}${parts.suffix}`
-        : ""; // si vidé, on retire aussi le boilerplate associé
-      payload = { prompt_export: rebuilt.trim() || null };
-    }
+    const draft = isScene ? sceneDraft : narrativeDraft;
+    const value = draft.trim();
+    const payload: Record<string, any> = isScene
+      ? { description: value }
+      : { prompt_export: value || null };
     setSavingInline(isScene ? "scene" : "narrative");
     const { error } = await supabase.from("shots").update(payload as any).eq("id", shot.id);
     setSavingInline(null);
@@ -784,8 +760,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Contexte narratif (secondaire)</span>
                 {!editingNarrative ? (
-                   <button
-                    onClick={() => { setNarrativeDraft(splitNarrative(shot.prompt_export).narrative); setEditingNarrative(true); }}
+                  <button
+                    onClick={() => { setNarrativeDraft(shot.prompt_export ?? ""); setEditingNarrative(true); }}
                     className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     title="Modifier"
                   >
@@ -796,7 +772,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                     <Button size="sm" onClick={() => saveInlineField("prompt_export")} disabled={savingInline === "narrative"} className="h-6 text-[10px] px-2">
                       {savingInline === "narrative" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setEditingNarrative(false); setNarrativeDraft(splitNarrative(shot.prompt_export).narrative); }} className="h-6 text-[10px] px-2">
+                    <Button size="sm" variant="outline" onClick={() => { setEditingNarrative(false); setNarrativeDraft(shot.prompt_export ?? ""); }} className="h-6 text-[10px] px-2">
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
@@ -811,7 +787,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 />
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed break-words whitespace-pre-wrap">
-                  {splitNarrative(shot.prompt_export).narrative || <span className="italic opacity-60">(aucun contexte narratif — cliquer ✏️ pour en ajouter)</span>}
+                  {shot.prompt_export?.trim() || <span className="italic opacity-60">(aucun contexte narratif — cliquer ✏️ pour en ajouter)</span>}
                 </p>
               )}
               {customFullPrompt !== null && (editingScene || editingNarrative) && (
