@@ -810,6 +810,31 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
             {/* Narrative context (secondary) — inline editable */}
             <div className="rounded border border-border bg-secondary/30 px-2 sm:px-3 py-2">
+              {foreignEntities.length > 0 && (
+                <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400 leading-tight">
+                    Entité étrangère détectée dans le prompt :{" "}
+                    <strong>{foreignEntities.map((f) => f.nom).join(", ")}</strong>
+                    {" "}(absente du contexte de cette scène).
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={cleanContamination}
+                    disabled={cleaningContamination}
+                    className="h-6 ml-auto text-[10px] px-2 border-amber-500/40 hover:bg-amber-500/20"
+                    title="Supprimer les phrases contenant ces entités"
+                  >
+                    {cleaningContamination ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3 mr-1" />
+                    )}
+                    Nettoyer
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Contexte narratif (secondaire)</span>
                 {!editingNarrative ? (
