@@ -99,6 +99,17 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const cleanNarrative = stripLegacyIdentityLockBlocks(shot.prompt_export);
   const [narrativeDraft, setNarrativeDraft] = useState(cleanNarrative);
   const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
+  const [cleaningContamination, setCleaningContamination] = useState(false);
+
+  // Anti-contamination detection: scan prompt_export for recurring-object
+  // names that belong to OTHER scenes (e.g. "Atelier Pagani" leaking into
+  // a Rolls-Royce scene). Computed every render — cheap regex on a short
+  // recurring-objects list.
+  const foreignEntities = detectForeignEntities(
+    shot.prompt_export,
+    allObjects,
+    sceneOrder,
+  );
   
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
