@@ -5,7 +5,11 @@ import { getNarrativeSegments } from "../_shared/narrative-segmentation.ts";
 import { splitTextIntoSentences } from "../_shared/sentence-splitting.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
-import { stripLegacyIdentityLockPrefix } from "../_shared/identity-lock-utils.ts";
+import {
+  stripLegacyIdentityLockPrefix,
+  filterRecurringObjectsForScene,
+  ENTITY_ISOLATION_RULE,
+} from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
