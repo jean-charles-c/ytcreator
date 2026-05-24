@@ -818,13 +818,12 @@ serve(async (req) => {
       `SCRIPT LANGUAGE: ${scriptLang}`,
     ].filter(Boolean).join("\n");
 
-    // Build recurring objects identity block for AI context
-    const objectIdentityBlock = recurringObjects.length > 0
-      ? "\n\nRECURRING OBJECT IDENTITY LOCKS (apply to every shot where the object appears):\n" +
-        recurringObjects.map((obj: any) =>
-          `- ${obj.nom} (${obj.type}, ${obj.epoque || "N/A"})${Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0 ? ` [Scenes: ${obj.mentions_scenes.join(", ")}]` : ""}:\n  ${obj.identity_prompt || ""}\n  Visual details: ${obj.description_visuelle || ""}`
-        ).join("\n")
-      : "";
+    // Anti-contamination: do NOT inject a global identity-lock block listing
+    // ALL project objects. Each scene gets its own filtered identity lock
+    // block built inline below — this prevents the AI from borrowing a brand
+    // / atelier name from a different scene (root cause of "Atelier Pagani"
+    // leaking into a Rolls-Royce scene).
+    const objectIdentityBlock = "";
 
     const sceneDescriptions = scenes.map((s: any) => {
       const narrativeSegments = getNarrativeSegments(s.source_text);
@@ -850,16 +849,19 @@ serve(async (req) => {
         `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
       ].filter(Boolean).join("\n") : "";
 
-      // Check which recurring objects are relevant for this scene
-      const sceneObjects = recurringObjects.filter((obj: any) => {
-        if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
-          return obj.mentions_scenes.includes(s.scene_order);
-        }
-        return false;
-      });
+      // Filter recurring objects for THIS scene only (anti-contamination)
+      const sceneObjects = filterRecurringObjectsForScene(
+        recurringObjects,
+        s.scene_order,
+        s.source_text || "",
+        ctx,
+      );
       const sceneObjectBlock = sceneObjects.length > 0
-        ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: ${sceneObjects.map((o: any) => o.nom).join(", ")} — APPLY THEIR IDENTITY LOCKS`
-        : "";
+        ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE (et SEULEMENT ceux-ci — interdiction de citer d'autres objets/marques du projet):\n` +
+          sceneObjects.map((obj: any) =>
+            `    - ${obj.nom} (${obj.type}, ${obj.epoque || "N/A"})\n      Identity lock: ${obj.identity_prompt || ""}\n      Visual details: ${obj.description_visuelle || ""}`
+          ).join("\n")
+        : `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: aucun — n'introduisez AUCUNE marque ou atelier spécifique absent du Lieu/Sujet ci-dessus.`;
 
       // List pre-computed narrative fragments so the AI knows exactly which text each shot must illustrate
       const fragmentList = narrativeSegments
