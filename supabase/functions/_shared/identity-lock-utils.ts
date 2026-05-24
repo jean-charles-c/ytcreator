@@ -93,3 +93,119 @@ export const stripLegacyIdentityLockBlocks = (prompt: string): string => {
  * stripper. Forward to the new full-body stripper which is a strict superset.
  */
 export const stripLegacyIdentityLockPrefix = stripLegacyIdentityLockBlocks;
+
+/**
+ * ──────────────────────────────────────────────────────────────────────────
+ * Anti-contamination utilities
+ * ──────────────────────────────────────────────────────────────────────────
+ *
+ * Goal: prevent the storyboard AI from naming an entity (brand, atelier,
+ * vehicle, character…) that belongs to a *different* scene of the same
+ * project. Example bug: a Rolls-Royce shot's prompt_export contained
+ * "Atelier Pagani" because Pagani Huayra is another recurring object of
+ * the project, even though it is irrelevant to the current scene.
+ */
+
+type AnyObject = Record<string, any>;
+
+const STOPWORDS = new Set([
+  "le", "la", "les", "un", "une", "des", "de", "du", "au", "aux", "et", "ou",
+  "bois", "plan", "voiture", "auto", "moto", "objet", "piece", "pièce",
+  "the", "of", "a", "an", "car", "wood", "item", "panel", "detail",
+  "atelier", "studio", "salle", "showroom", "interieur", "intérieur",
+]);
+
+/** Return the most distinctive (longest, non-stopword, ≥5 chars) token of a name. */
+export const distinctiveToken = (name: string): string | null => {
+  const tokens = (name || "")
+    .toLowerCase()
+    .split(/[\s\-_'']+/)
+    .filter((t) => t.length >= 5 && !STOPWORDS.has(t));
+  if (tokens.length === 0) {
+    return name && name.length >= 5 ? name.toLowerCase() : null;
+  }
+  return tokens.sort((a, b) => b.length - a.length)[0];
+};
+
+/**
+ * Keep only the recurring objects that are relevant to a given scene.
+ * An object is relevant when one of the following is true:
+ *   - `obj.mentions_scenes` explicitly contains the scene order
+ *   - the object name (or its distinctive token) appears in the scene text
+ *   - the object name appears in `scene_context.objets_associes`
+ */
+export const filterRecurringObjectsForScene = (
+  allObjects: AnyObject[],
+  sceneOrder: number,
+  sceneText: string,
+  sceneContext?: AnyObject | null,
+): AnyObject[] => {
+  if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
+  const haystack = (sceneText || "").toLowerCase();
+  const ctxObjects = (() => {
+    if (!sceneContext) return "";
+    const raw = (sceneContext as any).objets_associes;
+    if (Array.isArray(raw)) return raw.join(" ").toLowerCase();
+    if (typeof raw === "string") return raw.toLowerCase();
+    return "";
+  })();
+
+  return allObjects.filter((obj: AnyObject) => {
+    if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder)) {
+      return true;
+    }
+    const token = distinctiveToken(obj.nom || "");
+    if (!token) return false;
+    if (haystack.includes(token)) return true;
+    if (ctxObjects.includes(token)) return true;
+    return false;
+  });
+};
+
+/**
+ * Scan a generated prompt and return the names of recurring objects that
+ * should NOT have been mentioned (i.e. they belong to a different scene).
+ *
+ * - `allObjects`: full project recurring library
+ * - `allowedObjects`: objects authorized for the current scene
+ * - returns: array of foreign object names actually present in the prompt
+ */
+export const detectForeignEntities = (
+  prompt: string,
+  allObjects: AnyObject[],
+  allowedObjects: AnyObject[],
+): string[] => {
+  if (!prompt || !Array.isArray(allObjects) || allObjects.length === 0) return [];
+  const haystack = prompt.toLowerCase();
+  const allowedTokens = new Set(
+    (allowedObjects || [])
+      .map((o) => distinctiveToken(o.nom || ""))
+      .filter((t): t is string => !!t),
+  );
+  const foreign: string[] = [];
+  for (const obj of allObjects) {
+    const token = distinctiveToken(obj.nom || "");
+    if (!token) continue;
+    if (allowedTokens.has(token)) continue;
+    // word-boundary aware: avoid matching tokens embedded in another word
+    const re = new RegExp(`\\b${token.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`, "i");
+    if (re.test(haystack)) {
+      foreign.push(obj.nom);
+    }
+  }
+  return Array.from(new Set(foreign));
+};
+
+/** Shared ENTITY ISOLATION rule injected into AI system/user prompts. */
+export const ENTITY_ISOLATION_RULE = `ENTITY ISOLATION RULE — CRITICAL (anti-contamination):
+- The prompt_export MUST ONLY mention brands, vehicles, ateliers, workshops,
+  characters, locations and objects that are listed in the CURRENT SCENE's
+  CONTEXTE block (lieu, sujet, objets_associes) or in that scene's filtered
+  OBJETS RÉCURRENTS DANS CETTE SCÈNE list.
+- NEVER name a brand / atelier / vehicle / character / location that belongs
+  to a different scene of the same project, even if it appears in the
+  project's global recurring library or in other scenes.
+- If the scene's lieu is generic (e.g. "studio", "showroom", "salle blanche"),
+  describe a neutral environment — do NOT invent or borrow a specific brand
+  name (Pagani, Rolls-Royce, Ferrari, etc.) that is absent from the scene.
+- When in doubt about a brand/atelier name, OMIT it rather than guess.`;
