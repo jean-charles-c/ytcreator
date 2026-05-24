@@ -1,37 +1,66 @@
-## Décision
+# Anti-contamination des prompts visuels
 
-Suppression complète du `fallbackPrompt` dans le pipeline. Si l'IA ne renvoie pas un prompt exploitable pour un shot, on laisse `prompt_export = NULL`. L'utilisateur régénérera manuellement via le bouton « Régénérer le prompt » du shot ou « Générer tous les prompts ».
+## Diagnostic
 
-## Changements code
+Dans le projet « La Facture Secrète », le shot 3 de la scène 1 (sujet : *The Gallery* — Rolls-Royce) contient « Époque contemporaine, **Atelier Pagani.** » Ce n'est ni un bug d'affichage ni du strip legacy : c'est le `prompt_export` généré par l'IA qui a halluciné un lieu emprunté à un autre sujet du même projet (Pagani Huayra / Pack Tempesta).
 
-### 1. `supabase/functions/generate-storyboard/index.ts`
+Cause racine identifiée dans `supabase/functions/generate-storyboard/index.ts` :
 
-- Supprimer la fonction `fallbackPrompt(...)`.
-- Dans `buildSegmentShot(...)` (~ligne 500) :
-  - Remplacer `baseShot?.prompt_export || fallbackPrompt(segment, scene, shotType)` par `baseShot?.prompt_export ?? null`.
-  - Quand `reuseGeneratedContent` est `false` (nouveau shot issu de split / repair / post-split / redistribution), `prompt_export` reste `null`.
-- Dans la branche AI principale et la branche `prompt-only` : si l'IA ne renvoie pas de `prompt_export` (ou retourne une string vide / trop courte), inscrire `prompt_export = null` au lieu de fallback.
-- Idem pour `description` : si pas de description AI, mettre `null` (au lieu d'un texte template).
-- Conséquence souhaitée : la scène/shot apparaîtra comme « incomplet » dans VisualPrompts → `isComplete` la traitera au prochain clic global, conformément à la règle déjà mémorisée *Structural Edits No Auto Prompts*.
+1. Le bloc `OBJETS RÉCURRENTS` injecté dans le system prompt liste **tous** les objets récurrents du projet, pas seulement ceux de la scène en cours.
+2. Le `scene_context.lieu` est correct (« Intérieur d'une Rolls-Royce Phantom (studio) ») mais rien n'**interdit** explicitement à l'IA de citer une autre marque/atelier du projet.
+3. Aucun filet de sécurité côté serveur ni côté UI ne détecte qu'un prompt mentionne une entité absente du contexte de sa scène.
 
-### 2. `supabase/functions/regenerate-shot/index.ts`
+## Couche 1 — Filtrage des objets récurrents par scène (serveur)
 
-- Vérifier la même chose : si l'IA échoue, retourner une erreur explicite et **ne pas écrire** un prompt template. Le shot conserve son ancienne valeur (ou `null`).
+Dans `generate-storyboard` (et `regenerate-shot`) :
 
-### 3. Anti-redondance (`supabase/functions/_shared/visual-redundancy-detector.ts` + `generate-storyboard/index.ts` lignes 1324-1335)
+- Construire `objectIdentityBlock` en n'incluant que les objets dont :
+  - `mentions_scenes` contient l'`scene_order` courant, **ou**
+  - le `nom` apparaît dans `scene_context.objets_associes` (match texte tolérant), **ou**
+  - le `nom` est cité dans `source_text` / fragments de la scène.
+- Si la génération couvre plusieurs scènes dans un même appel, fournir un **bloc d'objets par scène** plutôt qu'un bloc global, attaché à chaque `CONTEXTE DE LA SCÈNE`.
+- Conserver la lib complète uniquement pour les guardrails globaux (jamais comme matériau de prompt visuel).
 
-- Supprimer toute logique qui s'appuyait sur la présence d'un fallback uniforme (la rotation caméra reste, mais devient le seul mécanisme actif côté backend).
-- Conserver `analyzeRedundancy` à titre de **logging** uniquement (pas d'action automatique sur les prompts).
+Résultat : l'IA ne « voit » plus Pagani Huayra quand elle génère un shot Rolls-Royce.
 
-## Réparation du projet « La Facture Secrète »
+## Couche 2 — Garde-fou explicite dans le prompt système
 
-Migration SQL ciblée :
-- Pour tous les shots des scènes 8 à 11 du projet `13993aa0-a35f-4827-bcb6-4b0224a773ba` dont `prompt_export` contient `Rolls-Royce Boat Tail` ou une mention `Lieu :` ne correspondant pas à la `scenes.location` actuelle : `UPDATE shots SET prompt_export = NULL, description = NULL` (les `image_url` et `source_sentence` sont conservés).
-- L'utilisateur clique ensuite « Générer tous les prompts » dans VisualPrompts → seuls les shots vides seront repeuplés, avec le bon contexte Bentley / Pagani.
+Ajouter au system prompt de `generate-storyboard` / `regenerate-shot` un bloc :
 
-## Hors périmètre
+```
+ENTITY ISOLATION RULE — CRITICAL:
+- The prompt_export MUST ONLY mention brands, vehicles, ateliers, locations
+  and objects listed in the CURRENT SCENE's CONTEXTE block (lieu, sujet,
+  objets_associes) or in that scene's filtered OBJETS RÉCURRENTS.
+- NEVER name another brand/atelier/object that belongs to a different scene
+  of the same project, even if it appears elsewhere in the recurring library.
+- If unsure, fall back to a neutral location ("studio neutre", "showroom")
+  rather than inventing or borrowing a brand name.
+```
 
-- Pas de modification de la segmentation, du voice-over, du timeline assembly, ni des images déjà générées.
-- Pas de migration touchant `source_text`, `scene_order` ou les `shots` autres que le nettoyage de `prompt_export` / `description`.
+## Couche 3 — Détection post-génération + UI
 
-Validation puis j'enchaîne : suppression du fallback (1, 2, 3) + migration de nettoyage.
+Côté serveur, après génération de chaque `prompt_export` :
+
+- Construire la liste des entités « autorisées » pour la scène (marques + ateliers + lieux dérivés de `scene_context` + objets filtrés).
+- Construire la liste des entités « interdites » = union des noms d'objets récurrents du projet **moins** les autorisées.
+- Si le `prompt_export` contient (insensible casse, mot entier) une entité interdite, stocker un flag `contamination_warning` dans le shot (champ JSON existant ou nouveau, à décider lors de l'implémentation).
+
+Côté UI (`ShotCard.tsx`, tab VisualPrompts) :
+
+- Quand le flag est présent, afficher un badge orange « ⚠ Entité étrangère détectée : *Pagani* » au-dessus du bloc « Contexte narratif (secondaire) ».
+- Proposer un bouton « Régénérer ce shot » (action existante) et un bouton « Nettoyer automatiquement » qui remplace l'entité interdite par le `lieu` de la scène et resauve `prompt_export`.
+
+## Détails techniques
+
+- Fichiers à modifier :
+  - `supabase/functions/generate-storyboard/index.ts` — filtrage objets, ajout règle ENTITY ISOLATION, détection post-gen.
+  - `supabase/functions/regenerate-shot/index.ts` — mêmes 3 ajouts pour la régénération unitaire.
+  - `supabase/functions/_shared/identity-lock-utils.ts` — utilitaires partagés `filterRecurringObjectsForScene()` et `detectForeignEntities()`.
+  - `src/components/editor/ShotCard.tsx` — badge + bouton « Nettoyer ».
+- Pas de migration DB requise si on stocke le warning dans un JSON existant ; sinon ajouter une colonne `shots.contamination_warning text` (à confirmer avec toi avant migration).
+- Pas d'impact sur le strip legacy ni sur les blocs IDENTITY LOCK déjà en place.
+
+## Mémoire projet à mettre à jour après implémentation
+
+Nouvelle entrée `mem://features/prompt-engineering/entity-isolation` rappelant la règle (objets récurrents filtrés par scène + interdiction de citer une entité étrangère).

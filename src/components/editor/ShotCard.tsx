@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX } from "lucide-react";
+import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, ShieldAlert, ShieldOff, Languages, ChevronRight, Package, User, MapPin, Car, Building2, Landmark, Box, UserX, AlertTriangle, Sparkles } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 import { getVisualStyleById } from "@/components/editor/visualStyle/types";
 import { stripLegacyIdentityLockBlocks } from "@/lib/stripLegacyIdentityLock";
+import { detectForeignEntities } from "@/lib/detectForeignEntities";
 
 type Shot = Tables<"shots">;
 
@@ -98,6 +99,17 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const cleanNarrative = stripLegacyIdentityLockBlocks(shot.prompt_export);
   const [narrativeDraft, setNarrativeDraft] = useState(cleanNarrative);
   const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
+  const [cleaningContamination, setCleaningContamination] = useState(false);
+
+  // Anti-contamination detection: scan prompt_export for recurring-object
+  // names that belong to OTHER scenes (e.g. "Atelier Pagani" leaking into
+  // a Rolls-Royce scene). Computed every render — cheap regex on a short
+  // recurring-objects list.
+  const foreignEntities = detectForeignEntities(
+    shot.prompt_export,
+    allObjects,
+    sceneOrder,
+  );
   
   const [generatingImage, setGeneratingImage] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -369,6 +381,45 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     if (isScene) setEditingScene(false);
     else setEditingNarrative(false);
     toast.success(isScene ? "Scène à rendre mise à jour" : "Contexte narratif mis à jour");
+  };
+
+  const cleanContamination = async () => {
+    if (!shot.prompt_export || foreignEntities.length === 0) return;
+    setCleaningContamination(true);
+    try {
+      // Strategy: drop every sentence that contains a foreign token. Sentence
+      // splitter is tolerant to French punctuation. If everything would be
+      // stripped, fall back to a simple word removal instead.
+      const tokens = foreignEntities.map((f) => f.token);
+      const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const sentenceRe = /[^.!?…]+[.!?…]+\s*|[^.!?…]+$/g;
+      const sentences = shot.prompt_export.match(sentenceRe) ?? [shot.prompt_export];
+      const keptSentences = sentences.filter((sent) => {
+        return !tokens.some((t) => new RegExp(`\\b${escape(t)}\\b`, "i").test(sent));
+      });
+      let cleaned = keptSentences.join("").trim();
+      if (!cleaned) {
+        // Nothing left → just remove the offending words to preserve some context
+        cleaned = shot.prompt_export;
+        for (const t of tokens) {
+          cleaned = cleaned.replace(new RegExp(`\\b${escape(t)}\\b`, "gi"), "");
+        }
+        cleaned = cleaned.replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+      }
+      const { error } = await supabase
+        .from("shots")
+        .update({ prompt_export: cleaned } as any)
+        .eq("id", shot.id);
+      if (error) {
+        toast.error("Impossible de nettoyer le prompt.");
+        return;
+      }
+      onUpdate({ ...shot, prompt_export: cleaned } as Shot);
+      setNarrativeDraft(stripLegacyIdentityLockBlocks(cleaned));
+      toast.success(`Entités étrangères supprimées : ${foreignEntities.map((f) => f.nom).join(", ")}`);
+    } finally {
+      setCleaningContamination(false);
+    }
   };
 
 
@@ -759,6 +810,31 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
 
             {/* Narrative context (secondary) — inline editable */}
             <div className="rounded border border-border bg-secondary/30 px-2 sm:px-3 py-2">
+              {foreignEntities.length > 0 && (
+                <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400 leading-tight">
+                    Entité étrangère détectée dans le prompt :{" "}
+                    <strong>{foreignEntities.map((f) => f.nom).join(", ")}</strong>
+                    {" "}(absente du contexte de cette scène).
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={cleanContamination}
+                    disabled={cleaningContamination}
+                    className="h-6 ml-auto text-[10px] px-2 border-amber-500/40 hover:bg-amber-500/20"
+                    title="Supprimer les phrases contenant ces entités"
+                  >
+                    {cleaningContamination ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3 mr-1" />
+                    )}
+                    Nettoyer
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Contexte narratif (secondaire)</span>
                 {!editingNarrative ? (

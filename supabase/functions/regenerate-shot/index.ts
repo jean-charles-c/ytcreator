@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateShotOperation, buildNeighborAvoidancePrompt } from "../_shared/shot-operation.ts";
 import { getSensitiveModeInstruction } from "../_shared/sensitive-mode.ts";
+import { ENTITY_ISOLATION_RULE } from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -244,6 +245,8 @@ CONTEXTUAL ANCHORING RULE — CRITICAL:
 Every prompt_export MUST begin by explicitly stating the historical period/era and geographic location.
 This anchoring is MANDATORY. Never produce a prompt without it.
 All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be accurate to that specific era, culture, and place.
+
+${ENTITY_ISOLATION_RULE}
 
 CONTEXTUAL PROMPT CONSTRUCTION — CRITICAL (same rules as initial generation):
 Each prompt_export must be built from the SPECIFIC fragment it illustrates, NOT from the full scene text.
