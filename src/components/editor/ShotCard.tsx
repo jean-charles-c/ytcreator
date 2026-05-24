@@ -16,6 +16,8 @@ import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 import { getVisualStyleById } from "@/components/editor/visualStyle/types";
 import { stripLegacyIdentityLockBlocks } from "@/lib/stripLegacyIdentityLock";
+import { detectForeignEntities } from "@/lib/detectForeignEntities";
+import { AlertTriangle } from "lucide-react";
 
 type Shot = Tables<"shots">;
 
