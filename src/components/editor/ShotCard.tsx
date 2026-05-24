@@ -383,6 +383,45 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
     toast.success(isScene ? "Scène à rendre mise à jour" : "Contexte narratif mis à jour");
   };
 
+  const cleanContamination = async () => {
+    if (!shot.prompt_export || foreignEntities.length === 0) return;
+    setCleaningContamination(true);
+    try {
+      // Strategy: drop every sentence that contains a foreign token. Sentence
+      // splitter is tolerant to French punctuation. If everything would be
+      // stripped, fall back to a simple word removal instead.
+      const tokens = foreignEntities.map((f) => f.token);
+      const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const sentenceRe = /[^.!?…]+[.!?…]+\s*|[^.!?…]+$/g;
+      const sentences = shot.prompt_export.match(sentenceRe) ?? [shot.prompt_export];
+      const keptSentences = sentences.filter((sent) => {
+        return !tokens.some((t) => new RegExp(`\\b${escape(t)}\\b`, "i").test(sent));
+      });
+      let cleaned = keptSentences.join("").trim();
+      if (!cleaned) {
+        // Nothing left → just remove the offending words to preserve some context
+        cleaned = shot.prompt_export;
+        for (const t of tokens) {
+          cleaned = cleaned.replace(new RegExp(`\\b${escape(t)}\\b`, "gi"), "");
+        }
+        cleaned = cleaned.replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+      }
+      const { error } = await supabase
+        .from("shots")
+        .update({ prompt_export: cleaned } as any)
+        .eq("id", shot.id);
+      if (error) {
+        toast.error("Impossible de nettoyer le prompt.");
+        return;
+      }
+      onUpdate({ ...shot, prompt_export: cleaned } as Shot);
+      setNarrativeDraft(stripLegacyIdentityLockBlocks(cleaned));
+      toast.success(`Entités étrangères supprimées : ${foreignEntities.map((f) => f.nom).join(", ")}`);
+    } finally {
+      setCleaningContamination(false);
+    }
+  };
+
 
   const handleGenerateImage = async () => {
     if (!onGenerateImage) return;
