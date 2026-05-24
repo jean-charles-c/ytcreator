@@ -94,7 +94,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editingScene, setEditingScene] = useState(false);
   const [sceneDraft, setSceneDraft] = useState(shot.description ?? "");
   const [editingNarrative, setEditingNarrative] = useState(false);
-  const [narrativeDraft, setNarrativeDraft] = useState(shot.prompt_export ?? "");
+  const [narrativeDraft, setNarrativeDraft] = useState(cleanNarrativeContext(shot.prompt_export));
   const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
   
   const [generatingImage, setGeneratingImage] = useState(false);
