@@ -1028,15 +1028,18 @@ serve(async (req) => {
           `    Cohérence: ${ctx.coherence_globale || "Cohérent"}`,
         ].filter(Boolean).join("\n") : "";
 
-        const sceneObjects = recurringObjects.filter((obj: any) => {
-          if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
-            return obj.mentions_scenes.includes(s.scene_order);
-          }
-          return false;
-        });
+        const sceneObjects = filterRecurringObjectsForScene(
+          recurringObjects,
+          s.scene_order,
+          s.source_text || "",
+          ctx,
+        );
         const sceneObjectBlock = sceneObjects.length > 0
-          ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: ${sceneObjects.map((o: any) => o.nom).join(", ")} — APPLY THEIR IDENTITY LOCKS`
-          : "";
+          ? `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE (et SEULEMENT ceux-ci — interdiction de citer d'autres objets/marques du projet):\n` +
+            sceneObjects.map((obj: any) =>
+              `    - ${obj.nom} (${obj.type}, ${obj.epoque || "N/A"})\n      Identity lock: ${obj.identity_prompt || ""}\n      Visual details: ${obj.description_visuelle || ""}`
+            ).join("\n")
+          : `\n  OBJETS RÉCURRENTS DANS CETTE SCÈNE: aucun — n'introduisez AUCUNE marque ou atelier spécifique absent du Lieu/Sujet ci-dessus.`;
 
         // Use existing shot source_sentences as fragments
         const fragmentList = sceneShots
