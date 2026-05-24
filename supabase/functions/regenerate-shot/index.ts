@@ -246,6 +246,8 @@ Every prompt_export MUST begin by explicitly stating the historical period/era a
 This anchoring is MANDATORY. Never produce a prompt without it.
 All architecture, clothing, objects, vegetation, skin tones, and lighting MUST be accurate to that specific era, culture, and place.
 
+${ENTITY_ISOLATION_RULE}
+
 CONTEXTUAL PROMPT CONSTRUCTION — CRITICAL (same rules as initial generation):
 Each prompt_export must be built from the SPECIFIC fragment it illustrates, NOT from the full scene text.
 Context injection rules:
