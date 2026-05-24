@@ -762,7 +762,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Contexte narratif (secondaire)</span>
                 {!editingNarrative ? (
                   <button
-                    onClick={() => { setNarrativeDraft(shot.prompt_export ?? ""); setEditingNarrative(true); }}
+                    onClick={() => { setNarrativeDraft(cleanNarrativeContext(shot.prompt_export)); setEditingNarrative(true); }}
                     className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     title="Modifier"
                   >
@@ -773,7 +773,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                     <Button size="sm" onClick={() => saveInlineField("prompt_export")} disabled={savingInline === "narrative"} className="h-6 text-[10px] px-2">
                       {savingInline === "narrative" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setEditingNarrative(false); setNarrativeDraft(shot.prompt_export ?? ""); }} className="h-6 text-[10px] px-2">
+                    <Button size="sm" variant="outline" onClick={() => { setEditingNarrative(false); setNarrativeDraft(cleanNarrativeContext(shot.prompt_export)); }} className="h-6 text-[10px] px-2">
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
@@ -788,7 +788,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
                 />
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed break-words whitespace-pre-wrap">
-                  {shot.prompt_export?.trim() || <span className="italic opacity-60">(aucun contexte narratif — cliquer ✏️ pour en ajouter)</span>}
+                  {cleanNarrativeContext(shot.prompt_export) || <span className="italic opacity-60">(aucun contexte narratif — cliquer ✏️ pour en ajouter)</span>}
                 </p>
               )}
               {customFullPrompt !== null && (editingScene || editingNarrative) && (
