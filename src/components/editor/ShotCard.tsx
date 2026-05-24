@@ -15,6 +15,7 @@ import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, Shiel
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 import { getVisualStyleById } from "@/components/editor/visualStyle/types";
+import { stripLegacyIdentityLockBlocks } from "@/lib/stripLegacyIdentityLock";
 
 type Shot = Tables<"shots">;
 
@@ -94,7 +95,8 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
   const [editingScene, setEditingScene] = useState(false);
   const [sceneDraft, setSceneDraft] = useState(shot.description ?? "");
   const [editingNarrative, setEditingNarrative] = useState(false);
-  const [narrativeDraft, setNarrativeDraft] = useState(shot.prompt_export ?? "");
+  const cleanNarrative = stripLegacyIdentityLockBlocks(shot.prompt_export);
+  const [narrativeDraft, setNarrativeDraft] = useState(cleanNarrative);
   const [savingInline, setSavingInline] = useState<null | "scene" | "narrative">(null);
   
   const [generatingImage, setGeneratingImage] = useState(false);
