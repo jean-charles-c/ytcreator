@@ -667,7 +667,7 @@ export default function ShotCard({ shot, globalIndex, sceneLabel, isLastInScene,
               {(shot as any).force_no_character ? "Sans personnage : ON" : "Sans personnage"}
             </button>
         </div>
-        <details className="group/shot-details">
+        <details className="group/shot-details" open>
           <summary className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
             Phrase illustrée / Prompt
             <span className="ml-auto text-[9px] group-open/shot-details:rotate-90 transition-transform">▶</span>
