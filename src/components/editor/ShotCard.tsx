@@ -15,6 +15,7 @@ import { Pencil, Check, X, Loader2, Copy, Trash2, Upload, Merge, Scissors, Shiel
 import type { Tables } from "@/integrations/supabase/types";
 import type { RecurringObject } from "@/components/editor/ObjectRegistryPanel";
 import { getVisualStyleById } from "@/components/editor/visualStyle/types";
+import { cleanNarrativeContext } from "@/lib/cleanNarrativeContext";
 
 type Shot = Tables<"shots">;
 
