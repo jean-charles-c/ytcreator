@@ -164,6 +164,54 @@ function repairWhisperRun(
   };
 }
 
+// ── Whisper hallucination filter ──
+// Whisper boucle souvent sur un mot dominant pendant les silences ("Porsche Porsche…").
+// On normalise puis on collapse les répétitions consécutives (>= 3) en un seul mot,
+// en conservant le start du 1er et le end du dernier.
+function normalizeWordForLoop(word: string): string {
+  return word
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, "")
+    .trim();
+}
+
+function stripHallucinationLoops(words: WordTimestamp[]): {
+  filtered: WordTimestamp[];
+  removedCount: number;
+} {
+  if (words.length < 3) return { filtered: words, removedCount: 0 };
+
+  const MIN_RUN = 3; // 3 répétitions consécutives = boucle
+  const out: WordTimestamp[] = [];
+  let removed = 0;
+  let i = 0;
+  while (i < words.length) {
+    const norm = normalizeWordForLoop(words[i].word);
+    if (!norm) {
+      out.push(words[i]);
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (j < words.length && normalizeWordForLoop(words[j].word) === norm) j++;
+    const runLen = j - i;
+    if (runLen >= MIN_RUN) {
+      out.push({
+        word: words[i].word,
+        start: words[i].start,
+        end: words[j - 1].end,
+      });
+      removed += runLen - 1;
+    } else {
+      for (let k = i; k < j; k++) out.push(words[k]);
+    }
+    i = j;
+  }
+  return { filtered: out, removedCount: removed };
+}
+
 // ── WAV chunking helpers ──
 
 const MAX_CHUNK_BYTES = 24 * 1024 * 1024; // 24MB to stay under Groq's 25MB limit
