@@ -302,13 +302,18 @@ async function callWhisperChunk(
   }
 
   const data = await resp.json();
-  const words: WordTimestamp[] = (data.words || [])
+  const rawWords: WordTimestamp[] = (data.words || [])
     .map((w: { word: string; start: number; end: number }) => ({
       word: (w.word || "").trim(),
       start: Number(w.start) || 0,
       end: Number(w.end) || 0,
     }))
     .filter((w: WordTimestamp) => w.word.length > 0);
+
+  const { filtered: words, removedCount } = stripHallucinationLoops(rawWords);
+  if (removedCount > 0) {
+    console.log(`[whisper-align] Stripped ${removedCount} hallucinated repeated word(s) from chunk.`);
+  }
 
   const duration =
     typeof data.duration === "number"
