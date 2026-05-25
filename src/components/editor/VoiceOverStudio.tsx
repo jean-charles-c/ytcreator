@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace, RefreshCw, Download } from "lucide-react";
+import { ClipboardPaste, Mic, Volume2, Loader2, Pause, Play, Settings2, AudioLines, Clock, User, Music, ChevronDown, AlertTriangle, CheckCircle2, XCircle, FlaskConical, RotateCcw, BookA, Replace, RefreshCw, Download, Pencil, Save, X } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -37,6 +37,11 @@ interface VoiceOverStudioProps {
   onMusicSelected?: (tracks: { url: string; name: string }[]) => void;
 }
 
+type VoiceOverStudioExtraProps = {
+  /** Called after a scene's source_text (and its shots) has been saved to the DB. Parent should refresh scenes/shots. */
+  onSceneTextSaved?: (sceneId: string) => void | Promise<void>;
+};
+
 const DEFAULT_SETTINGS = DEFAULT_VOICE_SETTINGS;
 
 interface PlayerState {
@@ -46,7 +51,7 @@ interface PlayerState {
   realDuration: number | null;
 }
 
-export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort, onMusicSelected }: VoiceOverStudioProps) {
+export default function VoiceOverStudio({ narration, generatedScript, projectId, projectTitle, scenes, shots, scenesForSort, onMusicSelected, onSceneTextSaved }: VoiceOverStudioProps & VoiceOverStudioExtraProps) {
   const [voScript, setVoScript] = useState("");
   const [userEditedScript, setUserEditedScript] = useState(false);
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
