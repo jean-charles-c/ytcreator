@@ -1999,7 +1999,10 @@ export default function WhisperAlignmentEditor({
                                   </span>
                                 );
                               })}
+                              </div>
                             </div>
+                              );
+                            })()}
 
                             {selectionStart !== null && selectionEnd !== null && (
                               <div className="space-y-1 text-[10px]">
