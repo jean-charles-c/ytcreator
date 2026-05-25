@@ -446,17 +446,23 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
       return;
     }
 
-    const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
-    setTimeline(assembled);
-    saveTimelineToDb(assembled);
+    try {
+      const assembled = assembleTimeline(scenes, shots, audioFile, timepoints);
+      setTimeline(assembled);
+      saveTimelineToDb(assembled);
 
-    const reason = audioChanged
-      ? "nouvel audio détecté"
-      : shotsChanged
-      ? "shots modifiés"
-      : "timecodes Whisper mis à jour";
-    const syncMode = validation.ok ? "sync précis" : "sync réparé automatiquement";
-    toast.info(`Timeline auto-réassemblée (${reason}) — ${syncMode}`);
+      const reason = audioChanged
+        ? "nouvel audio détecté"
+        : shotsChanged
+        ? "shots modifiés"
+        : "timecodes Whisper mis à jour";
+      const syncMode = validation.ok ? "sync précis" : "sync réparé automatiquement";
+      toast.info(`Timeline auto-réassemblée (${reason}) — ${syncMode}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[VideoEditTab] auto-réassemblage échoué:", message);
+      toast.error(`Auto-réassemblage impossible — ${message}`);
+    }
   }, [selectedAudioId, shots, audioFiles, scenes, timeline, saveTimelineToDb]);
 
   useEffect(() => {
