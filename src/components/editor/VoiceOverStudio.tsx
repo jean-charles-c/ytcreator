@@ -1020,7 +1020,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
         .maybeSingle();
       if (fetchErr) throw fetchErr;
 
-      const sceneUpdate: Record<string, string> = { source_text: newText };
+      const sceneUpdate: { source_text: string; source_text_fr?: string } = { source_text: newText };
       // Mirror to source_text_fr only if it was previously equal (or empty)
       const prevFr = (existingScene?.source_text_fr ?? "").trim();
       const prevSrc = (existingScene?.source_text ?? "").trim();
@@ -1038,7 +1038,7 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
       const sceneShots = (shots || []).filter((s) => s.scene_id === sceneId);
       if (sceneShots.length === 1) {
         const shot = sceneShots[0];
-        const shotUpdate: Record<string, string> = {
+        const shotUpdate: { source_sentence: string; description: string; source_sentence_fr?: string } = {
           source_sentence: newText,
           description: newText,
         };
