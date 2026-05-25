@@ -40,6 +40,16 @@ const REQUIRED_MATCH_COUNT = 3;
 /** Fallback: try 2-word match if 3-word fails (handles Whisper transcription errors). */
 const FALLBACK_MATCH_COUNT = 2;
 
+const SINGLE_WORD_STOP_WORDS = new Set([
+  "le", "la", "les", "l", "un", "une", "des", "de", "du", "d",
+  "et", "ou", "mais", "donc", "car", "ni", "or",
+  "a", "au", "aux", "en", "dans", "sur", "sous", "par", "pour", "avec", "sans",
+  "ce", "cet", "cette", "ces", "se", "s", "sa", "son", "ses", "leur", "leurs",
+  "qui", "que", "quoi", "qu", "dont", "ou",
+  "est", "sont", "ete", "etait", "ont", "ai", "as", "avez", "avons",
+  "ne", "pas", "plus", "moins", "tres", "si", "tout", "tous", "toute", "toutes",
+]);
+
 /**
  * Extract the first N meaningful words from a shot text fragment.
  */
@@ -49,6 +59,24 @@ function extractLeadingWords(text: string, count = 3): string[] {
     .map(norm)
     .filter((w) => w.length > 0)
     .slice(0, count);
+}
+
+function findUniqueSingleWordMatch(
+  targetWord: string,
+  whisperWords: WhisperWordLike[],
+  searchFrom: number,
+  searchEnd: number
+): number | null {
+  if (targetWord.length < 3 || SINGLE_WORD_STOP_WORDS.has(targetWord)) return null;
+
+  let foundIdx: number | null = null;
+  for (let i = searchFrom; i < searchEnd; i++) {
+    if (norm(whisperWords[i].word) !== targetWord) continue;
+    if (foundIdx !== null) return null;
+    foundIdx = i;
+  }
+
+  return foundIdx;
 }
 
 /** How many whisper words to look ahead from the previous match. */
@@ -178,19 +206,25 @@ export function matchShotsStrictSequential(
 
     const leadWords = extractLeadingWords(shot.text, REQUIRED_MATCH_COUNT);
 
-    if (leadWords.length < FALLBACK_MATCH_COUNT) {
-      // Not enough words to match — skip but DON'T block subsequent shots
-      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
-      continue;
-    }
-
     // Search in [searchFrom … searchFrom + SEARCH_WINDOW]
     const searchEnd = Math.min(searchFrom + SEARCH_WINDOW, whisperWords.length);
     let foundIdx: number | null = null;
     let matchedCount = 0;
 
+    // Single-word shots can be matched only when the word is meaningful and unique in the search window.
+    if (leadWords.length === 1) {
+      foundIdx = findUniqueSingleWordMatch(leadWords[0], whisperWords, searchFrom, searchEnd);
+      if (foundIdx !== null) matchedCount = 1;
+    }
+
+    if (leadWords.length === 0) {
+      // Not enough words to match — skip but DON'T block subsequent shots
+      results.push({ shotId: shot.id, whisperStartIdx: null, matchedWords: 0, blocked: true, coverageRatio: 0 });
+      continue;
+    }
+
     // Pass 1: try exact 3-word match
-    if (leadWords.length >= REQUIRED_MATCH_COUNT) {
+    if (foundIdx === null && leadWords.length >= REQUIRED_MATCH_COUNT) {
       for (let i = searchFrom; i < searchEnd; i++) {
         let allMatch = true;
         for (let j = 0; j < REQUIRED_MATCH_COUNT; j++) {
@@ -202,7 +236,7 @@ export function matchShotsStrictSequential(
     }
 
     // Pass 2: fallback to 2-word exact match if 3-word failed
-    if (foundIdx === null) {
+    if (foundIdx === null && leadWords.length >= FALLBACK_MATCH_COUNT) {
       for (let i = searchFrom; i < searchEnd; i++) {
         let allMatch = true;
         for (let j = 0; j < FALLBACK_MATCH_COUNT; j++) {
@@ -222,7 +256,9 @@ export function matchShotsStrictSequential(
         coverageRatio: computeCoverageRatio(shot.text, whisperWords, foundIdx),
       });
       const shotWordCount = shot.text.split(/\s+/).filter(w => w.length > 0).length;
-      const minAdvance = Math.max(matchedCount, Math.floor(shotWordCount * 0.5), 3);
+      const minAdvance = shotWordCount <= 2
+        ? Math.max(1, matchedCount)
+        : Math.max(matchedCount, Math.floor(shotWordCount * 0.5), 3);
       searchFrom = foundIdx + minAdvance;
     } else {
       // ⚠️ AUTO-SKIP: mark this shot as blocked (red) but DO NOT propagate the block.
