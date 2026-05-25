@@ -1927,13 +1927,15 @@ export default function WhisperAlignmentEditor({
                         {/* Manual selection UI */}
                         {isEditing && (
                           <div className="space-y-2">
-                            <span className="font-semibold text-destructive block">
-                              Transcription Whisper correspondante :
-                            </span>
                             <p className="text-muted-foreground font-medium">
                               Cliquez sur le premier mot puis le dernier mot correspondant à ce shot :
                             </p>
                             <div className="max-h-[200px] overflow-y-auto rounded border border-border bg-background p-2 leading-relaxed flex flex-wrap gap-0.5">
+                              <div className="w-full mb-2 pb-2 border-b border-border">
+                                <span className="text-destructive font-semibold italic">
+                                  « {shot.shotText} »
+                                </span>
+                              </div>
                               {whisperWords.map((w, idx) => {
                                 const isSelected =
                                   selectionStart !== null &&
