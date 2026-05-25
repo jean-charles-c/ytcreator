@@ -1737,7 +1737,7 @@ export default function WhisperAlignmentEditor({
                           </span>
                          {shot.status === "blocked" ? (
                             <p className="text-destructive font-semibold">
-                              ⛔ Matching bloqué ici — les 3 premiers mots n'ont pas été trouvés dans les 50 mots suivants du transcript Whisper.
+                              ⛔ Matching bloqué ici — aucun ancrage fiable n'a été trouvé dans les 50 mots suivants du transcript Whisper.
                               Calez manuellement ce shot pour que le matching automatique reprenne.
                             </p>
                           ) : shot.status === "mismatch" && shot.whisperStartIdx !== null && shot.whisperEndIdx !== null ? (
