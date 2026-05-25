@@ -1931,11 +1931,9 @@ export default function WhisperAlignmentEditor({
                               Cliquez sur le premier mot puis le dernier mot correspondant à ce shot :
                             </p>
                             <div className="max-h-[200px] overflow-y-auto rounded border border-border bg-background p-2 leading-relaxed flex flex-wrap gap-0.5">
-                              <div className="w-full mb-2 pb-2 border-b border-border">
-                                <span className="text-destructive font-semibold italic">
-                                  « {shot.shotText} »
-                                </span>
-                              </div>
+                              <span className="text-destructive font-semibold italic mr-2">
+                                « {shot.shotText} »
+                              </span>
                               {whisperWords.map((w, idx) => {
                                 const isSelected =
                                   selectionStart !== null &&
