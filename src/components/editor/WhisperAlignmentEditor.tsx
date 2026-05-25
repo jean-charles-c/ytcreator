@@ -1936,11 +1936,23 @@ export default function WhisperAlignmentEditor({
                               const shotWords = shot.shotText.split(/\s+/).filter(Boolean);
                               const wordMatches = new Map<number, number>();
                               const matchedWhisperIndices = new Set<number>();
-                              let cursor = 0;
+                              // Fenêtre temporelle basée sur le timecode détecté du shot (+/- 3s de marge)
+                              const offsetAdj = globalOffset || 0;
+                              const tStart = shot.startTime !== null ? shot.startTime - offsetAdj - 3 : -Infinity;
+                              const tEnd = shot.endTime !== null ? shot.endTime - offsetAdj + 3 : Infinity;
+                              let windowStart = 0;
+                              let windowEnd = whisperWords.length;
+                              if (isFinite(tStart) || isFinite(tEnd)) {
+                                windowStart = whisperWords.findIndex((w) => w.end >= tStart);
+                                if (windowStart < 0) windowStart = 0;
+                                const lastIdx = whisperWords.findIndex((w, i) => i >= windowStart && w.start > tEnd);
+                                windowEnd = lastIdx < 0 ? whisperWords.length : lastIdx;
+                              }
+                              let cursor = windowStart;
                               shotWords.forEach((w, sIdx) => {
                                 const target = normalizeWord(w);
                                 if (!target) return;
-                                for (let i = cursor; i < whisperWords.length; i++) {
+                                for (let i = cursor; i < windowEnd; i++) {
                                   if (normalizeWord(whisperWords[i].word) === target) {
                                     wordMatches.set(sIdx, i);
                                     matchedWhisperIndices.add(i);
