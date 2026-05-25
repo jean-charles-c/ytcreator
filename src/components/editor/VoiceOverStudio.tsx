@@ -1565,7 +1565,6 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                     <Pencil className="h-3 w-3" />
                                   </Button>
                                 )}
-                              </div>
                               {/* Transcription text — editable inline */}
                               {editingSceneId === scene.id ? (
                                 <div className="pl-11 mt-1 mb-2 space-y-2">
