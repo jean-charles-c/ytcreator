@@ -254,11 +254,15 @@ export function buildManifestTiming(
     const duration = resolvedBoundary.duration;
 
     if (!(duration > 0)) {
+      const fragmentExcerpt = item.fragmentText.trim().slice(0, 80);
+      const sceneLabel = `scène ${item.sceneOrder}`;
+      const excerptLabel = fragmentExcerpt ? ` — « ${fragmentExcerpt}${item.fragmentText.length > 80 ? "…" : ""} »` : "";
       pushUniqueIssue(issues, {
         level: "error",
         order,
         shotId: item.shot.shotId,
-        message: "Durée invalide détectée pour ce shot dans le manifest timing.",
+        sceneOrder: item.sceneOrder,
+        message: `Durée invalide (${duration.toFixed(3)}s) pour le shot ${order} (${sceneLabel})${excerptLabel}.`,
       });
     }
 
