@@ -1931,10 +1931,25 @@ export default function WhisperAlignmentEditor({
                               Cliquez sur le premier mot puis le dernier mot correspondant à ce shot :
                             </p>
                             <div className="max-h-[200px] overflow-y-auto rounded border border-border bg-background p-2 leading-relaxed flex flex-wrap gap-0.5">
-                              <div className="w-full mb-2 pb-2 border-b border-border">
-                                <span className="text-destructive font-semibold italic">
-                                  « {shot.shotText} »
-                                </span>
+                              <div className="w-full mb-2 pb-2 border-b border-border italic font-semibold">
+                                <span className="text-destructive mr-1">«</span>
+                                {shot.shotText.split(/\s+/).filter(Boolean).map((word, wIdx) => {
+                                  // Try to find matching whisper word index (sequential, starting from selection or 0)
+                                  const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+                                  const target = normalize(word);
+                                  const matchIdx = whisperWords.findIndex((w) => normalize(w.word) === target);
+                                  return (
+                                    <span
+                                      key={wIdx}
+                                      onClick={() => matchIdx >= 0 && handleWordClick(matchIdx)}
+                                      className={`text-destructive cursor-pointer hover:bg-destructive/10 rounded px-0.5 ${matchIdx < 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                                      title={matchIdx >= 0 ? `Clic pour sélectionner (Whisper #${matchIdx + 1})` : "Mot introuvable dans Whisper"}
+                                    >
+                                      {word}{" "}
+                                    </span>
+                                  );
+                                })}
+                                <span className="text-destructive">»</span>
                               </div>
                               {whisperWords.map((w, idx) => {
                                 const isSelected =
