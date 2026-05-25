@@ -2812,6 +2812,15 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
             shots={shots.map((s) => ({ id: s.id, scene_id: s.scene_id, shot_order: s.shot_order, source_sentence: s.source_sentence, source_sentence_fr: s.source_sentence_fr, description: s.description }))}
             scenesForSort={scenes.map((s) => ({ id: s.id, scene_order: s.scene_order }))}
             onMusicSelected={(tracks) => setSelectedMusicTracks(tracks)}
+            onSceneTextSaved={async () => {
+              if (!projectId) return;
+              const [scenesRes, shotsRes] = await Promise.all([
+                supabase.from("scenes").select("*").eq("project_id", projectId).order("scene_order"),
+                supabase.from("shots").select("*").eq("project_id", projectId).order("shot_order"),
+              ]);
+              if (scenesRes.data) setScenes(scenesRes.data as Scene[]);
+              if (shotsRes.data) setShots(shotsRes.data as any);
+            }}
           />
         )}
 
