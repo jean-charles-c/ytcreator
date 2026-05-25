@@ -126,7 +126,7 @@ describe("matchShotsStrictSequential", () => {
     expect(results[2].whisperStartIdx).toBe(4);
   });
 
-  it("does not auto-align an ambiguous repeated single-word shot", () => {
+  it("aligns a single-word shot to the first occurrence near the previous match (proximity wins)", () => {
     const words = [
       { word: "Avant", start: 0.0, end: 0.2 },
       { word: "la", start: 0.2, end: 0.4 },
@@ -143,8 +143,9 @@ describe("matchShotsStrictSequential", () => {
 
     const results = matchShotsStrictSequential(shots, words);
 
-    expect(results[1].whisperStartIdx).toBeNull();
-    expect(results[1].blocked).toBe(true);
+    // Doit prendre la première occurrence (idx 3), pas la plus tardive.
+    expect(results[1].whisperStartIdx).toBe(3);
+    expect(results[1].blocked).toBe(false);
   });
 });
 
