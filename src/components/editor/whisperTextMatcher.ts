@@ -61,22 +61,27 @@ function extractLeadingWords(text: string, count = 3): string[] {
     .slice(0, count);
 }
 
-function findUniqueSingleWordMatch(
+/**
+ * Pour un shot d'un seul mot, on cherche à proximité immédiate du shot
+ * précédent. On prend la PREMIÈRE occurrence du mot dans une fenêtre
+ * resserrée (≤ NEAR_WINDOW mots après le précédent match). Pas besoin
+ * d'unicité globale : la proximité temporelle suffit à éviter les faux
+ * positifs plus loin dans l'audio.
+ */
+const SINGLE_WORD_NEAR_WINDOW = 15;
+
+function findNearbySingleWordMatch(
   targetWord: string,
   whisperWords: WhisperWordLike[],
-  searchFrom: number,
-  searchEnd: number
+  searchFrom: number
 ): number | null {
-  if (targetWord.length < 3 || SINGLE_WORD_STOP_WORDS.has(targetWord)) return null;
+  if (targetWord.length < 2 || SINGLE_WORD_STOP_WORDS.has(targetWord)) return null;
 
-  let foundIdx: number | null = null;
-  for (let i = searchFrom; i < searchEnd; i++) {
-    if (norm(whisperWords[i].word) !== targetWord) continue;
-    if (foundIdx !== null) return null;
-    foundIdx = i;
+  const nearEnd = Math.min(searchFrom + SINGLE_WORD_NEAR_WINDOW, whisperWords.length);
+  for (let i = searchFrom; i < nearEnd; i++) {
+    if (norm(whisperWords[i].word) === targetWord) return i;
   }
-
-  return foundIdx;
+  return null;
 }
 
 /** How many whisper words to look ahead from the previous match. */
