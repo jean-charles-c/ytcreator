@@ -1927,6 +1927,9 @@ export default function WhisperAlignmentEditor({
                         {/* Manual selection UI */}
                         {isEditing && (
                           <div className="space-y-2">
+                            <span className="font-semibold text-destructive block">
+                              Transcription Whisper correspondante :
+                            </span>
                             <p className="text-muted-foreground font-medium">
                               Cliquez sur le premier mot puis le dernier mot correspondant à ce shot :
                             </p>
