@@ -980,6 +980,104 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
   const [whisperOpen, setWhisperOpen] = useState(false);
   const [sceneAudioOpen, setSceneAudioOpen] = useState(true);
 
+  // ── Per-scene text editing ──
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
+  const [editingSceneText, setEditingSceneText] = useState<string>("");
+  const [savingSceneEdit, setSavingSceneEdit] = useState(false);
+
+  const startEditScene = (sceneId: string, currentText: string) => {
+    setEditingSceneId(sceneId);
+    setEditingSceneText(currentText || "");
+  };
+
+  const cancelEditScene = () => {
+    setEditingSceneId(null);
+    setEditingSceneText("");
+  };
+
+  /**
+   * Sauvegarde le texte édité d'une scène :
+   *  - met à jour scenes.source_text (et source_text_fr s'il existait)
+   *  - met à jour les shots de la scène (source_sentence + _fr + description)
+   *    → si 1 seul shot : remplace par le nouveau texte complet
+   *    → si plusieurs shots : avertit que la re-segmentation devra être faite manuellement
+   *  - déclenche la régénération audio si requested
+   */
+  const saveSceneEdit = async (sceneId: string, regenerate: boolean) => {
+    if (!projectId) return;
+    const newText = editingSceneText.trim();
+    if (!newText) {
+      toast.error("Le texte ne peut pas être vide.");
+      return;
+    }
+    setSavingSceneEdit(true);
+    try {
+      // 1) Update the scene
+      const { data: existingScene, error: fetchErr } = await supabase
+        .from("scenes")
+        .select("source_text, source_text_fr")
+        .eq("id", sceneId)
+        .maybeSingle();
+      if (fetchErr) throw fetchErr;
+
+      const sceneUpdate: Record<string, string> = { source_text: newText };
+      // Mirror to source_text_fr only if it was previously equal (or empty)
+      const prevFr = (existingScene?.source_text_fr ?? "").trim();
+      const prevSrc = (existingScene?.source_text ?? "").trim();
+      if (!prevFr || prevFr === prevSrc) {
+        sceneUpdate.source_text_fr = newText;
+      }
+
+      const { error: updScene } = await supabase
+        .from("scenes")
+        .update(sceneUpdate)
+        .eq("id", sceneId);
+      if (updScene) throw updScene;
+
+      // 2) Update shots within this scene
+      const sceneShots = (shots || []).filter((s) => s.scene_id === sceneId);
+      if (sceneShots.length === 1) {
+        const shot = sceneShots[0];
+        const shotUpdate: Record<string, string> = {
+          source_sentence: newText,
+          description: newText,
+        };
+        const prevShotFr = (shot.source_sentence_fr ?? "").trim();
+        const prevShotSrc = (shot.source_sentence ?? "").trim();
+        if (!prevShotFr || prevShotFr === prevShotSrc) {
+          shotUpdate.source_sentence_fr = newText;
+        }
+        const { error: updShot } = await supabase
+          .from("shots")
+          .update(shotUpdate)
+          .eq("id", shot.id);
+        if (updShot) throw updShot;
+      } else if (sceneShots.length > 1) {
+        toast.warning(
+          `Scène mise à jour. ${sceneShots.length} shots détectés : re-segmentez manuellement dans Visual Prompts.`,
+          { duration: 6000 }
+        );
+      }
+
+      // 3) Notify parent to refresh scenes/shots
+      await onSceneTextSaved?.(sceneId);
+
+      toast.success("Texte de la scène enregistré");
+      setEditingSceneId(null);
+      setEditingSceneText("");
+
+      // 4) Optionally regenerate the audio
+      if (regenerate) {
+        await handleRegenerateScene(sceneId);
+      }
+    } catch (e: any) {
+      console.error("[VoiceOverStudio] saveSceneEdit", e);
+      toast.error(`Échec de l'enregistrement : ${e?.message || "erreur"}`);
+    } finally {
+      setSavingSceneEdit(false);
+    }
+  };
+
   // ── Manual validation checkmarks per scene (persisted by project) ──
   const validatedStorageKey = projectId ? `vo-scene-validated-${projectId}` : null;
   const [validatedScenes, setValidatedScenes] = useState<Set<string>>(new Set());
