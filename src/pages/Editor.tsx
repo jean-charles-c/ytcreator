@@ -3747,7 +3747,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
                                             ? "text-amber-600 font-bold"
                                             : hasImage
                                             ? "text-green-500 font-semibold"
-                                            : "text-muted-foreground";
+                                            : "text-destructive font-bold";
                                           const isClickable = showWarnings && !!issueLevel;
                                           const missingPromptClass = !hasPrompt && !issueLevel ? "underline decoration-red-500 decoration-2 underline-offset-2" : "";
                                           return (
