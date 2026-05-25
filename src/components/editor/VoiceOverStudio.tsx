@@ -1553,11 +1553,71 @@ export default function VoiceOverStudio({ narration, generatedScript, projectId,
                                   </Button>
                                 )}
                               </div>
-                              {/* Transcription text */}
-                              {scene.source_text && (
-                                <p className="pl-11 text-sm text-white leading-relaxed mt-1 mb-1.5 font-body">
-                                  {scene.source_text}
-                                </p>
+                                {/* Edit button (only when not already editing) */}
+                                {editingSceneId !== scene.id && !generating && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    title="Éditer le texte de la scène"
+                                    onClick={() => startEditScene(scene.id, scene.source_text || "")}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                              {/* Transcription text — editable inline */}
+                              {editingSceneId === scene.id ? (
+                                <div className="pl-11 mt-1 mb-2 space-y-2">
+                                  <Textarea
+                                    value={editingSceneText}
+                                    onChange={(e) => setEditingSceneText(e.target.value)}
+                                    rows={Math.min(12, Math.max(3, editingSceneText.split("\n").length + 1))}
+                                    className="text-sm font-body bg-background border-primary/40"
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Button
+                                      variant="hero"
+                                      size="sm"
+                                      className="h-7 text-[11px] gap-1"
+                                      onClick={() => saveSceneEdit(scene.id, true)}
+                                      disabled={savingSceneEdit || generating || assembling}
+                                    >
+                                      {savingSceneEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                      Enregistrer & régénérer
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-[11px] gap-1"
+                                      onClick={() => saveSceneEdit(scene.id, false)}
+                                      disabled={savingSceneEdit || generating || assembling}
+                                    >
+                                      <Save className="h-3 w-3" />
+                                      Enregistrer seulement
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-[11px] gap-1"
+                                      onClick={cancelEditScene}
+                                      disabled={savingSceneEdit}
+                                    >
+                                      <X className="h-3 w-3" />
+                                      Annuler
+                                    </Button>
+                                    <span className="text-[10px] text-muted-foreground ml-auto">
+                                      Met à jour la scène (Segmentation) et le shot{shots && shots.filter((s) => s.scene_id === scene.id).length > 1 ? "s" : ""} associé{shots && shots.filter((s) => s.scene_id === scene.id).length > 1 ? "s" : ""}.
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                scene.source_text && (
+                                  <p className="pl-11 text-sm text-white leading-relaxed mt-1 mb-1.5 font-body">
+                                    {scene.source_text}
+                                  </p>
+                                )
                               )}
                             </div>
                           );
