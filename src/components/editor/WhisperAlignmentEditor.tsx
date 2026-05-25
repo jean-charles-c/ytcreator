@@ -1930,20 +1930,39 @@ export default function WhisperAlignmentEditor({
                             <p className="text-muted-foreground font-medium">
                               Cliquez sur le premier mot puis le dernier mot correspondant à ce shot :
                             </p>
-                            <div className="max-h-[200px] overflow-y-auto rounded border border-border bg-background p-2 leading-relaxed flex flex-wrap gap-0.5">
-                              <div className="w-full mb-2 pb-2 border-b border-border italic font-semibold">
+                            {(() => {
+                              const normalizeWord = (s: string) =>
+                                s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]/gu, "");
+                              const shotWords = shot.shotText.split(/\s+/).filter(Boolean);
+                              const wordMatches = new Map<number, number>();
+                              const matchedWhisperIndices = new Set<number>();
+                              let cursor = 0;
+                              shotWords.forEach((w, sIdx) => {
+                                const target = normalizeWord(w);
+                                if (!target) return;
+                                for (let i = cursor; i < whisperWords.length; i++) {
+                                  if (normalizeWord(whisperWords[i].word) === target) {
+                                    wordMatches.set(sIdx, i);
+                                    matchedWhisperIndices.add(i);
+                                    cursor = i + 1;
+                                    break;
+                                  }
+                                }
+                              });
+                              return (
+                            <div className="max-h-[240px] overflow-y-auto rounded border border-border bg-background leading-relaxed">
+                              {/* Bandeau sticky : phrase du shot en rouge, cliquable */}
+                              <div className="sticky top-0 z-10 bg-destructive/10 border-b-2 border-destructive/40 px-2 py-1.5 italic font-semibold backdrop-blur-sm">
                                 <span className="text-destructive mr-1">«</span>
-                                {shot.shotText.split(/\s+/).filter(Boolean).map((word, wIdx) => {
-                                  // Try to find matching whisper word index (sequential, starting from selection or 0)
-                                  const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-                                  const target = normalize(word);
-                                  const matchIdx = whisperWords.findIndex((w) => normalize(w.word) === target);
+                                {shotWords.map((word, wIdx) => {
+                                  const matchIdx = wordMatches.get(wIdx);
+                                  const hasMatch = matchIdx !== undefined;
                                   return (
                                     <span
                                       key={wIdx}
-                                      onClick={() => matchIdx >= 0 && handleWordClick(matchIdx)}
-                                      className={`text-destructive cursor-pointer hover:bg-destructive/10 rounded px-0.5 ${matchIdx < 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-                                      title={matchIdx >= 0 ? `Clic pour sélectionner (Whisper #${matchIdx + 1})` : "Mot introuvable dans Whisper"}
+                                      onClick={() => hasMatch && handleWordClick(matchIdx!)}
+                                      className={`text-destructive rounded px-0.5 ${hasMatch ? "cursor-pointer hover:bg-destructive/20" : "opacity-50 cursor-not-allowed"}`}
+                                      title={hasMatch ? `Clic pour sélectionner (Whisper #${matchIdx! + 1})` : "Mot introuvable dans Whisper"}
                                     >
                                       {word}{" "}
                                     </span>
@@ -1951,6 +1970,8 @@ export default function WhisperAlignmentEditor({
                                 })}
                                 <span className="text-destructive">»</span>
                               </div>
+                              {/* Mots Whisper cliquables, surlignés rouge si correspondance */}
+                              <div className="p-2 flex flex-wrap gap-0.5">
                               {whisperWords.map((w, idx) => {
                                 const isSelected =
                                   selectionStart !== null &&
@@ -1959,6 +1980,7 @@ export default function WhisperAlignmentEditor({
                                   idx <= selectionEnd;
                                 const isStart = idx === selectionStart;
                                 const isEnd = idx === selectionEnd;
+                                const isShotMatch = matchedWhisperIndices.has(idx);
                                 return (
                                   <span
                                     key={idx}
@@ -1966,7 +1988,9 @@ export default function WhisperAlignmentEditor({
                                     className={`cursor-pointer rounded px-0.5 py-0.5 transition-colors ${
                                       isSelected
                                         ? "bg-primary/20 text-primary font-medium"
-                                        : "hover:bg-muted text-foreground"
+                                        : isShotMatch
+                                          ? "text-destructive hover:bg-destructive/15 ring-1 ring-destructive/40"
+                                          : "hover:bg-muted text-foreground"
                                     } ${isStart ? "ring-1 ring-primary" : ""} ${
                                       isEnd ? "ring-1 ring-primary" : ""
                                     }`}
@@ -1975,7 +1999,10 @@ export default function WhisperAlignmentEditor({
                                   </span>
                                 );
                               })}
+                              </div>
                             </div>
+                              );
+                            })()}
 
                             {selectionStart !== null && selectionEnd !== null && (
                               <div className="space-y-1 text-[10px]">
