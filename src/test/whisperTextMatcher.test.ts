@@ -102,6 +102,50 @@ describe("matchShotsStrictSequential", () => {
     expect(results[1].blocked).toBe(true);
     expect(results[1].whisperStartIdx).toBeNull();
   });
+
+  it("auto-aligns a meaningful single-word shot when it is unique in the search window", () => {
+    const words = [
+      { word: "Avant", start: 0.0, end: 0.2 },
+      { word: "la", start: 0.2, end: 0.4 },
+      { word: "suite", start: 0.4, end: 0.8 },
+      { word: "Ferrari.", start: 0.8, end: 1.1 },
+      { word: "Une", start: 1.1, end: 1.3 },
+      { word: "option", start: 1.3, end: 1.7 },
+    ];
+    const shots = [
+      { id: "shot-1", text: "Avant la suite" },
+      { id: "shot-2", text: "Ferrari." },
+      { id: "shot-3", text: "Une option" },
+    ];
+
+    const results = matchShotsStrictSequential(shots, words);
+
+    expect(results[1].whisperStartIdx).toBe(3);
+    expect(results[1].matchedWords).toBe(1);
+    expect(results[1].blocked).toBe(false);
+    expect(results[2].whisperStartIdx).toBe(4);
+  });
+
+  it("does not auto-align an ambiguous repeated single-word shot", () => {
+    const words = [
+      { word: "Avant", start: 0.0, end: 0.2 },
+      { word: "la", start: 0.2, end: 0.4 },
+      { word: "suite", start: 0.4, end: 0.8 },
+      { word: "Ferrari.", start: 0.8, end: 1.1 },
+      { word: "Une", start: 1.1, end: 1.3 },
+      { word: "autre", start: 1.3, end: 1.5 },
+      { word: "Ferrari", start: 1.5, end: 1.8 },
+    ];
+    const shots = [
+      { id: "shot-1", text: "Avant la suite" },
+      { id: "shot-2", text: "Ferrari." },
+    ];
+
+    const results = matchShotsStrictSequential(shots, words);
+
+    expect(results[1].whisperStartIdx).toBeNull();
+    expect(results[1].blocked).toBe(true);
+  });
 });
 
 describe("matchShotsByText (legacy wrapper)", () => {
