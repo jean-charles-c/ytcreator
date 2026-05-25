@@ -218,7 +218,7 @@ export function matchShotsStrictSequential(
 
     // Single-word shots can be matched only when the word is meaningful and unique in the search window.
     if (leadWords.length === 1) {
-      foundIdx = findUniqueSingleWordMatch(leadWords[0], whisperWords, searchFrom, searchEnd);
+      foundIdx = findNearbySingleWordMatch(leadWords[0], whisperWords, searchFrom);
       if (foundIdx !== null) matchedCount = 1;
     }
 
