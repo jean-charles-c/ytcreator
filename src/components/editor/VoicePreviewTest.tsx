@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Square, Loader2 } from "lucide-react";
+import { Play, Square, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { type VoiceSettings, STYLE_PRESETS } from "./VoiceSettingsPanel";
 
@@ -17,6 +17,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [customPronunciations, setCustomPronunciations] = useState<{ phrase: string; pronunciation: string }[]>([]);
+  const [lastAudioUrl, setLastAudioUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPronunciations = async () => {
@@ -113,6 +114,7 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
         ? data.audioUrl
         : `data:audio/mpeg;base64,${data.audioContent}`;
       toast.success(`Voix appliquée: ${useChirp ? data.voiceName : (data.usedVoiceName ?? "automatique")}`);
+      setLastAudioUrl(audioUrl);
 
       // Stop any currently playing audio
       if (audioRef.current) {
@@ -146,6 +148,19 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
     setPlaying(false);
   };
 
+  const handleDownload = () => {
+    if (!lastAudioUrl) return;
+    const a = document.createElement("a");
+    a.href = lastAudioUrl;
+    const ext = lastAudioUrl.startsWith("data:") ? "mp3" : "wav";
+    a.download = `voice-preview-${Date.now()}.${ext}`;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <div className={hideHeader ? "space-y-3" : "rounded-lg border border-border bg-card p-4 space-y-3"}>
       {!hideHeader && (
@@ -169,6 +184,17 @@ export default function VoicePreviewTest({ settings, hideHeader }: VoicePreviewT
             <Button variant="destructive" size="sm" onClick={handleStop} className="min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-none">
               <Square className="h-3.5 w-3.5" />
               Stop
+            </Button>
+          )}
+          {lastAudioUrl && !loading && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-none"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Télécharger
             </Button>
           )}
           <Button
