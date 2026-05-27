@@ -2,7 +2,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateShotOperation, buildNeighborAvoidancePrompt } from "../_shared/shot-operation.ts";
 import { getSensitiveModeInstruction } from "../_shared/sensitive-mode.ts";
-import { ENTITY_ISOLATION_RULE } from "../_shared/identity-lock-utils.ts";
+import {
+  buildForbiddenAliases,
+  ENTITY_ISOLATION_RULE,
+  filterRecurringObjectsForShot,
+  findForbiddenAliases,
+  replaceForbiddenAliases,
+} from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,47 +113,21 @@ serve(async (req) => {
     const globalContext = scriptState?.global_context as Record<string, any> | null;
     const recurringObjects = Array.isArray(globalContext?.objets_recurrents) ? globalContext.objets_recurrents : [];
 
-    // Find objects linked to this shot's scene and mentioned in the fragment
+    // Find objects explicitly linked to this shot first. If no shot-level
+    // association exists, fall back to the scene-level filter.
     const sceneOrder = scene.scene_order;
-    const shotText = (shot.source_sentence || shot.description || "").toLowerCase();
-    // If ANY object in the library is manually curated for this scene
-    // (i.e. its mentions_scenes explicitly includes sceneOrder), treat the
-    // scene as user-curated → only keep objects explicitly associated, and
-    // skip the text-match fallback (otherwise "carbon" matches "carbone" and
-    // re-injects foreign objects like "Carbon Skin" into a Ferrari shot).
-    const sceneIsExplicitlyCurated = recurringObjects.some(
-      (obj: any) => Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
+    const linkedObjects = filterRecurringObjectsForShot(
+      recurringObjects,
+      sceneOrder,
+      shot.id,
+      shot.source_sentence || shot.description || "",
+      scene.source_text || "",
+      scene.scene_context as Record<string, any> | null,
     );
-    const linkedObjects = sceneIsExplicitlyCurated
-      ? recurringObjects.filter(
-          (obj: any) => Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
-        )
-      : recurringObjects.filter((obj: any) => {
-      if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
-        if (!obj.mentions_scenes.includes(sceneOrder)) return false;
-      }
-      const objName = (obj.nom || "").toLowerCase();
-      if (!objName) return false;
-      // Pick the most DISTINCTIVE word of the object name to avoid false
-      // positives like "Bois Caleidolegno" matching every fragment that
-      // happens to contain the common word "bois". We prefer the longest
-      // word ≥5 chars, then require it to appear in the fragment text.
-      const STOPWORDS = new Set([
-        "le","la","les","un","une","des","de","du","au","aux","et","ou",
-        "bois","plan","voiture","auto","moto","objet","piece","pièce",
-        "the","of","a","an","car","wood","item","panel","detail"
-      ]);
-      const tokens = objName
-        .split(/[\s\-_'']+/)
-        .filter((t: string) => t.length >= 5 && !STOPWORDS.has(t));
-      if (tokens.length === 0) {
-        // No distinctive token → require the full name (≥5 chars) to appear.
-        return objName.length >= 5 && shotText.includes(objName);
-      }
-      // Use the longest distinctive token as the discriminator.
-      const key = tokens.sort((a: string, b: string) => b.length - a.length)[0];
-      return shotText.includes(key);
-    });
+    const forbiddenAliases = buildForbiddenAliases(recurringObjects, linkedObjects);
+    const forbiddenAliasesBlock = forbiddenAliases.length > 0
+      ? `\n\nFORBIDDEN FOREIGN OBJECT NAMES FOR THIS SHOT — CRITICAL:\nDo NOT mention or describe these names because they belong to other manually curated objects/scenes, even if the fragment contains generic words like carbone/carbon: ${forbiddenAliases.join(", ")}.`
+      : "";
 
     const identityLockBlock = linkedObjects.length > 0
       ? "\n\nRECURRING OBJECTS IN THIS SHOT (APPLY IDENTITY LOCKS):\n" +
@@ -313,7 +293,7 @@ Add environmental elements: objects, scrolls, pottery, fabrics, tools, architect
 
 PROJECT CONTEXT: "${project.title || ""}"${project.subject ? ` — Subject: ${project.subject}` : ""}
 Scene: "${scene.title}"
-${contextBlock}${visualIntentionNote}${continuityNote}${identityLockBlock}
+${contextBlock}${visualIntentionNote}${continuityNote}${identityLockBlock}${forbiddenAliasesBlock}
 
 MANDATORY CONTEXTUAL ANCHORING: The prompt_export MUST explicitly open with: "${opValidation.contextAnchor}".
 ${opValidation.relevantCharacters ? `Characters relevant to this fragment: ${opValidation.relevantCharacters}` : ""}
@@ -415,10 +395,24 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       }
     }
 
+    const contaminatedTerms = findForbiddenAliases(
+      `${newShot.description || ""}\n${newShot.prompt_export || ""}`,
+      forbiddenAliases,
+    );
+    if (contaminatedTerms.length > 0) {
+      const replacement = linkedObjects.length > 0
+        ? linkedObjects.map((obj: any) => obj.nom).filter(Boolean).join(" / ")
+        : "l'élément matériel concerné";
+      console.warn(`[regenerate-shot] removed forbidden aliases for shot ${shot_id}: ${contaminatedTerms.join(", ")}`);
+      newShot.description = replaceForbiddenAliases(newShot.description || "", contaminatedTerms, replacement);
+      newShot.prompt_export = replaceForbiddenAliases(newShot.prompt_export || "", contaminatedTerms, replacement);
+    }
+
     const updatePayload: Record<string, any> = {
       shot_type: newShot.shot_type,
       description: newShot.description,
       prompt_export: newShot.prompt_export,
+      guardrails: null,
     };
     if (isOnlyShot) {
       updatePayload.source_sentence = scene.source_text;

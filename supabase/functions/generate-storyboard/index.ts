@@ -6,6 +6,10 @@ import { splitTextIntoSentences } from "../_shared/sentence-splitting.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
 import {
+  buildForbiddenAliases,
+  filterRecurringObjectsForShot,
+  findForbiddenAliases,
+  replaceForbiddenAliases,
   stripLegacyIdentityLockPrefix,
   filterRecurringObjectsForScene,
   ENTITY_ISOLATION_RULE,
@@ -1152,14 +1156,28 @@ serve(async (req) => {
           let promptExport: string | null = aiShot?.prompt_export ? String(aiShot.prompt_export) : null;
 
           if (promptExport) {
+            const shotObjects = filterRecurringObjectsForShot(
+              recurringObjects,
+              sceneOrder,
+              existingShot.id,
+              existingShot.source_sentence || "",
+              scene.source_text || "",
+              scene.scene_context as Record<string, any> | null,
+            );
+            const forbiddenAliases = buildForbiddenAliases(recurringObjects, shotObjects.length > 0 ? shotObjects : relevantObjs);
+            const contaminatedTerms = findForbiddenAliases(`${aiShot?.description || ""}\n${promptExport}`, forbiddenAliases);
+            if (contaminatedTerms.length > 0) {
+              const replacement = shotObjects.length > 0
+                ? shotObjects.map((obj: any) => obj.nom).filter(Boolean).join(" / ")
+                : "l'élément matériel concerné";
+              console.warn(`prompt_only: removed forbidden aliases for shot ${existingShot.id}: ${contaminatedTerms.join(", ")}`);
+              promptExport = replaceForbiddenAliases(promptExport, contaminatedTerms, replacement);
+              if (aiShot?.description) aiShot.description = replaceForbiddenAliases(aiShot.description, contaminatedTerms, replacement);
+            }
+
             // Inject identity locks
-            if (relevantObjs.length > 0) {
-              const fragmentLower = (existingShot.source_sentence || "").toLowerCase();
-              const matchingLocks = relevantObjs
-                .filter((obj: any) => {
-                  const objName = (obj.nom || "").toLowerCase();
-                  return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
-                })
+            if (shotObjects.length > 0) {
+              const matchingLocks = shotObjects
                 .map((obj: any) => obj.identity_prompt || "")
                 .filter(Boolean);
               if (matchingLocks.length > 0) {
@@ -1438,6 +1456,25 @@ serve(async (req) => {
         let promptExport: string | null = shot?.prompt_export ? String(shot.prompt_export) : null;
 
         if (promptExport) {
+          const shotScopedObjects = filterRecurringObjectsForShot(
+            recurringObjects,
+            sceneOrder,
+            shot?.id,
+            shot?.source_sentence || fbSentence || "",
+            sceneText || "",
+            scene.scene_context as Record<string, any> | null,
+          );
+          const forbiddenAliases = buildForbiddenAliases(recurringObjects, shotScopedObjects.length > 0 ? shotScopedObjects : sceneScopedObjects);
+          const contaminatedTerms = findForbiddenAliases(`${shot?.description || ""}\n${promptExport}`, forbiddenAliases);
+          if (contaminatedTerms.length > 0) {
+            const replacement = shotScopedObjects.length > 0
+              ? shotScopedObjects.map((obj: any) => obj.nom).filter(Boolean).join(" / ")
+              : "l'élément matériel concerné";
+            console.warn(`storyboard: removed forbidden aliases for scene ${scene.id} shot ${j + 1}: ${contaminatedTerms.join(", ")}`);
+            promptExport = replaceForbiddenAliases(promptExport, contaminatedTerms, replacement);
+            if (shot?.description) shot.description = replaceForbiddenAliases(shot.description, contaminatedTerms, replacement);
+          }
+
           // Append (NOT prepend) a short reference reminder for objects that
           // are explicitly linked to THIS shot.
           if (sceneScopedObjects.length > 0) {
