@@ -110,7 +110,19 @@ serve(async (req) => {
     // Find objects linked to this shot's scene and mentioned in the fragment
     const sceneOrder = scene.scene_order;
     const shotText = (shot.source_sentence || shot.description || "").toLowerCase();
-    const linkedObjects = recurringObjects.filter((obj: any) => {
+    // If ANY object in the library is manually curated for this scene
+    // (i.e. its mentions_scenes explicitly includes sceneOrder), treat the
+    // scene as user-curated → only keep objects explicitly associated, and
+    // skip the text-match fallback (otherwise "carbon" matches "carbone" and
+    // re-injects foreign objects like "Carbon Skin" into a Ferrari shot).
+    const sceneIsExplicitlyCurated = recurringObjects.some(
+      (obj: any) => Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
+    );
+    const linkedObjects = sceneIsExplicitlyCurated
+      ? recurringObjects.filter(
+          (obj: any) => Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
+        )
+      : recurringObjects.filter((obj: any) => {
       if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.length > 0) {
         if (!obj.mentions_scenes.includes(sceneOrder)) return false;
       }
