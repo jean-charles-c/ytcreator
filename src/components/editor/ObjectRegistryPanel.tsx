@@ -443,7 +443,10 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
       const urlExt = imageUrl.split("/").pop()?.split("?")[0]?.split(".").pop()?.toLowerCase();
       const ext = (urlExt === "png" || urlExt === "webp") ? urlExt : "jpg";
       const safeName = objectName.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
-      const filePath = `${safeName}_ref_${refIndex}.${ext}`;
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData?.user?.id;
+      if (!uid) return null;
+      const filePath = `${uid}/${safeName}_ref_${refIndex}.${ext}`;
 
       // Use server-side proxy to avoid CORS issues
       const { data, error } = await supabase.functions.invoke("proxy-download-image", {
