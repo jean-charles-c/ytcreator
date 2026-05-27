@@ -279,6 +279,19 @@ export const findForbiddenAliases = (text: string, aliases: string[]): string[] 
   })));
 };
 
+export const replaceForbiddenAliases = (
+  text: string,
+  aliases: string[],
+  replacement: string,
+): string => {
+  let output = String(text || "");
+  for (const alias of aliases || []) {
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    output = output.replace(new RegExp(`\\b${escaped}\\b`, "gi"), replacement);
+  }
+  return output.replace(/\s{2,}/g, " ").trim();
+};
+
 /**
  * Scan a generated prompt and return the names of recurring objects that
  * should NOT have been mentioned (i.e. they belong to a different scene).
