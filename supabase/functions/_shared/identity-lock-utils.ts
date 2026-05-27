@@ -141,6 +141,23 @@ export const filterRecurringObjectsForScene = (
   sceneContext?: AnyObject | null,
 ): AnyObject[] => {
   if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
+  // If ANY object in the library has manually curated `mentions_scenes`
+  // that include the current sceneOrder, consider this scene as
+  // "explicitly curated by the user" → only include objects that
+  // explicitly mention this sceneOrder. This prevents the text-match
+  // fallback from re-injecting foreign objects (e.g. an object whose
+  // distinctive token incidentally appears in `objets_associes` or in
+  // the scene text but is NOT relevant to the current scene).
+  const sceneIsExplicitlyCurated = allObjects.some(
+    (obj: AnyObject) =>
+      Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
+  );
+  if (sceneIsExplicitlyCurated) {
+    return allObjects.filter(
+      (obj: AnyObject) =>
+        Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
+    );
+  }
   const haystack = (sceneText || "").toLowerCase();
   const ctxObjects = (() => {
     if (!sceneContext) return "";
