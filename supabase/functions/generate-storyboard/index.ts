@@ -1156,14 +1156,28 @@ serve(async (req) => {
           let promptExport: string | null = aiShot?.prompt_export ? String(aiShot.prompt_export) : null;
 
           if (promptExport) {
+            const shotObjects = filterRecurringObjectsForShot(
+              recurringObjects,
+              sceneOrder,
+              existingShot.id,
+              existingShot.source_sentence || "",
+              scene.source_text || "",
+              scene.scene_context as Record<string, any> | null,
+            );
+            const forbiddenAliases = buildForbiddenAliases(recurringObjects, shotObjects.length > 0 ? shotObjects : relevantObjs);
+            const contaminatedTerms = findForbiddenAliases(`${aiShot?.description || ""}\n${promptExport}`, forbiddenAliases);
+            if (contaminatedTerms.length > 0) {
+              const replacement = shotObjects.length > 0
+                ? shotObjects.map((obj: any) => obj.nom).filter(Boolean).join(" / ")
+                : "l'élément matériel concerné";
+              console.warn(`prompt_only: removed forbidden aliases for shot ${existingShot.id}: ${contaminatedTerms.join(", ")}`);
+              promptExport = replaceForbiddenAliases(promptExport, contaminatedTerms, replacement);
+              if (aiShot?.description) aiShot.description = replaceForbiddenAliases(aiShot.description, contaminatedTerms, replacement);
+            }
+
             // Inject identity locks
-            if (relevantObjs.length > 0) {
-              const fragmentLower = (existingShot.source_sentence || "").toLowerCase();
-              const matchingLocks = relevantObjs
-                .filter((obj: any) => {
-                  const objName = (obj.nom || "").toLowerCase();
-                  return objName && fragmentLower.includes(objName.split(" ")[0].toLowerCase());
-                })
+            if (shotObjects.length > 0) {
+              const matchingLocks = shotObjects
                 .map((obj: any) => obj.identity_prompt || "")
                 .filter(Boolean);
               if (matchingLocks.length > 0) {
