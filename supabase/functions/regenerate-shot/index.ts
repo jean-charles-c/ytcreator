@@ -7,6 +7,7 @@ import {
   ENTITY_ISOLATION_RULE,
   filterRecurringObjectsForShot,
   findForbiddenAliases,
+  replaceForbiddenAliases,
 } from "../_shared/identity-lock-utils.ts";
 
 const corsHeaders = {
@@ -399,13 +400,12 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       forbiddenAliases,
     );
     if (contaminatedTerms.length > 0) {
-      return new Response(JSON.stringify({
-        error: `Prompt refusé: contamination par objet étranger (${contaminatedTerms.join(", ")}). Relance la régénération.`,
-        contaminated_terms: contaminatedTerms,
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const replacement = linkedObjects.length > 0
+        ? linkedObjects.map((obj: any) => obj.nom).filter(Boolean).join(" / ")
+        : "l'élément matériel concerné";
+      console.warn(`[regenerate-shot] removed forbidden aliases for shot ${shot_id}: ${contaminatedTerms.join(", ")}`);
+      newShot.description = replaceForbiddenAliases(newShot.description || "", contaminatedTerms, replacement);
+      newShot.prompt_export = replaceForbiddenAliases(newShot.prompt_export || "", contaminatedTerms, replacement);
     }
 
     const updatePayload: Record<string, any> = {
