@@ -862,6 +862,11 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
                         placeholder="Ferrari 250 GTO (1962)"
                         className="mt-0.5 h-9 text-sm"
                       />
+                      {/\s*(?:\/|\||&|\s+et\s+)\s*/i.test(obj.nom || "") && (
+                        <div className="mt-1 text-[10px] text-amber-500 leading-tight">
+                          ⚠ Nom composite détecté ({"« / »"}, {"« | »"}, {"« & »"} ou {"« et »"}). Créez plutôt deux entrées distinctes, sinon les prompts d'autres scènes risquent d'être contaminés par cette marque.
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Type</label>

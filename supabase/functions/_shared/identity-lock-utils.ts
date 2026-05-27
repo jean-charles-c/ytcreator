@@ -128,6 +128,80 @@ export const distinctiveToken = (name: string): string | null => {
 };
 
 /**
+ * Detect composite recurring-object names that conflate several concepts via
+ * a separator (`/`, `|`, `&`, ` et `). Example: "Carbone Apparent / Blue Royal
+ * Carbon" merges a generic Ferrari finish with a Bugatti-only signature.
+ *
+ * When such an object is injected into a scene, its `nom` and `identity_prompt`
+ * carry words from BOTH segments, contaminating the generated prompt with a
+ * foreign brand. To prevent this, we narrow the object at injection time: we
+ * keep only the segment whose tokens actually appear in the current scene text
+ * (or `objets_associes`). If no segment matches, we keep the first segment
+ * (least specific) and drop the others.
+ *
+ * The narrowing is a non-mutating rewrite: a shallow clone of the object is
+ * returned with `nom`, `identity_prompt` and `description_visuelle` rewritten
+ * to the surviving segment only.
+ */
+const COMPOSITE_SEPARATOR = /\s*(?:\/|\||&|\s+et\s+)\s*/i;
+
+export const narrowCompositeObjectForScene = (
+  obj: AnyObject,
+  sceneText: string,
+  sceneContext?: AnyObject | null,
+): AnyObject => {
+  if (!obj || typeof obj !== "object") return obj;
+  const rawName = String(obj.nom || "");
+  if (!COMPOSITE_SEPARATOR.test(rawName)) return obj;
+
+  const segments = rawName.split(COMPOSITE_SEPARATOR).map((s) => s.trim()).filter(Boolean);
+  if (segments.length <= 1) return obj;
+
+  const ctxText = (() => {
+    if (!sceneContext) return "";
+    const raw = (sceneContext as any).objets_associes;
+    if (Array.isArray(raw)) return raw.join(" ");
+    if (typeof raw === "string") return raw;
+    return "";
+  })();
+  const haystack = `${sceneText || ""}\n${ctxText}`.toLowerCase();
+
+  const matching = segments.filter((seg) => {
+    const token = distinctiveToken(seg);
+    return token ? haystack.includes(token) : haystack.includes(seg.toLowerCase());
+  });
+
+  // Keep matching segments; if none match, fall back to the first segment
+  // (the more generic one usually leads, e.g. "Carbone Apparent / Blue Royal").
+  const kept = matching.length > 0 ? matching : [segments[0]];
+  const newName = kept.join(" / ");
+  if (newName === rawName) return obj;
+
+  const sanitize = (text: unknown): string => {
+    let out = String(text || "");
+    for (const seg of segments) {
+      if (kept.includes(seg)) continue;
+      const escaped = seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out.replace(new RegExp(escaped, "gi"), "");
+    }
+    // collapse the composite name's leftover separators inside the prompt body
+    out = out
+      .replace(new RegExp(rawName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), newName)
+      .replace(/\s*\/\s*\/\s*/g, " / ")
+      .replace(/\s{2,}/g, " ");
+    return out.trim();
+  };
+
+  return {
+    ...obj,
+    nom: newName,
+    identity_prompt: sanitize(obj.identity_prompt),
+    description_visuelle: sanitize(obj.description_visuelle),
+    _narrowed_from: rawName,
+  };
+};
+
+/**
  * Keep only the recurring objects that are relevant to a given scene.
  * An object is relevant when one of the following is true:
  *   - `obj.mentions_scenes` explicitly contains the scene order
@@ -141,6 +215,11 @@ export const filterRecurringObjectsForScene = (
   sceneContext?: AnyObject | null,
 ): AnyObject[] => {
   if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
+  // First, narrow composite objects (nom contains "/") to the segment that
+  // actually applies to this scene — see narrowCompositeObjectForScene below.
+  const normalized = allObjects.map((obj) =>
+    narrowCompositeObjectForScene(obj, sceneText, sceneContext),
+  );
   // If ANY object in the library has manually curated `mentions_scenes`
   // that include the current sceneOrder, consider this scene as
   // "explicitly curated by the user" → only include objects that
@@ -148,12 +227,12 @@ export const filterRecurringObjectsForScene = (
   // fallback from re-injecting foreign objects (e.g. an object whose
   // distinctive token incidentally appears in `objets_associes` or in
   // the scene text but is NOT relevant to the current scene).
-  const sceneIsExplicitlyCurated = allObjects.some(
+  const sceneIsExplicitlyCurated = normalized.some(
     (obj: AnyObject) =>
       Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
   );
   if (sceneIsExplicitlyCurated) {
-    return allObjects.filter(
+    return normalized.filter(
       (obj: AnyObject) =>
         Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
     );
@@ -167,7 +246,7 @@ export const filterRecurringObjectsForScene = (
     return "";
   })();
 
-  return allObjects.filter((obj: AnyObject) => {
+  return normalized.filter((obj: AnyObject) => {
     if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder)) {
       return true;
     }
@@ -189,8 +268,15 @@ export const filterRecurringObjectsForShot = (
 ): AnyObject[] => {
   if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
 
+  // Narrow composite objects (nom with "/") to the segment relevant for THIS
+  // shot/scene BEFORE applying any scope filter — so their nom / identity_prompt
+  // injected downstream never carries another brand's wording.
+  const narrowedAll = allObjects.map((obj) =>
+    narrowCompositeObjectForScene(obj, [sceneText, fragmentText].filter(Boolean).join("\n"), sceneContext),
+  );
+
   const shotScopedObjects = shotId
-    ? allObjects.filter(
+    ? narrowedAll.filter(
         (obj: AnyObject) => Array.isArray(obj.mentions_shots) && obj.mentions_shots.includes(shotId),
       )
     : [];
@@ -198,7 +284,7 @@ export const filterRecurringObjectsForShot = (
   if (shotScopedObjects.length > 0) return shotScopedObjects;
 
   return filterRecurringObjectsForScene(
-    allObjects,
+    narrowedAll,
     sceneOrder,
     [sceneText, fragmentText].filter(Boolean).join("\n"),
     sceneContext,
