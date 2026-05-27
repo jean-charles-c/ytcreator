@@ -141,6 +141,11 @@ export const filterRecurringObjectsForScene = (
   sceneContext?: AnyObject | null,
 ): AnyObject[] => {
   if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
+  // First, narrow composite objects (nom contains "/") to the segment that
+  // actually applies to this scene — see narrowCompositeObjectForScene below.
+  const normalized = allObjects.map((obj) =>
+    narrowCompositeObjectForScene(obj, sceneText, sceneContext),
+  );
   // If ANY object in the library has manually curated `mentions_scenes`
   // that include the current sceneOrder, consider this scene as
   // "explicitly curated by the user" → only include objects that
@@ -148,12 +153,12 @@ export const filterRecurringObjectsForScene = (
   // fallback from re-injecting foreign objects (e.g. an object whose
   // distinctive token incidentally appears in `objets_associes` or in
   // the scene text but is NOT relevant to the current scene).
-  const sceneIsExplicitlyCurated = allObjects.some(
+  const sceneIsExplicitlyCurated = normalized.some(
     (obj: AnyObject) =>
       Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
   );
   if (sceneIsExplicitlyCurated) {
-    return allObjects.filter(
+    return normalized.filter(
       (obj: AnyObject) =>
         Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder),
     );
@@ -167,7 +172,7 @@ export const filterRecurringObjectsForScene = (
     return "";
   })();
 
-  return allObjects.filter((obj: AnyObject) => {
+  return normalized.filter((obj: AnyObject) => {
     if (Array.isArray(obj.mentions_scenes) && obj.mentions_scenes.includes(sceneOrder)) {
       return true;
     }
