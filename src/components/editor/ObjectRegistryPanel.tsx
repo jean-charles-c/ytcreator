@@ -619,7 +619,13 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     const refIndex = existing.length + 1;
     const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
     const safeName = (obj.nom || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_").replace(/_+/g, "_");
-    const filePath = `${safeName}_ref_${refIndex}.${ext}`;
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) {
+      toast.error("Session expirée, reconnectez-vous.");
+      return;
+    }
+    const filePath = `${uid}/${safeName}_ref_${refIndex}.${ext}`;
     try {
       const { error } = await supabase.storage.from("reference-images").upload(filePath, file, {
         contentType: file.type,
