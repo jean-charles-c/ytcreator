@@ -235,9 +235,11 @@ export const forbiddenAliasesForObject = (obj: AnyObject): string[] => {
 
   if (name.includes("/")) {
     const parts = name.split("/").map((part) => cleanAlias(part));
+    add(parts.join(" "));
     parts.forEach((part, index) => {
       if (index > 0) add(part);
     });
+    if (/blue\s+royal/i.test(parts.join(" "))) add(`${parts[0]} Blue Royal`);
   }
 
   const subjectMatch = String(obj?.identity_prompt || "").match(/^Subject:\s*(.+)$/im);
