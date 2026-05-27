@@ -6,6 +6,10 @@ import { splitTextIntoSentences } from "../_shared/sentence-splitting.ts";
 import { validateAllocation, repairAllocation } from "../_shared/shot-allocation-validator.ts";
 import { analyzeRedundancy, enforceCameraRotation } from "../_shared/visual-redundancy-detector.ts";
 import {
+  buildForbiddenAliases,
+  filterRecurringObjectsForShot,
+  findForbiddenAliases,
+  replaceForbiddenAliases,
   stripLegacyIdentityLockPrefix,
   filterRecurringObjectsForScene,
   ENTITY_ISOLATION_RULE,
