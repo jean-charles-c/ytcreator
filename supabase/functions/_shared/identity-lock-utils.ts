@@ -194,8 +194,15 @@ export const filterRecurringObjectsForShot = (
 ): AnyObject[] => {
   if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
 
+  // Narrow composite objects (nom with "/") to the segment relevant for THIS
+  // shot/scene BEFORE applying any scope filter — so their nom / identity_prompt
+  // injected downstream never carries another brand's wording.
+  const narrowedAll = allObjects.map((obj) =>
+    narrowCompositeObjectForScene(obj, [sceneText, fragmentText].filter(Boolean).join("\n"), sceneContext),
+  );
+
   const shotScopedObjects = shotId
-    ? allObjects.filter(
+    ? narrowedAll.filter(
         (obj: AnyObject) => Array.isArray(obj.mentions_shots) && obj.mentions_shots.includes(shotId),
       )
     : [];
@@ -203,7 +210,7 @@ export const filterRecurringObjectsForShot = (
   if (shotScopedObjects.length > 0) return shotScopedObjects;
 
   return filterRecurringObjectsForScene(
-    allObjects,
+    narrowedAll,
     sceneOrder,
     [sceneText, fragmentText].filter(Boolean).join("\n"),
     sceneContext,
