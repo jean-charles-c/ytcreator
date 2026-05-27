@@ -412,6 +412,7 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       shot_type: newShot.shot_type,
       description: newShot.description,
       prompt_export: newShot.prompt_export,
+      guardrails: null,
     };
     if (isOnlyShot) {
       updatePayload.source_sentence = scene.source_text;
