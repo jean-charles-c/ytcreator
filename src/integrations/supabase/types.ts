@@ -1804,7 +1804,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_owns_storage_path: { Args: { _name: string }; Returns: boolean }
     }
     Enums: {
       project_status: "draft" | "segmented" | "storyboarded" | "exported"
