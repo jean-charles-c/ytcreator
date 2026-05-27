@@ -394,6 +394,20 @@ CRITICAL: Generate a COMPLETELY DIFFERENT cinematic angle, camera type, lighting
       }
     }
 
+    const contaminatedTerms = findForbiddenAliases(
+      `${newShot.description || ""}\n${newShot.prompt_export || ""}`,
+      forbiddenAliases,
+    );
+    if (contaminatedTerms.length > 0) {
+      return new Response(JSON.stringify({
+        error: `Prompt refusé: contamination par objet étranger (${contaminatedTerms.join(", ")}). Relance la régénération.`,
+        contaminated_terms: contaminatedTerms,
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const updatePayload: Record<string, any> = {
       shot_type: newShot.shot_type,
       description: newShot.description,
