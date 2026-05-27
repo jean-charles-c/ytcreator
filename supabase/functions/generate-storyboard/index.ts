@@ -1456,6 +1456,25 @@ serve(async (req) => {
         let promptExport: string | null = shot?.prompt_export ? String(shot.prompt_export) : null;
 
         if (promptExport) {
+          const shotScopedObjects = filterRecurringObjectsForShot(
+            recurringObjects,
+            sceneOrder,
+            shot?.id,
+            shot?.source_sentence || fbSentence || "",
+            sceneText || "",
+            scene.scene_context as Record<string, any> | null,
+          );
+          const forbiddenAliases = buildForbiddenAliases(recurringObjects, shotScopedObjects.length > 0 ? shotScopedObjects : sceneScopedObjects);
+          const contaminatedTerms = findForbiddenAliases(`${shot?.description || ""}\n${promptExport}`, forbiddenAliases);
+          if (contaminatedTerms.length > 0) {
+            const replacement = shotScopedObjects.length > 0
+              ? shotScopedObjects.map((obj: any) => obj.nom).filter(Boolean).join(" / ")
+              : "l'élément matériel concerné";
+            console.warn(`storyboard: removed forbidden aliases for scene ${scene.id} shot ${j + 1}: ${contaminatedTerms.join(", ")}`);
+            promptExport = replaceForbiddenAliases(promptExport, contaminatedTerms, replacement);
+            if (shot?.description) shot.description = replaceForbiddenAliases(shot.description, contaminatedTerms, replacement);
+          }
+
           // Append (NOT prepend) a short reference reminder for objects that
           // are explicitly linked to THIS shot.
           if (sceneScopedObjects.length > 0) {
