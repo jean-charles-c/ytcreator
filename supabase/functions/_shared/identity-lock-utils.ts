@@ -179,6 +179,106 @@ export const filterRecurringObjectsForScene = (
   });
 };
 
+export const filterRecurringObjectsForShot = (
+  allObjects: AnyObject[],
+  sceneOrder: number,
+  shotId: string | null | undefined,
+  fragmentText: string,
+  sceneText: string,
+  sceneContext?: AnyObject | null,
+): AnyObject[] => {
+  if (!Array.isArray(allObjects) || allObjects.length === 0) return [];
+
+  const shotScopedObjects = shotId
+    ? allObjects.filter(
+        (obj: AnyObject) => Array.isArray(obj.mentions_shots) && obj.mentions_shots.includes(shotId),
+      )
+    : [];
+
+  if (shotScopedObjects.length > 0) return shotScopedObjects;
+
+  return filterRecurringObjectsForScene(
+    allObjects,
+    sceneOrder,
+    [sceneText, fragmentText].filter(Boolean).join("\n"),
+    sceneContext,
+  );
+};
+
+const cleanAlias = (value: unknown): string =>
+  String(value || "")
+    .replace(/\s+Moderne\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isTooGenericAlias = (value: string): boolean => {
+  const v = value.toLowerCase();
+  return [
+    "carbone",
+    "carbon",
+    "carbone apparent",
+    "fibre de carbone",
+    "carbon fiber",
+    "carbon fibre",
+  ].includes(v);
+};
+
+export const forbiddenAliasesForObject = (obj: AnyObject): string[] => {
+  const aliases = new Set<string>();
+  const add = (value: unknown) => {
+    const alias = cleanAlias(value);
+    if (alias.length >= 5 && !isTooGenericAlias(alias)) aliases.add(alias);
+  };
+
+  const name = cleanAlias(obj?.nom);
+  add(name);
+
+  if (name.includes("/")) {
+    const parts = name.split("/").map((part) => cleanAlias(part));
+    parts.forEach((part, index) => {
+      if (index > 0) add(part);
+    });
+  }
+
+  const subjectMatch = String(obj?.identity_prompt || "").match(/^Subject:\s*(.+)$/im);
+  if (subjectMatch?.[1]) add(subjectMatch[1]);
+
+  const combined = `${obj?.nom || ""} ${obj?.identity_prompt || ""} ${obj?.description_visuelle || ""}`;
+  if (/\bblue\s+royal\b/i.test(combined)) {
+    add("Blue Royal");
+    add("Blue Royal Carbon");
+    add("Royal Carbon");
+  }
+
+  return Array.from(aliases);
+};
+
+export const buildForbiddenAliases = (
+  allObjects: AnyObject[],
+  allowedObjects: AnyObject[],
+): string[] => {
+  const allowedIds = new Set((allowedObjects || []).map((obj) => obj?.id).filter(Boolean));
+  const allowedNames = new Set((allowedObjects || []).map((obj) => cleanAlias(obj?.nom).toLowerCase()).filter(Boolean));
+  const aliases = new Set<string>();
+
+  for (const obj of allObjects || []) {
+    const idAllowed = obj?.id && allowedIds.has(obj.id);
+    const nameAllowed = allowedNames.has(cleanAlias(obj?.nom).toLowerCase());
+    if (idAllowed || nameAllowed) continue;
+    forbiddenAliasesForObject(obj).forEach((alias) => aliases.add(alias));
+  }
+
+  return Array.from(aliases).sort((a, b) => b.length - a.length);
+};
+
+export const findForbiddenAliases = (text: string, aliases: string[]): string[] => {
+  const haystack = String(text || "");
+  return Array.from(new Set((aliases || []).filter((alias) => {
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(haystack);
+  })));
+};
+
 /**
  * Scan a generated prompt and return the names of recurring objects that
  * should NOT have been mentioned (i.e. they belong to a different scene).
