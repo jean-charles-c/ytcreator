@@ -336,6 +336,13 @@ export const forbiddenAliasesForObject = (obj: AnyObject): string[] => {
     add("Blue Royal");
     add("Blue Royal Carbon");
     add("Royal Carbon");
+    // French variants — the AI often translates "Blue Royal" → "bleu royal"
+    // when generating in French, slipping past the English-only word-boundary
+    // matcher. Add explicit FR aliases so they get filtered.
+    add("Bleu Royal");
+    add("Carbone Bleu Royal");
+    add("Carbone Bleu");
+    add("carbone bleu royal");
   }
 
   return Array.from(aliases);
