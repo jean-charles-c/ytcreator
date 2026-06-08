@@ -607,6 +607,7 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
             nom: obj.nom,
             epoque: obj.epoque || undefined,
             description: obj.description_visuelle || undefined,
+            type: obj.type,
           },
           limit: 3,
           force_refresh: hasPreviousResult,
