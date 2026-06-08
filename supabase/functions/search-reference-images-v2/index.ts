@@ -199,6 +199,24 @@ async function enrichQuery(
   input: ObjectInput,
   apiKey: string,
 ): Promise<EnrichedQuery> {
+  // If the caller already declared the entity as a logo / brand mark, skip
+  // Gemini classification entirely. Asking the LLM to "produce a search query
+  // targeting real photographs" of "Logo Ferrari" reliably yields
+  // "Ferrari sports car" — which is exactly the bug we are fixing.
+  const declared = (input.type || "").toLowerCase();
+  if (declared === "logo" || declared === "brand" || declared === "marque") {
+    const cleanName = input.nom
+      .replace(/\b(logo|logotype|embl[èe]me|marque|brand)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim() || input.nom;
+    const eraHint = input.epoque ? ` ${input.epoque}` : "";
+    return {
+      query: `${cleanName} logo emblem brand mark transparent${eraHint}`.trim(),
+      type: "logo",
+      wikidata_label: cleanName,
+    };
+  }
+
   const prompt = `You are helping search the web for reference photographs of a recurring entity from a documentary script.
 
 Entity:
@@ -240,7 +258,7 @@ Return ONLY a JSON object: {"query": string, "type": string, "wikidata_label": s
   const text = extractGeminiText(payload) || "";
   const parsed = safeParseJson<{ query?: string; type?: string; wikidata_label?: string | null }>(text);
 
-  const validTypes: ObjectType[] = ["vehicle", "person", "object", "concept", "place", "event"];
+  const validTypes: ObjectType[] = ["vehicle", "person", "object", "concept", "place", "event", "logo"];
   const type = (parsed?.type && validTypes.includes(parsed.type as ObjectType)
     ? parsed.type
     : "object") as ObjectType;
