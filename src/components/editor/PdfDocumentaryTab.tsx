@@ -174,6 +174,20 @@ export default function PdfDocumentaryTab({
   const chapterHydratedRef = useRef(false);
   const [chapterHydrated, setChapterHydrated] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [scriptInputOpen, setScriptInputOpen] = useState(false);
+  const scriptInputRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-ouverture + scroll vers ScriptInput quand le NFG y envoie un script.
+  useEffect(() => {
+    if (!scriptInputAutoOpen) return;
+    setScriptInputOpen(true);
+    // Attend que le Collapsible se déplie avant de scroller.
+    const t = window.setTimeout(() => {
+      scriptInputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.success("Script voix off chargé dans ScriptInput");
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [scriptInputAutoOpen]);
   const [dragOver, setDragOver] = useState(false);
   const [charMin, setCharMin] = useState(8000);
   const [charMax, setCharMax] = useState(18000);
@@ -1827,7 +1841,7 @@ export default function PdfDocumentaryTab({
       </div>
 
       {/* ScriptInput — collapsible */}
-      <Collapsible className="mt-6">
+      <Collapsible open={scriptInputOpen} onOpenChange={setScriptInputOpen} className="mt-6" ref={scriptInputRef as any}>
         <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
           <div className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-primary" />
