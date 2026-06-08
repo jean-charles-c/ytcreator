@@ -230,6 +230,11 @@ export default function Editor() {
   // ScriptInput lorsqu'un script voix off arrive depuis le NFG.
   const [scriptInputAutoOpen, setScriptInputAutoOpen] = useState<number>(0);
 
+  // Indicateur d'import en cours des scènes narratives (NFG) vers la
+  // Segmentation View. Sert à afficher le loader pendant l'appel à
+  // send-narrative-to-segmentation, qui n'utilise pas la tâche background.
+  const [narrativeImporting, setNarrativeImporting] = useState(false);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
