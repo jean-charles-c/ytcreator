@@ -226,6 +226,10 @@ export default function Editor() {
     { title: string; sourceText: string }[] | null
   >(null);
 
+  // Timestamp horodaté pour forcer l'ouverture + le scroll vers le bloc
+  // ScriptInput lorsqu'un script voix off arrive depuis le NFG.
+  const [scriptInputAutoOpen, setScriptInputAutoOpen] = useState<number>(0);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
@@ -2779,6 +2783,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               scenesForShotOrder={scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order }))}
               pendingChapterTitles={pendingChapterTitles}
               onPendingChapterTitlesConsumed={() => setPendingChapterTitles(null)}
+              scriptInputAutoOpen={scriptInputAutoOpen}
             />
           </div>
         )}
