@@ -3023,14 +3023,18 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               </div>
             )}
 
-            {segmenting && (
+            {(segmenting || narrativeImporting) && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Analyse de la narration en cours...</p>
+                <p className="text-sm text-muted-foreground">
+                  {narrativeImporting
+                    ? "Import des scènes narratives en cours..."
+                    : "Analyse de la narration en cours..."}
+                </p>
               </div>
             )}
 
-            {!segmenting && scenes.length === 0 && (
+            {!segmenting && !narrativeImporting && scenes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Layers className="h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">Aucune scène. Lancez la segmentation depuis l'onglet ScriptCreator.</p>
