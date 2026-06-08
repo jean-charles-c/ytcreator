@@ -44,13 +44,19 @@ const QUALITY_WEIGHT = 0.3;
 
 type SourceName = "wikidata" | "wikimedia" | "brave"; // extensible
 
-type ObjectType = "vehicle" | "person" | "object" | "concept" | "place" | "event";
+type ObjectType = "vehicle" | "person" | "object" | "concept" | "place" | "event" | "logo";
 
 interface ObjectInput {
   nom: string;
   epoque?: string;
   description?: string;
   context?: string;
+  /**
+   * User-declared type from the registry panel. When provided, it overrides
+   * the Gemini classification and (for `logo`/`brand`) switches the whole
+   * search pipeline to graphic-mark mode instead of product photographs.
+   */
+  type?: string;
 }
 
 interface RequestInput {
