@@ -1878,6 +1878,7 @@ export default function PdfDocumentaryTab({
           </div>
         </CollapsibleContent>
       </Collapsible>
+      </div>
 
     </div>
   );
