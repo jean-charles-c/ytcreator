@@ -496,7 +496,10 @@ const searchWikimedia: SearchFn = async (enriched) => {
       const info = page?.imageinfo?.[0];
       if (!info) continue;
       if (!info.mime?.startsWith("image/")) continue;
-      if (info.mime === "image/svg+xml") continue;
+      // SVGs are usually unrenderable for our Gemini validator (it expects
+      // raster bytes), but for logos they are by far the highest-quality
+      // sources on Commons. Keep them only when we know we are after a logo.
+      if (info.mime === "image/svg+xml" && enriched.type !== "logo") continue;
       const w = Number(info.width) || 0;
       const h = Number(info.height) || 0;
       if (w < 200 || h < 150) continue;
