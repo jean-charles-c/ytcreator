@@ -328,7 +328,11 @@ ${input.description ? `- description: ${input.description}` : ""}
 - type: ${enriched.type}
 - search query used: ${enriched.query}
 
-Score the image:
+${enriched.type === "logo" ? `IMPORTANT — this entity is a BRAND / LOGO.
+- Accept ONLY images that depict the official graphic mark (wordmark, emblem, monogram, badge, crest, icon).
+- REJECT any photograph of the product the brand makes (car, building, person, packaging, storefront, screenshot) even if the brand is correct. Such images must receive match_score <= 3.
+- Prefer images on a uniform / transparent background.
+` : ""}Score the image:
 - match_score (0-10): how confidently this image depicts the exact target entity (not just similar). 10 = unambiguous match.
 - quality_score (0-10): visual usability as a reference (resolution, clarity, framing, lack of watermarks/overlays, professional look).
 - reason: one short sentence justifying the scores.
