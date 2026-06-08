@@ -2682,13 +2682,20 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               projectId={projectId}
               projectTitle={title}
               hasExistingScriptInput={Boolean((pdfExtractedText ?? "").trim())}
-              onSendToScriptCreator={(text, chapterTitles) => {
+              onSendToScriptCreator={(text, chapterTitles, targetScriptInput) => {
                 setNarration(text);
-                setPdfExtractedText(text);
+                // Quand l'envoi vient du NFG (voix off), on cible directement
+                // le bloc ScriptInput sans réveiller le pipeline PDF.
+                if (!targetScriptInput) {
+                  setPdfExtractedText(text);
+                }
                 setPdfAnalysis(null);
                 setGeneratedScript(null);
                 if (chapterTitles && chapterTitles.length > 0) {
                   setPendingChapterTitles(chapterTitles);
+                }
+                if (targetScriptInput) {
+                  setScriptInputAutoOpen(Date.now());
                 }
                 setActiveTab("script-creator");
               }}
