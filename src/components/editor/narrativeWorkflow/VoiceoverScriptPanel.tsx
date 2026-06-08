@@ -105,6 +105,7 @@ interface VoiceoverScriptPanelProps {
   onSendToScriptCreator?: (
     content: string,
     chapterTitles?: { title: string; sourceText: string }[],
+    targetScriptInput?: boolean,
   ) => void;
   /**
    * Indique si un script est déjà chargé côté ScriptCreator. Utilisé pour
@@ -325,7 +326,9 @@ export default function VoiceoverScriptPanel({
           }
         }
       }
-      onSendToScriptCreator(cleanedContent, chapterPayload);
+      // NFG voice-over path: target ScriptInput directly so user can launch
+      // segmentation without going through the PDF analyse/generate pipeline.
+      onSendToScriptCreator(cleanedContent, chapterPayload, true);
 
       // 2. Marquage du statut côté DB (non-bloquant pour l'envoi).
       try {

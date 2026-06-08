@@ -226,6 +226,10 @@ export default function Editor() {
     { title: string; sourceText: string }[] | null
   >(null);
 
+  // Timestamp horodaté pour forcer l'ouverture + le scroll vers le bloc
+  // ScriptInput lorsqu'un script voix off arrive depuis le NFG.
+  const [scriptInputAutoOpen, setScriptInputAutoOpen] = useState<number>(0);
+
   const scriptCreatorHydratedRef = useRef(false);
   const lastSavedScriptCreatorSnapshotRef = useRef("");
   const scriptCreatorSaveTimeoutRef = useRef<number | null>(null);
@@ -2682,13 +2686,20 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               projectId={projectId}
               projectTitle={title}
               hasExistingScriptInput={Boolean((pdfExtractedText ?? "").trim())}
-              onSendToScriptCreator={(text, chapterTitles) => {
+              onSendToScriptCreator={(text, chapterTitles, targetScriptInput) => {
                 setNarration(text);
-                setPdfExtractedText(text);
+                // Quand l'envoi vient du NFG (voix off), on cible directement
+                // le bloc ScriptInput sans réveiller le pipeline PDF.
+                if (!targetScriptInput) {
+                  setPdfExtractedText(text);
+                }
                 setPdfAnalysis(null);
                 setGeneratedScript(null);
                 if (chapterTitles && chapterTitles.length > 0) {
                   setPendingChapterTitles(chapterTitles);
+                }
+                if (targetScriptInput) {
+                  setScriptInputAutoOpen(Date.now());
                 }
                 setActiveTab("script-creator");
               }}
@@ -2772,6 +2783,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
               scenesForShotOrder={scenes.map((scene) => ({ id: scene.id, scene_order: scene.scene_order }))}
               pendingChapterTitles={pendingChapterTitles}
               onPendingChapterTitlesConsumed={() => setPendingChapterTitles(null)}
+              scriptInputAutoOpen={scriptInputAutoOpen}
             />
           </div>
         )}
