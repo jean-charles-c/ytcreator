@@ -1295,6 +1295,31 @@ export default function PdfDocumentaryTab({
         </div>
       )}
 
+      {/* Aperçu / édition du texte source (scriptInput) — utile lorsque le texte vient
+          du RsearchEngine (envoi du script voix off) et qu'aucun PDF n'a été chargé. */}
+      {extractedText && (
+        <Collapsible defaultOpen={!file && !analysis} className="mt-3">
+          <CollapsibleTrigger className="w-full rounded-t-lg border border-border bg-card p-3 flex items-center justify-between hover:bg-secondary/30 transition-colors">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Texte source (scriptInput)</span>
+              <span className="text-xs text-muted-foreground">{extractedText.length.toLocaleString()} car.</span>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="rounded-b-lg border border-t-0 border-border bg-card p-3">
+              <Textarea
+                value={extractedText}
+                onChange={(e) => onExtractedTextChange(e.target.value)}
+                className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-body min-h-[260px] resize-y"
+                placeholder="Texte source utilisé par ScriptCreator…"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {/* Analysis results — collapsible (shown above script generation controls) */}
       {analysis && (
         <Collapsible open={analysisOpen} onOpenChange={setAnalysisOpen} className="mt-6">
