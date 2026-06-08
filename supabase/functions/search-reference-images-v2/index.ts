@@ -44,13 +44,19 @@ const QUALITY_WEIGHT = 0.3;
 
 type SourceName = "wikidata" | "wikimedia" | "brave"; // extensible
 
-type ObjectType = "vehicle" | "person" | "object" | "concept" | "place" | "event";
+type ObjectType = "vehicle" | "person" | "object" | "concept" | "place" | "event" | "logo";
 
 interface ObjectInput {
   nom: string;
   epoque?: string;
   description?: string;
   context?: string;
+  /**
+   * User-declared type from the registry panel. When provided, it overrides
+   * the Gemini classification and (for `logo`/`brand`) switches the whole
+   * search pipeline to graphic-mark mode instead of product photographs.
+   */
+  type?: string;
 }
 
 interface RequestInput {
@@ -193,6 +199,24 @@ async function enrichQuery(
   input: ObjectInput,
   apiKey: string,
 ): Promise<EnrichedQuery> {
+  // If the caller already declared the entity as a logo / brand mark, skip
+  // Gemini classification entirely. Asking the LLM to "produce a search query
+  // targeting real photographs" of "Logo Ferrari" reliably yields
+  // "Ferrari sports car" — which is exactly the bug we are fixing.
+  const declared = (input.type || "").toLowerCase();
+  if (declared === "logo" || declared === "brand" || declared === "marque") {
+    const cleanName = input.nom
+      .replace(/\b(logo|logotype|embl[èe]me|marque|brand)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim() || input.nom;
+    const eraHint = input.epoque ? ` ${input.epoque}` : "";
+    return {
+      query: `${cleanName} logo emblem brand mark transparent${eraHint}`.trim(),
+      type: "logo",
+      wikidata_label: cleanName,
+    };
+  }
+
   const prompt = `You are helping search the web for reference photographs of a recurring entity from a documentary script.
 
 Entity:
@@ -234,7 +258,7 @@ Return ONLY a JSON object: {"query": string, "type": string, "wikidata_label": s
   const text = extractGeminiText(payload) || "";
   const parsed = safeParseJson<{ query?: string; type?: string; wikidata_label?: string | null }>(text);
 
-  const validTypes: ObjectType[] = ["vehicle", "person", "object", "concept", "place", "event"];
+  const validTypes: ObjectType[] = ["vehicle", "person", "object", "concept", "place", "event", "logo"];
   const type = (parsed?.type && validTypes.includes(parsed.type as ObjectType)
     ? parsed.type
     : "object") as ObjectType;
@@ -304,7 +328,11 @@ ${input.description ? `- description: ${input.description}` : ""}
 - type: ${enriched.type}
 - search query used: ${enriched.query}
 
-Score the image:
+${enriched.type === "logo" ? `IMPORTANT — this entity is a BRAND / LOGO.
+- Accept ONLY images that depict the official graphic mark (wordmark, emblem, monogram, badge, crest, icon).
+- REJECT any photograph of the product the brand makes (car, building, person, packaging, storefront, screenshot) even if the brand is correct. Such images must receive match_score <= 3.
+- Prefer images on a uniform / transparent background.
+` : ""}Score the image:
 - match_score (0-10): how confidently this image depicts the exact target entity (not just similar). 10 = unambiguous match.
 - quality_score (0-10): visual usability as a reference (resolution, clarity, framing, lack of watermarks/overlays, professional look).
 - reason: one short sentence justifying the scores.
@@ -468,7 +496,10 @@ const searchWikimedia: SearchFn = async (enriched) => {
       const info = page?.imageinfo?.[0];
       if (!info) continue;
       if (!info.mime?.startsWith("image/")) continue;
-      if (info.mime === "image/svg+xml") continue;
+      // SVGs are usually unrenderable for our Gemini validator (it expects
+      // raster bytes), but for logos they are by far the highest-quality
+      // sources on Commons. Keep them only when we know we are after a logo.
+      if (info.mime === "image/svg+xml" && enriched.type !== "logo") continue;
       const w = Number(info.width) || 0;
       const h = Number(info.height) || 0;
       if (w < 200 || h < 150) continue;
@@ -539,7 +570,9 @@ function makeSearchBrave(apiKey: string): SearchFn {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makeCacheKeyInput(o: ObjectInput): string {
-  return `${o.nom}|${o.epoque || ""}|${o.description || ""}`;
+  // Include the declared type so a logo entity and a vehicle entity sharing
+  // the same name (e.g. "Ferrari") never collide on the same cached result.
+  return `${o.nom}|${o.epoque || ""}|${o.description || ""}|${(o.type || "").toLowerCase()}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
