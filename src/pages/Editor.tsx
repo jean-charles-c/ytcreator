@@ -2795,6 +2795,7 @@ Réponds UNIQUEMENT avec un JSON array de 2 objets (un par scène).`;
         {!showSetup && activeTab === "cp" && (
           <ContentPublishTab
             generatedScript={generatedScript}
+            scriptInputText={pdfExtractedText}
             seoResults={seoResults}
             scenes={scenes}
             shots={shots}
