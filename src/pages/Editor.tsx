@@ -658,6 +658,7 @@ export default function Editor() {
           .eq("project_id", projectId)
           .eq("outline_id", outline.id);
         if ((count ?? 0) > 0) {
+          setNarrativeImporting(true);
           const { data, error } = await supabase.functions.invoke(
             "send-narrative-to-segmentation",
             {
@@ -669,7 +670,7 @@ export default function Editor() {
               },
             },
           );
-          if (error) throw error;
+          if (error) { setNarrativeImporting(false); throw error; }
           if (data?.ok) {
             toast.success(
               `Scènes narratives reprises (${data.scenes_inserted} scène${
@@ -696,11 +697,14 @@ export default function Editor() {
             if (scenesRes.data) setScenes(scenesRes.data as Scene[]);
             if (shotsRes.data) setShots(shotsRes.data as Shot[]);
             if (scState?.data?.global_context) setGlobalContext(scState.data.global_context);
+            setNarrativeImporting(false);
             return;
           }
+          setNarrativeImporting(false);
         }
       }
     } catch (e) {
+      setNarrativeImporting(false);
       console.warn("[Editor] narrative-scenes reuse failed, falling back to AI segmentation", e);
     }
 
