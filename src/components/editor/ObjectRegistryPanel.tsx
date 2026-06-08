@@ -182,6 +182,14 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
   const [backfilling, setBackfilling] = useState(false);
 
+  // Auto-import depuis la bibliothèque : flag transitoire par objet pour
+  // signaler visuellement le résultat (match exact, proche, ou conflit
+  // d'époque). Effacé dès que l'utilisateur modifie l'objet.
+  const [libraryAutoImport, setLibraryAutoImport] = useState<
+    Record<string, { kind: "exact" | "approx" | "conflict"; libraryEpoque: string }>
+  >({});
+  const libraryAutoQueriedRef = useRef<Set<string>>(new Set());
+
   // ── Repopulate `candidatesByObject` from the Supabase cache so the
   // "Voir candidats" button and its dialog survive page reloads.
   // Fires whenever the set of identified objects changes (nom/epoque/description).
