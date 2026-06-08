@@ -24,6 +24,7 @@ interface RsearchEngineTabProps {
   onSendToScriptCreator?: (
     content: string,
     chapterTitles?: { title: string; sourceText: string }[],
+    targetScriptInput?: boolean,
   ) => void;
   /**
    * Étape 15 — Indique si un script est déjà chargé côté ScriptCreator
