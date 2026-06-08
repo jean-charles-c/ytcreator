@@ -12,6 +12,35 @@ import { applyFrenchTypography } from "./frenchTypography";
 type Scene = Tables<"scenes">;
 type Shot = Tables<"shots">;
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to legacy fallback
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    ta.style.pointerEvents = "none";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 interface YoutubeTitle {
   rank: number;
   title: string;
@@ -34,12 +63,16 @@ interface ContentPublishTabProps {
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text).then(() => {
+  const handleCopy = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const ok = await copyToClipboard(text);
+    if (ok) {
       setCopied(true);
       toast.success(`${label} copié ✓`);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } else {
+      toast.error("Copie impossible — sélectionnez le texte puis Ctrl+C");
+    }
   };
 
   return (
@@ -67,13 +100,16 @@ function CopyableBlock({
   return (
     <div
       className="group rounded border border-border bg-card p-4 transition-colors hover:border-primary/30 relative cursor-pointer"
-      onClick={() => {
+      onClick={async () => {
         if (onClick) {
           onClick();
         } else {
-          navigator.clipboard.writeText(text).then(() => {
+          const ok = await copyToClipboard(text);
+          if (ok) {
             toast.success(`${label} copié ✓`);
-          });
+          } else {
+            toast.error("Copie impossible — sélectionnez le texte puis Ctrl+C");
+          }
         }
       }}
     >
