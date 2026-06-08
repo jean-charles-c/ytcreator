@@ -411,6 +411,13 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
   }, [objects, onChange]);
 
   const updateObject = useCallback((id: string, patch: Partial<RecurringObject>) => {
+    // Toute modification manuelle efface le badge d'auto-import.
+    setLibraryAutoImport((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     onChange(objects.map((o) => {
       if (o.id !== id) return o;
       const updated = { ...o, ...patch };
