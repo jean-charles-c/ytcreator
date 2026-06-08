@@ -55,6 +55,7 @@ interface SeoResults {
 
 interface ContentPublishTabProps {
   generatedScript: string | null;
+  scriptInputText?: string | null;
   seoResults: SeoResults;
   scenes?: Scene[];
   shots?: Shot[];
@@ -267,7 +268,7 @@ function splitIntoVoiceOverBlocks(raw: string): string[] {
   return blocks;
 }
 
-export default function ContentPublishTab({ generatedScript, seoResults, scenes = [], shots = [] }: ContentPublishTabProps) {
+export default function ContentPublishTab({ generatedScript, scriptInputText, seoResults, scenes = [], shots = [] }: ContentPublishTabProps) {
   const [scriptOpen, setScriptOpen] = useState(false);
   const [seoOpen, setSeoOpen] = useState(false);
   const [promptsOpen, setPromptsOpen] = useState(false);
@@ -276,7 +277,8 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const description = seoResults?.description ?? null;
   const tags = seoResults?.tags ?? null;
 
-  const hasScript = !!generatedScript;
+  const scriptForCopy = generatedScript?.trim() ? generatedScript : scriptInputText?.trim() ? scriptInputText : null;
+  const hasScript = !!scriptForCopy;
   const hasSeo = !!(titles || description || tags);
 
   const { promptsNumbered, promptsRaw } = useMemo(() => {
@@ -302,9 +304,9 @@ export default function ContentPublishTab({ generatedScript, seoResults, scenes 
   const hasPrompts = promptsNumbered.length > 0;
   const hasContent = hasScript || hasSeo || hasPrompts;
 
-  const cleanedScript = hasScript ? cleanScriptForExport(generatedScript!) : null;
-  const cleanedScriptVo = hasScript ? cleanScriptVoOnly(generatedScript!) : null;
-  const voBlocks = hasScript ? splitIntoVoiceOverBlocks(generatedScript!) : [];
+  const cleanedScript = hasScript ? cleanScriptForExport(scriptForCopy!) : null;
+  const cleanedScriptVo = hasScript ? cleanScriptVoOnly(scriptForCopy!) : null;
+  const voBlocks = hasScript ? splitIntoVoiceOverBlocks(scriptForCopy!) : [];
 
   const subtitlesText = useMemo(() => {
     if (scenes.length === 0 || shots.length === 0) return null;
