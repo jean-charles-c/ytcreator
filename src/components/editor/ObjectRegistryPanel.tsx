@@ -286,6 +286,115 @@ export default function ObjectRegistryPanel({ objects, onChange, sceneCount, onR
     return () => clearTimeout(handle);
   }, [objects, projectId]);
 
+  // ── Auto-import des visuels de référence depuis la bibliothèque ────
+  // Quand une nouvelle entité apparaît sans visuels, on interroge
+  // recurring_object_library côté serveur. Si une entrée homonyme existe
+  // ET que l'époque est compatible, on importe automatiquement les
+  // images + identity_prompt. En cas de conflit d'époque, on affiche un
+  // badge d'avertissement sans rien écraser.
+  useEffect(() => {
+    const targets = objects.filter((o) => {
+      if (!o.nom?.trim()) return false;
+      if ((o.reference_images?.length ?? 0) > 0) return false;
+      const key = `${o.type}::${o.nom.trim().toLowerCase()}::${(o.epoque || "").toLowerCase()}`;
+      return !libraryAutoQueriedRef.current.has(key);
+    });
+    if (targets.length === 0) return;
+
+    const handle = setTimeout(async () => {
+      // Marque comme interrogées avant l'appel pour éviter les doubles requêtes.
+      const keys = targets.map(
+        (o) => `${o.type}::${o.nom.trim().toLowerCase()}::${(o.epoque || "").toLowerCase()}`,
+      );
+      keys.forEach((k) => libraryAutoQueriedRef.current.add(k));
+
+      try {
+        const entities = targets.map((o) => ({
+          nom: o.nom.trim(),
+          type: o.type,
+          epoque: o.epoque || "",
+        }));
+        const { data, error } = await supabase.functions.invoke("auto-import-library-refs", {
+          body: { entities },
+        });
+        if (error || !data?.matches) return;
+
+        const matches = data.matches as Array<{
+          nom: string;
+          type: string;
+          epoque_request: string;
+          score: 0 | 60 | 100;
+          library_entry: null | {
+            nom: string;
+            epoque: string;
+            description_visuelle: string;
+            identity_prompt: string;
+            reference_images: string[];
+          };
+        }>;
+
+        // Snapshot des objets cibles à l'instant T pour réconcilier.
+        const targetsById = new Map(targets.map((o) => [o.id, o]));
+        let exactCount = 0;
+        let approxCount = 0;
+        let conflictCount = 0;
+
+        const nextObjects = objects.map((o) => {
+          if (!targetsById.has(o.id)) return o;
+          const m = matches.find(
+            (x) =>
+              x.type === o.type &&
+              x.nom.trim().toLowerCase() === o.nom.trim().toLowerCase() &&
+              (x.epoque_request || "") === (o.epoque || ""),
+          );
+          if (!m || !m.library_entry) return o;
+
+          if (m.score === 0) {
+            // Conflit d'époque : on n'écrase rien, on enregistre juste un badge.
+            conflictCount += 1;
+            setLibraryAutoImport((prev) => ({
+              ...prev,
+              [o.id]: { kind: "conflict", libraryEpoque: m.library_entry!.epoque },
+            }));
+            return o;
+          }
+
+          // Score 60 ou 100 : import des champs encore vides.
+          const patch: Partial<RecurringObject> = {
+            reference_images: m.library_entry.reference_images,
+          };
+          if (!o.description_visuelle?.trim() && m.library_entry.description_visuelle) {
+            patch.description_visuelle = m.library_entry.description_visuelle;
+          }
+          if (!o.identity_prompt?.trim() && m.library_entry.identity_prompt) {
+            patch.identity_prompt = m.library_entry.identity_prompt;
+          }
+          const kind: "exact" | "approx" = m.score === 100 ? "exact" : "approx";
+          if (kind === "exact") exactCount += 1; else approxCount += 1;
+          setLibraryAutoImport((prev) => ({
+            ...prev,
+            [o.id]: { kind, libraryEpoque: m.library_entry!.epoque },
+          }));
+          return { ...o, ...patch };
+        });
+
+        if (exactCount + approxCount + conflictCount > 0) {
+          // N'appeler onChange que si une modification réelle a eu lieu
+          // (les conflits seuls ne modifient pas les objets).
+          if (exactCount + approxCount > 0) onChange(nextObjects);
+          const parts: string[] = [];
+          if (exactCount > 0) parts.push(`${exactCount} entité(s) enrichie(s)`);
+          if (approxCount > 0) parts.push(`${approxCount} époque proche`);
+          if (conflictCount > 0) parts.push(`${conflictCount} conflit(s) d'époque`);
+          toast.success(`Bibliothèque ${parts.join(" ; ")}`);
+        }
+      } catch (e) {
+        console.warn("auto-import-library-refs failed", e);
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [objects, onChange]);
+
   const addObject = useCallback(() => {
     const newObj: RecurringObject = {
       id: generateId(),
