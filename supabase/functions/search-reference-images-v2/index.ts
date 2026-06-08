@@ -570,7 +570,9 @@ function makeSearchBrave(apiKey: string): SearchFn {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makeCacheKeyInput(o: ObjectInput): string {
-  return `${o.nom}|${o.epoque || ""}|${o.description || ""}`;
+  // Include the declared type so a logo entity and a vehicle entity sharing
+  // the same name (e.g. "Ferrari") never collide on the same cached result.
+  return `${o.nom}|${o.epoque || ""}|${o.description || ""}|${(o.type || "").toLowerCase()}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
