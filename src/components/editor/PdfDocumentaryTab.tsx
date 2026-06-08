@@ -1841,7 +1841,8 @@ export default function PdfDocumentaryTab({
       </div>
 
       {/* ScriptInput — collapsible */}
-      <Collapsible open={scriptInputOpen} onOpenChange={setScriptInputOpen} className="mt-6" ref={scriptInputRef as any}>
+      <div ref={scriptInputRef} className="mt-6 scroll-mt-24">
+      <Collapsible open={scriptInputOpen} onOpenChange={setScriptInputOpen}>
         <CollapsibleTrigger className="w-full rounded-lg border border-border bg-card p-4 sm:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
           <div className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-primary" />
