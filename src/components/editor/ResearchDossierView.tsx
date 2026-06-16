@@ -44,7 +44,7 @@ const ResearchDossierView = forwardRef<HTMLDivElement, ResearchDossierViewProps>
       <div ref={ref} className="research-dossier-export break-words overflow-hidden">
         {/* Topic header for PDF and display */}
         {topic && (
-          <div className="mb-4 sm:mb-8 pb-3 sm:pb-4 border-b-2 border-primary/30">
+          <div data-pdf-section="topic" className="mb-4 sm:mb-8 pb-3 sm:pb-4 border-b-2 border-primary/30">
             <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground mb-1 sm:mb-2">Dossier de recherche</p>
             <h1 className="font-display text-lg sm:text-2xl lg:text-3xl font-bold text-foreground leading-tight break-words">
               {topic}
@@ -55,7 +55,7 @@ const ResearchDossierView = forwardRef<HTMLDivElement, ResearchDossierViewProps>
         {sections.map((section, i) => {
           if (section.name === "__preamble__") {
             return (
-              <div key="preamble" className="mb-4 sm:mb-6">
+              <div key="preamble" data-pdf-section="preamble" className="mb-4 sm:mb-6">
                 <p
                   className="text-xs sm:text-sm leading-relaxed text-muted-foreground mb-2 sm:mb-3 break-words"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(section.content) }}
@@ -68,6 +68,7 @@ const ResearchDossierView = forwardRef<HTMLDivElement, ResearchDossierViewProps>
             <div
               key={section.name}
               ref={(el) => { sectionRefs.current[section.name] = el; }}
+              data-pdf-section={section.name}
               className="mb-5 sm:mb-8 scroll-mt-4"
             >
               <h2 className="font-display text-sm sm:text-lg lg:text-xl font-bold text-foreground mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-border break-words">
