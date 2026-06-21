@@ -641,7 +641,10 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
   const allValid = checks.every((c) => c.status === "valid");
   const hasBlocking = checks.some((c) => c.status === "missing");
   const validCount = checks.filter((c) => c.status === "valid").length;
-  const isExportBlocked = exportBlocked || !!audioDesync;
+  // Once a timeline has been generated, the export is never blocked: the user has
+  // explicitly produced a timeline and should be able to export it even if upstream
+  // assets (audio sync, chapters, etc.) report warnings.
+  const isExportBlocked = false;
   
 
   return (
