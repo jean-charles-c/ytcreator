@@ -977,7 +977,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
           }
         } catch { /* no chapters — export without markers */ }
 
-        // Build manifest timing from scenes/shots + the exact audio currently selected in the timeline
+        // Build manifest timing from scenes/shots + the exact audio currently selected in the timeline.
+        // If exact timing is invalid, do not block export once a timeline exists: fall back to
+        // the persisted timeline timing so legacy projects remain exportable.
         let exportTimeline = params.timeline;
         try {
           const [{ data: dbScenes }, { data: dbShots }, { data: selectedAudio }] = await Promise.all([
@@ -992,15 +994,21 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
             const duration = selectedAudio.duration_estimate ?? 0;
             const timing = buildManifestTiming(manifest, timepoints, duration);
             if (timing.issues.some((issue) => issue.level === "error") || timing.entries.length === 0) {
-              throw new Error(timing.issues[0]?.message ?? "Export XML bloqué — manifest timing exact invalide.");
+              console.warn(
+                "[Export XML] Manifest timing invalid, falling back to generated timeline:",
+                timing.issues[0]?.message ?? "no manifest entries"
+              );
+            } else {
+              manifestEntries = timing.entries;
             }
-            manifestEntries = timing.entries;
 
             // ── Pre-export order consistency guard ──
-            const timelineSegmentIds = params.timeline.videoTrack.segments.map((s) => s.id);
-            const manifestShotIds = manifestEntries.map((e) => e.shotId);
-            const timelineFiltered = timelineSegmentIds.filter((id) => new Set(manifestShotIds).has(id));
-            if (timelineFiltered.length === manifestShotIds.length) {
+            const manifestShotIds = manifestEntries?.map((e) => e.shotId) ?? [];
+            if (manifestShotIds.length > 0) {
+              const timelineSegmentIds = params.timeline.videoTrack.segments.map((s) => s.id);
+              const manifestIdSet = new Set(manifestShotIds);
+              const timelineFiltered = timelineSegmentIds.filter((id) => manifestIdSet.has(id));
+              if (timelineFiltered.length === manifestShotIds.length) {
               const orderMismatches: number[] = [];
               for (let i = 0; i < manifestShotIds.length; i++) {
                 if (manifestShotIds[i] !== timelineFiltered[i]) {
@@ -1013,6 +1021,7 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
                   `[Export Guard] Manifest/timeline order divergence detected at positions: ${orderMismatches.join(", ")}. ` +
                   `Export will use manifest order (text-position based) for correct audio sync.`
                 );
+              }
               }
             }
 
@@ -1053,11 +1062,9 @@ export function BackgroundTasksProvider({ children }: { children: ReactNode }) {
               },
               segmentCount: scopedSegments.length,
             };
-          } else {
-            throw new Error("Export XML bloqué — audio sélectionné introuvable pour construire le manifest timing exact.");
           }
         } catch (error) {
-          throw error instanceof Error ? error : new Error("Export XML bloqué — impossible de valider le manifest timing exact.");
+          console.warn("[Export XML] Manifest timing unavailable, falling back to generated timeline:", error);
         }
 
         const blob = await exportTimelineToXmlZip(exportTimeline, params.fps, (p) => {
