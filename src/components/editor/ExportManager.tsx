@@ -222,19 +222,21 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
         supabase.from("project_scriptcreator_state").select("timeline_state").eq("project_id", projectId).single(),
       ]);
 
-      if (!dbScenes?.length || !dbShots?.length || !audioData) {
-        toast.error("Données manquantes pour générer la timeline XML");
-        return;
-      }
+      let manifestEntries: import("./manifestTiming").ManifestTimingEntry[] | undefined;
+      if (dbScenes?.length && dbShots?.length && audioData) {
+        const manifest = buildManifest(projectId, dbScenes, dbShots);
+        const timepoints = (audioData.shot_timepoints as unknown as import("./timelineAssembly").ShotTimepoint[] | null) ?? null;
+        const duration = audioData.duration_estimate ?? 0;
+        const timing = buildManifestTiming(manifest, timepoints, duration);
 
-      const manifest = buildManifest(projectId, dbScenes, dbShots);
-      const timepoints = (audioData.shot_timepoints as unknown as import("./timelineAssembly").ShotTimepoint[] | null) ?? null;
-      const duration = audioData.duration_estimate ?? 0;
-      const timing = buildManifestTiming(manifest, timepoints, duration);
-
-      if (timing.issues.some((issue) => issue.level === "error") || timing.entries.length === 0) {
-        toast.error(timing.issues[0]?.message ?? "Manifest timing invalide — corrigez les erreurs d'abord.");
-        return;
+        if (timing.issues.some((issue) => issue.level === "error") || timing.entries.length === 0) {
+          console.warn(
+            "[ExportManager] XML-only manifest timing invalid, falling back to generated timeline:",
+            timing.issues[0]?.message ?? "no manifest entries"
+          );
+        } else {
+          manifestEntries = timing.entries;
+        }
       }
 
       const chapterState = (stateData?.timeline_state as any)?.chapterState as ChapterListState | null;
@@ -244,7 +246,7 @@ export default function ExportManager({ timeline, projectId, exportBlocked = fal
         timelineRef.current,
         fps,
         chapters,
-        timing.entries,
+        manifestEntries,
         resolvedMusicTracks.map((mt) => mt.name)
       );
 
