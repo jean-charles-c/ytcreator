@@ -781,29 +781,33 @@ export default function VideoEditTab({ projectId, scenes, shots, exportBlocked, 
                 </Button>
               </div>
             )}
-            {timeline && (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    Timeline générée le {new Date(timeline.createdAt).toLocaleString("fr-FR")}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={handleAssembleTimeline} className="h-7 text-xs gap-1.5">
-                    <Wand2 className="h-3 w-3" />
-                    Régénérer
-                  </Button>
-                </div>
+          </div>
+        )}
 
-                {/* Collapsible: Preview + Timeline */}
-                <CollapsibleSection title="Prévisualisation & Timeline" icon={Film} badge={`${timeline.segmentCount} segments`}>
-                  <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} imageOffsetMs={imageOffsetMs} onImageOffsetChange={setImageOffsetMs} />
-                </CollapsibleSection>
+        {/* ── Timeline + Export (visible dès qu'une timeline existe, même sans audio sélectionné) ── */}
+        {timeline && (
+          <div className="space-y-3 pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                Timeline générée le {new Date(timeline.createdAt).toLocaleString("fr-FR")}
+              </span>
+              {selectedAudioId && shots.length > 0 && (
+                <Button variant="outline" size="sm" onClick={handleAssembleTimeline} className="h-7 text-xs gap-1.5">
+                  <Wand2 className="h-3 w-3" />
+                  Régénérer
+                </Button>
+              )}
+            </div>
 
-                {/* Collapsible: Export Manager */}
-                <CollapsibleSection title="Export Manager" icon={Film}>
-                  <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={isExportBlocked} musicTracks={musicTracks} />
-                </CollapsibleSection>
-              </>
-            )}
+            {/* Collapsible: Preview + Timeline */}
+            <CollapsibleSection title="Prévisualisation & Timeline" icon={Film} badge={`${timeline.segmentCount} segments`}>
+              <TimelineView timeline={timeline} onTimelineChange={handleTimelineChange} imageOffsetMs={imageOffsetMs} onImageOffsetChange={setImageOffsetMs} />
+            </CollapsibleSection>
+
+            {/* Collapsible: Export Manager */}
+            <CollapsibleSection title="Export Manager" icon={Film}>
+              <ExportManager timeline={timeline} projectId={projectId!} exportBlocked={isExportBlocked} musicTracks={musicTracks} />
+            </CollapsibleSection>
           </div>
         )}
       </div>
